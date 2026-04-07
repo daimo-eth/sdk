@@ -41,6 +41,7 @@ export const zh: typeof en = {
   noTokensFound: "未找到代币",
   minimum: "最小",
   maximum: "最大",
+  fee: "费用",
 
   // WaitingDepositAddressPage
   deposit: "充值",

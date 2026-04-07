@@ -41,6 +41,7 @@ export const ja: typeof en = {
   noTokensFound: "トークンが見つかりません",
   minimum: "最小",
   maximum: "最大",
+  fee: "手数料",
 
   // WaitingDepositAddressPage
   deposit: "入金",

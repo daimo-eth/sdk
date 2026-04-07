@@ -4,6 +4,7 @@ import type {
   AccountRail,
   DepositConstraints,
 } from "../../../common/account.js";
+import type { UserFeeRule } from "../../../common/session.js";
 import { useDaimoClient } from "../../hooks/DaimoClientContext.js";
 import {
   useAccountFlow,
@@ -20,6 +21,7 @@ type AccountPaymentPageProps = {
   sessionId: string;
   platform: DaimoPlatform;
   baseUrl: string;
+  userFeeRule?: UserFeeRule;
   onBack: () => void;
   onAdvance: () => void;
 };
@@ -30,6 +32,7 @@ export function AccountPaymentPage({
   sessionId,
   platform,
   baseUrl,
+  userFeeRule,
   onBack,
   onAdvance,
 }: AccountPaymentPageProps) {
@@ -110,6 +113,7 @@ export function AccountPaymentPage({
                 : constraints.badge.logoURI
             }
             badgeAlt={constraints.badge.alt}
+            userFeeRule={userFeeRule}
             platform={platform}
             baseUrl={baseUrl}
           />

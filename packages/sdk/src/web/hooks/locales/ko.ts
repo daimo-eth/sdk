@@ -41,6 +41,7 @@ export const ko: typeof en = {
   noTokensFound: "토큰을 찾을 수 없습니다",
   minimum: "최소",
   maximum: "최대",
+  fee: "수수료",
 
   // WaitingDepositAddressPage
   deposit: "입금",
