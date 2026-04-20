@@ -99,6 +99,13 @@ export function useDraftDeposit({
           });
         } catch (err) {
           if (seq !== requestSeqRef.current) return;
+          console.error("[account-deposit] failed to draft deposit", {
+            sessionId,
+            rail,
+            depositAmount,
+            draftMode,
+            error: err instanceof Error ? err.message : String(err),
+          });
           setDepositState({ depositAmount, kind: "idle" });
           setError(
             err instanceof Error ? err.message : "failed to create deposit",
