@@ -15,4 +15,4 @@ export { useInjectedWallets } from "./hooks/useInjectedWallets.js";
 export { useAccountFlow } from "./hooks/useAccountFlow.js";
 
 // Localization
-export { setLocale, t } from "./hooks/locale.js";
+export { getLocale, setLocale, t } from "./hooks/locale.js";
