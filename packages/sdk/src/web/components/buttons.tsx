@@ -30,6 +30,7 @@ export function PrimaryButton({
 
   return (
     <button
+      type="button"
       onClick={onClick}
       disabled={disabled}
       className={`${baseStyles} ${disabled ? disabledStyles : enabledStyles} ${className}`}
@@ -58,6 +59,7 @@ export function SecondaryButton({
 
   return (
     <button
+      type="button"
       onClick={onClick}
       disabled={disabled}
       className={`${baseStyles} ${disabled ? disabledStyles : enabledStyles} ${className}`}

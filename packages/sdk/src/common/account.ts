@@ -135,6 +135,13 @@ export type DepositInstitution = {
   deeplink: DepositDeeplink;
 };
 
+export type DepositPaymentField = {
+  key: string;
+  label: string;
+  value: string;
+  emphasized?: boolean;
+};
+
 /**
  * Server-provided payment flow configuration.
  * - `bank-picker`: user picks an institution, then continues in their bank flow
@@ -146,6 +153,11 @@ export type DepositPaymentInfo =
       instructions: string;
       institutions: DepositInstitution[];
       qrUrl: string | null;
+    })
+  | (DepositConstraints & {
+      flow: "bank-transfer";
+      instructions: string;
+      fields: DepositPaymentField[];
     })
   | (DepositConstraints & {
       flow: "wallet-pay-widget";

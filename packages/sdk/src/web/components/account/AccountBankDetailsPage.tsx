@@ -1,9 +1,15 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useDaimoClient } from "../../hooks/DaimoClientContext.js";
 import { t } from "../../hooks/locale.js";
-import { useSessionDepositState } from "../../hooks/useAccountFlow.js";
+import {
+  useAccountFlow,
+  useSessionDepositState,
+} from "../../hooks/useAccountFlow.js";
 import { useCopyToClipboard } from "../../hooks/useCopyToClipboard.js";
 import { useDepositPoller } from "../../hooks/useDepositPoller.js";
+import { useDraftDeposit } from "../../hooks/useDraftDeposit.js";
+import { PrimaryButton } from "../buttons.js";
+import { ErrorPage } from "../ErrorPage.js";
 import { CopyIcon } from "../icons.js";
 import { ProgressPulse } from "../ProgressPulse.js";
 import { PageHeader, ScrollContent } from "../shared.js";
@@ -54,13 +60,45 @@ export function AccountUsAchDetailsPage({
   onAdvance,
 }: AccountUsAchDetailsPageProps) {
   const client = useDaimoClient();
-  const { depositState } = useSessionDepositState(sessionId);
-  const payment =
-    depositState?.kind === "drafted" || depositState?.kind === "started"
+  const accountFlow = useAccountFlow();
+  const { depositState, setDepositState } = useSessionDepositState(sessionId);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const depositAmount = depositState?.depositAmount ?? "";
+  const currentDepositId =
+    depositState?.depositAmount === depositAmount
+    && (depositState.kind === "drafted" || depositState.kind === "started")
+      ? depositState.depositId
+      : null;
+  const {
+    payment: draftedPayment,
+    isCreating,
+    error: draftError,
+    retry: retryDraft,
+  } = useDraftDeposit({
+    client,
+    accountFlow,
+    sessionId,
+    rail: "ach",
+    depositAmount,
+    enabled: depositAmount !== "",
+    draftMode: "signed",
+  });
+  const startedPayment =
+    depositState?.kind === "started" && depositState.payment.flow === "bank-transfer"
       ? depositState.payment
       : null;
+  const payment =
+    startedPayment
+    ?? (draftedPayment?.flow === "bank-transfer" ? draftedPayment : null);
   const instructions = payment?.instructions ?? "";
-  const fields = parseInstructions(instructions);
+  const fields =
+    payment?.flow === "bank-transfer"
+      ? payment.fields.map((field) => ({
+          label: field.label,
+          value: field.value,
+        }))
+      : parseInstructions(instructions);
 
   useEffect(() => {
     if (instructions) return;
@@ -84,12 +122,51 @@ export function AccountUsAchDetailsPage({
     },
   });
 
+  async function handleSubmitted() {
+    if (!accountFlow || !payment || !depositAmount || !currentDepositId) {
+      setSubmitError("deposit is not ready");
+      return;
+    }
+
+    setSubmitError(null);
+    setIsSubmitting(true);
+    try {
+      setDepositState({
+        depositAmount,
+        kind: "started",
+        depositId: currentDepositId,
+        payment,
+      });
+      onAdvance();
+    } catch (err) {
+      setSubmitError(
+        err instanceof Error ? err.message : "failed to update deposit",
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  const error = submitError ?? draftError;
+  if (error) {
+    return (
+      <ErrorPage
+        message={error}
+        retryText={t.tryAgain}
+        onRetry={() => {
+          setSubmitError(null);
+          retryDraft();
+        }}
+      />
+    );
+  }
+
   if (!instructions) {
     return (
       <div className="daimo-flex daimo-flex-col daimo-flex-1 daimo-min-h-0">
         <PageHeader title={t.accountBankDetails} onBack={onBack} />
         <div className="daimo-flex-1 daimo-flex daimo-items-center daimo-justify-center">
-          <ProgressPulse label={t.loading} />
+          <ProgressPulse label={isCreating ? t.loading : t.loading} />
         </div>
       </div>
     );
@@ -99,7 +176,7 @@ export function AccountUsAchDetailsPage({
     <div className="daimo-flex daimo-flex-col daimo-flex-1 daimo-min-h-0">
       <PageHeader title={t.accountBankDetails} onBack={onBack} />
       <ScrollContent>
-        <div className="daimo-flex daimo-flex-col daimo-gap-2 daimo-px-6 daimo-py-4">
+        <div className="daimo-flex daimo-flex-col daimo-gap-2 daimo-px-6 daimo-pt-4 daimo-pb-12">
           {fields.map((field, i) =>
             field.label ? (
               <FieldRow key={i} label={field.label} value={field.value} />
@@ -113,8 +190,13 @@ export function AccountUsAchDetailsPage({
             ),
           )}
         </div>
-
       </ScrollContent>
+
+      <div className="daimo-mt-3 daimo-px-6 daimo-pt-2 daimo-pb-6 daimo-flex daimo-justify-center">
+        <PrimaryButton onClick={handleSubmitted} disabled={isSubmitting}>
+          {isSubmitting ? t.loading : "I've sent the funds"}
+        </PrimaryButton>
+      </div>
     </div>
   );
 }
@@ -151,6 +233,7 @@ function FieldRow({ label, value }: { label: string; value: string }) {
         )}
       </div>
       <button
+        type="button"
         onClick={() => copy(value)}
         className="daimo-shrink-0 daimo-p-1.5 daimo-rounded-[var(--daimo-radius-sm)] hover:daimo-bg-[var(--daimo-surface-hover)] daimo-transition-colors"
         aria-label={copied ? t.accountBankDetailsCopied : `Copy ${label}`}

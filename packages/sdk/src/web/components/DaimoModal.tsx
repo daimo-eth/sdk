@@ -58,6 +58,7 @@ import { AccountCanadaBankPickerPage } from "./account/AccountBankPickerPage.js"
 import { AccountCreatingWalletPage } from "./account/AccountCreatingWalletPage.js";
 import { AccountDeeplinkPage } from "./account/AccountDeeplinkPage.js";
 import { AccountApplePayPage } from "./account/AccountApplePayPage.js";
+import { AccountBankTransferSubmittedPage } from "./account/AccountBankTransferSubmittedPage.js";
 import { AccountEmailPage } from "./account/AccountEmailPage.js";
 import { AccountEnrollmentPage } from "./account/AccountEnrollmentPage.js";
 import { AccountOtpPage } from "./account/AccountOtpPage.js";
@@ -645,6 +646,15 @@ function renderEntry(
           sessionId={ctx.session.sessionId}
           clientSecret={ctx.session.clientSecret}
           onBack={null}
+          onAdvance={() => ctx.onAccountAdvance("account-bank-transfer-submitted")}
+        />
+      );
+    case "account-bank-transfer-submitted":
+      return (
+        <AccountBankTransferSubmittedPage
+          sessionId={ctx.session.sessionId}
+          clientSecret={ctx.session.clientSecret}
+          baseUrl={ctx.session.baseUrl}
           onAdvance={() => ctx.onAccountAdvance("account-status")}
         />
       );

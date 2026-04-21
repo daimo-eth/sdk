@@ -90,6 +90,9 @@ export const es: typeof en = {
   accountBankDetails: "Datos de transferencia",
   accountBankDetailsCopied: "Copiado",
   accountBankDetailsMemoWarning: "Incluye este memo en tu transferencia",
+  accountBankTransferSubmittedTitle: "Transferencia en camino",
+  accountBankTransferSubmittedDesc:
+    "Las transferencias bancarias pueden tardar entre 1 y 3 días hábiles. Puedes cerrar esta ventana y seguir el progreso desde tu cuenta.",
   accountTosTitle: "Términos de servicio",
   accountTosDesc: "Para continuar, acepta los términos de servicio y la política de privacidad.",
   accountTosTerms: "Términos de servicio",
