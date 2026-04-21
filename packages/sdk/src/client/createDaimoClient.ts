@@ -23,6 +23,7 @@ import type {
   RetrieveSessionWithNavResponse,
   WalletOptionsResponse,
 } from "../web/api/index.js";
+import { getLocale } from "../web/hooks/locale.js";
 
 import { createTransport, type TransportConfig } from "./transport.js";
 
@@ -227,7 +228,7 @@ export function createDaimoClient(config: TransportConfig): DaimoClient {
           return transport.request<CreatePaymentMethodResponse>({
             method: "POST",
             path: `/v1/sessions/${sessionId}/paymentMethods`,
-            body: input,
+            body: { ...input, locale: getLocale() },
           });
         },
       },
@@ -261,14 +262,14 @@ export function createDaimoClient(config: TransportConfig): DaimoClient {
           return transport.request<RetrieveSessionWithNavResponse>({
             method: "GET",
             path: `/v1/sessions/${sessionId}/internal/nav`,
-            query: { clientSecret },
+            query: { clientSecret, locale: getLocale() },
           });
         },
         async recreate(sessionId, clientSecret) {
           return transport.request<RecreateSessionWithNavResponse>({
             method: "POST",
             path: `/v1/sessions/${sessionId}/internal/recreate`,
-            body: { clientSecret },
+            body: { clientSecret, locale: getLocale() },
           });
         },
         async walletOptions(sessionId, params) {
