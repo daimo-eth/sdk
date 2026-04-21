@@ -119,6 +119,9 @@ export const en = {
   accountBankDetails: "Transfer Details",
   accountBankDetailsCopied: "Copied",
   accountBankDetailsMemoWarning: "Include this memo in your transfer",
+  accountBankTransferSubmittedTitle: "Transfer on the way",
+  accountBankTransferSubmittedDesc:
+    "Bank transfers can take 1–3 business days. You can close this window and track progress from your account page.",
   accountTosTitle: "Terms of Service",
   accountTosDesc: "To continue, please agree to the terms of service and privacy policy.",
   accountTosTerms: "Terms of Service",
