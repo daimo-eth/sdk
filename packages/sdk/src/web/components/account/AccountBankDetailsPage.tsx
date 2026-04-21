@@ -1,4 +1,4 @@
-
+import { useEffect } from "react";
 import { useDaimoClient } from "../../hooks/DaimoClientContext.js";
 import { t } from "../../hooks/locale.js";
 import { useSessionDepositState } from "../../hooks/useAccountFlow.js";
@@ -61,6 +61,14 @@ export function AccountUsAchDetailsPage({
       : null;
   const instructions = payment?.instructions ?? "";
   const fields = parseInstructions(instructions);
+
+  useEffect(() => {
+    if (instructions) return;
+    console.warn("[account-deposit] entered ach details page without drafted deposit", {
+      sessionId,
+      depositStateKind: depositState?.kind ?? null,
+    });
+  }, [depositState?.kind, instructions, sessionId]);
 
   useDepositPoller({
     client,

@@ -20,6 +20,17 @@ export type EnrollmentResponse =
   | { action: "kyc_pending_review" }
   | { action: "kyc_rejected_final"; reason: string }
   | { action: "not_eligible"; reason: string }
+  | {
+      action: "hosted_agreement_required";
+      title: string;
+      description: string;
+      url: string;
+      openExternalLabel: string;
+      continueLabel: string;
+      fallbackDescription: string;
+      autoContinueDescription: string;
+      checkingDescription: string;
+    }
   | { action: "provider_pending" }
   /** User must verify a phone number before continuing. */
   | { action: "phone_required"; reason?: string }
