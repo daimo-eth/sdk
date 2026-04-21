@@ -23,7 +23,7 @@ import type { WalletPaymentOption } from "../api/walletTypes.js";
 
 import { useDaimoClient } from "../hooks/DaimoClientContext.js";
 import { formatUserError } from "../hooks/formatUserError.js";
-import { t } from "../hooks/locale.js";
+import { autoDetectLocale, t } from "../hooks/locale.js";
 import { createNavLogger, type NavNodeType } from "../hooks/navEvent.js";
 import {
   findNode,
@@ -145,6 +145,10 @@ export function DaimoModal(props: DaimoModalProps) {
     defaultOpen = true,
     onClose,
   } = props;
+
+  // Auto-detect browser language if setLocale() hasn't been called explicitly
+  autoDetectLocale();
+
   const client = useDaimoClient();
   const [session, setSession] = useState<SessionWithNav | null>(null);
   const [privyAppId, setPrivyAppId] = useState<string | undefined>();

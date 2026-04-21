@@ -13,6 +13,7 @@ export const zSessionId = z
 
 export const zCreatePaymentMethodRequest = z.object({
   clientSecret: z.string(),
+  locale: z.string().optional(),
   paymentMethod: z.discriminatedUnion("type", [
     z.object({ type: z.literal("evm") }),
     z.object({ type: z.literal("tron"), amountUsd: z.number().positive() }),
