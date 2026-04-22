@@ -4941,7 +4941,7 @@ contract DepositAddressManagerTest is Test {
         address depositAddress = factory.getDepositAddress(params);
         bytes32 relaySalt = keccak256("test-relay-salt");
 
-        // Leg 1: source -> hop (e.g., Scroll -> Arbitrum)
+        // Leg 1: source -> hop (e.g., BSC -> Arbitrum)
         TokenAmount memory leg1BridgeTokenOut = TokenAmount({
             token: usdc,
             amount: BRIDGE_AMOUNT
