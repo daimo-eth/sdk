@@ -64,7 +64,6 @@ CHAINS=(
     # "https://monad-mainnet.g.alchemy.com/v2/$ALCHEMY_API_KEY"
     # "https://opt-mainnet.g.alchemy.com/v2/$ALCHEMY_API_KEY"
     # "https://polygon-mainnet.g.alchemy.com/v2/$ALCHEMY_API_KEY"
-    # "https://scroll-mainnet.g.alchemy.com/v2/$ALCHEMY_API_KEY"
     # "https://tempo-mainnet.g.alchemy.com/v2/$ALCHEMY_API_KEY"
     # "https://worldchain-mainnet.g.alchemy.com/v2/$ALCHEMY_API_KEY"
 
