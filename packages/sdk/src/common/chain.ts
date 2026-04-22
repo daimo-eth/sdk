@@ -102,14 +102,6 @@ export const polygon: Chain = {
   lzEid: 30109,
 };
 
-export const scroll: Chain = {
-  type: "evm",
-  chainId: 534352,
-  name: "Scroll",
-  cctpDomain: null,
-  lzEid: 30214,
-};
-
 export const tempo: Chain = {
   type: "evm",
   chainId: 4217,
@@ -159,7 +151,6 @@ export const supportedChains: Chain[] = [
   monad,
   optimism,
   polygon,
-  scroll,
   solana,
   tempo,
   tron,
@@ -214,8 +205,6 @@ export function getChainExplorerByChainId(chainId: number): string | undefined {
       return "https://optimistic.etherscan.io";
     case polygon.chainId:
       return "https://polygonscan.com";
-    case scroll.chainId:
-      return "https://scrollscan.com";
     case solana.chainId:
       return "https://solscan.io";
     case tempo.chainId:
