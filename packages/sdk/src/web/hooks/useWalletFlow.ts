@@ -402,12 +402,16 @@ export function useWalletFlow(
       if (!accts || accts.length === 0) {
         setWallet((prev) => {
           if (!prev?.solAddress) {
+            currentFetchRef.current = null;
+            setIsLoadingBalances(false);
             setBalances(null);
+            setConnectError(unavailableMsg);
             balanceCache = null;
             return null;
           }
           const updated = { evmAddress: null, solAddress: prev.solAddress };
           balanceCache = null;
+          setConnectError(null);
           fetchBalances(updated, true);
           return updated;
         });
@@ -422,6 +426,7 @@ export function useWalletFlow(
           evmAddress: newAddress,
           solAddress: prev?.solAddress ?? null,
         };
+        setConnectError(null);
         fetchBalances(updated, true);
         return updated;
       });
@@ -451,9 +456,13 @@ export function useWalletFlow(
           solAddress: newSolAddress,
         };
         if (!updated.evmAddress && !updated.solAddress) {
+          currentFetchRef.current = null;
+          setIsLoadingBalances(false);
           setBalances(null);
+          setConnectError(unavailableMsg);
           return null;
         }
+        setConnectError(null);
         fetchBalances(updated, true);
         return updated;
       });
