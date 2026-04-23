@@ -308,6 +308,18 @@
   transition: height 280ms cubic-bezier(0.645, 0.045, 0.355, 1);
 }
 
+/* OTP error shake — brief horizontal jolt on invalid code */
+.daimo-otp-shake {
+  animation: daimo-otp-shake 360ms cubic-bezier(0.36, 0.07, 0.19, 0.97);
+}
+
+@keyframes daimo-otp-shake {
+  10%, 90% { transform: translateX(-2px); }
+  20%, 80% { transform: translateX(3px); }
+  30%, 50%, 70% { transform: translateX(-5px); }
+  40%, 60% { transform: translateX(5px); }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .daimo-modal-backdrop,
   .daimo-modal-content {
@@ -326,6 +338,10 @@
   .daimo-transition-qr-icon,
   .daimo-transition-qr-spacer {
     transition: none;
+  }
+
+  .daimo-otp-shake {
+    animation: none;
   }
 
   [style*="daimo-pulse-dot"] {
