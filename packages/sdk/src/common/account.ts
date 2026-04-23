@@ -86,6 +86,8 @@ export interface AccountDeposit {
   fiatCurrency: string;
   status: AccountDepositStatus;
   errorMessage: string | null;
+  /** User-facing ETA string for this deposit's rail, e.g. "1–5 min". */
+  eta: string;
 }
 
 /** EIP-712 typed data structure. Extends Record so it can be passed to signTypedData directly. */
