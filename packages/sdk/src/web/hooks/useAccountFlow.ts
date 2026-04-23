@@ -197,9 +197,7 @@ export function useAccountFlowState(): AccountFlowState {
       setIsAuthenticated(true);
       return true;
     } catch (err) {
-      setAuthError(
-        err instanceof Error ? err.message : "failed to verify code",
-      );
+      setAuthError(privyAuthErrorMessage(err));
       return false;
     } finally {
       setIsLoggingIn(false);
@@ -244,9 +242,7 @@ export function useAccountFlowState(): AccountFlowState {
       await privyRef.current.loginWithPhoneCode(code);
       return true;
     } catch (err) {
-      setAuthError(
-        err instanceof Error ? err.message : "failed to verify code",
-      );
+      setAuthError(privyAuthErrorMessage(err));
       return false;
     } finally {
       setIsLoggingIn(false);
@@ -388,4 +384,9 @@ export function useAccountFlowState(): AccountFlowState {
     waitForReady,
     registerPrivy,
   };
+}
+
+function privyAuthErrorMessage(err: unknown): string {
+  if (err instanceof Error && err.message) return err.message;
+  return "failed to verify code";
 }
