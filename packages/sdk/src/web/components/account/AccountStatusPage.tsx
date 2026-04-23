@@ -1,15 +1,13 @@
 import { useState } from "react";
 
-import type { AccountRail, AccountDepositStatus } from "../../../common/account.js";
+import type { AccountDepositStatus } from "../../../common/account.js";
 import { useDaimoClient } from "../../hooks/DaimoClientContext.js";
 import { t } from "../../hooks/locale.js";
 import { useDepositPoller } from "../../hooks/useDepositPoller.js";
-import { ConfirmationSpinner } from "../ConfirmationSpinner.js";
 import { ErrorPage } from "../ErrorPage.js";
 import { CenteredContent, PageHeader } from "../shared.js";
 
 type AccountStatusPageProps = {
-  rail: AccountRail;
   sessionId: string;
   clientSecret: string;
   baseUrl: string;
@@ -20,12 +18,6 @@ const TERMINAL_STATUSES: AccountDepositStatus[] = [
   "failed",
   "expired",
 ];
-
-const RAIL_ETA: Record<AccountRail, string> = {
-  interac: "5–30 min",
-  ach: "1–3 days",
-  apple_pay: "5–30 min",
-};
 
 /** Map status to a 0-2 step index for the progress indicator. */
 function getStep(status: AccountDepositStatus): number {
@@ -43,19 +35,22 @@ const STEP_LABELS = ["Received", "Processing", "Complete"];
  * Async deposit status — ConfirmationSpinner + progress steps + action rows.
  */
 export function AccountStatusPage({
-  rail,
   sessionId,
   clientSecret,
   baseUrl,
 }: AccountStatusPageProps) {
   const client = useDaimoClient();
   const [status, setStatus] = useState<AccountDepositStatus>("payment_received");
+  const [eta, setEta] = useState<string | null>(null);
 
   useDepositPoller({
     client,
     sessionId,
     clientSecret,
-    onUpdate: (deposit) => setStatus(deposit.status),
+    onUpdate: (deposit) => {
+      setStatus(deposit.status);
+      setEta(deposit.eta);
+    },
     shouldStop: (deposit) => TERMINAL_STATUSES.includes(deposit.status),
   });
 
@@ -77,7 +72,7 @@ export function AccountStatusPage({
       <CenteredContent>
         <div className="daimo-flex daimo-flex-col daimo-items-center daimo-gap-3">
           <DepositProgress step={step} />
-          {!isComplete && (
+          {!isComplete && eta && (
             <span
               className="daimo-text-[10px] daimo-px-2.5 daimo-py-1 daimo-rounded-full"
               style={{
@@ -86,7 +81,7 @@ export function AccountStatusPage({
                 fontVariantNumeric: "tabular-nums",
               }}
             >
-              ETA {RAIL_ETA[rail]}
+              ETA {eta}
             </span>
           )}
         </div>

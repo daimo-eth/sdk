@@ -679,7 +679,6 @@ function renderEntry(
     case "account-status":
       return (
         <AccountStatusPage
-          rail={entry.rail}
           sessionId={ctx.session.sessionId}
           clientSecret={ctx.session.clientSecret}
           baseUrl={ctx.session.baseUrl}
