@@ -4,15 +4,14 @@ pragma solidity ^0.8.13;
 import "forge-std/Script.sol";
 
 import "../../src/DepositAddressBridger.sol";
+import "../../src/DAHopBridger.sol";
 import "../../src/DaimoPayCCTPV2Bridger.sol";
 import "../../src/DaimoPayLayerZeroBridger.sol";
-import "../../src/DaimoPayHopBridger.sol";
 import "../Constants.s.sol";
 import {
     getDACCTPV2BridgeRoutes
 } from "./constants/DACCTPV2BridgeRouteConstants.sol";
 import {
-    getDAHopChain,
     getDAHopBridgeRoutes
 } from "./constants/DAHopBridgeRouteConstants.sol";
 import {
@@ -27,7 +26,7 @@ import {
 } from "./constants/DAUSDT0BridgeRouteConstants.sol";
 import {
     DEPLOY_SALT_CCTP_V2_BRIDGER,
-    DEPLOY_SALT_HOP_BRIDGER,
+    DEPLOY_SALT_DA_HOP_BRIDGER,
     DEPLOY_SALT_LEGACY_MESH_BRIDGER,
     DEPLOY_SALT_STARGATE_USDC_BRIDGER,
     DEPLOY_SALT_STARGATE_USDT_BRIDGER,
@@ -94,7 +93,7 @@ contract DeployDepositAddressBridger is Script {
         );
         address hopBridger = CREATE3.getDeployed(
             msg.sender,
-            DEPLOY_SALT_HOP_BRIDGER
+            DEPLOY_SALT_DA_HOP_BRIDGER
         );
         address usdt0Bridger = CREATE3.getDeployed(
             msg.sender,
@@ -136,8 +135,14 @@ contract DeployDepositAddressBridger is Script {
         // Hop
         (
             uint256[] memory hopDestChainIds,
-            DaimoPayHopBridger.FinalChainCoin[] memory finalChainCoins
-        ) = getDAHopBridgeRoutes(block.chainid);
+            address[] memory hopFinalStableAddrs,
+            DAHopBridger.HopBridgeRoute[] memory hopBridgeRoutes
+        ) = getDAHopBridgeRoutes(block.chainid, msg.sender);
+        require(
+            hopDestChainIds.length == hopFinalStableAddrs.length &&
+                hopDestChainIds.length == hopBridgeRoutes.length,
+            "DAB: hop length mismatch"
+        );
 
         // USDT0
         (
@@ -195,7 +200,7 @@ contract DeployDepositAddressBridger is Script {
         // Add Hop routes
         for (uint256 i = 0; i < hopDestChainIds.length; ++i) {
             chainIds[index] = hopDestChainIds[i];
-            stableOuts[index] = finalChainCoins[i].coinAddr;
+            stableOuts[index] = hopFinalStableAddrs[i];
             bridgers[index] = hopBridger;
             index++;
         }
