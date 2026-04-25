@@ -76,7 +76,7 @@ export type NavEntry =
   | ({ type: "account-enrollment" } & AccountNavBase)
   | ({ type: "account-payment" } & AccountNavBase)
   | ({ type: "account-canada-bank-picker" } & AccountNavBase)
-  | ({ type: "account-us-ach-details" } & AccountNavBase)
+  | ({ type: "account-bank-details" } & AccountNavBase)
   | ({ type: "account-bank-transfer-submitted" } & AccountNavBase)
   | ({ type: "account-apple-pay" } & AccountNavBase)
   | ({ type: "account-deeplink" } & AccountNavBase)

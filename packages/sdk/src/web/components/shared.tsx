@@ -476,8 +476,8 @@ type TokenIconWithChainBadgeProps = {
   size?: "sm" | "lg" | "qr";
   /** Border color class for the chain badge (defaults to row background colors) */
   badgeBorderClass?: string;
-  /** Override for the badge logo (e.g. a payment-rail logo). Falls back to the chain logo. */
-  badgeLogoURI?: string;
+  /** Override for the badge logo. Null hides the badge; undefined falls back to the chain logo. */
+  badgeLogoURI?: string | null;
   /** Alt text for the badge image. Falls back to the chain name. */
   badgeAlt?: string;
   baseUrl: string;
@@ -500,12 +500,14 @@ export function TokenIconWithChainBadge({
   badgeAlt,
   baseUrl,
 }: TokenIconWithChainBadgeProps) {
-  const tokenSymbol = token?.symbol ?? symbol ?? "USDC";
+  const tokenSymbol = symbol ?? token?.symbol ?? "USDC";
   const tokenChainId = token?.chainId ?? chainId ?? 1;
-  const logoUrl = token?.logoURI ?? logoURI;
+  const logoUrl = logoURI ?? token?.logoURI;
   const badgeUrl = badgeLogoURI
     ? resolveIconUrl(badgeLogoURI, baseUrl)
-    : getChainLogoUrl(tokenChainId, baseUrl);
+    : badgeLogoURI === null
+      ? null
+      : getChainLogoUrl(tokenChainId, baseUrl);
   const badgeAltText = badgeAlt ?? getChainName(tokenChainId);
 
   const sizeConfig = {
@@ -560,15 +562,17 @@ export function TokenIconWithChainBadge({
         />
       )}
       {/* Badge: rail logo if provided, otherwise the chain logo. */}
-      <img
-        src={badgeUrl}
-        alt={badgeAltText}
-        className={`${config.position} ${config.badge} daimo-rounded-full ${badgeBorderClass ?? ""}`}
-        style={badgeBorderClass ? undefined : config.style}
-        onError={(e) => {
-          (e.target as HTMLImageElement).style.display = "none";
-        }}
-      />
+      {badgeUrl && (
+        <img
+          src={badgeUrl}
+          alt={badgeAltText}
+          className={`${config.position} ${config.badge} daimo-rounded-full ${badgeBorderClass ?? ""}`}
+          style={badgeBorderClass ? undefined : config.style}
+          onError={(e) => {
+            (e.target as HTMLImageElement).style.display = "none";
+          }}
+        />
+      )}
     </div>
   );
 }

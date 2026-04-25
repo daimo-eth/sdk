@@ -8,7 +8,7 @@ import type { DaimoPayToken } from "./token.js";
  * `PaymentMethodFiat` and `NavNodeFiat`; persisted internally as the rail
  * on account deposit rows.
  */
-export const zAccountRail = z.enum(["interac", "ach", "apple_pay"]);
+export const zAccountRail = z.enum(["interac", "ach", "sepa", "apple_pay"]);
 export type AccountRail = z.infer<typeof zAccountRail>;
 
 /** What the user needs to do next in the account onboarding flow. */
@@ -72,6 +72,8 @@ export type DepositConstraints = {
    * Destination stablecoin for this rail.
    */
   destinationToken: DaimoPayToken;
+  /** Primary fiat-region icon rendered on the amount-entry screen. */
+  icon: { logoURI: string; alt: string };
   /** Rail-specific badge (rendered over the destination token icon). */
   badge: { logoURI: string; alt: string };
 };

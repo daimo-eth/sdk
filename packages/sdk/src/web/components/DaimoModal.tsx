@@ -53,7 +53,7 @@ import { EmbeddedContainer, ModalContainer } from "./containers.js";
 import { DeeplinkPage } from "./DeeplinkPage.js";
 import { ExchangePage } from "./ExchangePage.js";
 import { ExpiredPage } from "./ExpiredPage.js";
-import { AccountUsAchDetailsPage } from "./account/AccountBankDetailsPage.js";
+import { AccountBankDetailsPage } from "./account/AccountBankDetailsPage.js";
 import { AccountCanadaBankPickerPage } from "./account/AccountBankPickerPage.js";
 import { AccountCreatingWalletPage } from "./account/AccountCreatingWalletPage.js";
 import { AccountDeeplinkPage } from "./account/AccountDeeplinkPage.js";
@@ -646,9 +646,10 @@ function renderEntry(
           onAdvance={() => ctx.onAccountAdvance("account-status")}
         />
       );
-    case "account-us-ach-details":
+    case "account-bank-details":
       return (
-        <AccountUsAchDetailsPage
+        <AccountBankDetailsPage
+          rail={entry.rail}
           sessionId={ctx.session.sessionId}
           clientSecret={ctx.session.clientSecret}
           onBack={null}

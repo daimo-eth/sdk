@@ -11,7 +11,7 @@ export type NativeDisplay =
   | { kind: "suffix"; symbol: string };  // e.g. "100 JPYC"
 
 type TokenAmountEntryProps = {
-  /** Destination stablecoin. Supplies icon, chain badge, FX rate (token.usd). */
+  /** Destination stablecoin. Supplies default icon, chain badge, FX rate (token.usd). */
   token: DaimoPayToken;
   /** Minimum allowed, in USD. */
   minimumUsd: number;
@@ -35,8 +35,12 @@ type TokenAmountEntryProps = {
   balance?: { usd: number; nativeAmountUnits: number };
   /** Show the "Max" pill. Clicking sets the input to `maximumUsd`. */
   showMax?: boolean;
-  /** Override for the token-icon badge (e.g. payment-rail logo). Defaults to chain badge. */
-  badgeLogoURI?: string;
+  /** Override for the primary icon. Fiat flows use a country/region icon. */
+  iconLogoURI?: string;
+  /** Alt text for the primary icon override. */
+  iconAlt?: string;
+  /** Override for the token-icon badge. Null hides the badge; undefined defaults to chain badge. */
+  badgeLogoURI?: string | null;
   /** Alt text for the badge override. */
   badgeAlt?: string;
   platform: DaimoPlatform;
@@ -59,6 +63,8 @@ export function TokenAmountEntry({
   onChange,
   balance,
   showMax = true,
+  iconLogoURI,
+  iconAlt,
   badgeLogoURI,
   badgeAlt,
   platform,
@@ -168,6 +174,8 @@ export function TokenAmountEntry({
       <div className="daimo-mb-3">
         <TokenIconWithChainBadge
           token={token}
+          symbol={iconAlt}
+          logoURI={iconLogoURI}
           size="lg"
           badgeLogoURI={badgeLogoURI}
           badgeAlt={badgeAlt}

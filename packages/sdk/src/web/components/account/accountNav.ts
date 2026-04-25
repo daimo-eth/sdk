@@ -3,7 +3,7 @@ import type { AccountRail } from "../../../common/account.js";
 /**
  * Pick the modal entry page for a rail. Each rail has its own payment UX:
  * - interac: two-step amount entry → bank picker
- * - ach: two-step amount entry → bank details
+ * - ach/sepa: two-step amount entry → bank details
  * - apple_pay: single unified amount+Apple Pay page (Coinbase Headless)
  */
 export function getAccountPaymentEntryTarget(rail: AccountRail) {
@@ -13,6 +13,7 @@ export function getAccountPaymentEntryTarget(rail: AccountRail) {
       return "account-apple-pay" as const;
     case "interac":
     case "ach":
+    case "sepa":
       // Old two-step flow: amount first, then picker/details.
       return "account-payment" as const;
   }
@@ -27,7 +28,8 @@ export function getAccountPaymentAdvanceTarget(rail: AccountRail) {
     case "interac":
       return "account-canada-bank-picker" as const;
     case "ach":
-      return "account-us-ach-details" as const;
+    case "sepa":
+      return "account-bank-details" as const;
     case "apple_pay":
       // Never used — apple_pay skips account-payment entirely.
       return "account-apple-pay" as const;
