@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import type { AccountRail } from "../../../common/account.js";
 import { useDaimoClient } from "../../hooks/DaimoClientContext.js";
 import { t } from "../../hooks/locale.js";
 import {
@@ -14,7 +15,8 @@ import { CopyIcon } from "../icons.js";
 import { ProgressPulse } from "../ProgressPulse.js";
 import { PageHeader, ScrollContent } from "../shared.js";
 
-type AccountUsAchDetailsPageProps = {
+type AccountBankDetailsPageProps = {
+  rail: AccountRail;
   sessionId: string;
   clientSecret: string;
   onBack?: (() => void) | null;
@@ -49,16 +51,17 @@ function isMemoField(label: string): boolean {
 }
 
 /**
- * US ACH details page — shows formatted bank-transfer instructions with copy
+ * Bank-transfer details page — shows formatted transfer instructions with copy
  * buttons. Used when the provider returns direct transfer instructions instead
  * of selectable institutions. Polls deposit status and auto-advances.
  */
-export function AccountUsAchDetailsPage({
+export function AccountBankDetailsPage({
+  rail,
   sessionId,
   clientSecret,
   onBack,
   onAdvance,
-}: AccountUsAchDetailsPageProps) {
+}: AccountBankDetailsPageProps) {
   const client = useDaimoClient();
   const accountFlow = useAccountFlow();
   const { depositState, setDepositState } = useSessionDepositState(sessionId);
@@ -79,7 +82,7 @@ export function AccountUsAchDetailsPage({
     client,
     accountFlow,
     sessionId,
-    rail: "ach",
+    rail,
     depositAmount,
     enabled: depositAmount !== "",
     draftMode: "signed",
@@ -102,11 +105,12 @@ export function AccountUsAchDetailsPage({
 
   useEffect(() => {
     if (instructions) return;
-    console.warn("[account-deposit] entered ach details page without drafted deposit", {
+    console.warn("[account-deposit] entered bank details page without drafted deposit", {
+      rail,
       sessionId,
       depositStateKind: depositState?.kind ?? null,
     });
-  }, [depositState?.kind, instructions, sessionId]);
+  }, [depositState?.kind, instructions, rail, sessionId]);
 
   useDepositPoller({
     client,
