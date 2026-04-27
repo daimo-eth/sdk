@@ -10,25 +10,16 @@ import {
   useSessionDepositState,
 } from "../../hooks/useAccountFlow.js";
 import { t } from "../../hooks/locale.js";
+import type { DaimoPlatform } from "../../platform.js";
 import { PrimaryButton } from "../buttons.js";
-import { AmountInput, CenteredContent, PageHeader, useAmountInput } from "../shared.js";
-
-/** Per-rail fallback constraints used until the server response arrives. */
-function railDefaults(rail: AccountRail) {
-  switch (rail) {
-    case "interac":
-      return { currencySymbol: "CA$", minimumAmount: 10, maximumAmount: 3000 };
-    case "ach":
-      return { currencySymbol: "$", minimumAmount: 1, maximumAmount: 10000 };
-    case "apple_pay":
-      // apple_pay never routes here (see accountNav). Fall through to USD.
-      return { currencySymbol: "$", minimumAmount: 5, maximumAmount: 500 };
-  }
-}
+import { CenteredContent, PageHeader } from "../shared.js";
+import { TokenAmountEntry } from "../TokenAmountEntry.js";
 
 type AccountPaymentPageProps = {
   rail: AccountRail;
   sessionId: string;
+  platform: DaimoPlatform;
+  baseUrl: string;
   onBack: () => void;
   onAdvance: () => void;
 };
@@ -37,6 +28,8 @@ type AccountPaymentPageProps = {
 export function AccountPaymentPage({
   rail,
   sessionId,
+  platform,
+  baseUrl,
   onBack,
   onAdvance,
 }: AccountPaymentPageProps) {
@@ -46,14 +39,6 @@ export function AccountPaymentPage({
   const [constraints, setConstraints] = useState<DepositConstraints | null>(null);
   const constraintsFetched = useRef(false);
 
-  const defaults = railDefaults(rail);
-  const currencySymbol = constraints?.currency.symbol ?? defaults.currencySymbol;
-  const minimum = parseAmountBound(constraints?.minAmount) ?? defaults.minimumAmount;
-  const maximum = parseAmountBound(constraints?.maxAmount) ?? defaults.maximumAmount;
-
-  const { amount, isValid, handleChange } = useAmountInput(minimum, maximum);
-
-  // Fetch constraints from server (one-shot)
   useEffect(() => {
     if (constraintsFetched.current || !accountFlow?.isAuthenticated) return;
     constraintsFetched.current = true;
@@ -74,40 +59,65 @@ export function AccountPaymentPage({
     })();
   }, [accountFlow, client, rail, sessionId]);
 
+  const [amountUsd, setAmountUsd] = useState(0);
+  const [isValid, setIsValid] = useState(false);
+  const handleChange = useCallback((usd: number, valid: boolean) => {
+    setAmountUsd(usd);
+    setIsValid(valid);
+  }, []);
+
   const handleSubmit = useCallback(
-    (amt: number) => {
-      if (!accountFlow) return;
-      setDepositState({ depositAmount: amt.toFixed(2), kind: "idle" });
+    (usd: number) => {
+      if (!accountFlow || !constraints) return;
+      const fiat = usd / constraints.destinationToken.usd;
+      setDepositState({ depositAmount: fiat.toFixed(2), kind: "idle" });
       onAdvance();
     },
-    [accountFlow, onAdvance, setDepositState],
+    [accountFlow, constraints, onAdvance, setDepositState],
   );
 
   return (
     <div className="daimo-flex daimo-flex-col daimo-flex-1 daimo-min-h-0">
       <PageHeader title={t.accountPayment} onBack={onBack} />
       <CenteredContent>
-        <AmountInput
-          minimum={minimum}
-          maximum={maximum}
-          currencySymbol={currencySymbol}
-          initialValue={depositState?.depositAmount}
-          onSubmit={handleSubmit}
-          onChange={handleChange}
-        />
+        {constraints && (
+          <TokenAmountEntry
+            token={constraints.destinationToken}
+            minimumUsd={
+              parseFloat(constraints.minAmount) * constraints.destinationToken.usd
+            }
+            maximumUsd={
+              parseFloat(constraints.maxAmount) * constraints.destinationToken.usd
+            }
+            nativeDisplay={{
+              kind: "prefix",
+              symbol: constraints.currency.symbol,
+            }}
+            initialMode="native"
+            initialAmountUsd={
+              depositState?.depositAmount
+                ? parseFloat(depositState.depositAmount) *
+                  constraints.destinationToken.usd
+                : undefined
+            }
+            onContinue={handleSubmit}
+            onChange={handleChange}
+            badgeLogoURI={constraints.badge.logoURI}
+            badgeAlt={constraints.badge.alt}
+            platform={platform}
+            baseUrl={baseUrl}
+          />
+        )}
       </CenteredContent>
 
       <div className="daimo-px-6 daimo-pb-6 daimo-flex daimo-flex-col daimo-items-center">
-        <PrimaryButton onClick={() => isValid && handleSubmit(amount)} disabled={!isValid}>
+        <PrimaryButton
+          onClick={() => isValid && handleSubmit(amountUsd)}
+          disabled={!isValid || !constraints}
+        >
           {t.continue}
         </PrimaryButton>
       </div>
     </div>
   );
-}
-
-function parseAmountBound(value: string | undefined): number | null {
-  if (value == null) return null;
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : null;
 }

@@ -618,6 +618,8 @@ function renderEntry(
         <AccountPaymentPage
           rail={entry.rail}
           sessionId={ctx.session.sessionId}
+          platform={ctx.platform}
+          baseUrl={ctx.session.baseUrl}
           onBack={ctx.onBack}
           onAdvance={() => ctx.onAccountAdvance(getAccountPaymentAdvanceTarget(entry.rail))}
         />
