@@ -1,6 +1,8 @@
 import type { Address } from "viem";
 import { z } from "zod";
 
+import type { DaimoPayToken } from "./token.js";
+
 /**
  * Fiat method identifier. Exposed publicly as `fiatMethod` on
  * `PaymentMethodFiat` and `NavNodeFiat`; persisted internally as the rail
@@ -66,6 +68,12 @@ export type DepositConstraints = {
   currency: { code: string; symbol: string };
   minAmount: string;
   maxAmount: string;
+  /**
+   * Destination stablecoin for this rail.
+   */
+  destinationToken: DaimoPayToken;
+  /** Rail-specific badge (rendered over the destination token icon). */
+  badge: { logoURI: string; alt: string };
 };
 
 /** Deposit status progression. */
