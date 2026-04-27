@@ -102,7 +102,13 @@ export function AccountPaymentPage({
             }
             onContinue={handleSubmit}
             onChange={handleChange}
-            badgeLogoURI={constraints.badge.logoURI}
+            iconLogoURI={constraints.icon.logoURI}
+            iconAlt={constraints.icon.alt}
+            badgeLogoURI={
+              constraints.badge.logoURI === constraints.icon.logoURI
+                ? null
+                : constraints.badge.logoURI
+            }
             badgeAlt={constraints.badge.alt}
             platform={platform}
             baseUrl={baseUrl}
