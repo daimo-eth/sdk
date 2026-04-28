@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
 
+import type { UserFeeRule } from "../../common/session.js";
 import type { DaimoPayToken } from "../api/walletTypes.js";
 import { t } from "../hooks/locale.js";
 import { isDesktop, type DaimoPlatform } from "../platform.js";
-import { TokenIconWithChainBadge } from "./shared.js";
+import { computeUserFeeUsd, TokenIconWithChainBadge } from "./shared.js";
 
 /** How to label the "native" (non-USD) side of the input. */
 export type NativeDisplay =
@@ -43,6 +44,8 @@ type TokenAmountEntryProps = {
   badgeLogoURI?: string | null;
   /** Alt text for the badge override. */
   badgeAlt?: string;
+  /** Optional org→user fee rule. Shows a "Fee $X" line when the user types an amount. */
+  userFeeRule?: UserFeeRule;
   platform: DaimoPlatform;
   baseUrl: string;
 };
@@ -67,6 +70,7 @@ export function TokenAmountEntry({
   iconAlt,
   badgeLogoURI,
   badgeAlt,
+  userFeeRule,
   platform,
   baseUrl,
 }: TokenAmountEntryProps) {
@@ -158,6 +162,8 @@ export function TokenAmountEntry({
     token,
     nativeDisplay,
     balance,
+    userFeeRule,
+    amountUsd,
   });
   const messageColor =
     showMinWarning || showMaxWarning
@@ -289,14 +295,20 @@ function buildMessage(args: {
   token: DaimoPayToken;
   nativeDisplay: NativeDisplay;
   balance?: { usd: number; nativeAmountUnits: number };
+  userFeeRule?: UserFeeRule;
+  amountUsd: number;
 }): string {
-  const { showMinWarning, showMaxWarning, minimumUsd, maximumUsd, isEditingUsd, token, nativeDisplay, balance } = args;
+  const { showMinWarning, showMaxWarning, minimumUsd, maximumUsd, isEditingUsd, token, nativeDisplay, balance, userFeeRule, amountUsd } = args;
   const fmt = (usd: number) =>
     isEditingUsd
       ? `$${roundUsd(usd)}`
       : formatNative(usdToNativeStr(usd, token), nativeDisplay);
   if (showMaxWarning) return `${t.maximum} ${fmt(maximumUsd)}`;
   if (showMinWarning) return `${t.minimum} ${fmt(minimumUsd)}`;
+  if (userFeeRule && amountUsd > 0) {
+    const feeUsd = computeUserFeeUsd(userFeeRule, amountUsd);
+    if (feeUsd > 0) return `${t.fee} $${roundUsd(feeUsd)}`;
+  }
   if (balance) {
     if (isEditingUsd) {
       const isUsdPegged = token.fiatISO === "USD";

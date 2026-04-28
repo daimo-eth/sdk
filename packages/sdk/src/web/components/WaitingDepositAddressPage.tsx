@@ -30,6 +30,8 @@ const DA_LIFETIME_S = 3600;
 type WaitingDepositAddressPageProps = {
   node: NavNodeDepositAddress;
   amountUsd: number;
+  /** Fee in USD to display below the amount card. */
+  feeUsd?: number;
   selectedToken?: DepositToken;
   sessionId: string;
   clientSecret?: string;
@@ -42,6 +44,7 @@ type WaitingDepositAddressPageProps = {
 export function WaitingDepositAddressPage({
   node,
   amountUsd,
+  feeUsd,
   selectedToken,
   sessionId,
   clientSecret = "",
@@ -129,6 +132,11 @@ export function WaitingDepositAddressPage({
             suffix={tokenSuffix}
             disabled={isExpired}
           />
+          {feeUsd != null && feeUsd > 0 && (
+            <p className="daimo-text-xs daimo-text-[var(--daimo-text-secondary)] daimo-text-center daimo-tabular-nums">
+              {t.fee} ${feeUsd.toFixed(2)}
+            </p>
+          )}
         </div>
 
         <Countdown remainingS={remainingS} isExpired={isExpired} totalS={DA_LIFETIME_S} />

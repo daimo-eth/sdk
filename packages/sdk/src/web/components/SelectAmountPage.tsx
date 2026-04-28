@@ -1,3 +1,4 @@
+import type { UserFeeRule } from "../../common/session.js";
 import { TokenLogo } from "../../common/token.js";
 import type { NavNodeDepositAddress } from "../api/navTree.js";
 import type { DaimoPayToken } from "../api/walletTypes.js";
@@ -6,6 +7,7 @@ import { t } from "../hooks/locale.js";
 import { PrimaryButton } from "./buttons.js";
 import {
   AmountInput,
+  computeUserFeeUsd,
   PageHeader,
   TokenIconWithChainBadge,
   resolveIconUrl,
@@ -20,6 +22,8 @@ type SelectAmountPageProps = {
   tokenSuffix?: string;
   /** Chain ID for token badge display */
   chainId?: number;
+  /** Optional org→user fee rule for live fee display. */
+  userFeeRule?: UserFeeRule;
   /** Optional back handler. If undefined, back button is hidden. */
   onBack?: () => void;
   onContinue: (amountUsd: number) => void;
@@ -34,6 +38,7 @@ export function SelectAmountPage({
   maximumUsd,
   tokenSuffix,
   chainId,
+  userFeeRule,
   onBack,
   onContinue,
   isLoading,
@@ -44,6 +49,7 @@ export function SelectAmountPage({
     minimumUsd,
     maximumUsd,
   );
+  const feeUsd = computeUserFeeUsd(userFeeRule, amountUsd);
 
   // Create pseudo-token for display if tokenSuffix is USDC or USDT and chainId is provided
   const selectedToken =
@@ -96,6 +102,7 @@ export function SelectAmountPage({
           <AmountInput
             minimum={minimumUsd}
             maximum={maximumUsd}
+            validLabel={feeUsd > 0 ? `${t.fee} $${feeUsd.toFixed(2)}` : undefined}
             onSubmit={onContinue}
             onChange={handleChange}
           />

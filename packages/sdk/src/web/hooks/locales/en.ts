@@ -54,6 +54,7 @@ export const en = {
   enterAmount: "Enter Amount",
   max: "Max",
   balance: "Balance:",
+  fee: "Fee",
 
   // ErrorPage
   error: "Error",

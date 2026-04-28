@@ -41,6 +41,7 @@ export const es: typeof en = {
   enterAmount: "Ingresar monto",
   max: "Máx",
   balance: "Saldo:",
+  fee: "Tarifa",
   error: "Error",
   reload: "Recargar",
   unknownError: "error desconocido",

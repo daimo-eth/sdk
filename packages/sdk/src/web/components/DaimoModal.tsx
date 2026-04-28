@@ -419,6 +419,7 @@ type RenderContext = {
     navTree: NavNode[];
     baseUrl: string;
     destination: { amountUnits?: string };
+    fees?: SessionWithNav["fees"];
   };
   displayVerb: string;
   canGoBack: boolean;
@@ -620,6 +621,7 @@ function renderEntry(
           sessionId={ctx.session.sessionId}
           platform={ctx.platform}
           baseUrl={ctx.session.baseUrl}
+          userFeeRule={ctx.session.fees?.user.rule}
           onBack={ctx.onBack}
           onAdvance={() => ctx.onAccountAdvance(getAccountPaymentAdvanceTarget(entry.rail))}
         />
@@ -708,6 +710,8 @@ function renderSelectAmount(
   const node = findNode(entry.nodeId, ctx.session.navTree);
   if (!node) return null;
 
+  const userFeeRule = ctx.session.fees?.user.rule;
+
   if (entry.flowType === "deposit") {
     const depositNode = node as NavNodeDepositAddress;
     return (
@@ -717,6 +721,7 @@ function renderSelectAmount(
         maximumUsd={depositNode.maximumUsd}
         tokenSuffix={depositNode.tokenSuffix}
         chainId={depositNode.chainId}
+        userFeeRule={userFeeRule}
         onBack={ctx.canGoBack ? ctx.onBack : undefined}
         onContinue={ctx.onAmountContinue}
         baseUrl={ctx.session.baseUrl}
@@ -732,6 +737,7 @@ function renderSelectAmount(
         maximumUsd={tronNode.maximumUsd}
         tokenSuffix="USDT"
         chainId={tron.chainId}
+        userFeeRule={userFeeRule}
         onBack={ctx.canGoBack ? ctx.onBack : undefined}
         onContinue={ctx.onAmountContinue}
         baseUrl={ctx.session.baseUrl}
@@ -745,6 +751,7 @@ function renderSelectAmount(
         node={{ icon: exchangeNode.icon, title: exchangeNode.title }}
         minimumUsd={exchangeNode.minimumUsd}
         maximumUsd={exchangeNode.maximumUsd}
+        userFeeRule={userFeeRule}
         onBack={ctx.canGoBack ? ctx.onBack : undefined}
         onContinue={ctx.onAmountContinue}
         baseUrl={ctx.session.baseUrl}
@@ -758,6 +765,7 @@ function renderSelectAmount(
         node={{ icon: cashAppNode.icon, title: cashAppNode.title }}
         minimumUsd={cashAppNode.minimumUsd}
         maximumUsd={cashAppNode.maximumUsd}
+        userFeeRule={userFeeRule}
         onBack={ctx.canGoBack ? ctx.onBack : undefined}
         onContinue={ctx.onAmountContinue}
         baseUrl={ctx.session.baseUrl}
@@ -780,10 +788,12 @@ function renderWaitingDeposit(
     node.tokenSuffix === "USDC" || node.tokenSuffix === "USDT"
       ? node.tokenSuffix
       : undefined;
+  const feeUsd = ctx.session.fees?.user.quote?.feeUsd;
   return (
     <WaitingDepositAddressPage
       node={node}
       amountUsd={entry.amountUsd}
+      feeUsd={feeUsd}
       selectedToken={selectedToken}
       sessionId={ctx.session.sessionId}
       clientSecret={ctx.session.clientSecret}
@@ -983,6 +993,7 @@ function renderWalletSelectAmount(
     <WalletAmountPage
       token={entry.token}
       platform={ctx.platform}
+      userFeeRule={ctx.session.fees?.user.rule}
       onBack={ctx.onBack}
       onContinue={(amountUsd) => ctx.onWalletSending(entry.token, amountUsd)}
       baseUrl={ctx.session.baseUrl}

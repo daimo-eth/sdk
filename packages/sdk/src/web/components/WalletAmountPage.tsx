@@ -1,16 +1,23 @@
 import { useCallback, useState } from "react";
 import { formatUnits } from "viem";
+import type { UserFeeRule } from "../../common/session.js";
 
 import type { WalletPaymentOption } from "../api/walletTypes.js";
 import { t } from "../hooks/locale.js";
 import type { DaimoPlatform } from "../platform.js";
 import { PrimaryButton } from "./buttons.js";
-import { PageHeader } from "./shared.js";
+import { computeUserFeeUsd, PageHeader } from "./shared.js";
 import { TokenAmountEntry } from "./TokenAmountEntry.js";
 
 type WalletAmountPageProps = {
   token: WalletPaymentOption;
   platform: DaimoPlatform;
+  /**
+   * Optional org→user fee rule. When set, the page shows a live "Fee $X"
+   * line below the input and bumps the minimum so the recipient still clears
+   * the chain floor.
+   */
+  userFeeRule?: UserFeeRule;
   onBack: () => void;
   onContinue: (amountUsd: number) => void;
   baseUrl: string;
@@ -20,12 +27,15 @@ type WalletAmountPageProps = {
 export function WalletAmountPage({
   token,
   platform,
+  userFeeRule,
   onBack,
   onContinue,
   baseUrl,
 }: WalletAmountPageProps) {
   const balanceToken = token.balance.token;
-  const minimumUsd = token.minimumRequired.usd;
+  // Bump the floor so the recipient still clears the chain minimum after fee.
+  const minimumUsd =
+    token.minimumRequired.usd + computeUserFeeUsd(userFeeRule, token.minimumRequired.usd);
   const maximumUsd = Math.min(token.balance.usd, balanceToken.maxAcceptUsd);
   const balanceNativeUnits = Number(
     formatUnits(BigInt(token.balance.amount), balanceToken.decimals),
@@ -51,6 +61,7 @@ export function WalletAmountPage({
           onContinue={onContinue}
           onChange={handleChange}
           balance={{ usd: token.balance.usd, nativeAmountUnits: balanceNativeUnits }}
+          userFeeRule={userFeeRule}
           platform={platform}
           baseUrl={baseUrl}
         />

@@ -81,6 +81,18 @@ function useCopyToClipboard(resetDelayMs = 1500) {
   return { copy, copied };
 }
 
+// --- Fee helpers ---
+
+import type { UserFeeRule } from "../../common/session.js";
+
+export function computeUserFeeUsd(
+  rule: UserFeeRule | undefined,
+  sourceUsd: number,
+) {
+  if (!rule || (rule.fixedUsd === 0 && rule.bps === 0)) return 0;
+  return rule.fixedUsd + (sourceUsd * rule.bps) / 10000;
+}
+
 // --- Amount Input ---
 
 type AmountInputProps = {
@@ -90,6 +102,8 @@ type AmountInputProps = {
   currencySymbol?: string;
   /** Label shown below input (e.g., "Balance: $X.XX" or "Minimum $X.XX") */
   defaultLabel?: string;
+  /** Label shown when amount is valid (e.g., "Fee $0.50"). Replaces default. */
+  validLabel?: string;
   /** Initial value for the input field. */
   initialValue?: string;
   onSubmit: (amount: number) => void;
@@ -107,6 +121,7 @@ export function AmountInput({
   maximum,
   currencySymbol = "$",
   defaultLabel,
+  validLabel,
   initialValue,
   onSubmit,
   onChange,
@@ -157,11 +172,12 @@ export function AmountInput({
       maximumFractionDigits: 2,
     }).format(n);
 
+  const defaultMsg = defaultLabel ?? `${t.minimum} ${currencySymbol}${fmtAmount(minimum)}`;
   const label = showMinWarning
     ? `${t.minimum} ${currencySymbol}${fmtAmount(minimum)}`
     : showMaxWarning
       ? `${t.maximum} ${currencySymbol}${fmtAmount(maximum)}`
-      : (defaultLabel ?? `${t.minimum} ${currencySymbol}${fmtAmount(minimum)}`);
+      : (isValid && validLabel ? validLabel : defaultMsg);
 
   const labelClass =
     showMinWarning || showMaxWarning
