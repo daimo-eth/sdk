@@ -2,7 +2,7 @@ import { useCallback, useRef, useState } from "react";
 
 import { t } from "../../hooks/locale.js";
 import { useAccountFlow } from "../../hooks/useAccountFlow.js";
-import { PrimaryButton } from "../buttons.js";
+import { PrimaryButton, SecondaryLinkButton } from "../buttons.js";
 import {
   CenteredContent,
   ErrorMessage,
@@ -151,13 +151,9 @@ export function AccountOtpCodeEntry({
 
         {account?.authError && <ErrorMessage message={account.authError} />}
 
-        <button
-          onClick={handleResend}
-          disabled={busy}
-          className="daimo-text-sm daimo-text-[var(--daimo-text-secondary)] hover:daimo-text-[var(--daimo-text)] daimo-underline daimo-transition-colors"
-        >
+        <SecondaryLinkButton onClick={handleResend} disabled={busy}>
           {t.accountResendCode}
-        </button>
+        </SecondaryLinkButton>
       </CenteredContent>
 
       <div className="daimo-px-6 daimo-pb-6 daimo-flex daimo-flex-col daimo-items-center">

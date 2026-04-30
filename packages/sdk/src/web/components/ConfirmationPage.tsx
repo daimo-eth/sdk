@@ -3,7 +3,7 @@ import { getChainName } from "../../common/chain.js";
 import type { SessionStatus } from "../../common/session.js";
 
 import { t } from "../hooks/locale.js";
-import { PrimaryButton } from "./buttons.js";
+import { PrimaryButton, SecondaryLinkButton } from "./buttons.js";
 import { ConfirmationSpinner } from "./ConfirmationSpinner.js";
 import {
   ContactSupportButton,
@@ -140,9 +140,19 @@ export function ConfirmationPage({
           </div>
         )}
 
-        {/* Retry button for confirming state (wallet popup may have closed) */}
-        {status === "confirming" && onRetry && (
-          <PrimaryButton onClick={onRetry}>{t.retryPayment}</PrimaryButton>
+        {/* Confirm + retry for confirming state */}
+        {status === "confirming" && (
+          <>
+            <PrimaryButton disabled>{t.confirmInWallet}</PrimaryButton>
+            {onRetry && (
+              <SecondaryLinkButton
+                onClick={onRetry}
+                style={{ animation: "daimo-fade-in 0.3s ease 2s both" }}
+              >
+                {t.retryPayment}
+              </SecondaryLinkButton>
+            )}
+          </>
         )}
 
         {/* Return button or secondary message for done state */}

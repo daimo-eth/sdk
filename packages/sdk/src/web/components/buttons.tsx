@@ -1,4 +1,4 @@
-import { ReactNode } from "react";
+import { CSSProperties, ReactNode } from "react";
 
 import { ExternalLinkIcon } from "./icons.js";
 
@@ -65,6 +65,47 @@ export function SecondaryButton({
       className={`${baseStyles} ${disabled ? disabledStyles : enabledStyles} ${className}`}
     >
       {icon}
+      {children}
+    </button>
+  );
+}
+
+type SecondaryLinkButtonProps = {
+  children: ReactNode;
+  href?: string;
+  onClick?: () => void;
+  disabled?: boolean;
+  className?: string;
+  style?: CSSProperties;
+};
+
+/** Small underlined text link. Renders <a> when href is set, <button> otherwise. */
+export function SecondaryLinkButton({
+  children,
+  href,
+  onClick,
+  disabled,
+  className = "",
+  style,
+}: SecondaryLinkButtonProps) {
+  const styles = `daimo-text-sm daimo-text-[var(--daimo-text-secondary)] hover:daimo-text-[var(--daimo-text)] daimo-underline daimo-transition-colors ${className}`;
+
+  if (href != null) {
+    return (
+      <a href={href} className={styles} style={style}>
+        {children}
+      </a>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className={styles}
+      style={style}
+    >
       {children}
     </button>
   );

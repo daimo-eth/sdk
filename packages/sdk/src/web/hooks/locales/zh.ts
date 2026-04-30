@@ -155,6 +155,7 @@ export const zh: typeof en = {
   switchToChain: (chain: string) => `请切换到 ${chain}`,
   transactionFailed: "交易失败",
   paymentCancelled: "付款已取消",
+  confirmInWallet: "在钱包中确认",
   retryPayment: "重试付款",
   closeAndReturn: "关闭此页面并返回应用",
 };

@@ -22,6 +22,7 @@ import {
 import type { DaimoPayToken } from "../api/walletTypes.js";
 
 import { t } from "../hooks/locale.js";
+import { SecondaryLinkButton } from "./buttons.js";
 import { BackArrowIcon, CopyIcon } from "./icons.js";
 
 export { BackArrowIcon };
@@ -434,12 +435,7 @@ export function ContactSupportButton({
   const href = `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 
   return (
-    <a
-      href={href}
-      className="daimo-text-sm daimo-text-[var(--daimo-text-secondary)] hover:daimo-text-[var(--daimo-text)] daimo-underline"
-    >
-      {t.contactSupport}
-    </a>
+    <SecondaryLinkButton href={href}>{t.contactSupport}</SecondaryLinkButton>
   );
 }
 

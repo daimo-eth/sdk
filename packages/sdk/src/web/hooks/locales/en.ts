@@ -153,6 +153,7 @@ export const en = {
   switchToChain: (chain: string) => `Please switch to ${chain}`,
   transactionFailed: "Transaction Failed",
   paymentCancelled: "Payment Cancelled",
+  confirmInWallet: "Confirm In Wallet",
   retryPayment: "Retry Payment",
   closeAndReturn: "Close this page and return to app",
 };

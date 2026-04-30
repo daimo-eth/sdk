@@ -155,6 +155,7 @@ export const ko: typeof en = {
   switchToChain: (chain: string) => `${chain}(으)로 전환해 주세요`,
   transactionFailed: "트랜잭션 실패",
   paymentCancelled: "결제가 취소되었습니다",
+  confirmInWallet: "지갑에서 확인",
   retryPayment: "결제 재시도",
   closeAndReturn: "이 페이지를 닫고 앱으로 돌아가기",
 };

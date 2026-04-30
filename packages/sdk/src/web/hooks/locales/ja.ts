@@ -158,6 +158,7 @@ export const ja: typeof en = {
   switchToChain: (chain: string) => `${chain}に切り替えてください`,
   transactionFailed: "トランザクション失敗",
   paymentCancelled: "支払いがキャンセルされました",
+  confirmInWallet: "ウォレットで確認",
   retryPayment: "支払いを再試行",
   closeAndReturn: "このページを閉じてアプリに戻る",
 };
