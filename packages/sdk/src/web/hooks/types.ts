@@ -20,7 +20,7 @@ export type NavEntry =
   | {
       type: "select-amount";
       nodeId: string;
-      flowType: "deposit" | "tron" | "exchange" | "cashapp";
+      flowType: "deposit" | "tron" | "exchange" | "cashapp" | "stripe";
       autoNav?: boolean;
     }
   | {
@@ -45,6 +45,16 @@ export type NavEntry =
       exchangeUrl?: string;
       waitingMessage?: string;
       expiresAt?: number;
+      error?: string;
+      autoNav?: boolean;
+    }
+  | {
+      type: "stripe-onramp";
+      nodeId: string;
+      amountUsd: number;
+      onrampSessionClientSecret?: string;
+      publishableKey?: string;
+      redirectUrl?: string;
       error?: string;
       autoNav?: boolean;
     }
@@ -79,6 +89,7 @@ export type NavEntry =
   | ({ type: "account-bank-details" } & AccountNavBase)
   | ({ type: "account-bank-transfer-submitted" } & AccountNavBase)
   | ({ type: "account-apple-pay" } & AccountNavBase)
+  | ({ type: "account-stripe-onramp" } & AccountNavBase)
   | ({ type: "account-deeplink" } & AccountNavBase)
   | ({ type: "account-status" } & AccountNavBase)
   | ({ type: "account-error"; message: string } & AccountNavBase);

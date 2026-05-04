@@ -69,7 +69,14 @@ export type PaymentMethod =
   | PaymentMethodEvm
   | PaymentMethodTron
   | PaymentMethodSolana
+  | PaymentMethodStripe
   | PaymentMethodFiat;
+
+export type PaymentMethodStripe = {
+  type: "stripe";
+  /** When this payment method was created (unix seconds). */
+  createdAt: number;
+};
 
 export type PaymentMethodFiat = {
   type: "fiat";

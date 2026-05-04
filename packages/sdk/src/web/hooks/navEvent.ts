@@ -32,6 +32,11 @@ export type NavEventAction =
       address?: string;
       error?: string;
     }
+  | {
+      action: "flow_stripe_onramp";
+      success: boolean;
+      error?: string;
+    }
   | { action: "qr_toggle"; visible: boolean }
   | { action: "copy_address"; address: string }
   | { action: "session_expired" }

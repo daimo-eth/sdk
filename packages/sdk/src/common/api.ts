@@ -30,6 +30,10 @@ export const zCreatePaymentMethodRequest = z.object({
       platform: zPlatform.optional(),
     }),
     z.object({
+      type: z.literal("stripe"),
+      amountUsd: z.number().positive(),
+    }),
+    z.object({
       type: z.literal("fiat"),
       fiatMethod: zAccountRail.optional(),
     }),
@@ -100,6 +104,19 @@ export type CreatePaymentMethodResponse = {
     hostedUrl: string;
     /** Selected fiat method for this hosted flow, when pinned to one method. */
     fiatMethod?: z.infer<typeof zAccountRail>;
+  };
+  /** Stripe Onramp details, present when payment method is Stripe. */
+  stripe?: {
+    /**
+     * Stripe OnrampSession client secret, scoped to this onramp session.
+     * This is not the Stripe API secret key. It is required by Stripe's
+     * client SDK and should only be shown to the current payer.
+     */
+    onrampSessionClientSecret: string;
+    /** Stripe publishable key for the onramp SDK. */
+    publishableKey: string;
+    /** Stripe-hosted onramp URL. Present when Stripe returns one. */
+    redirectUrl?: string;
   };
 };
 

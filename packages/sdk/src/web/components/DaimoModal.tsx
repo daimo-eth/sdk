@@ -16,6 +16,7 @@ import type {
   NavNodeDeeplink,
   NavNodeDepositAddress,
   NavNodeExchange,
+  NavNodeStripe,
   NavNodeTronDeposit,
   SessionWithNav,
 } from "../api/navTree.js";
@@ -72,6 +73,7 @@ import {
 } from "./account/accountNav.js";
 import { SelectAmountPage } from "./SelectAmountPage.js";
 import { SelectTokenPage } from "./SelectTokenPage.js";
+import { StripeOnrampPage } from "./StripeOnrampPage.js";
 import {
   CenteredContent,
   ContactSupportButton,
@@ -546,6 +548,8 @@ function renderEntry(
       return renderWaitingTron(entry, ctx);
     case "exchange-page":
       return renderExchangePage(entry, ctx);
+    case "stripe-onramp":
+      return renderStripeOnramp(entry, ctx);
     case "wallet-choose-chain":
       return (
         <ChooseChainPage
@@ -764,6 +768,19 @@ function renderSelectAmount(
       />
     );
   }
+  if (entry.flowType === "stripe") {
+    const stripeNode = node as NavNodeStripe;
+    return (
+      <SelectAmountPage
+        node={{ icon: stripeNode.icon, title: stripeNode.title }}
+        minimumUsd={stripeNode.minimumUsd}
+        maximumUsd={stripeNode.maximumUsd}
+        onBack={ctx.canGoBack ? ctx.onBack : undefined}
+        onContinue={ctx.onAmountContinue}
+        baseUrl={ctx.session.baseUrl}
+      />
+    );
+  }
   return null;
 }
 
@@ -866,6 +883,32 @@ function renderExchangePage(
       isLoading={!entry.exchangeUrl}
       onBack={ctx.onBack}
       onRetry={ctx.onRetry}
+      baseUrl={ctx.session.baseUrl}
+    />
+  );
+}
+
+function renderStripeOnramp(
+  entry: NavEntry & { type: "stripe-onramp" },
+  ctx: RenderContext,
+): React.ReactNode {
+  const node = findNode(
+    entry.nodeId,
+    ctx.session.navTree,
+  ) as NavNodeStripe | null;
+  if (!node) return null;
+
+  return (
+    <StripeOnrampPage
+      node={node}
+      amountUsd={entry.amountUsd}
+      onrampSessionClientSecret={entry.onrampSessionClientSecret}
+      publishableKey={entry.publishableKey}
+      redirectUrl={entry.redirectUrl}
+      isLoading={!entry.onrampSessionClientSecret && !entry.error}
+      error={entry.error}
+      onBack={ctx.onBack}
+      onRetry={ctx.onBack}
       baseUrl={ctx.session.baseUrl}
     />
   );

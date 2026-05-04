@@ -115,6 +115,7 @@ export function AmountInput({
 }: AmountInputProps) {
   const [inputValue, setInputValue] = useState(initialValue ?? "");
   const lastSyncedInitialValueRef = useRef<string | undefined>(initialValue);
+  const didAutofocusRef = useRef(false);
 
   useEffect(() => {
     if (lastSyncedInitialValueRef.current === initialValue) return;
@@ -182,7 +183,11 @@ export function AmountInput({
           {currencySymbol}
         </span>
         <input
-          ref={(el) => { if (el) requestAnimationFrame(() => el.focus()); }}
+          ref={(el) => {
+            if (!el || disabled || didAutofocusRef.current) return;
+            didAutofocusRef.current = true;
+            requestAnimationFrame(() => el.focus());
+          }}
           type="text"
           inputMode="decimal"
           value={inputValue}

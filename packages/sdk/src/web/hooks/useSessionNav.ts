@@ -5,6 +5,7 @@ import type {
   NavNodeChooseOption,
   NavNodeExchange,
   NavNodeFiat,
+  NavNodeStripe,
   SessionWithNav,
 } from "../api/navTree.js";
 import type { WalletPaymentOption } from "../api/walletTypes.js";
@@ -55,6 +56,10 @@ type SessionNavResult = {
 
 function isExchangeNode(node: NavNode | null): node is ExchangeNode {
   return node?.type === "Exchange" || node?.type === "CashApp";
+}
+
+function isStripeNode(node: NavNode | null): node is NavNodeStripe {
+  return node?.type === "Stripe";
 }
 
 function getExchangeSelection(node: ExchangeNode): {
@@ -218,6 +223,66 @@ export function useSessionNav(
       }
     },
     [session.sessionId, session.clientSecret, effectivePlatform, client],
+  );
+
+  const fetchStripeOnramp = useCallback(
+    async (nodeId: string, amountUsd: number) => {
+      try {
+        const result = await client.sessions.paymentMethods.create(
+          session.sessionId,
+          {
+            clientSecret: session.clientSecret,
+            paymentMethod: { type: "stripe", amountUsd },
+          },
+        );
+        if (!result.stripe) {
+          throw new Error("stripe onramp session not returned");
+        }
+
+        logNavEvent(session.sessionId, session.clientSecret, {
+          nodeId,
+          nodeType: "Stripe",
+          action: "flow_stripe_onramp",
+          success: true,
+        });
+        setStack((prev) => {
+          const top = prev[prev.length - 1];
+          if (top?.type !== "stripe-onramp" || top.nodeId !== nodeId)
+            return prev;
+          return [
+            ...prev.slice(0, -1),
+            {
+              ...top,
+              onrampSessionClientSecret:
+                result.stripe!.onrampSessionClientSecret,
+              publishableKey: result.stripe!.publishableKey,
+              redirectUrl: result.stripe!.redirectUrl,
+              error: undefined,
+            },
+          ];
+        });
+      } catch (error) {
+        console.error("failed to create stripe onramp:", error);
+        const errorMsg =
+          error instanceof Error
+            ? error.message
+            : "failed to create stripe onramp";
+        logNavEvent(session.sessionId, session.clientSecret, {
+          nodeId,
+          nodeType: "Stripe",
+          action: "flow_stripe_onramp",
+          success: false,
+          error: errorMsg,
+        });
+        setStack((prev) => {
+          const top = prev[prev.length - 1];
+          if (top?.type !== "stripe-onramp" || top.nodeId !== nodeId)
+            return prev;
+          return [...prev.slice(0, -1), { ...top, error: errorMsg }];
+        });
+      }
+    },
+    [session.sessionId, session.clientSecret, client],
   );
 
   // ─── Account deposit handler ────────────────────────────────────────────────
@@ -402,6 +467,23 @@ export function useSessionNav(
         return;
       }
 
+      if (isStripeNode(targetNode)) {
+        const requiredUsd = targetNode.requiredUsd ?? 0;
+        if (requiredUsd > 0) {
+          setStack((prev) => [
+            ...prev,
+            { type: "stripe-onramp", nodeId, amountUsd: requiredUsd, autoNav },
+          ]);
+          fetchStripeOnramp(nodeId, requiredUsd);
+          return;
+        }
+        setStack((prev) => [
+          ...prev,
+          { type: "select-amount", nodeId, flowType: "stripe", autoNav },
+        ]);
+        return;
+      }
+
       if (targetNode.type === "Fiat") {
         handleAccountNavigate(nodeId, targetNode, autoNav);
         return;
@@ -413,6 +495,7 @@ export function useSessionNav(
       getNodeCtx,
       fetchTronAddress,
       fetchExchangeUrl,
+      fetchStripeOnramp,
       handleAccountNavigate,
     ],
   );
@@ -469,7 +552,9 @@ export function useSessionNav(
               ? "TronDeposit"
               : flowType === "cashapp"
                 ? "CashApp"
-                : "Exchange",
+                : flowType === "stripe"
+                  ? "Stripe"
+                  : "Exchange",
         action: "flow_amount_continue",
         amountUsd,
       });
@@ -494,6 +579,14 @@ export function useSessionNav(
           { type: "exchange-page", nodeId, amountUsd },
         ]);
         fetchExchangeUrl(nodeId, exchangeId, amountUsd, nodeType);
+      } else if (flowType === "stripe") {
+        const node = findNode(nodeId, session.navTree);
+        if (!isStripeNode(node)) return;
+        setStack((prev) => [
+          ...prev,
+          { type: "stripe-onramp", nodeId, amountUsd },
+        ]);
+        fetchStripeOnramp(nodeId, amountUsd);
       }
     },
     [
@@ -502,6 +595,7 @@ export function useSessionNav(
       session.navTree,
       fetchTronAddress,
       fetchExchangeUrl,
+      fetchStripeOnramp,
     ],
   );
 
@@ -594,12 +688,32 @@ export function useSessionNav(
         topEntry.amountUsd,
         nodeType,
       );
+      return;
+    }
+
+    if (topEntry.type === "stripe-onramp") {
+      setStack((prev) => {
+        const top = prev[prev.length - 1];
+        if (top?.type !== "stripe-onramp") return prev;
+        return [
+          ...prev.slice(0, -1),
+          {
+            ...top,
+            onrampSessionClientSecret: undefined,
+            publishableKey: undefined,
+            redirectUrl: undefined,
+            error: undefined,
+          },
+        ];
+      });
+      fetchStripeOnramp(topEntry.nodeId, topEntry.amountUsd);
     }
   }, [
     topEntry,
     session.navTree,
     fetchTronAddress,
     fetchExchangeUrl,
+    fetchStripeOnramp,
     doWalletSend,
   ]);
 

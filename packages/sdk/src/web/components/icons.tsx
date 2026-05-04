@@ -84,6 +84,37 @@ export function BackArrowIcon({ className, size = 9 }: IconProps) {
   );
 }
 
+/** Opposing arrows for switching payment modes */
+export function SwitchArrowsIcon({
+  className,
+  size = 16,
+  flipY = false,
+  animated = false,
+}: IconProps & { flipY?: boolean; animated?: boolean }) {
+  return (
+    <svg
+      aria-hidden="true"
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      className={className ?? "daimo-text-[var(--daimo-text-muted)]"}
+      style={{
+        transform: flipY ? "scaleY(-1)" : "scaleY(1)",
+        transition: animated ? "transform 0.2s ease-in-out" : undefined,
+      }}
+    >
+      <path
+        d="M3 7.5 7.5 3m0 0L12 7.5M7.5 3v13.5m13.5 0L16.5 21m0 0L12 16.5m4.5 4.5V7.5"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 /** Close X icon for modal dismiss */
 export function CloseIcon({ className, size = 14 }: IconProps) {
   return (

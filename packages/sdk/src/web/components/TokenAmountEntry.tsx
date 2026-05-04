@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 import type { DaimoPayToken } from "../api/walletTypes.js";
 import { t } from "../hooks/locale.js";
 import { isDesktop, type DaimoPlatform } from "../platform.js";
+import { SwitchArrowsIcon } from "./icons.js";
 import { TokenIconWithChainBadge } from "./shared.js";
 
 /** How to label the "native" (non-USD) side of the input. */
@@ -323,25 +324,7 @@ function SwitchButton({
       onClick={onClick}
       className="daimo-flex daimo-items-center daimo-gap-1 daimo-py-3 daimo-px-4 hover:[@media(hover:hover)]:daimo-opacity-70 active:daimo-opacity-50 daimo-touch-action-manipulation daimo-transition-opacity daimo-duration-150 daimo-ease"
     >
-      <svg
-        width="16"
-        height="16"
-        viewBox="0 0 24 24"
-        fill="none"
-        className="daimo-text-[var(--daimo-text-muted)]"
-        style={{
-          transform: isEditingUsd ? "scaleY(1)" : "scaleY(-1)",
-          transition: "transform 0.2s ease-in-out",
-        }}
-      >
-        <path
-          d="M3 7.5 7.5 3m0 0L12 7.5M7.5 3v13.5m13.5 0L16.5 21m0 0L12 16.5m4.5 4.5V7.5"
-          stroke="currentColor"
-          strokeWidth="1.75"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-      </svg>
+      <SwitchArrowsIcon flipY={!isEditingUsd} animated />
       <span className="daimo-text-base daimo-font-normal daimo-leading-[21px] daimo-text-[var(--daimo-text-secondary)] daimo-tabular-nums">
         {secondaryAmount}
       </span>
