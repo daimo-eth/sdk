@@ -21,6 +21,7 @@ export type PrivyHooks = {
   ready: boolean;
   authenticated: boolean;
   walletAddress: string | null;
+  phoneNumber: string | null;
 };
 
 /**
@@ -150,6 +151,11 @@ export function useAccountFlowState(): AccountFlowState {
     setIsReady(hooks.ready);
     setIsAuthenticated(hooks.authenticated);
     if (hooks.walletAddress) setWalletAddress(hooks.walletAddress);
+    if (hooks.phoneNumber) {
+      setPhoneNumber((current) =>
+        current === hooks.phoneNumber ? current : hooks.phoneNumber ?? current,
+      );
+    }
   }, []);
 
   const waitForReady = useCallback((): Promise<void> => {

@@ -88,6 +88,7 @@ function PrivyConsumer({
   );
 
   const walletAddress = user?.wallet?.address ?? null;
+  const phoneNumber = user?.phone?.number ?? null;
   const embeddedWallet = wallets.find((w) => w.walletClientType === "privy");
 
   const signTypedData = useCallback(
@@ -116,11 +117,13 @@ function PrivyConsumer({
       ready,
       authenticated,
       walletAddress,
+      phoneNumber,
     }),
     [
       ready,
       authenticated,
       walletAddress,
+      phoneNumber,
       sendCode,
       loginWithCode,
       sendPhoneCode,
