@@ -6,7 +6,11 @@ import type { NavNode } from "../api/navTree.js";
 
 function navTreeNeedsEvmPaymentMethod(nodes: NavNode[]): boolean {
   for (const node of nodes) {
-    if (node.type === "DepositAddress" || node.type === "ConnectedWallet") {
+    if (
+      node.type === "DepositAddress" ||
+      node.type === "ConnectedWallet" ||
+      node.type === "Deeplink"
+    ) {
       return true;
     }
     if (
