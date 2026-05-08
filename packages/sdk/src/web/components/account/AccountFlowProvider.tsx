@@ -17,6 +17,11 @@ import {
   AccountFlowContext,
   useAccountFlowState,
 } from "../../hooks/useAccountFlow.js";
+import {
+  findCanonicalPrivyWallet,
+  getCanonicalPrivyWalletAddress,
+  hasPrivyEmbeddedWallet,
+} from "../../accountWallet.js";
 
 type AccountFlowProviderProps = {
   privyAppId: string;
@@ -57,7 +62,7 @@ function PrivyConsumer({
     sendCode: rawSendPhoneCode,
     loginWithCode: rawLoginWithPhoneCode,
   } = useLoginWithSms();
-  const { wallets } = useWallets();
+  const { wallets, ready: walletsReady } = useWallets();
 
   const sendCode = useCallback(
     async (email: string) => {
@@ -87,21 +92,31 @@ function PrivyConsumer({
     [rawLoginWithPhoneCode],
   );
 
-  const walletAddress = user?.wallet?.address ?? null;
+  const walletAddress = getCanonicalPrivyWalletAddress({
+    userWalletAddress: user?.wallet?.address,
+    linkedAccounts: user?.linkedAccounts ?? [],
+    connectedWallets: wallets,
+  });
   const phoneNumber = user?.phone?.number ?? null;
-  const embeddedWallet = wallets.find((w) => w.walletClientType === "privy");
+  const hasEmbeddedWallet = hasPrivyEmbeddedWallet([
+    ...(user?.linkedAccounts ?? []),
+    ...wallets,
+  ]);
+  const signingWallet = findCanonicalPrivyWallet(wallets, walletAddress);
 
   const signTypedData = useCallback(
     async (typedData: Record<string, unknown>): Promise<string> => {
-      if (!embeddedWallet) throw new Error("no embedded wallet");
-      const provider = await embeddedWallet.getEthereumProvider();
+      if (!signingWallet || !walletAddress) {
+        throw new Error("no canonical embedded wallet");
+      }
+      const provider = await signingWallet.getEthereumProvider();
       const result = await provider.request({
         method: "eth_signTypedData_v4",
         params: [walletAddress, JSON.stringify(typedData)],
       });
       return result as string;
     },
-    [embeddedWallet, walletAddress],
+    [signingWallet, walletAddress],
   );
 
   const hooks = useMemo(
@@ -117,12 +132,16 @@ function PrivyConsumer({
       ready,
       authenticated,
       walletAddress,
+      walletsReady,
+      hasEmbeddedWallet,
       phoneNumber,
     }),
     [
       ready,
       authenticated,
       walletAddress,
+      walletsReady,
+      hasEmbeddedWallet,
       phoneNumber,
       sendCode,
       loginWithCode,

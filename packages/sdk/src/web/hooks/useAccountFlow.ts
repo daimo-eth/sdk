@@ -21,6 +21,8 @@ export type PrivyHooks = {
   ready: boolean;
   authenticated: boolean;
   walletAddress: string | null;
+  walletsReady: boolean;
+  hasEmbeddedWallet: boolean;
   phoneNumber: string | null;
 };
 
@@ -70,7 +72,7 @@ export type AccountFlowState = {
   verifyPhoneOtp: (code: string) => Promise<boolean>;
   isCreatingWallet: boolean;
   walletAddress: string | null;
-  createWallet: () => Promise<string | null>;
+  ensureWallet: () => Promise<string | null>;
 
   getAccessToken: () => Promise<string | null>;
   signTypedData: (typedData: Record<string, unknown>) => Promise<string>;
@@ -143,6 +145,7 @@ export function useAccountFlowState(): AccountFlowState {
     useState<DepositState | null>(null);
 
   const privyRef = useRef<PrivyHooks | null>(null);
+  const ensureWalletRef = useRef<Promise<string | null> | null>(null);
 
   // PrivyConsumer calls registerPrivy on every Privy state change,
   // keeping our state in sync without polling.
@@ -150,7 +153,7 @@ export function useAccountFlowState(): AccountFlowState {
     privyRef.current = hooks;
     setIsReady(hooks.ready);
     setIsAuthenticated(hooks.authenticated);
-    if (hooks.walletAddress) setWalletAddress(hooks.walletAddress);
+    setWalletAddress(hooks.walletAddress);
     if (hooks.phoneNumber) {
       setPhoneNumber((current) =>
         current === hooks.phoneNumber ? current : hooks.phoneNumber ?? current,
@@ -163,6 +166,17 @@ export function useAccountFlowState(): AccountFlowState {
     return new Promise((resolve) => {
       const check = () => {
         if (privyRef.current?.ready) resolve();
+        else setTimeout(check, 50);
+      };
+      check();
+    });
+  }, []);
+
+  const waitForWalletsReady = useCallback((): Promise<void> => {
+    if (privyRef.current?.walletsReady) return Promise.resolve();
+    return new Promise((resolve) => {
+      const check = () => {
+        if (privyRef.current?.walletsReady) resolve();
         else setTimeout(check, 50);
       };
       check();
@@ -255,20 +269,37 @@ export function useAccountFlowState(): AccountFlowState {
     }
   }, [waitForReady]);
 
-  const createWallet = useCallback(async (): Promise<string | null> => {
-    if (!privyRef.current) return null;
-    setIsCreatingWallet(true);
-    try {
+  const ensureWallet = useCallback((): Promise<string | null> => {
+    if (ensureWalletRef.current) return ensureWalletRef.current;
+
+    const run = async (): Promise<string | null> => {
+      if (!privyRef.current) return null;
+      setIsCreatingWallet(true);
+      await waitForReady();
+      await waitForWalletsReady();
+      if (privyRef.current.walletAddress) {
+        setWalletAddress(privyRef.current.walletAddress);
+        return privyRef.current.walletAddress;
+      }
+      if (privyRef.current.hasEmbeddedWallet) return null;
+
       const wallet = await privyRef.current.createWallet();
       setWalletAddress(wallet.address);
       return wallet.address;
-    } catch (err) {
-      console.error("failed to create wallet:", err);
-      return null;
-    } finally {
-      setIsCreatingWallet(false);
-    }
-  }, []);
+    };
+
+    ensureWalletRef.current = run()
+      .catch((err) => {
+        console.error("failed to ensure wallet:", err);
+        return null;
+      })
+      .finally(() => {
+        setIsCreatingWallet(false);
+        ensureWalletRef.current = null;
+      });
+
+    return ensureWalletRef.current;
+  }, [waitForReady, waitForWalletsReady]);
 
   const getAccessToken = useCallback(async (): Promise<string | null> => {
     return privyRef.current?.getAccessToken() ?? null;
@@ -377,7 +408,7 @@ export function useAccountFlowState(): AccountFlowState {
     verifyPhoneOtp,
     isCreatingWallet,
     walletAddress,
-    createWallet,
+    ensureWallet,
     getAccessToken,
     signTypedData,
     getDepositState,

@@ -32,7 +32,7 @@ export function AccountCreatingWalletPage({
     runningRef.current = true;
     setError(null);
     try {
-      const addr = account.walletAddress ?? (await account.createWallet());
+      const addr = await account.ensureWallet();
       if (!addr) throw new Error("failed to create wallet");
       await account.createAccount(client, { sessionId, clientSecret }, addr);
       onDone();

@@ -63,7 +63,7 @@ export function AccountStatusPage({
   const step = getStep(status);
   const title = isComplete ? t.accountDepositComplete : t.accountDepositReceived;
   const receiptUrl = `${baseUrl}/receipt?id=${sessionId}`;
-  const accountUrl = `${baseUrl}/account?session=${sessionId}`;
+  const accountUrl = `${baseUrl}/account/activity?session=${encodeURIComponent(sessionId)}`;
 
   return (
     <div className="daimo-flex daimo-flex-col daimo-flex-1 daimo-min-h-0">

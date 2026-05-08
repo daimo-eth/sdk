@@ -22,7 +22,7 @@ export function AccountBankTransferSubmittedPage({
   onAdvance,
 }: AccountBankTransferSubmittedPageProps) {
   const client = useDaimoClient();
-  const accountUrl = `${baseUrl}/account?session=${sessionId}`;
+  const accountUrl = `${baseUrl}/account/activity?session=${encodeURIComponent(sessionId)}`;
 
   useDepositPoller({
     client,
