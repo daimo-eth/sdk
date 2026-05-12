@@ -1,7 +1,12 @@
-import { useEffect, useState } from "react";
-import type { AccountRail } from "../../../common/account.js";
+import { useState, type KeyboardEvent } from "react";
+import type {
+  AccountRail,
+  DepositPaymentInfo,
+  DepositPaymentReference,
+  DepositPaymentStep,
+} from "../../../common/account.js";
 import { useDaimoClient } from "../../hooks/DaimoClientContext.js";
-import { t } from "../../hooks/locale.js";
+import { getLocale, t } from "../../hooks/locale.js";
 import {
   useAccountFlow,
   useSessionDepositState,
@@ -11,20 +16,30 @@ import { useDepositPoller } from "../../hooks/useDepositPoller.js";
 import { useDraftDeposit } from "../../hooks/useDraftDeposit.js";
 import { PrimaryButton } from "../buttons.js";
 import { ErrorPage } from "../ErrorPage.js";
-import { CopyIcon } from "../icons.js";
+import { ChevronIcon, CopyIcon, ExternalLinkIcon } from "../icons.js";
 import { ProgressPulse } from "../ProgressPulse.js";
-import { PageHeader, ScrollContent } from "../shared.js";
+import { DepositAddressContent } from "../WaitingDepositAddressPage.js";
+import { PageHeader, resolveIconUrl, ScrollContent } from "../shared.js";
 
 type AccountBankDetailsPageProps = {
   rail: AccountRail;
   sessionId: string;
   clientSecret: string;
+  baseUrl: string;
   onBack?: (() => void) | null;
   onAdvance: () => void;
 };
 
 /** Parsed line from the instructions string. */
-type InstructionField = { label: string; value: string };
+type InstructionField = {
+  label: string;
+  value: string;
+  emphasized?: boolean;
+};
+
+type DirectionsView =
+  | { type: "steps"; stepIndex: number }
+  | { type: "deposit"; stepIndex: number };
 
 /** Parse instruction lines like "Bank: Lead Bank" into label/value pairs.
  *  The first line (e.g. "Send exactly $100 USD via ACH bank transfer.")
@@ -59,6 +74,7 @@ export function AccountBankDetailsPage({
   rail,
   sessionId,
   clientSecret,
+  baseUrl,
   onBack,
   onAdvance,
 }: AccountBankDetailsPageProps) {
@@ -67,10 +83,14 @@ export function AccountBankDetailsPage({
   const { depositState, setDepositState } = useSessionDepositState(sessionId);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [directionsView, setDirectionsView] = useState<DirectionsView>({
+    type: "steps",
+    stepIndex: 0,
+  });
   const depositAmount = depositState?.depositAmount ?? "";
   const currentDepositId =
-    depositState?.depositAmount === depositAmount
-    && (depositState.kind === "drafted" || depositState.kind === "started")
+    depositState?.depositAmount === depositAmount &&
+    (depositState.kind === "drafted" || depositState.kind === "started")
       ? depositState.depositId
       : null;
   const {
@@ -88,29 +108,45 @@ export function AccountBankDetailsPage({
     draftMode: "signed",
   });
   const startedPayment =
-    depositState?.kind === "started" && depositState.payment.flow === "bank-transfer"
+    depositState?.kind === "started" &&
+    isTransferInstructionFlow(depositState.payment)
       ? depositState.payment
       : null;
   const payment =
-    startedPayment
-    ?? (draftedPayment?.flow === "bank-transfer" ? draftedPayment : null);
+    startedPayment ??
+    (draftedPayment && isTransferInstructionFlow(draftedPayment)
+      ? draftedPayment
+      : null);
   const instructions = payment?.instructions ?? "";
-  const fields =
+  const bankTransferFields =
     payment?.flow === "bank-transfer"
       ? payment.fields.map((field) => ({
           label: field.label,
           value: field.value,
+          emphasized: field.emphasized === true,
         }))
       : parseInstructions(instructions);
-
-  useEffect(() => {
-    if (instructions) return;
-    console.warn("[account-deposit] entered bank details page without drafted deposit", {
-      rail,
-      sessionId,
-      depositStateKind: depositState?.kind ?? null,
-    });
-  }, [depositState?.kind, instructions, rail, sessionId]);
+  const directionsPayment = payment?.flow === "directions" ? payment : null;
+  const directionsLocale = getLocale();
+  const directionsStepIndex = directionsView.stepIndex;
+  const isDirectionsLastStep =
+    directionsPayment != null &&
+    directionsStepIndex === directionsPayment.steps.length - 1;
+  const directionsDeposit =
+    directionsView.type === "deposit" && directionsPayment
+      ? {
+          payment: directionsPayment,
+          transfer: directionsPayment.onchainTransfer,
+        }
+      : null;
+  const pageTitle = directionsDeposit
+    ? `${t.deposit} ${directionsDeposit.payment.destinationToken.symbol}`
+    : payment?.flow === "directions"
+      ? t.accountDirections
+      : t.accountBankDetails;
+  const showSubmitButton = payment?.flow !== "directions";
+  const showInstructionsButton =
+    directionsPayment != null && isDirectionsLastStep;
 
   useDepositPoller({
     client,
@@ -168,9 +204,9 @@ export function AccountBankDetailsPage({
   if (!instructions) {
     return (
       <div className="daimo-flex daimo-flex-col daimo-flex-1 daimo-min-h-0">
-        <PageHeader title={t.accountBankDetails} onBack={onBack} />
+        <PageHeader title={pageTitle} onBack={onBack} />
         <div className="daimo-flex-1 daimo-flex daimo-items-center daimo-justify-center">
-          <ProgressPulse label={isCreating ? t.loading : t.loading} />
+          <ProgressPulse label={t.loading} />
         </div>
       </div>
     );
@@ -178,37 +214,270 @@ export function AccountBankDetailsPage({
 
   return (
     <div className="daimo-flex daimo-flex-col daimo-flex-1 daimo-min-h-0">
-      <PageHeader title={t.accountBankDetails} onBack={onBack} />
-      <ScrollContent>
-        <div className="daimo-flex daimo-flex-col daimo-gap-2 daimo-px-6 daimo-pt-4 daimo-pb-12">
-          {fields.map((field, i) =>
-            field.label ? (
-              <FieldRow key={i} label={field.label} value={field.value} />
-            ) : (
-              <p
-                key={i}
-                className="daimo-text-sm daimo-text-[var(--daimo-text-secondary)] daimo-leading-relaxed daimo-pb-2"
-              >
-                {field.value}
-              </p>
-            ),
+      <PageHeader
+        title={pageTitle}
+        onBack={
+          directionsDeposit
+            ? () =>
+                setDirectionsView({
+                  type: "steps",
+                  stepIndex: directionsView.stepIndex,
+                })
+            : onBack
+        }
+      />
+      {directionsDeposit ? (
+        <div className="daimo-flex-1 daimo-min-h-0 daimo-flex daimo-flex-col">
+          <DepositAddressContent
+            address={directionsDeposit.transfer.address}
+            addressLabel={directionsDeposit.transfer.addressLabel}
+            amount={directionsDeposit.transfer.amount}
+            tokenSuffix={directionsDeposit.transfer.token}
+            chainId={directionsDeposit.transfer.chainId}
+            title={directionsDeposit.payment.destinationToken.symbol}
+            icon={{
+              kind: "token",
+              symbol: directionsDeposit.payment.destinationToken.symbol,
+              logoURI: directionsDeposit.payment.destinationToken.logoURI,
+            }}
+            expiry={{
+              kind: "countdown",
+              expiresAt: directionsDeposit.transfer.expiresAt,
+            }}
+            loading={false}
+            baseUrl={baseUrl}
+          />
+        </div>
+      ) : directionsPayment ? (
+        <div className="daimo-flex-1 daimo-min-h-0 daimo-flex daimo-flex-col daimo-gap-2 daimo-px-6 daimo-pt-3 daimo-pb-2">
+          <DirectionsCard
+            steps={directionsPayment.steps}
+            activeIndex={directionsStepIndex}
+            locale={directionsLocale}
+            onActiveIndexChange={(stepIndex) =>
+              setDirectionsView({ type: "steps", stepIndex })
+            }
+            baseUrl={baseUrl}
+          />
+          {directionsPayment.reference && (
+            <DirectionsReferenceLink
+              reference={directionsPayment.reference}
+              locale={directionsLocale}
+            />
           )}
         </div>
-      </ScrollContent>
+      ) : (
+        <ScrollContent>
+          <div className="daimo-flex daimo-flex-col daimo-gap-2 daimo-px-6 daimo-pt-4 daimo-pb-12">
+            <div className="daimo-flex daimo-flex-col daimo-gap-2">
+              {bankTransferFields.map((field, i) =>
+                field.label ? (
+                  <FieldRow
+                    key={i}
+                    label={field.label}
+                    value={field.value}
+                    emphasized={field.emphasized}
+                  />
+                ) : (
+                  <p
+                    key={i}
+                    className="daimo-text-sm daimo-text-[var(--daimo-text-secondary)] daimo-leading-relaxed daimo-pb-2"
+                  >
+                    {field.value}
+                  </p>
+                ),
+              )}
+            </div>
+          </div>
+        </ScrollContent>
+      )}
 
-      <div className="daimo-mt-3 daimo-px-6 daimo-pt-2 daimo-pb-6 daimo-flex daimo-justify-center">
-        <PrimaryButton onClick={handleSubmitted} disabled={isSubmitting}>
-          {isSubmitting ? t.loading : "I've sent the funds"}
-        </PrimaryButton>
+      {showSubmitButton && (
+        <div className="daimo-mt-3 daimo-px-6 daimo-pt-2 daimo-pb-6 daimo-flex daimo-justify-center">
+          <PrimaryButton onClick={handleSubmitted} disabled={isSubmitting}>
+            {isSubmitting ? t.loading : "I've sent the funds"}
+          </PrimaryButton>
+        </div>
+      )}
+      {showInstructionsButton && !directionsDeposit && (
+        <div className="daimo-mt-3 daimo-px-6 daimo-pt-2 daimo-pb-6 daimo-flex daimo-justify-center">
+          <PrimaryButton
+            onClick={() =>
+              setDirectionsView({
+                type: "deposit",
+                stepIndex: directionsStepIndex,
+              })
+            }
+          >
+            {t.accountDirectionsShowInstructions}
+          </PrimaryButton>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function DirectionsCard({
+  steps,
+  activeIndex,
+  locale,
+  onActiveIndexChange,
+  baseUrl,
+}: {
+  steps: DepositPaymentStep[];
+  activeIndex: number;
+  locale: string;
+  onActiveIndexChange: (index: number) => void;
+  baseUrl: string;
+}) {
+  const activeStep = steps[activeIndex] ?? steps[0];
+  if (!activeStep) return null;
+
+  const lastIndex = steps.length - 1;
+  const canGoBack = activeIndex > 0;
+  const canGoForward = activeIndex < lastIndex;
+  const displayStep = getLocalizedStep(activeStep, locale);
+
+  function goBack() {
+    onActiveIndexChange(Math.max(0, activeIndex - 1));
+  }
+
+  function goForward() {
+    onActiveIndexChange(Math.min(lastIndex, activeIndex + 1));
+  }
+
+  function handleKeyDown(event: KeyboardEvent<HTMLDivElement>) {
+    if (event.key === "ArrowLeft") {
+      event.preventDefault();
+      goBack();
+    } else if (event.key === "ArrowRight") {
+      event.preventDefault();
+      goForward();
+    }
+  }
+
+  return (
+    <div
+      className="daimo-pb-3"
+      role="group"
+      aria-roledescription="carousel"
+      aria-label={t.accountDirections}
+      onKeyDown={handleKeyDown}
+    >
+      <div className="daimo-rounded-[var(--daimo-radius-lg)] daimo-bg-[var(--daimo-surface-secondary)] daimo-p-4">
+        <div className="daimo-flex daimo-min-h-[320px] daimo-flex-col daimo-justify-between daimo-gap-4">
+          <div className="daimo-flex daimo-items-center daimo-justify-between daimo-gap-3">
+            <div className="daimo-text-xs daimo-font-medium daimo-text-[var(--daimo-text-muted)]">
+              {t.accountDirectionsStep(activeIndex + 1, steps.length)}
+            </div>
+          </div>
+
+          {activeStep.media?.type === "image" && (
+            <div className="daimo-flex daimo-h-36 daimo-items-center daimo-justify-center daimo-overflow-hidden daimo-rounded-[var(--daimo-radius-md)] daimo-border daimo-border-[var(--daimo-border)] daimo-bg-white">
+              <img
+                src={resolveIconUrl(activeStep.media.src, baseUrl)}
+                alt={activeStep.media.alt}
+                loading="lazy"
+                className="daimo-h-full daimo-w-full daimo-object-contain"
+              />
+            </div>
+          )}
+
+          <div className="daimo-flex daimo-flex-1 daimo-flex-col daimo-justify-center daimo-gap-3">
+            <div className="daimo-flex daimo-flex-col daimo-gap-1.5">
+              <h2 className="daimo-text-base daimo-font-semibold daimo-leading-snug daimo-text-[var(--daimo-text)]">
+                {displayStep.title}
+              </h2>
+              <p className="daimo-text-sm daimo-leading-relaxed daimo-text-[var(--daimo-text-secondary)]">
+                {displayStep.description}
+              </p>
+            </div>
+          </div>
+
+          <div className="daimo-flex daimo-items-center daimo-justify-between daimo-gap-3">
+            <button
+              type="button"
+              onClick={goBack}
+              disabled={!canGoBack}
+              className="daimo-flex daimo-h-11 daimo-w-11 daimo-touch-action-manipulation daimo-items-center daimo-justify-center daimo-rounded-full daimo-bg-[var(--daimo-surface)] daimo-transition-[background-color,opacity] daimo-duration-100 daimo-ease hover:[@media(hover:hover)]:daimo-bg-[var(--daimo-surface-hover)] disabled:daimo-cursor-not-allowed disabled:daimo-opacity-40"
+              aria-label={t.accountDirectionsPrevious}
+            >
+              <ChevronIcon direction="left" />
+            </button>
+            <div className="daimo-flex daimo-items-center daimo-justify-center daimo-gap-1">
+              {steps.map((step, index) => (
+                <button
+                  key={`${step.title}-${index}`}
+                  type="button"
+                  onClick={() => onActiveIndexChange(index)}
+                  className="daimo-flex daimo-h-11 daimo-w-7 daimo-touch-action-manipulation daimo-items-center daimo-justify-center"
+                  aria-label={t.accountDirectionsGoToStep(index + 1)}
+                  aria-current={index === activeIndex ? "step" : undefined}
+                >
+                  <span
+                    className={`daimo-h-1.5 daimo-rounded-full daimo-transition-[width,background-color] daimo-duration-150 daimo-ease-out ${
+                      index === activeIndex
+                        ? "daimo-w-5 daimo-bg-[var(--daimo-text)]"
+                        : "daimo-w-1.5 daimo-bg-[var(--daimo-placeholder)]"
+                    }`}
+                  />
+                </button>
+              ))}
+            </div>
+            <button
+              type="button"
+              onClick={goForward}
+              disabled={!canGoForward}
+              className="daimo-flex daimo-h-11 daimo-w-11 daimo-touch-action-manipulation daimo-items-center daimo-justify-center daimo-rounded-full daimo-bg-[var(--daimo-surface)] daimo-transition-[background-color,opacity] daimo-duration-100 daimo-ease hover:[@media(hover:hover)]:daimo-bg-[var(--daimo-surface-hover)] disabled:daimo-cursor-not-allowed disabled:daimo-opacity-40"
+              aria-label={t.accountDirectionsNext}
+            >
+              <ChevronIcon />
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );
 }
 
+function DirectionsReferenceLink({
+  reference,
+  locale,
+}: {
+  reference: DepositPaymentReference;
+  locale: string;
+}) {
+  const label =
+    locale === "ja"
+      ? (reference.translations?.ja?.label ?? reference.label)
+      : reference.label;
+
+  return (
+    <a
+      href={reference.url}
+      target="_blank"
+      rel="noreferrer"
+      className="daimo-flex daimo-min-h-12 daimo-touch-action-manipulation daimo-items-center daimo-justify-between daimo-gap-3 daimo-rounded-[var(--daimo-radius-md)] daimo-bg-[var(--daimo-surface-secondary)] daimo-px-4 daimo-py-3 daimo-text-sm daimo-font-medium daimo-text-[var(--daimo-text)] daimo-transition-[background-color] daimo-duration-100 daimo-ease hover:[@media(hover:hover)]:daimo-bg-[var(--daimo-surface-hover)]"
+    >
+      <span>{label}</span>
+      <ExternalLinkIcon className="daimo-shrink-0 daimo-text-[var(--daimo-text-muted)]" />
+    </a>
+  );
+}
+
 /** A single labeled field with a copy button. Memo fields are highlighted. */
-function FieldRow({ label, value }: { label: string; value: string }) {
+function FieldRow({
+  label,
+  value,
+  emphasized,
+}: {
+  label: string;
+  value: string;
+  emphasized?: boolean;
+}) {
   const { copy, copied } = useCopyToClipboard();
   const memo = isMemoField(label);
+  const highlight = memo || emphasized === true;
 
   return (
     <div
@@ -217,7 +486,7 @@ function FieldRow({ label, value }: { label: string; value: string }) {
         backgroundColor: memo
           ? "var(--daimo-warning-light, var(--daimo-surface-secondary))"
           : "var(--daimo-surface-secondary)",
-        border: memo ? "1px solid var(--daimo-warning, #f59e0b)" : "none",
+        border: highlight ? "1px solid var(--daimo-warning, #f59e0b)" : "none",
       }}
     >
       <div className="daimo-flex daimo-flex-col daimo-min-w-0 daimo-flex-1">
@@ -225,13 +494,16 @@ function FieldRow({ label, value }: { label: string; value: string }) {
           {label}
         </span>
         <span
-          className={`daimo-text-sm daimo-break-all ${memo ? "daimo-font-semibold" : ""}`}
+          className={`daimo-text-sm daimo-break-all ${highlight ? "daimo-font-semibold" : ""}`}
           style={{ color: "var(--daimo-text)" }}
         >
           {value}
         </span>
         {memo && (
-          <span className="daimo-text-xs daimo-mt-1" style={{ color: "var(--daimo-warning, #f59e0b)" }}>
+          <span
+            className="daimo-text-xs daimo-mt-1"
+            style={{ color: "var(--daimo-warning, #f59e0b)" }}
+          >
             {t.accountBankDetailsMemoWarning}
           </span>
         )}
@@ -246,4 +518,18 @@ function FieldRow({ label, value }: { label: string; value: string }) {
       </button>
     </div>
   );
+}
+
+function getLocalizedStep(step: DepositPaymentStep, locale: string) {
+  if (locale === "ja" && step.translations?.ja) return step.translations.ja;
+  return { title: step.title, description: step.description };
+}
+
+function isTransferInstructionFlow(
+  payment: DepositPaymentInfo,
+): payment is Extract<
+  DepositPaymentInfo,
+  { flow: "bank-transfer" | "directions" }
+> {
+  return payment.flow === "bank-transfer" || payment.flow === "directions";
 }

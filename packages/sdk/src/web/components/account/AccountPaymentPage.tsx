@@ -13,7 +13,10 @@ import { t } from "../../hooks/locale.js";
 import type { DaimoPlatform } from "../../platform.js";
 import { PrimaryButton } from "../buttons.js";
 import { CenteredContent, PageHeader } from "../shared.js";
-import { TokenAmountEntry } from "../TokenAmountEntry.js";
+import {
+  TokenAmountEntry,
+  type TokenAmountEntryValue,
+} from "../TokenAmountEntry.js";
 
 type AccountPaymentPageProps = {
   rail: AccountRail;
@@ -36,7 +39,9 @@ export function AccountPaymentPage({
   const client = useDaimoClient();
   const accountFlow = useAccountFlow();
   const { depositState, setDepositState } = useSessionDepositState(sessionId);
-  const [constraints, setConstraints] = useState<DepositConstraints | null>(null);
+  const [constraints, setConstraints] = useState<DepositConstraints | null>(
+    null,
+  );
   const constraintsFetched = useRef(false);
 
   useEffect(() => {
@@ -46,7 +51,10 @@ export function AccountPaymentPage({
     void (async () => {
       try {
         const token = await accountFlow.getAccessToken();
-        if (!token) { constraintsFetched.current = false; return; }
+        if (!token) {
+          constraintsFetched.current = false;
+          return;
+        }
         const result = await client.account.getDepositConstraints(
           { sessionId, rail },
           { bearerToken: token },
@@ -60,17 +68,24 @@ export function AccountPaymentPage({
   }, [accountFlow, client, rail, sessionId]);
 
   const [amountUsd, setAmountUsd] = useState(0);
+  const [amountNative, setAmountNative] = useState(0);
   const [isValid, setIsValid] = useState(false);
-  const handleChange = useCallback((usd: number, valid: boolean) => {
-    setAmountUsd(usd);
-    setIsValid(valid);
-  }, []);
+  const handleChange = useCallback(
+    (value: { amountUsd: number; nativeAmount: number; isValid: boolean }) => {
+      setAmountUsd(value.amountUsd);
+      setAmountNative(value.nativeAmount);
+      setIsValid(value.isValid);
+    },
+    [],
+  );
 
   const handleSubmit = useCallback(
-    (usd: number) => {
+    ({ nativeAmount }: TokenAmountEntryValue) => {
       if (!accountFlow || !constraints) return;
-      const fiat = usd / constraints.destinationToken.usd;
-      setDepositState({ depositAmount: fiat.toFixed(2), kind: "idle" });
+      setDepositState({
+        depositAmount: nativeAmount.toFixed(2),
+        kind: "idle",
+      });
       onAdvance();
     },
     [accountFlow, constraints, onAdvance, setDepositState],
@@ -84,10 +99,12 @@ export function AccountPaymentPage({
           <TokenAmountEntry
             token={constraints.destinationToken}
             minimumUsd={
-              parseFloat(constraints.minAmount) * constraints.destinationToken.usd
+              parseFloat(constraints.minAmount) *
+              constraints.destinationToken.usd
             }
             maximumUsd={
-              parseFloat(constraints.maxAmount) * constraints.destinationToken.usd
+              parseFloat(constraints.maxAmount) *
+              constraints.destinationToken.usd
             }
             nativeDisplay={{
               kind: "prefix",
@@ -118,7 +135,9 @@ export function AccountPaymentPage({
 
       <div className="daimo-px-6 daimo-pb-6 daimo-flex daimo-flex-col daimo-items-center">
         <PrimaryButton
-          onClick={() => isValid && handleSubmit(amountUsd)}
+          onClick={() =>
+            isValid && handleSubmit({ amountUsd, nativeAmount: amountNative })
+          }
           disabled={!isValid || !constraints}
         >
           {t.continue}

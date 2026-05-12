@@ -88,11 +88,21 @@ export const es: typeof en = {
   accountOtherInstitutions: "Otras instituciones",
   accountBankTransfer: "Transferencia bancaria",
   accountBankDetails: "Datos de transferencia",
+  accountDirections: "Instrucciones",
+  accountDirectionsStep: (current: number, total: number) =>
+    `Paso ${current} de ${total}`,
+  accountDirectionsPrevious: "Paso anterior",
+  accountDirectionsNext: "Siguiente paso",
+  accountDirectionsGoToStep: (step: number) => `Ir al paso ${step}`,
+  accountDirectionsShowInstructions: "Ver instrucciones",
   accountBankDetailsCopied: "Copiado",
   accountBankDetailsMemoWarning: "Incluye este memo en tu transferencia",
   accountBankTransferSubmittedTitle: "Transferencia en camino",
   accountBankTransferSubmittedDesc:
     "Las transferencias bancarias pueden tardar entre 1 y 3 días hábiles. Puedes cerrar esta ventana y seguir el progreso desde tu cuenta.",
+  accountDirectionsSubmittedTitle: "Transferencia en camino",
+  accountDirectionsSubmittedDesc:
+    "Detectaremos la transferencia de JPYC cuando llegue a tu billetera de cuenta Daimo. Puedes cerrar esta ventana y seguir el progreso desde tu cuenta.",
   accountTosTitle: "Términos de servicio",
   accountTosDesc: "Para continuar, acepta los términos de servicio y la política de privacidad.",
   accountTosTerms: "Términos de servicio",

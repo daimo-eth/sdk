@@ -8,7 +8,13 @@ import type { DaimoPayToken } from "./token.js";
  * `PaymentMethodFiat` and `NavNodeFiat`; persisted internally as the rail
  * on account deposit rows.
  */
-export const zAccountRail = z.enum(["interac", "ach", "sepa", "apple_pay"]);
+export const zAccountRail = z.enum([
+  "interac",
+  "ach",
+  "sepa",
+  "apple_pay",
+  "jpyc",
+]);
 export type AccountRail = z.infer<typeof zAccountRail>;
 
 /** What the user needs to do next in the account onboarding flow. */
@@ -154,6 +160,41 @@ export type DepositPaymentField = {
   emphasized?: boolean;
 };
 
+export type DepositPaymentStep = {
+  title: string;
+  description: string;
+  translations?: {
+    ja?: {
+      title: string;
+      description: string;
+    };
+  };
+  media?: {
+    type: "image";
+    src: string;
+    alt: string;
+  };
+};
+
+export type DepositPaymentReference = {
+  label: string;
+  url: string;
+  translations?: {
+    ja?: {
+      label: string;
+    };
+  };
+};
+
+export type DepositPaymentOnchainTransfer = {
+  address: string;
+  addressLabel: string;
+  amount: string;
+  token: string;
+  chainId: number;
+  expiresAt: number;
+};
+
 /**
  * Server-provided payment flow configuration.
  * - `bank-picker`: user picks an institution, then continues in their bank flow
@@ -170,6 +211,13 @@ export type DepositPaymentInfo =
       flow: "bank-transfer";
       instructions: string;
       fields: DepositPaymentField[];
+    })
+  | (DepositConstraints & {
+      flow: "directions";
+      instructions: string;
+      steps: DepositPaymentStep[];
+      onchainTransfer: DepositPaymentOnchainTransfer;
+      reference?: DepositPaymentReference;
     })
   | (DepositConstraints & {
       flow: "wallet-pay-widget";

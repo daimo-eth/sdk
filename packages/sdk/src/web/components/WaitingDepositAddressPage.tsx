@@ -39,6 +39,32 @@ type WaitingDepositAddressPageProps = {
   baseUrl: string;
 };
 
+type DepositAddressContentProps = {
+  address: string;
+  addressLabel: string;
+  amount: string;
+  tokenSuffix: string;
+  chainId: number;
+  title: string;
+  icon: DepositAddressIcon;
+  expiry: DepositAddressExpiry;
+  loading: boolean;
+  onCopyAddress?: (value: string) => void;
+  onQRToggle?: (visible: boolean) => void;
+  baseUrl: string;
+};
+
+type DepositAddressIcon =
+  | { kind: "selected-token"; token: DepositToken }
+  | { kind: "token"; symbol: string; logoURI: string }
+  | { kind: "image"; src: string; alt: string }
+  | { kind: "none" };
+
+type DepositAddressExpiry =
+  | { kind: "refresh"; expiresAt: number; onRefresh: () => void }
+  | { kind: "countdown"; expiresAt: number }
+  | { kind: "none" };
+
 export function WaitingDepositAddressPage({
   node,
   amountUsd,
@@ -57,22 +83,8 @@ export function WaitingDepositAddressPage({
   const address = hasAddress
     ? normalizeAddress(node.address, node.chainId)
     : "";
-  const shortAddress = hasAddress
-    ? `${address.slice(0, 6)}...${address.slice(-4)}`
-    : "";
-  const [showQR, setShowQR] = useState(false);
   const tokenSuffix = selectedToken ?? node.tokenSuffix ?? "USDT or USDC";
-
   const nodeCtx = { nodeId: node.id, nodeType: node.type };
-  const { remainingS, isExpired } = useCountdown(node.expiresAt, DA_LIFETIME_S);
-
-  const handleQRToggle = () => {
-    if (!hasAddress) return;
-    setShowQR((v) => {
-      logNavEvent(sessionId, clientSecret, { ...nodeCtx, action: "qr_toggle", visible: !v });
-      return !v;
-    });
-  };
 
   const handleCopyAddress = (value: string) => {
     logNavEvent(sessionId, clientSecret, {
@@ -90,49 +102,113 @@ export function WaitingDepositAddressPage({
     <div className="daimo-flex daimo-flex-col daimo-flex-1 daimo-min-h-0">
       <PageHeader title={pageTitle} onBack={onBack} />
 
-      <div className="daimo-flex-1 daimo-flex daimo-flex-col daimo-items-center daimo-p-6 daimo-gap-6">
-        {isExpired ? (
-          <div className="daimo-h-24 daimo-flex daimo-items-center daimo-justify-center">
-            <SecondaryButton onClick={onRefresh}>
-              {t.generateNewAddress}
-            </SecondaryButton>
-          </div>
-        ) : (
-          <LogoOrQR
-            showQR={showQR}
-            address={address}
-            node={node}
-            selectedToken={selectedToken}
-            baseUrl={baseUrl}
-          />
-        )}
+      <DepositAddressContent
+        address={address}
+        addressLabel={t.oneTimeAddress}
+        amount={amountUsd.toFixed(2)}
+        tokenSuffix={tokenSuffix}
+        chainId={node.chainId}
+        title={node.title}
+        icon={getDepositAddressIcon(node, selectedToken)}
+        expiry={{
+          kind: "refresh",
+          expiresAt: node.expiresAt,
+          onRefresh,
+        }}
+        loading={loading}
+        onCopyAddress={handleCopyAddress}
+        onQRToggle={(visible) =>
+          logNavEvent(sessionId, clientSecret, {
+            ...nodeCtx,
+            action: "qr_toggle",
+            visible,
+          })
+        }
+        baseUrl={baseUrl}
+      />
+    </div>
+  );
+}
 
-        {!isExpired && hasAddress && (
-          <QRToggleButton showQR={showQR} onToggle={handleQRToggle} />
-        )}
+export function DepositAddressContent({
+  address,
+  addressLabel,
+  amount,
+  tokenSuffix,
+  chainId,
+  title,
+  icon,
+  expiry,
+  loading,
+  onCopyAddress,
+  onQRToggle,
+  baseUrl,
+}: DepositAddressContentProps) {
+  const hasAddress = !loading && !!address;
+  const shortAddress = hasAddress ? shortenAddress(address) : "";
+  const [showQR, setShowQR] = useState(false);
+  const expiresAt = expiry.kind === "none" ? 0 : expiry.expiresAt;
+  const { remainingS, isExpired } = useCountdown(expiresAt, DA_LIFETIME_S);
+  const disableCopy = expiry.kind === "refresh" && isExpired;
 
-        <div className="daimo-w-full daimo-max-w-sm daimo-space-y-3">
-          {hasAddress ? (
-            <CopyableInfoCard
-              label={t.oneTimeAddress}
-              value={address}
-              displayValue={shortAddress}
-              disabled={isExpired}
-              onCopy={handleCopyAddress}
-            />
-          ) : (
-            <AddressSkeleton />
-          )}
-          <CopyableInfoCard
-            label={t.amount}
-            value={amountUsd.toFixed(2)}
-            suffix={tokenSuffix}
-            disabled={isExpired}
-          />
+  const handleQRToggle = () => {
+    if (!hasAddress) return;
+    setShowQR((visible) => {
+      onQRToggle?.(!visible);
+      return !visible;
+    });
+  };
+
+  return (
+    <div className="daimo-flex-1 daimo-flex daimo-flex-col daimo-items-center daimo-p-6 daimo-gap-6">
+      {disableCopy ? (
+        <div className="daimo-h-24 daimo-flex daimo-items-center daimo-justify-center">
+          <SecondaryButton onClick={expiry.onRefresh}>
+            {t.generateNewAddress}
+          </SecondaryButton>
         </div>
+      ) : (
+        <LogoOrQR
+          showQR={showQR}
+          address={address}
+          chainId={chainId}
+          title={title}
+          icon={icon}
+          baseUrl={baseUrl}
+        />
+      )}
 
-        <Countdown remainingS={remainingS} isExpired={isExpired} totalS={DA_LIFETIME_S} />
+      {!disableCopy && hasAddress && (
+        <QRToggleButton showQR={showQR} onToggle={handleQRToggle} />
+      )}
+
+      <div className="daimo-w-full daimo-max-w-sm daimo-space-y-3">
+        {hasAddress ? (
+          <CopyableInfoCard
+            label={addressLabel}
+            value={address}
+            displayValue={shortAddress}
+            disabled={disableCopy}
+            onCopy={onCopyAddress}
+          />
+        ) : (
+          <AddressSkeleton />
+        )}
+        <CopyableInfoCard
+          label={t.amount}
+          value={amount}
+          suffix={tokenSuffix}
+          disabled={disableCopy}
+        />
       </div>
+
+      {expiry.kind !== "none" && (
+        <Countdown
+          remainingS={remainingS}
+          isExpired={isExpired}
+          totalS={DA_LIFETIME_S}
+        />
+      )}
     </div>
   );
 }
@@ -143,14 +219,16 @@ export function WaitingDepositAddressPage({
 function LogoOrQR({
   showQR,
   address,
-  node,
-  selectedToken,
+  chainId,
+  title,
+  icon,
   baseUrl,
 }: {
   showQR: boolean;
   address: string;
-  node: NavNodeDepositAddress;
-  selectedToken?: DepositToken;
+  chainId: number;
+  title: string;
+  icon: DepositAddressIcon;
   baseUrl: string;
 }) {
   return (
@@ -174,7 +252,13 @@ function LogoOrQR({
           <QRCode
             value={address}
             image={
-              <TokenIcon node={node} selectedToken={selectedToken} size="qr" baseUrl={baseUrl} />
+              <TokenIcon
+                chainId={chainId}
+                title={title}
+                icon={icon}
+                size="qr"
+                baseUrl={baseUrl}
+              />
             }
           />
         </div>
@@ -189,7 +273,13 @@ function LogoOrQR({
             opacity: showQR ? 0 : 1,
           }}
         >
-          <TokenIcon node={node} selectedToken={selectedToken} size="lg" baseUrl={baseUrl} />
+          <TokenIcon
+            chainId={chainId}
+            title={title}
+            icon={icon}
+            size="lg"
+            baseUrl={baseUrl}
+          />
         </div>
       </div>
     </div>
@@ -198,43 +288,55 @@ function LogoOrQR({
 
 /** Token icon at the given size, with chain badge. */
 function TokenIcon({
-  node,
-  selectedToken,
+  chainId,
+  title,
+  icon,
   size,
   baseUrl,
 }: {
-  node: NavNodeDepositAddress;
-  selectedToken?: DepositToken;
+  chainId: number;
+  title: string;
+  icon: DepositAddressIcon;
   size: "lg" | "qr";
   baseUrl: string;
 }) {
-  if (selectedToken) {
-    return (
-      <TokenIconWithChainBadge
-        chainId={node.chainId}
-        symbol={selectedToken}
-        logoURI={depositTokenLogos[selectedToken]}
-        size={size}
-        baseUrl={baseUrl}
-        badgeBorderClass={
-          size === "qr"
-            ? "daimo-border-[1.5px] daimo-bg-[var(--daimo-qr-bg,white)] daimo-border-[var(--daimo-qr-bg,white)]"
-            : "daimo-border-2 daimo-bg-[var(--daimo-surface)] daimo-border-[var(--daimo-surface)]"
-        }
-      />
-    );
+  switch (icon.kind) {
+    case "selected-token":
+      return (
+        <TokenIconWithChainBadge
+          chainId={chainId}
+          symbol={icon.token}
+          logoURI={depositTokenLogos[icon.token]}
+          size={size}
+          baseUrl={baseUrl}
+          badgeBorderClass={getBadgeBorderClass(size)}
+        />
+      );
+    case "token":
+      return (
+        <TokenIconWithChainBadge
+          chainId={chainId}
+          symbol={icon.symbol}
+          logoURI={icon.logoURI}
+          size={size}
+          baseUrl={baseUrl}
+          badgeBorderClass={getBadgeBorderClass(size)}
+        />
+      );
+    case "image": {
+      const iconSize =
+        size === "qr" ? "daimo-w-12 daimo-h-12" : "daimo-w-20 daimo-h-20";
+      return (
+        <img
+          src={resolveIconUrl(icon.src, baseUrl)}
+          alt={icon.alt || title}
+          className={`${iconSize} daimo-rounded-full`}
+        />
+      );
+    }
+    case "none":
+      return null;
   }
-  if (node.icon) {
-    const iconSize = size === "qr" ? "daimo-w-12 daimo-h-12" : "daimo-w-20 daimo-h-20";
-    return (
-      <img
-        src={resolveIconUrl(node.icon, baseUrl)}
-        alt={node.title}
-        className={`${iconSize} daimo-rounded-full`}
-      />
-    );
-  }
-  return null;
 }
 
 function QRToggleButton({
@@ -246,6 +348,7 @@ function QRToggleButton({
 }) {
   return (
     <button
+      type="button"
       onClick={onToggle}
       className="daimo-flex daimo-items-center daimo-gap-2 daimo-text-[var(--daimo-text-secondary)] daimo-min-h-[44px] daimo-touch-action-manipulation"
       aria-label={showQR ? t.hideQR : t.showQR}
@@ -306,4 +409,24 @@ function QRIcon() {
 function normalizeAddress(addr: string, chainId: number): string {
   if (chainId === tron.chainId) return addr;
   return getAddress(addr);
+}
+
+function getDepositAddressIcon(
+  node: NavNodeDepositAddress,
+  selectedToken: DepositToken | undefined,
+): DepositAddressIcon {
+  if (selectedToken) return { kind: "selected-token", token: selectedToken };
+  if (node.icon) return { kind: "image", src: node.icon, alt: node.title };
+  return { kind: "none" };
+}
+
+function getBadgeBorderClass(size: "lg" | "qr") {
+  return size === "qr"
+    ? "daimo-border-[1.5px] daimo-bg-[var(--daimo-qr-bg,white)] daimo-border-[var(--daimo-qr-bg,white)]"
+    : "daimo-border-2 daimo-bg-[var(--daimo-surface)] daimo-border-[var(--daimo-surface)]";
+}
+
+function shortenAddress(value: string) {
+  if (value.length <= 16) return value;
+  return `${value.slice(0, 6)}...${value.slice(-4)}`;
 }

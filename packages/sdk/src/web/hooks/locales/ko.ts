@@ -118,11 +118,21 @@ export const ko: typeof en = {
   accountOtherInstitutions: "기타 금융기관",
   accountBankTransfer: "은행 이체",
   accountBankDetails: "이체 정보",
+  accountDirections: "안내",
+  accountDirectionsStep: (current: number, total: number) =>
+    `${total}단계 중 ${current}단계`,
+  accountDirectionsPrevious: "이전 단계",
+  accountDirectionsNext: "다음 단계",
+  accountDirectionsGoToStep: (step: number) => `${step}단계로 이동`,
+  accountDirectionsShowInstructions: "안내 보기",
   accountBankDetailsCopied: "복사됨",
   accountBankDetailsMemoWarning: "이체 시 이 메모를 포함해 주세요",
   accountBankTransferSubmittedTitle: "이체 진행 중",
   accountBankTransferSubmittedDesc:
     "은행 이체는 1~3영업일이 소요될 수 있습니다. 이 창을 닫고 계정 페이지에서 진행 상황을 확인할 수 있습니다.",
+  accountDirectionsSubmittedTitle: "이체 진행 중",
+  accountDirectionsSubmittedDesc:
+    "JPYC가 Daimo 계정 지갑에 도착하면 자동으로 감지합니다. 이 창을 닫고 계정 페이지에서 진행 상황을 확인할 수 있습니다.",
   accountTosTitle: "이용약관",
   accountTosDesc: "계속하려면 이용약관 및 개인정보 처리방침에 동의해 주세요.",
   accountTosTerms: "이용약관",

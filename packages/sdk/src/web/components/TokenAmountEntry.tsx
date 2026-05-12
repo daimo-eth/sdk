@@ -11,6 +11,11 @@ export type NativeDisplay =
   | { kind: "prefix"; symbol: string }   // e.g. "CA$100"
   | { kind: "suffix"; symbol: string };  // e.g. "100 JPYC"
 
+export type TokenAmountEntryValue = {
+  amountUsd: number;
+  nativeAmount: number;
+};
+
 type TokenAmountEntryProps = {
   /** Destination stablecoin. Supplies default icon, chain badge, FX rate (token.usd). */
   token: DaimoPayToken;
@@ -25,9 +30,9 @@ type TokenAmountEntryProps = {
   /** Initial USD amount (e.g. when resuming a session). */
   initialAmountUsd?: number;
   /** Called when the user confirms (Enter key). */
-  onContinue: (amountUsd: number) => void;
+  onContinue: (value: TokenAmountEntryValue) => void;
   /** Called on every change. */
-  onChange?: (amountUsd: number, isValid: boolean) => void;
+  onChange?: (value: TokenAmountEntryValue & { isValid: boolean }) => void;
   /**
    * Optional wallet balance. When provided, the footer shows "Balance: …"
    * instead of min/max. Min/max warnings still take priority when the user
@@ -84,14 +89,15 @@ export function TokenAmountEntry({
   const [isEditingUsd, setIsEditingUsd] = useState(initialMode === "usd");
 
   const amountUsd = parseFloat(usdStr) || 0;
+  const nativeAmount = parseFloat(nativeStr) || 0;
   const roundedMaxUsd = parseFloat(roundUsd(maximumUsd));
   const isValid = amountUsd >= minimumUsd && amountUsd <= roundedMaxUsd;
   const showMinWarning = usdStr !== "" && amountUsd < minimumUsd;
   const showMaxWarning = usdStr !== "" && amountUsd > roundedMaxUsd;
 
   useEffect(() => {
-    onChange?.(amountUsd, isValid);
-  }, [amountUsd, isValid, onChange]);
+    onChange?.({ amountUsd, nativeAmount, isValid });
+  }, [amountUsd, isValid, nativeAmount, onChange]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
@@ -111,7 +117,9 @@ export function TokenAmountEntry({
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter" && isValid) onContinue(amountUsd);
+    if (e.key === "Enter" && isValid) {
+      onContinue({ amountUsd, nativeAmount });
+    }
   };
 
   const handleMax = () => {

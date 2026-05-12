@@ -1,3 +1,4 @@
+import type { AccountRail } from "../../../common/account.js";
 import { useDaimoClient } from "../../hooks/DaimoClientContext.js";
 import { t } from "../../hooks/locale.js";
 import { useDepositPoller } from "../../hooks/useDepositPoller.js";
@@ -5,6 +6,7 @@ import { ConfirmationSpinner } from "../ConfirmationSpinner.js";
 import { CenteredContent, PageHeader } from "../shared.js";
 
 type AccountBankTransferSubmittedPageProps = {
+  rail: AccountRail;
   sessionId: string;
   clientSecret: string;
   baseUrl: string;
@@ -16,6 +18,7 @@ type AccountBankTransferSubmittedPageProps = {
  * polling in case the provider webhook arrives while the modal is still open.
  */
 export function AccountBankTransferSubmittedPage({
+  rail,
   sessionId,
   clientSecret,
   baseUrl,
@@ -23,6 +26,12 @@ export function AccountBankTransferSubmittedPage({
 }: AccountBankTransferSubmittedPageProps) {
   const client = useDaimoClient();
   const accountUrl = `${baseUrl}/account/activity?session=${encodeURIComponent(sessionId)}`;
+  const title = rail === "jpyc"
+    ? t.accountDirectionsSubmittedTitle
+    : t.accountBankTransferSubmittedTitle;
+  const description = rail === "jpyc"
+    ? t.accountDirectionsSubmittedDesc
+    : t.accountBankTransferSubmittedDesc;
 
   useDepositPoller({
     client,
@@ -40,12 +49,12 @@ export function AccountBankTransferSubmittedPage({
 
   return (
     <div className="daimo-flex daimo-flex-col daimo-flex-1 daimo-min-h-0">
-      <PageHeader title={t.accountBankTransferSubmittedTitle} />
+      <PageHeader title={title} />
       <CenteredContent>
         <div className="daimo-flex daimo-flex-col daimo-items-center daimo-gap-5">
           <ConfirmationSpinner done />
           <p className="daimo-max-w-xs daimo-text-center daimo-text-sm daimo-leading-relaxed daimo-text-[var(--daimo-text-secondary)]">
-            {t.accountBankTransferSubmittedDesc}
+            {description}
           </p>
           <a
             href={accountUrl}

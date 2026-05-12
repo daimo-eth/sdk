@@ -84,6 +84,33 @@ export function BackArrowIcon({ className, size = 9 }: IconProps) {
   );
 }
 
+/** Chevron icon for compact previous/next controls */
+export function ChevronIcon({
+  className,
+  size = 16,
+  direction = "right",
+}: IconProps & { direction?: "left" | "right" }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 16 16"
+      fill="none"
+      className={className ?? "daimo-text-[var(--daimo-text-muted)]"}
+      style={{ transform: direction === "left" ? "rotate(180deg)" : undefined }}
+      aria-hidden="true"
+    >
+      <path
+        d="M6 3.5 10.5 8 6 12.5"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 /** Opposing arrows for switching payment modes */
 export function SwitchArrowsIcon({
   className,

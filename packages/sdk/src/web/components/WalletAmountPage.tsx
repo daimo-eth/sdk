@@ -33,10 +33,13 @@ export function WalletAmountPage({
 
   const [amountUsd, setAmountUsd] = useState(0);
   const [isValid, setIsValid] = useState(false);
-  const handleChange = useCallback((usd: number, valid: boolean) => {
-    setAmountUsd(usd);
-    setIsValid(valid);
-  }, []);
+  const handleChange = useCallback(
+    (value: { amountUsd: number; isValid: boolean }) => {
+      setAmountUsd(value.amountUsd);
+      setIsValid(value.isValid);
+    },
+    [],
+  );
 
   return (
     <div className="daimo-flex daimo-flex-col daimo-flex-1 daimo-min-h-0">
@@ -48,9 +51,12 @@ export function WalletAmountPage({
           maximumUsd={maximumUsd}
           nativeDisplay={{ kind: "suffix", symbol: balanceToken.symbol }}
           initialMode="usd"
-          onContinue={onContinue}
+          onContinue={(value) => onContinue(value.amountUsd)}
           onChange={handleChange}
-          balance={{ usd: token.balance.usd, nativeAmountUnits: balanceNativeUnits }}
+          balance={{
+            usd: token.balance.usd,
+            nativeAmountUnits: balanceNativeUnits,
+          }}
           platform={platform}
           baseUrl={baseUrl}
         />

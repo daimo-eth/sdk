@@ -119,11 +119,21 @@ export const ja: typeof en = {
   accountOtherInstitutions: "その他の金融機関",
   accountBankTransfer: "銀行振込",
   accountBankDetails: "振込詳細",
+  accountDirections: "手順",
+  accountDirectionsStep: (current: number, total: number) =>
+    `ステップ ${current} / ${total}`,
+  accountDirectionsPrevious: "前のステップ",
+  accountDirectionsNext: "次のステップ",
+  accountDirectionsGoToStep: (step: number) => `ステップ ${step}へ移動`,
+  accountDirectionsShowInstructions: "入金手順を表示",
   accountBankDetailsCopied: "コピーしました",
   accountBankDetailsMemoWarning: "振込時にこのメモを含めてください",
   accountBankTransferSubmittedTitle: "送金手続き中",
   accountBankTransferSubmittedDesc:
     "銀行振込には1〜3営業日かかる場合があります。このウィンドウを閉じて、アカウントページで進捗を確認できます。",
+  accountDirectionsSubmittedTitle: "送金を確認中",
+  accountDirectionsSubmittedDesc:
+    "JPYCがDaimoアカウントのウォレットに着金すると自動で検出します。このウィンドウを閉じて、アカウントページで進捗を確認できます。",
   accountTosTitle: "利用規約",
   accountTosDesc: "続行するには、利用規約とプライバシーポリシーに同意してください。",
   accountTosTerms: "利用規約",

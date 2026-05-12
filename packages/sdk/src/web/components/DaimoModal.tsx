@@ -656,6 +656,7 @@ function renderEntry(
           rail={entry.rail}
           sessionId={ctx.session.sessionId}
           clientSecret={ctx.session.clientSecret}
+          baseUrl={ctx.session.baseUrl}
           onBack={null}
           onAdvance={() => ctx.onAccountAdvance("account-bank-transfer-submitted")}
         />
@@ -663,6 +664,7 @@ function renderEntry(
     case "account-bank-transfer-submitted":
       return (
         <AccountBankTransferSubmittedPage
+          rail={entry.rail}
           sessionId={ctx.session.sessionId}
           clientSecret={ctx.session.clientSecret}
           baseUrl={ctx.session.baseUrl}
