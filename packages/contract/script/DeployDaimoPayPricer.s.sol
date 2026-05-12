@@ -10,14 +10,8 @@ import {DEPLOY_SALT_DAIMO_PAY_PRICER} from "./DeploySalts.sol";
 
 contract DeployDaimoPayPricer is Script {
     function run() public {
-        address DEFAULT_TRUSTED_SIGNER = msg.sender;
-        uint256 DEFAULT_MAX_PRICE_AGE = 300; // 5 minutes
-
-        address trustedSigner = vm.envOr(
-            "TRUSTED_SIGNER",
-            DEFAULT_TRUSTED_SIGNER
-        );
-        uint256 maxPriceAge = vm.envOr("MAX_PRICE_AGE", DEFAULT_MAX_PRICE_AGE);
+        address trustedSigner = vm.envAddress("PRICER_TRUSTED_SIGNER_ADDRESS");
+        uint256 maxPriceAge = vm.envUint("MAX_PRICER_PRICE_AGE");
 
         vm.startBroadcast();
 
