@@ -16,7 +16,14 @@ import { useDepositPoller } from "../../hooks/useDepositPoller.js";
 import { useDraftDeposit } from "../../hooks/useDraftDeposit.js";
 import { PrimaryButton } from "../buttons.js";
 import { ErrorPage } from "../ErrorPage.js";
-import { ChevronIcon, CopyIcon, ExternalLinkIcon } from "../icons.js";
+import {
+  ChevronIcon,
+  CopyIcon,
+  DepositInstructionsIcon,
+  ExternalLinkIcon,
+  WarningIcon,
+  YouTubeLogoIcon,
+} from "../icons.js";
 import { ProgressPulse } from "../ProgressPulse.js";
 import { DepositAddressContent } from "../WaitingDepositAddressPage.js";
 import { PageHeader, resolveIconUrl, ScrollContent } from "../shared.js";
@@ -129,9 +136,6 @@ export function AccountBankDetailsPage({
   const directionsPayment = payment?.flow === "directions" ? payment : null;
   const directionsLocale = getLocale();
   const directionsStepIndex = directionsView.stepIndex;
-  const isDirectionsLastStep =
-    directionsPayment != null &&
-    directionsStepIndex === directionsPayment.steps.length - 1;
   const directionsDeposit =
     directionsView.type === "deposit" && directionsPayment
       ? {
@@ -145,8 +149,6 @@ export function AccountBankDetailsPage({
       ? t.accountDirections
       : t.accountBankDetails;
   const showSubmitButton = payment?.flow !== "directions";
-  const showInstructionsButton =
-    directionsPayment != null && isDirectionsLastStep;
 
   useDepositPoller({
     client,
@@ -203,7 +205,7 @@ export function AccountBankDetailsPage({
 
   if (!instructions) {
     return (
-      <div className="daimo-flex daimo-flex-col daimo-flex-1 daimo-min-h-0">
+      <div className="daimo-flex daimo-flex-col daimo-flex-1 daimo-min-h-[min(420px,90vh)]">
         <PageHeader title={pageTitle} onBack={onBack} />
         <div className="daimo-flex-1 daimo-flex daimo-items-center daimo-justify-center">
           <ProgressPulse label={t.loading} />
@@ -249,7 +251,7 @@ export function AccountBankDetailsPage({
           />
         </div>
       ) : directionsPayment ? (
-        <div className="daimo-flex-1 daimo-min-h-0 daimo-flex daimo-flex-col daimo-gap-2 daimo-px-6 daimo-pt-3 daimo-pb-2">
+        <div className="daimo-flex-1 daimo-min-h-0 daimo-overflow-y-auto daimo-flex daimo-flex-col daimo-gap-2 daimo-px-6 daimo-pt-3 daimo-pb-4">
           <DirectionsCard
             steps={directionsPayment.steps}
             activeIndex={directionsStepIndex}
@@ -259,12 +261,16 @@ export function AccountBankDetailsPage({
             }
             baseUrl={baseUrl}
           />
-          {directionsPayment.reference && (
-            <DirectionsReferenceLink
-              reference={directionsPayment.reference}
-              locale={directionsLocale}
-            />
-          )}
+          <DirectionsActions
+            reference={directionsPayment.reference}
+            locale={directionsLocale}
+            onShowInstructions={() =>
+              setDirectionsView({
+                type: "deposit",
+                stepIndex: directionsStepIndex,
+              })
+            }
+          />
         </div>
       ) : (
         <ScrollContent>
@@ -299,19 +305,36 @@ export function AccountBankDetailsPage({
           </PrimaryButton>
         </div>
       )}
-      {showInstructionsButton && !directionsDeposit && (
-        <div className="daimo-mt-3 daimo-px-6 daimo-pt-2 daimo-pb-6 daimo-flex daimo-justify-center">
-          <PrimaryButton
-            onClick={() =>
-              setDirectionsView({
-                type: "deposit",
-                stepIndex: directionsStepIndex,
-              })
-            }
-          >
-            {t.accountDirectionsShowInstructions}
-          </PrimaryButton>
-        </div>
+    </div>
+  );
+}
+
+function DirectionsActions({
+  reference,
+  locale,
+  onShowInstructions,
+}: {
+  reference: DepositPaymentReference | undefined;
+  locale: string;
+  onShowInstructions: () => void;
+}) {
+  return (
+    <div className="daimo-grid daimo-grid-cols-2 daimo-gap-2">
+      <button
+        type="button"
+        onClick={onShowInstructions}
+        className="daimo-flex daimo-min-h-20 daimo-w-full daimo-touch-action-manipulation daimo-flex-col daimo-justify-between daimo-gap-3 daimo-rounded-[var(--daimo-radius-md)] daimo-bg-[var(--daimo-surface-secondary)] daimo-p-3 daimo-text-left daimo-text-sm daimo-font-medium daimo-leading-snug daimo-text-[var(--daimo-text)] daimo-transition-[background-color] daimo-duration-100 daimo-ease hover:[@media(hover:hover)]:daimo-bg-[var(--daimo-surface-hover)]"
+      >
+        <span className="daimo-flex daimo-w-full daimo-items-start daimo-justify-between daimo-gap-2">
+          <span className="daimo-flex daimo-h-8 daimo-w-8 daimo-shrink-0 daimo-items-center daimo-justify-center daimo-rounded-full daimo-bg-[var(--daimo-surface)] daimo-text-[var(--daimo-accent)]">
+            <DepositInstructionsIcon size={18} />
+          </span>
+          <ChevronIcon className="daimo-shrink-0 daimo-text-[var(--daimo-text-muted)]" />
+        </span>
+        <span>{t.accountDirectionsShowInstructions}</span>
+      </button>
+      {reference && (
+        <DirectionsReferenceLink reference={reference} locale={locale} />
       )}
     </div>
   );
@@ -337,6 +360,7 @@ function DirectionsCard({
   const canGoBack = activeIndex > 0;
   const canGoForward = activeIndex < lastIndex;
   const displayStep = getLocalizedStep(activeStep, locale);
+  const warning = getLocalizedStepWarning(activeStep, locale);
 
   function goBack() {
     onActiveIndexChange(Math.max(0, activeIndex - 1));
@@ -391,6 +415,15 @@ function DirectionsCard({
               <p className="daimo-text-sm daimo-leading-relaxed daimo-text-[var(--daimo-text-secondary)]">
                 {displayStep.description}
               </p>
+              {activeStep.action && (
+                <StepActionLink action={activeStep.action} locale={locale} />
+              )}
+              {warning && (
+                <StepWarning
+                  title={warning.title}
+                  description={warning.description}
+                />
+              )}
             </div>
           </div>
 
@@ -440,6 +473,67 @@ function DirectionsCard({
   );
 }
 
+function StepWarning({
+  title,
+  description,
+}: {
+  title: string;
+  description: string;
+}) {
+  return (
+    <div
+      className="daimo-mt-2 daimo-flex daimo-gap-3 daimo-rounded-[var(--daimo-radius-md)] daimo-px-3 daimo-py-3"
+      style={{
+        backgroundColor: "var(--daimo-warning-light, #fff7ed)",
+        border: "1px solid var(--daimo-warning, #f97316)",
+      }}
+    >
+      <span
+        className="daimo-mt-0.5 daimo-shrink-0"
+        style={{ color: "var(--daimo-warning, #f97316)" }}
+      >
+        <WarningIcon size={18} />
+      </span>
+      <div className="daimo-min-w-0">
+        <div
+          className="daimo-text-sm daimo-font-semibold daimo-leading-snug"
+          style={{ color: "var(--daimo-warning, #f97316)" }}
+        >
+          {title}
+        </div>
+        <div className="daimo-mt-1 daimo-text-xs daimo-leading-relaxed daimo-text-[var(--daimo-text-secondary)]">
+          {description}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function StepActionLink({
+  action,
+  locale,
+}: {
+  action: DepositPaymentReference;
+  locale: string;
+}) {
+  const label =
+    locale === "ja"
+      ? (action.translations?.ja?.label ?? action.label)
+      : action.label;
+
+  return (
+    <a
+      href={action.url}
+      target="_blank"
+      rel="noreferrer"
+      className="daimo-mt-2 daimo-inline-flex daimo-min-h-11 daimo-touch-action-manipulation daimo-items-center daimo-justify-center daimo-gap-2 daimo-rounded-full daimo-bg-[var(--daimo-surface)] daimo-px-4 daimo-py-2 daimo-text-sm daimo-font-medium daimo-text-[var(--daimo-text)] daimo-transition-[background-color] daimo-duration-100 daimo-ease hover:[@media(hover:hover)]:daimo-bg-[var(--daimo-surface-hover)]"
+    >
+      <span>{label}</span>
+      <ExternalLinkIcon className="daimo-shrink-0 daimo-text-[var(--daimo-text-muted)]" />
+    </a>
+  );
+}
+
 function DirectionsReferenceLink({
   reference,
   locale,
@@ -457,10 +551,15 @@ function DirectionsReferenceLink({
       href={reference.url}
       target="_blank"
       rel="noreferrer"
-      className="daimo-flex daimo-min-h-12 daimo-touch-action-manipulation daimo-items-center daimo-justify-between daimo-gap-3 daimo-rounded-[var(--daimo-radius-md)] daimo-bg-[var(--daimo-surface-secondary)] daimo-px-4 daimo-py-3 daimo-text-sm daimo-font-medium daimo-text-[var(--daimo-text)] daimo-transition-[background-color] daimo-duration-100 daimo-ease hover:[@media(hover:hover)]:daimo-bg-[var(--daimo-surface-hover)]"
+      className="daimo-flex daimo-min-h-20 daimo-touch-action-manipulation daimo-flex-col daimo-justify-between daimo-gap-3 daimo-rounded-[var(--daimo-radius-md)] daimo-bg-[var(--daimo-surface-secondary)] daimo-p-3 daimo-text-sm daimo-font-medium daimo-leading-snug daimo-text-[var(--daimo-text)] daimo-transition-[background-color] daimo-duration-100 daimo-ease hover:[@media(hover:hover)]:daimo-bg-[var(--daimo-surface-hover)]"
     >
+      <span className="daimo-flex daimo-w-full daimo-items-start daimo-justify-between daimo-gap-2">
+        <span className="daimo-flex daimo-h-8 daimo-w-8 daimo-shrink-0 daimo-items-center daimo-justify-center daimo-rounded-full daimo-bg-white">
+          <YouTubeLogoIcon size={20} />
+        </span>
+        <ExternalLinkIcon className="daimo-shrink-0 daimo-text-[var(--daimo-text-muted)]" />
+      </span>
       <span>{label}</span>
-      <ExternalLinkIcon className="daimo-shrink-0 daimo-text-[var(--daimo-text-muted)]" />
     </a>
   );
 }
@@ -523,6 +622,17 @@ function FieldRow({
 function getLocalizedStep(step: DepositPaymentStep, locale: string) {
   if (locale === "ja" && step.translations?.ja) return step.translations.ja;
   return { title: step.title, description: step.description };
+}
+
+function getLocalizedStepWarning(step: DepositPaymentStep, locale: string) {
+  if (!step.warning) return null;
+  if (locale === "ja" && step.warning.translations?.ja) {
+    return step.warning.translations.ja;
+  }
+  return {
+    title: step.warning.title,
+    description: step.warning.description,
+  };
 }
 
 function isTransferInstructionFlow(

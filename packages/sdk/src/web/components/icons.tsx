@@ -264,3 +264,74 @@ export function ExternalLinkIcon({ className, size = 16 }: IconProps) {
     </svg>
   );
 }
+
+/** YouTube logo for video walkthrough actions */
+export function YouTubeLogoIcon({ className, size = 20 }: IconProps) {
+  return (
+    <svg
+      aria-hidden="true"
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      className={className}
+    >
+      <path
+        fill="#FF0033"
+        d="M21.58 7.19a2.72 2.72 0 0 0-1.91-1.93C17.98 4.8 12 4.8 12 4.8s-5.98 0-7.67.46a2.72 2.72 0 0 0-1.91 1.93A28.4 28.4 0 0 0 2 12a28.4 28.4 0 0 0 .42 4.81 2.72 2.72 0 0 0 1.91 1.93c1.69.46 7.67.46 7.67.46s5.98 0 7.67-.46a2.72 2.72 0 0 0 1.91-1.93A28.4 28.4 0 0 0 22 12a28.4 28.4 0 0 0-.42-4.81Z"
+      />
+      <path fill="#FFFFFF" d="m10 15.2 5.2-3.2L10 8.8v6.4Z" />
+    </svg>
+  );
+}
+
+/** QR-style icon for direct deposit instructions */
+export function DepositInstructionsIcon({ className, size = 20 }: IconProps) {
+  return (
+    <svg
+      aria-hidden="true"
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+    >
+      <path d="M4 5.25C4 4.56 4.56 4 5.25 4h4.5C10.44 4 11 4.56 11 5.25v4.5C11 10.44 10.44 11 9.75 11h-4.5C4.56 11 4 10.44 4 9.75v-4.5Z" />
+      <path d="M4 14.25C4 13.56 4.56 13 5.25 13h4.5c.69 0 1.25.56 1.25 1.25v4.5c0 .69-.56 1.25-1.25 1.25h-4.5C4.56 20 4 19.44 4 18.75v-4.5Z" />
+      <path d="M13 5.25C13 4.56 13.56 4 14.25 4h4.5c.69 0 1.25.56 1.25 1.25v4.5c0 .69-.56 1.25-1.25 1.25h-4.5C13.56 11 13 10.44 13 9.75v-4.5Z" />
+      <path d="M6.75 6.75h.5" />
+      <path d="M6.75 16.75h.5" />
+      <path d="M15.75 6.75h.5" />
+      <path d="M14 14h.5" />
+      <path d="M19.5 14h.5" />
+      <path d="M14 19.5h.5" />
+      <path d="M19.5 19.5h.5" />
+      <path d="M16.75 16.75h.5" />
+    </svg>
+  );
+}
+
+/** Warning triangle for critical transfer instructions */
+export function WarningIcon({ className, size = 20 }: IconProps) {
+  return (
+    <svg
+      aria-hidden="true"
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+    >
+      <path d="M10.3 4.5 2.7 17.7A2 2 0 0 0 4.4 20.7h15.2a2 2 0 0 0 1.7-3L13.7 4.5a2 2 0 0 0-3.4 0Z" />
+      <path d="M12 8.5v5" />
+      <path d="M12 17h.01" />
+    </svg>
+  );
+}

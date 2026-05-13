@@ -124,7 +124,7 @@ export const zh: typeof en = {
   accountDirectionsPrevious: "上一步",
   accountDirectionsNext: "下一步",
   accountDirectionsGoToStep: (step: number) => `转到第 ${step} 步`,
-  accountDirectionsShowInstructions: "查看说明",
+  accountDirectionsShowInstructions: "查看存款说明",
   accountBankDetailsCopied: "已复制",
   accountBankDetailsMemoWarning: "请在转账中包含此备注",
   accountBankTransferSubmittedTitle: "转账进行中",

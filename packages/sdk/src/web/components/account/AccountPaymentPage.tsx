@@ -23,7 +23,7 @@ type AccountPaymentPageProps = {
   sessionId: string;
   platform: DaimoPlatform;
   baseUrl: string;
-  onBack: () => void;
+  onBack?: (() => void) | null;
   onAdvance: () => void;
 };
 
@@ -95,7 +95,7 @@ export function AccountPaymentPage({
     <div className="daimo-flex daimo-flex-col daimo-flex-1 daimo-min-h-0">
       <PageHeader title={t.accountPayment} onBack={onBack} />
       <CenteredContent>
-        {constraints && (
+        {constraints ? (
           <TokenAmountEntry
             token={constraints.destinationToken}
             minimumUsd={
@@ -130,6 +130,8 @@ export function AccountPaymentPage({
             platform={platform}
             baseUrl={baseUrl}
           />
+        ) : (
+          <AmountEntrySkeleton />
         )}
       </CenteredContent>
 
@@ -143,6 +145,25 @@ export function AccountPaymentPage({
           {t.continue}
         </PrimaryButton>
       </div>
+    </div>
+  );
+}
+
+function AmountEntrySkeleton() {
+  return (
+    <div className="daimo-flex daimo-flex-col daimo-items-center">
+      <div
+        className="daimo-mb-8 daimo-h-20 daimo-w-20 daimo-rounded-full motion-safe:daimo-animate-daimo-pulse"
+        style={{ backgroundColor: "var(--daimo-skeleton)" }}
+      />
+      <div
+        className="daimo-h-10 daimo-w-40 daimo-rounded-lg motion-safe:daimo-animate-daimo-pulse"
+        style={{ backgroundColor: "var(--daimo-skeleton)" }}
+      />
+      <div
+        className="daimo-mt-5 daimo-h-5 daimo-w-28 daimo-rounded motion-safe:daimo-animate-daimo-pulse"
+        style={{ backgroundColor: "var(--daimo-skeleton)" }}
+      />
     </div>
   );
 }
