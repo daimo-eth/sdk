@@ -22,10 +22,10 @@ bytes32 constant DEPLOY_SALT_DA_MANAGER = keccak256(
 );
 
 bytes32 constant DEPLOY_SALT_DAIMO_PAY_PRICER = keccak256(
-    "DaimoPayPricer-prod1"
+    "DaimoPayPricer-prod2"
 );
 // bytes32 constant DEPLOY_SALT_DAIMO_PAY_PRICER = keccak256(
-//     "DaimoPayPricer-dev1"
+//     "DaimoPayPricer-dev2"
 // );
 
 // Bridger contracts
