@@ -124,7 +124,7 @@ export const ko: typeof en = {
   accountDirectionsPrevious: "이전 단계",
   accountDirectionsNext: "다음 단계",
   accountDirectionsGoToStep: (step: number) => `${step}단계로 이동`,
-  accountDirectionsShowInstructions: "안내 보기",
+  accountDirectionsShowInstructions: "입금 안내 보기",
   accountBankDetailsCopied: "복사됨",
   accountBankDetailsMemoWarning: "이체 시 이 메모를 포함해 주세요",
   accountBankTransferSubmittedTitle: "이체 진행 중",

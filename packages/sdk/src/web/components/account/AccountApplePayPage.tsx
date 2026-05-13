@@ -22,7 +22,7 @@ type AccountApplePayPageProps = {
   clientSecret: string;
   actionVerb: string;
   initialAmount?: string;
-  onBack: () => void;
+  onBack?: (() => void) | null;
   onAdvance: () => void;
 };
 

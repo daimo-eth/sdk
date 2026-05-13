@@ -125,7 +125,7 @@ export const ja: typeof en = {
   accountDirectionsPrevious: "前のステップ",
   accountDirectionsNext: "次のステップ",
   accountDirectionsGoToStep: (step: number) => `ステップ ${step}へ移動`,
-  accountDirectionsShowInstructions: "入金手順を表示",
+  accountDirectionsShowInstructions: "入金手順を見る",
   accountBankDetailsCopied: "コピーしました",
   accountBankDetailsMemoWarning: "振込時にこのメモを含めてください",
   accountBankTransferSubmittedTitle: "送金手続き中",

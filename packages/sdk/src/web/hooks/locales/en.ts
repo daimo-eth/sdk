@@ -123,7 +123,7 @@ export const en = {
   accountDirectionsPrevious: "Previous step",
   accountDirectionsNext: "Next step",
   accountDirectionsGoToStep: (step: number) => `Go to step ${step}`,
-  accountDirectionsShowInstructions: "Show instructions",
+  accountDirectionsShowInstructions: "Show deposit instructions",
   accountBankDetailsCopied: "Copied",
   accountBankDetailsMemoWarning: "Include this memo in your transfer",
   accountBankTransferSubmittedTitle: "Transfer on the way",

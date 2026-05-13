@@ -90,14 +90,30 @@ export function TokenAmountEntry({
 
   const amountUsd = parseFloat(usdStr) || 0;
   const nativeAmount = parseFloat(nativeStr) || 0;
+  const validationAmountUsd = isEditingUsd
+    ? amountUsd
+    : nativeAmount * token.usd;
   const roundedMaxUsd = parseFloat(roundUsd(maximumUsd));
-  const isValid = amountUsd >= minimumUsd && amountUsd <= roundedMaxUsd;
-  const showMinWarning = usdStr !== "" && amountUsd < minimumUsd;
-  const showMaxWarning = usdStr !== "" && amountUsd > roundedMaxUsd;
+  const maxUsdForValidation = isEditingUsd ? roundedMaxUsd : maximumUsd;
+  const isValid =
+    validationAmountUsd >= minimumUsd &&
+    validationAmountUsd <= maxUsdForValidation;
+  const hasAmount = isEditingUsd ? usdStr !== "" : nativeStr !== "";
+  const showMinWarning = hasAmount && validationAmountUsd < minimumUsd;
+  const showMaxWarning =
+    hasAmount && validationAmountUsd > maxUsdForValidation;
+  const currentEntryValue = {
+    amountUsd: validationAmountUsd,
+    nativeAmount,
+  };
 
   useEffect(() => {
-    onChange?.({ amountUsd, nativeAmount, isValid });
-  }, [amountUsd, isValid, nativeAmount, onChange]);
+    onChange?.({
+      amountUsd: validationAmountUsd,
+      nativeAmount,
+      isValid,
+    });
+  }, [validationAmountUsd, nativeAmount, isValid, onChange]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
@@ -118,7 +134,7 @@ export function TokenAmountEntry({
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter" && isValid) {
-      onContinue({ amountUsd, nativeAmount });
+      onContinue(currentEntryValue);
     }
   };
 

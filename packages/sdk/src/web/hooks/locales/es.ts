@@ -94,7 +94,7 @@ export const es: typeof en = {
   accountDirectionsPrevious: "Paso anterior",
   accountDirectionsNext: "Siguiente paso",
   accountDirectionsGoToStep: (step: number) => `Ir al paso ${step}`,
-  accountDirectionsShowInstructions: "Ver instrucciones",
+  accountDirectionsShowInstructions: "Ver instrucciones de depósito",
   accountBankDetailsCopied: "Copiado",
   accountBankDetailsMemoWarning: "Incluye este memo en tu transferencia",
   accountBankTransferSubmittedTitle: "Transferencia en camino",

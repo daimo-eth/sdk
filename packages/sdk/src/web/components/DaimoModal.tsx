@@ -624,7 +624,7 @@ function renderEntry(
           sessionId={ctx.session.sessionId}
           platform={ctx.platform}
           baseUrl={ctx.session.baseUrl}
-          onBack={ctx.onBack}
+          onBack={ctx.canGoBack ? ctx.onBack : null}
           onAdvance={() => ctx.onAccountAdvance(getAccountPaymentAdvanceTarget(entry.rail))}
         />
       );
@@ -646,7 +646,7 @@ function renderEntry(
           clientSecret={ctx.session.clientSecret}
           actionVerb={ctx.displayVerb}
           initialAmount={ctx.session.destination.amountUnits}
-          onBack={ctx.onBack}
+          onBack={ctx.canGoBack ? ctx.onBack : null}
           onAdvance={() => ctx.onAccountAdvance("account-status")}
         />
       );

@@ -169,6 +169,17 @@ export type DepositPaymentStep = {
       description: string;
     };
   };
+  action?: DepositPaymentReference;
+  warning?: {
+    title: string;
+    description: string;
+    translations?: {
+      ja?: {
+        title: string;
+        description: string;
+      };
+    };
+  };
   media?: {
     type: "image";
     src: string;
