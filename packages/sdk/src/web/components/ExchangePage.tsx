@@ -34,15 +34,23 @@ export function ExchangePage({
 }: ExchangePageProps) {
   const desktop = isDesktop(platform);
   const exchangeId = node.type === "CashApp" ? "CashApp" : node.exchangeId;
-  const showQR = desktop && exchangeId !== "Coinbase";
+  const showQR =
+    desktop && exchangeId !== "Coinbase" && exchangeId !== "MtPelerin";
 
   const placeholderDensity =
     exchangeId === "Binance" ? ("medium" as const) : ("short" as const);
 
   const openExchange = () => {
     if (!exchangeUrl) return;
-    if (desktop && exchangeId === "Coinbase") {
-      window.open(exchangeUrl, "coinbase", "width=500,height=700");
+    if (
+      desktop &&
+      (exchangeId === "Coinbase" || exchangeId === "MtPelerin")
+    ) {
+      window.open(
+        exchangeUrl,
+        exchangeId.toLowerCase(),
+        "width=500,height=700",
+      );
     } else {
       window.open(exchangeUrl, "_blank");
     }
