@@ -26,7 +26,7 @@ import type { InjectedWallet } from "./useInjectedWallets.js";
 import { isUserRejection, type WalletFlowResult } from "./useWalletFlow.js";
 
 type NodeContext = { nodeId: string | null; nodeType: NavNodeType | null };
-type ExchangeId = "Coinbase" | "Binance" | "Lemon" | "CashApp";
+type ExchangeId = "Coinbase" | "Binance" | "Lemon" | "MtPelerin" | "CashApp";
 type ExchangeNode = NavNodeExchange | NavNodeCashApp;
 
 import type { AccountRail } from "../../common/account.js";
