@@ -978,12 +978,13 @@ function renderWalletConnect(
 
 function renderWalletSelectToken(ctx: RenderContext): React.ReactNode {
   const { walletFlow } = ctx;
-  // Show error if wallet connection failed (e.g. ConnectedWallet skips wallet-connect page)
-  if (
-    !walletFlow.isLoadingBalances &&
-    walletFlow.balances === null &&
-    walletFlow.connectError
-  ) {
+  const isLoading =
+    ctx.isLoadingWallets ||
+    walletFlow.isConnecting ||
+    walletFlow.isLoadingBalances;
+
+  // Error: connection or balance fetch failed
+  if (!isLoading && walletFlow.balances === null && walletFlow.connectError) {
     return (
       <div className="daimo-flex daimo-flex-col daimo-flex-1 daimo-min-h-0">
         <PageHeader
@@ -1000,17 +1001,47 @@ function renderWalletSelectToken(ctx: RenderContext): React.ReactNode {
       </div>
     );
   }
-  const isLoading =
-    ctx.isLoadingWallets ||
-    walletFlow.isConnecting ||
-    walletFlow.isLoadingBalances;
-  // Is the amount pre-set in the session? If so, show the required amount the
-  // user should pay in the token selection page.
+
+  // Loading: discovery, connection, or balance fetch in progress
+  if (isLoading) {
+    return (
+      <SelectTokenPage
+        options={null}
+        isLoading
+        showRequired={!!ctx.session.destination.amountUnits}
+        onSelect={ctx.onWalletSelectToken}
+        onBack={ctx.canGoBack ? ctx.onBack : null}
+        baseUrl={ctx.session.baseUrl}
+        sessionId={ctx.session.sessionId}
+      />
+    );
+  }
+
+  // No wallet connected and nothing loading — no wallets available
+  if (walletFlow.balances === null) {
+    return (
+      <div className="daimo-flex daimo-flex-col daimo-flex-1 daimo-min-h-0">
+        <PageHeader
+          title={t.selectToken}
+          onBack={ctx.canGoBack ? ctx.onBack : null}
+          borderVisible={false}
+        />
+        <CenteredContent>
+          <SharedErrorMessage message={t.noWalletsFound} />
+          <PrimaryButton onClick={walletFlow.retryConnect}>
+            {t.tryAgain}
+          </PrimaryButton>
+        </CenteredContent>
+      </div>
+    );
+  }
+
+  // Loaded — show token list
   const showRequired = !!ctx.session.destination.amountUnits;
   return (
     <SelectTokenPage
       options={walletFlow.balances}
-      isLoading={isLoading}
+      isLoading={false}
       showRequired={showRequired}
       onSelect={ctx.onWalletSelectToken}
       onBack={ctx.canGoBack ? ctx.onBack : null}

@@ -160,6 +160,7 @@ export const ko: typeof en = {
   // session page
   connect: "연결",
   connectWallet: "지갑 연결",
+  noWalletsFound: "지갑을 찾을 수 없습니다",
   walletUnavailable: "지갑을 사용할 수 없습니다",
   walletDisconnected: "지갑 연결이 해제되었습니다",
   switchToChain: (chain: string) => `${chain}(으)로 전환해 주세요`,

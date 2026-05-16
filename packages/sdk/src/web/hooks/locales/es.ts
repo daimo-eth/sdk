@@ -123,6 +123,7 @@ export const es: typeof en = {
   errorConnectionLost: "Conexión perdida. Verifica tu red e intenta de nuevo.",
   connect: "Conectar",
   connectWallet: "Conectar billetera",
+  noWalletsFound: "No se encontraron billeteras",
   walletUnavailable: "Billetera no disponible",
   walletDisconnected: "Billetera desconectada",
   switchToChain: (chain: string) => `Cambia a ${chain}`,

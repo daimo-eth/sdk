@@ -160,6 +160,7 @@ export const zh: typeof en = {
   // session page
   connect: "连接",
   connectWallet: "连接钱包",
+  noWalletsFound: "未找到钱包",
   walletUnavailable: "钱包不可用",
   walletDisconnected: "钱包已断开",
   switchToChain: (chain: string) => `请切换到 ${chain}`,

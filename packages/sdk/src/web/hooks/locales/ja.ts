@@ -163,6 +163,7 @@ export const ja: typeof en = {
   // session page
   connect: "接続",
   connectWallet: "ウォレットを接続",
+  noWalletsFound: "ウォレットが見つかりません",
   walletUnavailable: "ウォレットが利用できません",
   walletDisconnected: "ウォレットが切断されました",
   switchToChain: (chain: string) => `${chain}に切り替えてください`,

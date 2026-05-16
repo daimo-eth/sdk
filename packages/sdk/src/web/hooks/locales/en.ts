@@ -158,6 +158,7 @@ export const en = {
   // session page
   connect: "Connect",
   connectWallet: "Connect Wallet",
+  noWalletsFound: "No wallets found",
   walletUnavailable: "Wallet unavailable",
   walletDisconnected: "Wallet disconnected",
   switchToChain: (chain: string) => `Please switch to ${chain}`,

@@ -303,6 +303,16 @@ export function useWalletFlow(
     }
   }, [connectWithSolanaProvider, connectWithProvider, connect]);
 
+  // Connection timeout: show error after 2s of connecting
+  useEffect(() => {
+    if (!isConnecting) return;
+    const timer = setTimeout(() => {
+      setIsConnecting(false);
+      setConnectError(unavailableMsg);
+    }, 2000);
+    return () => clearTimeout(timer);
+  }, [isConnecting, unavailableMsg]);
+
   // One-shot: test wallet URL params
   const testWalletInitRef = useRef(false);
   useEffect(() => {
