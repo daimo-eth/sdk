@@ -1,7 +1,9 @@
+import type { CSSProperties } from "react";
 import type { NavNode, NavNodeChooseOption } from "../api/navTree.js";
 import type { InjectedWallet } from "../hooks/useInjectedWallets.js";
 
 import { t } from "../hooks/locale.js";
+import { ApplePayLogo, isApplePayLogo } from "./ApplePayLogo.js";
 import { DaimoLogoIcon } from "./icons.js";
 import {
   ListRow,
@@ -142,8 +144,9 @@ function GridOptionCell({
       }`}
     >
       {icons.length > 0 && (
-        <img
-          src={resolveIconUrl(icons[0], baseUrl)}
+        <OptionIcon
+          icon={icons[0]}
+          baseUrl={baseUrl}
           alt={label}
           className="daimo-w-full daimo-aspect-square daimo-max-w-16 daimo-object-contain daimo-rounded-[25%]"
         />
@@ -206,9 +209,10 @@ export function OptionIcons({
     return (
       <div className="daimo-w-8 daimo-h-8 daimo-grid daimo-grid-cols-2 daimo-gap-0.5">
         {icons.slice(0, 4).map((icon, i) => (
-          <img
+          <OptionIcon
             key={i}
-            src={resolveIconUrl(icon, baseUrl)}
+            icon={icon}
+            baseUrl={baseUrl}
             alt=""
             className="daimo-w-[15px] daimo-h-[15px] daimo-object-contain daimo-rounded-[25%]"
           />
@@ -220,18 +224,55 @@ export function OptionIcons({
   // Stacked overlapped icons for <4
   return (
     <div className="daimo-flex daimo-items-center">
-      {icons.map((icon, i) => (
-        <img
-          key={i}
-          src={resolveIconUrl(icon, baseUrl)}
-          alt=""
-          className="daimo-w-8 daimo-h-8 daimo-object-contain daimo-rounded-[25%] daimo-relative"
-          style={{
-            marginLeft: i > 0 ? -10 : 0,
-            zIndex: icons.length - i,
-          }}
-        />
-      ))}
+      {icons.map((icon, i) => {
+        return (
+          <OptionIcon
+            key={i}
+            icon={icon}
+            baseUrl={baseUrl}
+            alt=""
+            className="daimo-w-8 daimo-h-8 daimo-object-contain daimo-rounded-[25%] daimo-relative"
+            style={{
+              marginLeft: i > 0 ? -10 : 0,
+              zIndex: icons.length - i,
+            }}
+          />
+        );
+      })}
     </div>
+  );
+}
+
+function OptionIcon({
+  icon,
+  baseUrl,
+  alt,
+  className,
+  style,
+}: {
+  icon: string;
+  baseUrl: string;
+  alt: string;
+  className: string;
+  style?: CSSProperties;
+}) {
+  if (isApplePayLogo(icon)) {
+    return (
+      <ApplePayLogo
+        baseUrl={baseUrl}
+        alt={alt}
+        className={className}
+        style={style}
+      />
+    );
+  }
+
+  return (
+    <img
+      src={resolveIconUrl(icon, baseUrl)}
+      alt={alt}
+      className={className}
+      style={style}
+    />
   );
 }
