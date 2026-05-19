@@ -205,16 +205,20 @@ export function DaimoModal(props: DaimoModalProps) {
     content
   );
 
+  const handleClose = showCloseButton ? () => closeRef.current() : undefined;
   if (embedded) {
     return (
-      <EmbeddedContainer showFooterSpacer={showFooterSpacer}>
+      <EmbeddedContainer
+        showFooterSpacer={showFooterSpacer}
+        onClose={handleClose}
+      >
         {wrapped}
       </EmbeddedContainer>
     );
   }
   return (
     <ModalContainer
-      onClose={showCloseButton ? () => closeRef.current() : undefined}
+      onClose={handleClose}
       pageKey={pageKey}
       showFooterSpacer={showFooterSpacer}
     >
