@@ -14,6 +14,7 @@ export const zAccountRail = z.enum([
   "sepa",
   "apple_pay",
   "jpyc",
+  "ars",
 ]);
 export type AccountRail = z.infer<typeof zAccountRail>;
 
