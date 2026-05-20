@@ -160,10 +160,6 @@ function AmountEntrySkeleton() {
         className="daimo-h-10 daimo-w-40 daimo-rounded-lg motion-safe:daimo-animate-daimo-pulse"
         style={{ backgroundColor: "var(--daimo-skeleton)" }}
       />
-      <div
-        className="daimo-mt-5 daimo-h-5 daimo-w-28 daimo-rounded motion-safe:daimo-animate-daimo-pulse"
-        style={{ backgroundColor: "var(--daimo-skeleton)" }}
-      />
     </div>
   );
 }

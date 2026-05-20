@@ -337,7 +337,7 @@ function BankDetailsSkeleton({
         </div>
       </ScrollContent>
       <div className="daimo-mt-3 daimo-px-6 daimo-pt-2 daimo-pb-6 daimo-flex daimo-justify-center">
-        <SkeletonBlock className="daimo-h-[54px] daimo-w-full daimo-rounded-[var(--daimo-radius-lg)]" />
+        <SkeletonBlock className="daimo-h-[54px] daimo-w-full daimo-max-w-xs daimo-rounded-[var(--daimo-radius-lg)]" />
       </div>
     </div>
   );
