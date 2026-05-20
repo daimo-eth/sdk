@@ -130,6 +130,9 @@ export const ko: typeof en = {
   accountBankTransferSubmittedTitle: "이체 진행 중",
   accountBankTransferSubmittedDesc:
     "은행 이체는 1~3영업일이 소요될 수 있습니다. 이 창을 닫고 계정 페이지에서 진행 상황을 확인할 수 있습니다.",
+  accountSepaTransferSubmittedTitle: "이체 확인 중",
+  accountSepaTransferSubmittedDesc:
+    "SEPA 이체는 보통 몇 분 안에 도착합니다. 이 창을 닫고 계정 페이지에서 진행 상황을 확인할 수 있습니다.",
   accountDirectionsSubmittedTitle: "이체 진행 중",
   accountDirectionsSubmittedDesc:
     "JPYC가 Daimo 계정 지갑에 도착하면 자동으로 감지합니다. 이 창을 닫고 계정 페이지에서 진행 상황을 확인할 수 있습니다.",

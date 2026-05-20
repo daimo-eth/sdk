@@ -26,12 +26,18 @@ export function AccountBankTransferSubmittedPage({
 }: AccountBankTransferSubmittedPageProps) {
   const client = useDaimoClient();
   const accountUrl = `${baseUrl}/account/activity?session=${encodeURIComponent(sessionId)}`;
-  const title = rail === "jpyc"
-    ? t.accountDirectionsSubmittedTitle
-    : t.accountBankTransferSubmittedTitle;
-  const description = rail === "jpyc"
-    ? t.accountDirectionsSubmittedDesc
-    : t.accountBankTransferSubmittedDesc;
+  const title =
+    rail === "jpyc"
+      ? t.accountDirectionsSubmittedTitle
+      : rail === "sepa"
+        ? t.accountSepaTransferSubmittedTitle
+        : t.accountBankTransferSubmittedTitle;
+  const description =
+    rail === "jpyc"
+      ? t.accountDirectionsSubmittedDesc
+      : rail === "sepa"
+        ? t.accountSepaTransferSubmittedDesc
+        : t.accountBankTransferSubmittedDesc;
 
   useDepositPoller({
     client,
@@ -39,8 +45,8 @@ export function AccountBankTransferSubmittedPage({
     clientSecret,
     onUpdate(deposit) {
       if (
-        deposit.status !== "initiated"
-        && deposit.status !== "awaiting_payment"
+        deposit.status !== "initiated" &&
+        deposit.status !== "awaiting_payment"
       ) {
         onAdvance();
       }

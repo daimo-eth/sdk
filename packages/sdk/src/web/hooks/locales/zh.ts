@@ -130,6 +130,9 @@ export const zh: typeof en = {
   accountBankTransferSubmittedTitle: "转账进行中",
   accountBankTransferSubmittedDesc:
     "银行转账通常需要1-3个工作日。您可以关闭此窗口，并在账户页面跟踪进度。",
+  accountSepaTransferSubmittedTitle: "正在等待转账",
+  accountSepaTransferSubmittedDesc:
+    "SEPA 转账通常会在几分钟内到账。您可以关闭此窗口，并在账户页面跟踪进度。",
   accountDirectionsSubmittedTitle: "转账进行中",
   accountDirectionsSubmittedDesc:
     "JPYC 到达您的 Daimo 账户钱包后，我们会自动检测。您可以关闭此窗口，并在账户页面跟踪进度。",

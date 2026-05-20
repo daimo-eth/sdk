@@ -55,7 +55,7 @@ type TokenAmountEntryProps = {
 
 /**
  * Unified "Enter Amount" card: token icon with chain badge, dual-mode
- * (USD ↔ native) amount input, FX swap arrow, and min/max/balance footer.
+ * (USD ↔ native) amount input, FX swap arrow, and conditional helper footer.
  * Used by both the wallet deposit flow and the fiat/account deposit flow.
  */
 export function TokenAmountEntry({
@@ -102,6 +102,7 @@ export function TokenAmountEntry({
   const showMinWarning = hasAmount && validationAmountUsd < minimumUsd;
   const showMaxWarning =
     hasAmount && validationAmountUsd > maxUsdForValidation;
+  const showMaxButton = showMax && showMaxWarning;
   const currentEntryValue = {
     amountUsd: validationAmountUsd,
     nativeAmount,
@@ -210,7 +211,7 @@ export function TokenAmountEntry({
 
       <div className="daimo-flex daimo-items-center daimo-justify-center daimo-gap-2">
         {/* Invisible spacer to keep the input centered when Max is shown. */}
-        {showMax && (
+        {showMaxButton && (
           <span className="daimo-invisible daimo-py-[3px] daimo-px-2 daimo-text-sm">
             {t.max}
           </span>
@@ -247,7 +248,7 @@ export function TokenAmountEntry({
           )}
         </div>
 
-        {showMax && (
+        {showMaxButton && (
           <button
             onClick={handleMax}
             className="daimo-py-[3px] daimo-px-2 daimo-text-sm daimo-font-normal daimo-rounded-full daimo-bg-[var(--daimo-surface-secondary)] daimo-text-[var(--daimo-text-secondary)] hover:[@media(hover:hover)]:daimo-bg-[var(--daimo-surface-hover)] daimo-touch-action-manipulation daimo-transition-[background-color] daimo-duration-100 daimo-ease"
@@ -266,7 +267,7 @@ export function TokenAmountEntry({
       )}
 
       <p
-        className={`${messageColor} daimo-text-base daimo-font-normal daimo-leading-[21px] daimo-tabular-nums daimo-mb-6`}
+        className={`${messageColor} daimo-min-h-[21px] daimo-text-base daimo-font-normal daimo-leading-[21px] daimo-tabular-nums daimo-mb-6`}
       >
         {message}
       </p>
@@ -331,7 +332,7 @@ function buildMessage(args: {
     }
     return `${t.balance} ${formatNative(roundNative(balance.nativeAmountUnits, token), nativeDisplay)}`;
   }
-  return `${t.minimum} ${fmt(minimumUsd)}`;
+  return "";
 }
 
 function SwitchButton({

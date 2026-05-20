@@ -24,7 +24,6 @@ import {
   WarningIcon,
   YouTubeLogoIcon,
 } from "../icons.js";
-import { ProgressPulse } from "../ProgressPulse.js";
 import { DepositAddressContent } from "../WaitingDepositAddressPage.js";
 import { PageHeader, resolveIconUrl, ScrollContent } from "../shared.js";
 
@@ -204,14 +203,7 @@ export function AccountBankDetailsPage({
   }
 
   if (!instructions) {
-    return (
-      <div className="daimo-flex daimo-flex-col daimo-flex-1 daimo-min-h-[min(420px,90vh)]">
-        <PageHeader title={pageTitle} onBack={onBack} />
-        <div className="daimo-flex-1 daimo-flex daimo-items-center daimo-justify-center">
-          <ProgressPulse label={t.loading} />
-        </div>
-      </div>
-    );
+    return <BankDetailsSkeleton title={pageTitle} onBack={onBack} />;
   }
 
   return (
@@ -306,6 +298,57 @@ export function AccountBankDetailsPage({
         </div>
       )}
     </div>
+  );
+}
+
+function BankDetailsSkeleton({
+  title,
+  onBack,
+}: {
+  title: string;
+  onBack?: (() => void) | null;
+}) {
+  return (
+    <div
+      className="daimo-flex daimo-flex-col daimo-flex-1 daimo-min-h-0"
+      aria-busy="true"
+      aria-label={t.loading}
+    >
+      <PageHeader title={title} onBack={onBack} />
+      <ScrollContent>
+        <div className="daimo-flex daimo-flex-col daimo-gap-2 daimo-px-6 daimo-pt-4 daimo-pb-12">
+          {["daimo-w-28", "daimo-w-44", "daimo-w-24", "daimo-w-52"].map(
+            (widthClass, index) => (
+              <div
+                key={index}
+                className="daimo-flex daimo-items-center daimo-justify-between daimo-gap-3 daimo-rounded-[var(--daimo-radius-md)] daimo-px-4 daimo-py-3"
+                style={{ backgroundColor: "var(--daimo-surface-secondary)" }}
+              >
+                <div className="daimo-flex daimo-min-w-0 daimo-flex-1 daimo-flex-col">
+                  <SkeletonBlock className="daimo-h-3 daimo-w-20" />
+                  <SkeletonBlock
+                    className={`daimo-mt-2 daimo-h-4 ${widthClass}`}
+                  />
+                </div>
+                <SkeletonBlock className="daimo-h-8 daimo-w-8 daimo-shrink-0 daimo-rounded-[var(--daimo-radius-sm)]" />
+              </div>
+            ),
+          )}
+        </div>
+      </ScrollContent>
+      <div className="daimo-mt-3 daimo-px-6 daimo-pt-2 daimo-pb-6 daimo-flex daimo-justify-center">
+        <SkeletonBlock className="daimo-h-[54px] daimo-w-full daimo-rounded-[var(--daimo-radius-lg)]" />
+      </div>
+    </div>
+  );
+}
+
+function SkeletonBlock({ className }: { className: string }) {
+  return (
+    <div
+      className={className}
+      style={{ backgroundColor: "var(--daimo-skeleton)" }}
+    />
   );
 }
 

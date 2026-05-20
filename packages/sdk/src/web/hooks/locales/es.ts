@@ -100,6 +100,9 @@ export const es: typeof en = {
   accountBankTransferSubmittedTitle: "Transferencia en camino",
   accountBankTransferSubmittedDesc:
     "Las transferencias bancarias pueden tardar entre 1 y 3 días hábiles. Puedes cerrar esta ventana y seguir el progreso desde tu cuenta.",
+  accountSepaTransferSubmittedTitle: "Esperando la transferencia",
+  accountSepaTransferSubmittedDesc:
+    "Las transferencias SEPA suelen llegar en minutos. Puedes cerrar esta ventana y seguir el progreso desde tu cuenta.",
   accountDirectionsSubmittedTitle: "Transferencia en camino",
   accountDirectionsSubmittedDesc:
     "Detectaremos la transferencia de JPYC cuando llegue a tu billetera de cuenta Daimo. Puedes cerrar esta ventana y seguir el progreso desde tu cuenta.",
