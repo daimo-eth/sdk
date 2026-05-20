@@ -35,10 +35,12 @@ export function useCoinbaseApplePayWidget({
   const [iframeReady, setIframeReady] = useState(false);
   const [iframeExpanded, setIframeExpanded] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
+  const applePaySessionActiveRef = useRef(false);
   const refreshRef = useRef(onRefreshDeposit);
 
   const resetWidget = useCallback(() => {
     debugApplePay("reset widget", { paymentLinkUrl });
+    applePaySessionActiveRef.current = false;
     setWidgetError(null);
     setIframeReady(false);
     setIframeExpanded(false);
@@ -49,8 +51,18 @@ export function useCoinbaseApplePayWidget({
   }, [onRefreshDeposit]);
 
   useEffect(() => {
-    if (!allowExpandedView) setIframeExpanded(false);
+    if (!allowExpandedView && !applePaySessionActiveRef.current) {
+      setIframeExpanded(false);
+    }
   }, [allowExpandedView]);
+
+  const startApplePaySession = useCallback(() => {
+    applePaySessionActiveRef.current = true;
+  }, []);
+
+  const finishApplePaySession = useCallback(() => {
+    applePaySessionActiveRef.current = false;
+  }, []);
 
   useEffect(() => {
     debugApplePay("payment link updated", { paymentLinkUrl });
@@ -93,6 +105,7 @@ export function useCoinbaseApplePayWidget({
           setIframeReady(true);
           return;
         case "onramp_api.load_error":
+          finishApplePaySession();
           if (
             parsed.data?.errorCode ===
             "ERROR_CODE_GUEST_APPLE_PAY_NOT_SUPPORTED"
@@ -105,25 +118,31 @@ export function useCoinbaseApplePayWidget({
           );
           return;
         case "onramp_api.apple_pay_button_pressed":
+          startApplePaySession();
           updateExpandedView(true);
           return;
         case "onramp_api.pending_payment_auth":
         case "onramp_api.payment_authorized":
+          startApplePaySession();
           updateExpandedView(true);
           return;
         case "onramp_api.commit_success":
+          finishApplePaySession();
           updateExpandedView(false);
           void refreshRef.current();
           return;
         case "onramp_api.commit_error":
+          finishApplePaySession();
           updateExpandedView(false);
           setWidgetError(parsed.data?.errorMessage ?? "payment failed");
           return;
         case "onramp_api.cancel":
+          finishApplePaySession();
           debugApplePay("collapsing widget after cancel event");
           updateExpandedView(false);
           return;
         case "onramp_api.apple_pay_session_cancelled":
+          finishApplePaySession();
           updateExpandedView(false);
           return;
         case "onramp_api.polling_start":
@@ -131,10 +150,12 @@ export function useCoinbaseApplePayWidget({
           void refreshRef.current();
           return;
         case "onramp_api.polling_success":
+          finishApplePaySession();
           updateExpandedView(false);
           void refreshRef.current();
           return;
         case "onramp_api.polling_error":
+          finishApplePaySession();
           updateExpandedView(false);
           setWidgetError(
             parsed.data?.errorMessage ?? "transaction processing error",
@@ -150,7 +171,7 @@ export function useCoinbaseApplePayWidget({
     };
     window.addEventListener("message", handler);
     return () => window.removeEventListener("message", handler);
-  }, [updateExpandedView]);
+  }, [finishApplePaySession, startApplePaySession, updateExpandedView]);
 
   const onIframeLoad = useCallback(() => {
     debugApplePay("iframe load", { paymentLinkUrl });
