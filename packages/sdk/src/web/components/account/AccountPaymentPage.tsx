@@ -153,8 +153,20 @@ export function AccountPaymentPage({
 function AmountEntrySkeleton() {
   return (
     <div className="daimo-flex daimo-flex-col daimo-items-center">
-      <Skeleton className="daimo-mb-8 daimo-h-20 daimo-w-20" rounded="full" />
-      <Skeleton className="daimo-h-10 daimo-w-40" rounded="lg" />
+      <div className="daimo-mb-3">
+        <Skeleton className="daimo-h-20 daimo-w-20" rounded="full" />
+      </div>
+      <div className="daimo-flex daimo-h-10 daimo-items-center daimo-justify-center">
+        <Skeleton className="daimo-h-10 daimo-w-40" rounded="lg" />
+      </div>
+      <div className="daimo-flex daimo-items-center daimo-justify-center daimo-py-3 daimo-px-4">
+        <Skeleton
+          className="daimo-h-[21px] daimo-w-20"
+          rounded="sm"
+          delayMs={100}
+        />
+      </div>
+      <div className="daimo-min-h-[21px] daimo-mb-6" />
     </div>
   );
 }

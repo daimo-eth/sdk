@@ -71,6 +71,7 @@ export function AccountCanadaBankPickerPage({
     startedPayment ??
     (draftPayment?.flow === "bank-picker" ? draftPayment : null);
   const institutions: DepositInstitution[] = payment?.institutions ?? [];
+  const isLoadingInstitutions = isCreating || payment == null;
   const query = search.toLowerCase();
 
   const filteredFeatured = useMemo(() => {
@@ -174,7 +175,7 @@ export function AccountCanadaBankPickerPage({
 
         {/* Featured banks — logo tiles or skeletons */}
         <div className="daimo-grid daimo-grid-cols-3 daimo-gap-2 daimo-px-6 daimo-py-3">
-          {isCreating
+          {isLoadingInstitutions
             ? Array.from({ length: 15 }).map((_, i) => (
                 <Skeleton
                   key={i}
@@ -192,7 +193,7 @@ export function AccountCanadaBankPickerPage({
         </div>
 
         {/* Other banks — text list (hidden while loading) */}
-        {!isCreating && filteredOther.length > 0 && (
+        {!isLoadingInstitutions && filteredOther.length > 0 && (
           <div className="daimo-px-6 daimo-pb-3 daimo-flex daimo-flex-col">
             <p className="daimo-text-xs daimo-text-[var(--daimo-text-muted)] daimo-mb-2">
               {t.accountOtherInstitutions}
