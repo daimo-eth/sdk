@@ -1,16 +1,27 @@
 type ConfirmationSpinnerProps = {
   done: boolean;
   bounced?: boolean;
+  size?: number;
+  className?: string;
 };
 
 /** Spinner → checkmark/exclamation transition for payment confirmation. */
-export function ConfirmationSpinner({ done, bounced }: ConfirmationSpinnerProps) {
+export function ConfirmationSpinner({
+  done,
+  bounced,
+  size = 100,
+  className = "",
+}: ConfirmationSpinnerProps) {
   const settled = done || bounced;
+  const inset = Math.max(2, Math.round(size * 0.06));
   return (
-    <div className="daimo-relative daimo-w-[100px] daimo-h-[100px]">
+    <div
+      className={`daimo-relative daimo-shrink-0 ${className}`}
+      style={{ width: size, height: size }}
+    >
       <div
-        className="daimo-absolute daimo-inset-[6px] daimo-rounded-full daimo-flex daimo-items-center daimo-justify-center daimo-overflow-hidden"
-        style={{ backgroundColor: "var(--daimo-bg)" }}
+        className="daimo-absolute daimo-rounded-full daimo-flex daimo-items-center daimo-justify-center daimo-overflow-hidden"
+        style={{ backgroundColor: "var(--daimo-bg)", inset }}
       >
         {/* Spinner - visible when not settled */}
         <LoadingCircle
@@ -23,7 +34,9 @@ export function ConfirmationSpinner({ done, bounced }: ConfirmationSpinnerProps)
         {/* Checkmark - visible when done (not bounced) */}
         <TickIcon
           className={`daimo-absolute daimo-w-full daimo-h-full daimo-transition-[opacity,transform] daimo-duration-200 ${
-            done && !bounced ? "daimo-opacity-100 daimo-scale-100" : "daimo-opacity-0 daimo-scale-50"
+            done && !bounced
+              ? "daimo-opacity-100 daimo-scale-100"
+              : "daimo-opacity-0 daimo-scale-50"
           }`}
           style={{ color: "var(--daimo-checkmark)" }}
         />
@@ -31,7 +44,9 @@ export function ConfirmationSpinner({ done, bounced }: ConfirmationSpinnerProps)
         {/* Exclamation - visible when bounced */}
         <ExclamationIcon
           className={`daimo-absolute daimo-w-full daimo-h-full daimo-transition-[opacity,transform] daimo-duration-200 ${
-            bounced ? "daimo-opacity-100 daimo-scale-100" : "daimo-opacity-0 daimo-scale-50"
+            bounced
+              ? "daimo-opacity-100 daimo-scale-100"
+              : "daimo-opacity-0 daimo-scale-50"
           }`}
           style={{ color: "var(--daimo-warning)" }}
         />

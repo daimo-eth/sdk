@@ -1,9 +1,11 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 
 import type { AccountDepositStatus } from "../../../common/account.js";
 import { useDaimoClient } from "../../hooks/DaimoClientContext.js";
 import { t } from "../../hooks/locale.js";
 import { useDepositPoller } from "../../hooks/useDepositPoller.js";
+import { ConfirmationSpinner } from "../ConfirmationSpinner.js";
+import { ExternalLinkIcon } from "../icons.js";
 import { ErrorPage } from "../ErrorPage.js";
 import { CenteredContent, PageHeader } from "../shared.js";
 
@@ -19,28 +21,28 @@ const TERMINAL_STATUSES: AccountDepositStatus[] = [
   "expired",
 ];
 
-/** Map status to a 0-2 step index for the progress indicator. */
-function getStep(status: AccountDepositStatus): number {
+function getStatusLabel(status: AccountDepositStatus): string {
   switch (status) {
-    case "payment_received": return 0;
-    case "token_delivered": return 1;
-    case "completed": return 2;
-    default: return 0;
+    case "payment_received":
+      return t.depositDetected;
+    case "token_delivered":
+      return t.depositProcessing;
+    case "completed":
+      return t.depositFinalizing;
+    default:
+      return t.depositDetected;
   }
 }
 
-const STEP_LABELS = ["Received", "Processing", "Complete"];
-
-/**
- * Async deposit status — ConfirmationSpinner + progress steps + action rows.
- */
+/** Account deposit confirmation with spinner-led progress and account actions. */
 export function AccountStatusPage({
   sessionId,
   clientSecret,
   baseUrl,
 }: AccountStatusPageProps) {
   const client = useDaimoClient();
-  const [status, setStatus] = useState<AccountDepositStatus>("payment_received");
+  const [status, setStatus] =
+    useState<AccountDepositStatus>("payment_received");
   const [eta, setEta] = useState<string | null>(null);
 
   useDepositPoller({
@@ -57,11 +59,19 @@ export function AccountStatusPage({
   const isComplete = status === "completed";
 
   if (status === "failed" || status === "expired") {
-    return <ErrorPage message={t.errorDepositFailed} sessionId={sessionId} hideRetry />;
+    return (
+      <ErrorPage
+        message={t.errorDepositFailed}
+        sessionId={sessionId}
+        hideRetry
+      />
+    );
   }
 
-  const step = getStep(status);
-  const title = isComplete ? t.accountDepositComplete : t.accountDepositReceived;
+  const title = isComplete
+    ? t.accountDepositComplete
+    : t.accountDepositReceived;
+  const statusLabel = getStatusLabel(status);
   const receiptUrl = `${baseUrl}/receipt?id=${sessionId}`;
   const accountUrl = `${baseUrl}/account/activity?session=${encodeURIComponent(sessionId)}`;
 
@@ -70,100 +80,114 @@ export function AccountStatusPage({
       <PageHeader title={title} />
 
       <CenteredContent>
-        <div className="daimo-flex daimo-flex-col daimo-items-center daimo-gap-3">
-          <DepositProgress step={step} />
-          {!isComplete && eta && (
-            <span
-              className="daimo-text-[10px] daimo-px-2.5 daimo-py-1 daimo-rounded-full"
-              style={{
-                backgroundColor: "var(--daimo-surface-secondary)",
-                color: "var(--daimo-text-muted)",
-                fontVariantNumeric: "tabular-nums",
-              }}
-            >
-              ETA {eta}
-            </span>
-          )}
+        <div className="daimo-flex daimo-flex-col daimo-items-center daimo-gap-5">
+          <ConfirmationSpinner done={isComplete} />
+          {!isComplete && <StatusLine label={statusLabel} eta={eta} />}
         </div>
       </CenteredContent>
 
-      <div className="daimo-px-8 daimo-pb-4 daimo-flex daimo-flex-col daimo-gap-1">
-        <LinkPill href={accountUrl} icon="user" label={t.accountViewAccount} />
-        <LinkPill href={receiptUrl} icon="receipt" label={t.showReceipt} />
+      <div className="daimo-flex daimo-flex-col daimo-items-center daimo-gap-2 daimo-px-6 daimo-pb-6">
+        <ActionLink
+          href={accountUrl}
+          icon={<AccountIcon />}
+          label={t.accountViewAccount}
+        />
+        <ActionLink
+          href={receiptUrl}
+          icon={<ReceiptIcon />}
+          label={t.showReceipt}
+        />
       </div>
     </div>
   );
 }
 
-/** Three-dot progress indicator with current step label. */
-function DepositProgress({ step }: { step: number }) {
+function StatusLine({ label, eta }: { label: string; eta: string | null }) {
   return (
-    <div className="daimo-flex daimo-flex-col daimo-items-center daimo-gap-2">
-      <div className="daimo-flex daimo-items-center daimo-w-[120px]">
-        {[0, 1, 2].map((i) => (
-          <div key={i} className="daimo-contents">
-            {i > 0 && (
-              <div
-                className="daimo-flex-1 daimo-h-[2px] daimo-rounded-full"
-                style={{
-                  backgroundColor: i <= step
-                    ? "var(--daimo-success)"
-                    : "var(--daimo-surface-secondary)",
-                  transition: "background-color 300ms ease-out",
-                }}
-              />
-            )}
-            <div
-              className="daimo-w-2 daimo-h-2 daimo-rounded-full daimo-shrink-0"
-              style={{
-                backgroundColor: i <= step
-                  ? "var(--daimo-success)"
-                  : "var(--daimo-surface-secondary)",
-                transition: "background-color 300ms ease-out",
-                boxShadow: i === step ? "0 0 0 3px var(--daimo-success-light)" : "none",
-              }}
-            />
-          </div>
-        ))}
-      </div>
-      <span
-        className="daimo-text-[10px]"
-        style={{ color: "var(--daimo-text-muted)", transition: "color 200ms ease-out" }}
-      >
-        {STEP_LABELS[step]}
-      </span>
+    <div
+      className="daimo-flex daimo-min-h-[36px] daimo-w-full daimo-max-w-xs daimo-items-center daimo-justify-center daimo-gap-2 daimo-rounded-full daimo-px-4 daimo-py-2 daimo-text-sm daimo-font-medium"
+      style={{
+        backgroundColor: "var(--daimo-surface-secondary)",
+        color: "var(--daimo-text-secondary)",
+      }}
+    >
+      <span>{label}</span>
+      {eta && (
+        <>
+          <span
+            className="daimo-h-1 daimo-w-1 daimo-rounded-full"
+            style={{ backgroundColor: "var(--daimo-text-muted)" }}
+          />
+          <span style={{ fontVariantNumeric: "tabular-nums" }}>ETA {eta}</span>
+        </>
+      )}
     </div>
   );
 }
 
-/** Compact pill link — icon + label, 44px min tap target. */
-function LinkPill({ href, icon, label }: { href: string; icon: "user" | "receipt"; label: string }) {
+function ActionLink({
+  href,
+  icon,
+  label,
+}: {
+  href: string;
+  icon: ReactNode;
+  label: string;
+}) {
   return (
     <a
       href={href}
       target="_blank"
       rel="noopener noreferrer"
-      className="daimo-flex daimo-items-center daimo-gap-2 daimo-rounded-[var(--daimo-radius-md)] daimo-px-3 daimo-py-2.5 daimo-text-xs daimo-font-medium daimo-transition-[background-color] daimo-duration-150 hover:[@media(hover:hover)]:daimo-bg-[var(--daimo-surface-secondary)]"
-      style={{ color: "var(--daimo-text-muted)" }}
+      className="daimo-flex daimo-w-full daimo-max-w-xs daimo-min-h-[52px] daimo-touch-action-manipulation daimo-items-center daimo-gap-3 daimo-rounded-[var(--daimo-radius-lg)] daimo-bg-[var(--daimo-surface-secondary)] daimo-px-4 daimo-py-3 daimo-text-[var(--daimo-text)] daimo-transition-[background-color] daimo-duration-100 daimo-ease hover:[@media(hover:hover)]:daimo-bg-[var(--daimo-surface-hover)]"
     >
-      {icon === "user" && (
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <circle cx="12" cy="8" r="5" />
-          <path d="M20 21a8 8 0 0 0-16 0" />
-        </svg>
-      )}
-      {icon === "receipt" && (
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z" />
-          <path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8" />
-          <path d="M12 17.5v-11" />
-        </svg>
-      )}
-      <span className="daimo-flex-1">{label}</span>
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.5 }}>
-        <path d="M7 7h10v10" />
-        <path d="M7 17 17 7" />
-      </svg>
+      <span className="daimo-text-[var(--daimo-text-muted)]">{icon}</span>
+      <span className="daimo-flex-1 daimo-text-sm daimo-font-medium">
+        {label}
+      </span>
+      <ExternalLinkIcon
+        size={14}
+        className="daimo-shrink-0 daimo-text-[var(--daimo-text-muted)]"
+      />
     </a>
+  );
+}
+
+function AccountIcon() {
+  return (
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <circle cx="12" cy="8" r="4" />
+      <path d="M20 21a8 8 0 0 0-16 0" />
+    </svg>
+  );
+}
+
+function ReceiptIcon() {
+  return (
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M5 3v18l2-1.25L9 21l2-1.25L13 21l2-1.25L17 21l2-1.25V3l-2 1.25L15 3l-2 1.25L11 3 9 4.25 7 3 5 4.25Z" />
+      <path d="M8 9h8" />
+      <path d="M8 13h8" />
+    </svg>
   );
 }
