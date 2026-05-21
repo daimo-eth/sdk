@@ -1,6 +1,9 @@
 import { useState, type ReactNode } from "react";
 
-import type { AccountDepositStatus } from "../../../common/account.js";
+import type {
+  AccountDepositEta,
+  AccountDepositStatus,
+} from "../../../common/account.js";
 import { useDaimoClient } from "../../hooks/DaimoClientContext.js";
 import { t } from "../../hooks/locale.js";
 import { useDepositPoller } from "../../hooks/useDepositPoller.js";
@@ -26,7 +29,7 @@ function getStatusLabel(status: AccountDepositStatus): string {
     case "payment_received":
       return t.depositDetected;
     case "token_delivered":
-      return t.depositProcessing;
+      return t.depositFinalizing;
     case "completed":
       return t.depositFinalizing;
     default:
@@ -43,7 +46,7 @@ export function AccountStatusPage({
   const client = useDaimoClient();
   const [status, setStatus] =
     useState<AccountDepositStatus>("payment_received");
-  const [eta, setEta] = useState<string | null>(null);
+  const [eta, setEta] = useState<AccountDepositEta | null>(null);
 
   useDepositPoller({
     client,
@@ -72,6 +75,7 @@ export function AccountStatusPage({
     ? t.accountDepositComplete
     : t.accountDepositReceived;
   const statusLabel = getStatusLabel(status);
+  const displayEta = eta ? getStatusEta(status, eta) : null;
   const receiptUrl = `${baseUrl}/receipt?id=${sessionId}`;
   const accountUrl = `${baseUrl}/account/activity?session=${encodeURIComponent(sessionId)}`;
 
@@ -82,7 +86,7 @@ export function AccountStatusPage({
       <CenteredContent>
         <div className="daimo-flex daimo-flex-col daimo-items-center daimo-gap-5">
           <ConfirmationSpinner done={isComplete} />
-          {!isComplete && <StatusLine label={statusLabel} eta={eta} />}
+          {!isComplete && <StatusLine label={statusLabel} eta={displayEta} />}
         </div>
       </CenteredContent>
 
@@ -100,6 +104,14 @@ export function AccountStatusPage({
       </div>
     </div>
   );
+}
+
+function getStatusEta(
+  status: AccountDepositStatus,
+  eta: AccountDepositEta,
+): string {
+  if (status === "token_delivered") return eta.finalizing;
+  return eta.payment;
 }
 
 function StatusLine({ label, eta }: { label: string; eta: string | null }) {

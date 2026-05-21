@@ -94,6 +94,14 @@ export type AccountDepositStatus =
   | "expired"
   | "failed";
 
+/** User-facing ETA strings for each account deposit phase. */
+export type AccountDepositEta = {
+  /** ETA while the fiat/provider payment is being received and settled. */
+  payment: string;
+  /** ETA once funds are on-chain and Daimo routing is finalizing. */
+  finalizing: string;
+};
+
 /** Deposit record returned by the API. */
 export interface AccountDeposit {
   id: string;
@@ -102,8 +110,8 @@ export interface AccountDeposit {
   fiatCurrency: string;
   status: AccountDepositStatus;
   errorMessage: string | null;
-  /** User-facing ETA string for this deposit's rail, e.g. "1–5 min". */
-  eta: string;
+  /** User-facing ETA strings for this deposit's rail. */
+  eta: AccountDepositEta;
 }
 
 /** EIP-712 typed data structure. Extends Record so it can be passed to signTypedData directly. */
