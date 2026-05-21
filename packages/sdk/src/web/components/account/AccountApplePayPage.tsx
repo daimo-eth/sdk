@@ -285,6 +285,7 @@ export function AccountApplePayPage({
           minimum={minimum}
           maximum={maximum}
           currencySymbol={currencySymbol}
+          defaultLabel=""
           initialValue={initialAmountValue}
           disabled={hasStartedDeposit}
           onSubmit={() => {
