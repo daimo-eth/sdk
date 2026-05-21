@@ -907,14 +907,13 @@ function renderStripeOnramp(
   return (
     <StripeOnrampPage
       node={node}
+      platform={ctx.platform}
       amountUsd={entry.amountUsd}
-      onrampSessionClientSecret={entry.onrampSessionClientSecret}
-      publishableKey={entry.publishableKey}
       redirectUrl={entry.redirectUrl}
-      isLoading={!entry.onrampSessionClientSecret && !entry.error}
+      isLoading={!entry.redirectUrl && !entry.error}
       error={entry.error}
       onBack={ctx.onBack}
-      onRetry={ctx.onBack}
+      onRetry={ctx.onRetry}
       baseUrl={ctx.session.baseUrl}
     />
   );

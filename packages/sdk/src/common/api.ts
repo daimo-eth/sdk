@@ -121,8 +121,8 @@ export type CreatePaymentMethodResponse = {
     onrampSessionClientSecret: string;
     /** Stripe publishable key for the onramp SDK. */
     publishableKey: string;
-    /** Stripe-hosted onramp URL. Present when Stripe returns one. */
-    redirectUrl?: string;
+    /** Stripe-hosted onramp URL. */
+    redirectUrl: string;
   };
 };
 

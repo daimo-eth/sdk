@@ -238,6 +238,9 @@ export function useSessionNav(
         if (!result.stripe) {
           throw new Error("stripe onramp session not returned");
         }
+        if (!result.stripe.redirectUrl) {
+          throw new Error("stripe onramp url not returned");
+        }
 
         logNavEvent(session.sessionId, session.clientSecret, {
           nodeId,
