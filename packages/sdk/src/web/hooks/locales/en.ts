@@ -31,7 +31,7 @@ export const en = {
 
   // SelectAmountPage
   selectAmount: "Select Amount",
-  loading: "Loading...",
+  loading: "Loading",
   continue: "Continue",
 
   // SelectTokenPage
@@ -91,20 +91,19 @@ export const en = {
   accountEmailPlaceholder: "email@example.com",
   accountOtp: "Enter verification code",
   accountOtpSent: "We sent a code to",
-  accountCreatingWallet: "Setting up your account",
-  accountEnrollment: "Verify your identity",
+  accountCreatingWallet: "Preparing your account",
+  accountEnrollment: "Account setup",
   accountEnrollmentRetry: "Resubmit documents",
-  accountEnrollmentPending: "Reviewing your documents",
+  accountEnrollmentPending: "Reviewing your information",
   accountEnrollmentPendingDesc: "This usually takes a few minutes",
-  accountProviderPending: "Enrolling your account",
-  accountProviderPendingDesc: "Finishing your provider setup",
-  accountEnrollmentRejected: "Verification declined",
+  accountProviderPending: "Finalizing account",
+  accountProviderPendingDesc: "This may take a moment",
+  accountEnrollmentRejected: "Verification could not be completed",
   accountSuspended: "Account suspended",
-  accountEnrollmentError: "Verification failed",
+  accountEnrollmentError: "Account setup failed",
   accountRegionUnavailableTitle: "Region unavailable",
   accountRegionUnavailableHeading: "You are not eligible for this region",
-  accountRegionUnavailableDescription:
-    "This account cannot use this region.",
+  accountRegionUnavailableDescription: "This account cannot use this region.",
   accountRegionUnavailableCta: "Go back",
   accountPayment: "Enter amount",
   accountResendCode: "Resend code",
@@ -136,13 +135,18 @@ export const en = {
   accountDirectionsSubmittedDesc:
     "We will detect the JPYC transfer once it lands in your Daimo account wallet. You can close this window and track progress from your account page.",
   accountTosTitle: "Terms of Service",
-  accountTosDesc: "To continue, please agree to the terms of service and privacy policy.",
+  accountTosDesc:
+    "To continue, please agree to the terms of service and privacy policy.",
   accountTosTerms: "Terms of Service",
   accountTosPrivacy: "Privacy Policy",
   accountTosCta: "Continue",
   accountKycIntroTitle: "Verify your identity",
-  accountKycIntroDesc: "Regulations require identity verification for bank transfers. Your data is encrypted and never shared.",
+  accountKycIntroDesc:
+    "Some deposit methods require identity verification. Your data is encrypted and only used for this check.",
   accountKycIntroCta: "Continue",
+  accountKycTrustEncrypted: "Encrypted",
+  accountKycTrustPrivate: "Private",
+  accountKycTrustQuick: "2 min",
   accountDepositReceived: "Deposit received",
   accountDepositComplete: "Deposit complete",
   accountViewAccount: "View in Account",
@@ -156,7 +160,8 @@ export const en = {
   errorGeneric: "Something went wrong. Please try again.",
   errorDepositFailed: "We couldn't process your deposit. Please try again.",
   errorAccountSetup: "We couldn't set up your account. Please try again.",
-  errorConnectionLost: "Connection lost. Please check your network and try again.",
+  errorConnectionLost:
+    "Connection lost. Please check your network and try again.",
 
   // session page
   connect: "Connect",

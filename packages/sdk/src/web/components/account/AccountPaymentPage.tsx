@@ -12,6 +12,7 @@ import {
 import { t } from "../../hooks/locale.js";
 import type { DaimoPlatform } from "../../platform.js";
 import { PrimaryButton } from "../buttons.js";
+import { Skeleton } from "../Skeleton.js";
 import { CenteredContent, PageHeader } from "../shared.js";
 import {
   TokenAmountEntry,
@@ -152,14 +153,8 @@ export function AccountPaymentPage({
 function AmountEntrySkeleton() {
   return (
     <div className="daimo-flex daimo-flex-col daimo-items-center">
-      <div
-        className="daimo-mb-8 daimo-h-20 daimo-w-20 daimo-rounded-full motion-safe:daimo-animate-daimo-pulse"
-        style={{ backgroundColor: "var(--daimo-skeleton)" }}
-      />
-      <div
-        className="daimo-h-10 daimo-w-40 daimo-rounded-lg motion-safe:daimo-animate-daimo-pulse"
-        style={{ backgroundColor: "var(--daimo-skeleton)" }}
-      />
+      <Skeleton className="daimo-mb-8 daimo-h-20 daimo-w-20" rounded="full" />
+      <Skeleton className="daimo-h-10 daimo-w-40" rounded="lg" />
     </div>
   );
 }

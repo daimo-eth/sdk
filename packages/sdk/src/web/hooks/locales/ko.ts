@@ -33,7 +33,7 @@ export const ko: typeof en = {
 
   // SelectAmountPage
   selectAmount: "금액 선택",
-  loading: "로딩 중...",
+  loading: "로딩 중",
   continue: "계속",
 
   // SelectTokenPage
@@ -93,19 +93,20 @@ export const ko: typeof en = {
   accountEmailPlaceholder: "email@example.com",
   accountOtp: "인증 코드 입력",
   accountOtpSent: "인증 코드를 전송했습니다:",
-  accountCreatingWallet: "계정 설정 중",
-  accountEnrollment: "본인 인증",
+  accountCreatingWallet: "계정 준비 중",
+  accountEnrollment: "계정 설정",
   accountEnrollmentRetry: "서류 재제출",
-  accountEnrollmentPending: "서류 검토 중",
+  accountEnrollmentPending: "정보 검토 중",
   accountEnrollmentPendingDesc: "보통 몇 분 정도 소요됩니다",
-  accountProviderPending: "계정 등록 중",
-  accountProviderPendingDesc: "제공업체 설정을 완료하는 중입니다",
-  accountEnrollmentRejected: "인증이 거부되었습니다",
+  accountProviderPending: "계정 마무리 중",
+  accountProviderPendingDesc: "잠시 시간이 걸릴 수 있습니다",
+  accountEnrollmentRejected: "인증을 완료할 수 없습니다",
   accountSuspended: "계정이 정지되었습니다",
-  accountEnrollmentError: "인증 실패",
+  accountEnrollmentError: "계정 설정 실패",
   accountRegionUnavailableTitle: "지역 이용 불가",
   accountRegionUnavailableHeading: "이 지역에서는 이용할 수 없습니다",
-  accountRegionUnavailableDescription: "이 계정은 해당 지역에서 사용할 수 없습니다.",
+  accountRegionUnavailableDescription:
+    "이 계정은 해당 지역에서 사용할 수 없습니다.",
   accountRegionUnavailableCta: "돌아가기",
   accountPayment: "금액 입력",
   accountResendCode: "코드 재전송",
@@ -143,8 +144,11 @@ export const ko: typeof en = {
   accountTosCta: "계속",
   accountKycIntroTitle: "본인 인증",
   accountKycIntroDesc:
-    "법규에 따라 은행 이체 시 본인 인증이 필요합니다. 데이터는 암호화되며 제3자와 공유되지 않습니다.",
+    "일부 입금 방법은 본인 인증이 필요합니다. 데이터는 암호화되며 이 확인에만 사용됩니다.",
   accountKycIntroCta: "계속",
+  accountKycTrustEncrypted: "암호화",
+  accountKycTrustPrivate: "비공개",
+  accountKycTrustQuick: "2분",
   accountDepositReceived: "입금 수신 완료",
   accountDepositComplete: "입금 완료",
   accountViewAccount: "계정에서 확인",
@@ -158,7 +162,8 @@ export const ko: typeof en = {
   errorGeneric: "문제가 발생했습니다. 다시 시도해 주세요.",
   errorDepositFailed: "입금을 처리할 수 없습니다. 다시 시도해 주세요.",
   errorAccountSetup: "계정을 설정할 수 없습니다. 다시 시도해 주세요.",
-  errorConnectionLost: "연결이 끊어졌습니다. 네트워크를 확인하고 다시 시도해 주세요.",
+  errorConnectionLost:
+    "연결이 끊어졌습니다. 네트워크를 확인하고 다시 시도해 주세요.",
 
   // session page
   connect: "연결",

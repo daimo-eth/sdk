@@ -4,7 +4,7 @@ import { t } from "../../hooks/locale.js";
 import { useAccountFlow } from "../../hooks/useAccountFlow.js";
 import { useDaimoClient } from "../../hooks/DaimoClientContext.js";
 import { ErrorPage } from "../ErrorPage.js";
-import { ProgressPulse } from "../ProgressPulse.js";
+import { Skeleton, SkeletonText } from "../Skeleton.js";
 import { CenteredContent, PageHeader } from "../shared.js";
 
 type AccountCreatingWalletPageProps = {
@@ -37,15 +37,15 @@ export function AccountCreatingWalletPage({
       await account.createAccount(client, { sessionId, clientSecret }, addr);
       onDone();
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "failed to set up account",
-      );
+      setError(err instanceof Error ? err.message : "failed to set up account");
     } finally {
       runningRef.current = false;
     }
   }, [account, client, sessionId, clientSecret, onDone]);
 
-  useEffect(() => { run(); }, [run]);
+  useEffect(() => {
+    run();
+  }, [run]);
 
   if (error) {
     return (
@@ -61,7 +61,14 @@ export function AccountCreatingWalletPage({
     <div className="daimo-flex daimo-flex-col daimo-flex-1 daimo-min-h-0">
       <PageHeader title={t.accountCreatingWallet} />
       <CenteredContent>
-        <ProgressPulse />
+        <div
+          className="daimo-flex daimo-w-full daimo-max-w-[260px] daimo-flex-col daimo-items-center daimo-gap-4"
+          aria-busy="true"
+          aria-label={t.accountCreatingWallet}
+        >
+          <Skeleton className="daimo-h-14 daimo-w-14" rounded="full" />
+          <SkeletonText lines={2} widths={["82%", "58%"]} />
+        </div>
       </CenteredContent>
     </div>
   );

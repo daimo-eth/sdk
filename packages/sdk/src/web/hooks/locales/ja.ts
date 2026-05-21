@@ -33,7 +33,7 @@ export const ja: typeof en = {
 
   // SelectAmountPage
   selectAmount: "金額を選択",
-  loading: "読み込み中...",
+  loading: "読み込み中",
   continue: "続ける",
 
   // SelectTokenPage
@@ -93,16 +93,16 @@ export const ja: typeof en = {
   accountEmailPlaceholder: "email@example.com",
   accountOtp: "確認コードを入力",
   accountOtpSent: "確認コードを送信しました：",
-  accountCreatingWallet: "アカウントを設定中",
-  accountEnrollment: "本人確認",
+  accountCreatingWallet: "アカウントを準備中",
+  accountEnrollment: "アカウント設定",
   accountEnrollmentRetry: "書類を再提出",
-  accountEnrollmentPending: "書類を確認中",
+  accountEnrollmentPending: "情報を確認中",
   accountEnrollmentPendingDesc: "通常数分で完了します",
-  accountProviderPending: "アカウントを登録中",
-  accountProviderPendingDesc: "プロバイダーの設定を完了しています",
-  accountEnrollmentRejected: "本人確認が拒否されました",
+  accountProviderPending: "アカウントを仕上げています",
+  accountProviderPendingDesc: "少し時間がかかる場合があります",
+  accountEnrollmentRejected: "確認を完了できませんでした",
   accountSuspended: "アカウントが停止されました",
-  accountEnrollmentError: "本人確認に失敗しました",
+  accountEnrollmentError: "アカウント設定に失敗しました",
   accountRegionUnavailableTitle: "地域が利用できません",
   accountRegionUnavailableHeading: "この地域ではご利用いただけません",
   accountRegionUnavailableDescription:
@@ -138,14 +138,18 @@ export const ja: typeof en = {
   accountDirectionsSubmittedDesc:
     "JPYCがDaimoアカウントのウォレットに着金すると自動で検出します。このウィンドウを閉じて、アカウントページで進捗を確認できます。",
   accountTosTitle: "利用規約",
-  accountTosDesc: "続行するには、利用規約とプライバシーポリシーに同意してください。",
+  accountTosDesc:
+    "続行するには、利用規約とプライバシーポリシーに同意してください。",
   accountTosTerms: "利用規約",
   accountTosPrivacy: "プライバシーポリシー",
   accountTosCta: "続ける",
   accountKycIntroTitle: "本人確認",
   accountKycIntroDesc:
-    "銀行振込には法規制により本人確認が必要です。データは暗号化され、第三者と共有されることはありません。",
+    "一部の入金方法では本人確認が必要です。データは暗号化され、この確認にのみ使用されます。",
   accountKycIntroCta: "続ける",
+  accountKycTrustEncrypted: "暗号化",
+  accountKycTrustPrivate: "非公開",
+  accountKycTrustQuick: "2分",
   accountDepositReceived: "入金を受け取りました",
   accountDepositComplete: "入金完了",
   accountViewAccount: "アカウントで確認",

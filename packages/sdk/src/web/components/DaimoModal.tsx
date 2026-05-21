@@ -80,6 +80,7 @@ import {
   PageHeader,
   ErrorMessage as SharedErrorMessage,
 } from "./shared.js";
+import { Skeleton, SkeletonText } from "./Skeleton.js";
 import { WaitingDepositAddressPage } from "./WaitingDepositAddressPage.js";
 import { WalletAmountPage } from "./WalletAmountPage.js";
 
@@ -280,13 +281,17 @@ function DaimoModalInner({
 
   const depositAddress = useDepositAddress(session);
 
-  const cwNode = findNodeByType("ConnectedWallet", session.navTree) as NavNodeConnectedWallet | null;
+  const cwNode = findNodeByType(
+    "ConnectedWallet",
+    session.navTree,
+  ) as NavNodeConnectedWallet | null;
   const connectMode: "auto" | "passive" | "none" = cwNode
     ? cwNode.autoconnect
       ? "auto"
       : "passive"
     : "none";
-  const { wallets: injectedWallets, isLoading: isLoadingWallets } = useInjectedWallets();
+  const { wallets: injectedWallets, isLoading: isLoadingWallets } =
+    useInjectedWallets();
   const walletFlow = useWalletFlow(
     session.sessionId,
     depositAddress ?? "",
@@ -336,9 +341,7 @@ function DaimoModalInner({
   const isAccountFlow = nav.topEntry?.type?.startsWith("account-") ?? false;
   const navKey = `${nav.topEntry?.type ?? "root"}-${nav.topEntry?.nodeId ?? ""}`;
   // Account flows manage their own terminal states — don't remount on session status change
-  const pageKey = isTerminal && !isAccountFlow
-    ? session.status
-    : navKey;
+  const pageKey = isTerminal && !isAccountFlow ? session.status : navKey;
 
   let content: React.ReactNode;
   let showFooterSpacer = true;
@@ -351,8 +354,8 @@ function DaimoModalInner({
   } else if (
     !isAccountFlow &&
     (session.status === "processing" ||
-    session.status === "succeeded" ||
-    session.status === "bounced")
+      session.status === "succeeded" ||
+      session.status === "bounced")
   ) {
     content = (
       <ConfirmationPage
@@ -404,7 +407,9 @@ function DaimoModalInner({
 
   // Skip page-enter animation on first render — container animation handles it
   const animate = !isFirstPage.current;
-  useEffect(() => { isFirstPage.current = false; }, []);
+  useEffect(() => {
+    isFirstPage.current = false;
+  }, []);
 
   return (
     <div
@@ -629,7 +634,9 @@ function renderEntry(
           platform={ctx.platform}
           baseUrl={ctx.session.baseUrl}
           onBack={ctx.canGoBack ? ctx.onBack : null}
-          onAdvance={() => ctx.onAccountAdvance(getAccountPaymentAdvanceTarget(entry.rail))}
+          onAdvance={() =>
+            ctx.onAccountAdvance(getAccountPaymentAdvanceTarget(entry.rail))
+          }
         />
       );
     case "account-canada-bank-picker":
@@ -662,7 +669,9 @@ function renderEntry(
           clientSecret={ctx.session.clientSecret}
           baseUrl={ctx.session.baseUrl}
           onBack={null}
-          onAdvance={() => ctx.onAccountAdvance("account-bank-transfer-submitted")}
+          onAdvance={() =>
+            ctx.onAccountAdvance("account-bank-transfer-submitted")
+          }
         />
       );
     case "account-bank-transfer-submitted":
@@ -700,7 +709,10 @@ function renderEntry(
     case "account-error":
       return (
         <div className="daimo-flex daimo-flex-col daimo-flex-1 daimo-min-h-0">
-          <PageHeader title={t.error} onBack={ctx.canGoBack ? ctx.onBack : null} />
+          <PageHeader
+            title={t.error}
+            onBack={ctx.canGoBack ? ctx.onBack : null}
+          />
           <CenteredContent>
             <SharedErrorMessage message={entry.message} />
           </CenteredContent>
@@ -944,9 +956,7 @@ function renderWalletConnect(
           />
         )}
         {walletFlow.isConnecting && !entry.walletName && (
-          <span className="daimo-text-[var(--daimo-text-muted)]">
-            {t.loading}
-          </span>
+          <SkeletonText lines={1} widths={["7rem"]} />
         )}
       </CenteredContent>
 
@@ -1099,11 +1109,7 @@ function renderWalletSending(
 }
 
 function LoadingMessage() {
-  return (
-    <div className="daimo-flex daimo-items-center daimo-justify-center daimo-h-full daimo-text-[var(--daimo-text-muted)]">
-      {t.loading}
-    </div>
-  );
+  return <SkeletonContent rowCount={3} />;
 }
 
 function FlowErrorMessage({
@@ -1136,34 +1142,23 @@ function FlowErrorMessage({
 }
 
 function SkeletonContent({ rowCount = 4 }: { rowCount?: number }) {
-  const skeletonBg = "var(--daimo-skeleton, #e5e7eb)";
-  const radiusLg = "var(--daimo-radius-lg, 16px)";
   return (
     <div className="daimo-flex daimo-flex-col">
       <div className="daimo-flex daimo-items-center daimo-justify-center daimo-p-6">
-        <div
-          className="daimo-h-5 daimo-w-32 daimo-rounded daimo-animate-daimo-pulse"
-          style={{ backgroundColor: skeletonBg }}
-        />
+        <Skeleton className="daimo-h-5 daimo-w-32" rounded="sm" />
       </div>
       <div className="daimo-px-6 daimo-pb-4 daimo-flex daimo-flex-col daimo-gap-3">
         {[...Array(rowCount)].map((_, i) => (
-          <div
+          <Skeleton
             key={i}
-            className="daimo-h-16 daimo-animate-daimo-pulse"
-            style={{
-              backgroundColor: skeletonBg,
-              borderRadius: radiusLg,
-              animationDelay: `${i * 100}ms`,
-            }}
+            className="daimo-h-16"
+            rounded="lg"
+            delayMs={i * 100}
           />
         ))}
       </div>
       <div className="daimo-py-4 daimo-text-center">
-        <span
-          className="daimo-inline-block daimo-h-4 daimo-w-28 daimo-rounded daimo-animate-daimo-pulse"
-          style={{ backgroundColor: skeletonBg }}
-        />
+        <SkeletonText lines={1} widths={["7rem"]} />
       </div>
     </div>
   );

@@ -2,6 +2,7 @@ import { t } from "../hooks/locale.js";
 import { isDesktop, type DaimoPlatform } from "../platform.js";
 import { ExternalLinkIcon, PrimaryButton } from "./buttons.js";
 import { QRCode } from "./QRCode.js";
+import { SkeletonText } from "./Skeleton.js";
 import {
   CenteredContent,
   PageHeader,
@@ -82,7 +83,7 @@ export function ExternalPaymentPage({
           icon && <PageLogo icon={icon} alt={title} baseUrl={baseUrl} />
         )}
         {isLoading ? (
-          <ExternalPaymentTextSkeleton />
+          <SkeletonText className="daimo-max-w-xs" widths={["80%", "60%"]} />
         ) : (
           <p className="daimo-text-[var(--daimo-text-secondary)] daimo-text-center daimo-max-w-xs daimo-text-sm daimo-whitespace-pre-line">
             {message}
@@ -98,15 +99,6 @@ export function ExternalPaymentPage({
           </PrimaryButton>
         )}
       </CenteredContent>
-    </div>
-  );
-}
-
-function ExternalPaymentTextSkeleton() {
-  return (
-    <div className="daimo-flex daimo-flex-col daimo-items-center daimo-gap-2 daimo-max-w-xs daimo-w-full">
-      <div className="daimo-h-4 daimo-w-4/5 daimo-rounded daimo-bg-[var(--daimo-surface-secondary)] daimo-animate-daimo-pulse" />
-      <div className="daimo-h-4 daimo-w-3/5 daimo-rounded daimo-bg-[var(--daimo-surface-secondary)] daimo-animate-daimo-pulse" />
     </div>
   );
 }

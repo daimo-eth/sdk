@@ -16,6 +16,7 @@ import {
 } from "../../hooks/useDraftDeposit.js";
 import type { DaimoPlatform } from "../../platform.js";
 import { ErrorPage } from "../ErrorPage.js";
+import { Skeleton } from "../Skeleton.js";
 import { PageHeader, ScrollContent, TextInput } from "../shared.js";
 import { openDeeplink } from "./openDeeplink.js";
 
@@ -62,24 +63,29 @@ export function AccountCanadaBankPickerPage({
   });
 
   const startedPayment =
-    depositState?.kind === "started" && depositState.payment.flow === "bank-picker"
+    depositState?.kind === "started" &&
+    depositState.payment.flow === "bank-picker"
       ? depositState.payment
       : null;
   const payment =
-    startedPayment
-    ?? (draftPayment?.flow === "bank-picker" ? draftPayment : null);
+    startedPayment ??
+    (draftPayment?.flow === "bank-picker" ? draftPayment : null);
   const institutions: DepositInstitution[] = payment?.institutions ?? [];
   const query = search.toLowerCase();
 
   const filteredFeatured = useMemo(() => {
-    const featured = institutions.filter((i) => i.featured ?? i.logoURI != null);
+    const featured = institutions.filter(
+      (i) => i.featured ?? i.logoURI != null,
+    );
     return query
       ? featured.filter((i) => i.name.toLowerCase().includes(query))
       : featured;
   }, [institutions, query]);
 
   const filteredOther = useMemo(() => {
-    const other = institutions.filter((i) => !(i.featured ?? i.logoURI != null));
+    const other = institutions.filter(
+      (i) => !(i.featured ?? i.logoURI != null),
+    );
     return query
       ? other.filter((i) => i.name.toLowerCase().includes(query))
       : other;
@@ -88,9 +94,9 @@ export function AccountCanadaBankPickerPage({
   const handleSelect = useCallback(
     async (institution: DepositInstitution) => {
       if (
-        depositState?.kind === "started"
-        && depositState.depositAmount === depositAmount
-        && depositState.payment.flow === "bank-picker"
+        depositState?.kind === "started" &&
+        depositState.depositAmount === depositAmount &&
+        depositState.payment.flow === "bank-picker"
       ) {
         setDepositState({
           ...depositState,
@@ -140,7 +146,6 @@ export function AccountCanadaBankPickerPage({
     ],
   );
 
-  const skeletonBg = "var(--daimo-skeleton, #e5e7eb)";
   const error = startError ?? draftError;
 
   if (error) {
@@ -171,13 +176,10 @@ export function AccountCanadaBankPickerPage({
         <div className="daimo-grid daimo-grid-cols-3 daimo-gap-2 daimo-px-6 daimo-py-3">
           {isCreating
             ? Array.from({ length: 15 }).map((_, i) => (
-                <div
+                <Skeleton
                   key={i}
-                  className="daimo-flex daimo-items-center daimo-justify-center daimo-min-h-[56px] daimo-rounded-[var(--daimo-radius-md)] daimo-animate-daimo-pulse"
-                  style={{
-                    backgroundColor: skeletonBg,
-                    animationDelay: `${(i % 5) * 80}ms`,
-                  }}
+                  className="daimo-min-h-[56px]"
+                  delayMs={(i % 5) * 80}
                 />
               ))
             : filteredFeatured.map((inst) => (
@@ -229,7 +231,8 @@ function InstitutionTile({ institution, onSelect }: InstitutionProps) {
           onError={(e) => {
             const el = e.target as HTMLImageElement;
             el.style.display = "none";
-            if (el.parentElement) el.parentElement.textContent = institution.name;
+            if (el.parentElement)
+              el.parentElement.textContent = institution.name;
           }}
         />
       ) : (

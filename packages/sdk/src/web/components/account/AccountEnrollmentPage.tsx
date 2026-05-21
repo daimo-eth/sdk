@@ -11,8 +11,12 @@ import { useAccountFlow } from "../../hooks/useAccountFlow.js";
 import { PrimaryButton, SecondaryButton } from "../buttons.js";
 import { ErrorPage } from "../ErrorPage.js";
 import { ErrorIcon, ExternalLinkIcon } from "../icons.js";
-import { ProgressPulse } from "../ProgressPulse.js";
-import { CenteredContent, ContactSupportButton, PageHeader } from "../shared.js";
+import { Skeleton, SkeletonText } from "../Skeleton.js";
+import {
+  CenteredContent,
+  ContactSupportButton,
+  PageHeader,
+} from "../shared.js";
 
 type AccountEnrollmentPageProps = {
   rail: AccountRail;
@@ -164,13 +168,7 @@ export function AccountEnrollmentPage({
   // --- Render ---
 
   if (isLoading) {
-    return (
-      <EnrollmentWaiting
-        title={t.accountEnrollment}
-        label={t.loading}
-        onBack={onBack}
-      />
-    );
+    return <EnrollmentWaiting title={t.accountEnrollment} onBack={onBack} />;
   }
 
   if (!response) return null;
@@ -179,10 +177,7 @@ export function AccountEnrollmentPage({
     case "kyc_required":
       if (!kycAccepted) {
         return (
-          <KycIntro
-            onContinue={() => setKycAccepted(true)}
-            onBack={onBack}
-          />
+          <KycIntro onContinue={() => setKycAccepted(true)} onBack={onBack} />
         );
       }
       return (
@@ -275,13 +270,7 @@ export function AccountEnrollmentPage({
     case "phone_required":
       // Navigation is triggered in fetchEnrollment; render a waiting state
       // here to avoid flicker until the modal pushes the phone screen.
-      return (
-        <EnrollmentWaiting
-          title={t.accountEnrollment}
-          label={t.loading}
-          onBack={onBack}
-        />
-      );
+      return <EnrollmentWaiting title={t.accountEnrollment} onBack={onBack} />;
 
     case "active":
       return null;
@@ -308,10 +297,21 @@ function KycIntro({
           className="daimo-w-12 daimo-h-12 daimo-rounded-full daimo-flex daimo-items-center daimo-justify-center"
           style={{
             backgroundColor: "var(--daimo-surface-secondary)",
-            animation: "daimo-scale-in 400ms cubic-bezier(0.175, 0.885, 0.32, 1.1) both",
+            animation:
+              "daimo-scale-in 400ms cubic-bezier(0.175, 0.885, 0.32, 1.1) both",
           }}
         >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: "var(--daimo-text-secondary)" }}>
+          <svg
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            style={{ color: "var(--daimo-text-secondary)" }}
+          >
             <path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z" />
             <path d="m9 12 2 2 4-4" />
           </svg>
@@ -319,7 +319,10 @@ function KycIntro({
 
         <p
           className="daimo-text-xs daimo-text-[var(--daimo-text-muted)] daimo-text-center daimo-leading-relaxed daimo-mt-4 daimo-max-w-[240px]"
-          style={{ animation: "daimo-fade-up 300ms cubic-bezier(0.19, 1, 0.22, 1) 100ms both" }}
+          style={{
+            animation:
+              "daimo-fade-up 300ms cubic-bezier(0.19, 1, 0.22, 1) 100ms both",
+          }}
         >
           {t.accountKycIntroDesc}
         </p>
@@ -327,17 +330,23 @@ function KycIntro({
         {/* Trust signals */}
         <div
           className="daimo-flex daimo-items-center daimo-gap-6 daimo-mt-5 daimo-mb-4"
-          style={{ animation: "daimo-fade-up 300ms cubic-bezier(0.19, 1, 0.22, 1) 200ms both" }}
+          style={{
+            animation:
+              "daimo-fade-up 300ms cubic-bezier(0.19, 1, 0.22, 1) 200ms both",
+          }}
         >
-          <TrustSignal icon="lock" label="Encrypted" />
-          <TrustSignal icon="eye-off" label="Private" />
-          <TrustSignal icon="clock" label="2 min" />
+          <TrustSignal icon="lock" label={t.accountKycTrustEncrypted} />
+          <TrustSignal icon="eye-off" label={t.accountKycTrustPrivate} />
+          <TrustSignal icon="clock" label={t.accountKycTrustQuick} />
         </div>
       </div>
 
       <div
         className="daimo-px-6 daimo-pb-8 daimo-flex daimo-flex-col daimo-items-center"
-        style={{ animation: "daimo-fade-up 300ms cubic-bezier(0.19, 1, 0.22, 1) 300ms both" }}
+        style={{
+          animation:
+            "daimo-fade-up 300ms cubic-bezier(0.19, 1, 0.22, 1) 300ms both",
+        }}
       >
         <PrimaryButton onClick={onContinue}>
           {t.accountKycIntroCta}
@@ -348,7 +357,13 @@ function KycIntro({
 }
 
 /** Small trust signal with icon + label. */
-function TrustSignal({ icon, label }: { icon: "lock" | "eye-off" | "clock"; label: string }) {
+function TrustSignal({
+  icon,
+  label,
+}: {
+  icon: "lock" | "eye-off" | "clock";
+  label: string;
+}) {
   return (
     <div className="daimo-flex daimo-flex-col daimo-items-center daimo-gap-1.5">
       <div
@@ -356,13 +371,33 @@ function TrustSignal({ icon, label }: { icon: "lock" | "eye-off" | "clock"; labe
         style={{ backgroundColor: "var(--daimo-surface-secondary)" }}
       >
         {icon === "lock" && (
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: "var(--daimo-text-muted)" }}>
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            style={{ color: "var(--daimo-text-muted)" }}
+          >
             <rect width="18" height="11" x="3" y="11" rx="2" ry="2" />
             <path d="M7 11V7a5 5 0 0 1 10 0v4" />
           </svg>
         )}
         {icon === "eye-off" && (
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: "var(--daimo-text-muted)" }}>
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            style={{ color: "var(--daimo-text-muted)" }}
+          >
             <path d="M10.733 5.076a10.744 10.744 0 0 1 11.205 6.575 1 1 0 0 1 0 .696 10.747 10.747 0 0 1-1.444 2.49" />
             <path d="M14.084 14.158a3 3 0 0 1-4.242-4.242" />
             <path d="M17.479 17.499a10.75 10.75 0 0 1-15.417-5.151 1 1 0 0 1 0-.696 10.75 10.75 0 0 1 4.446-5.143" />
@@ -370,13 +405,25 @@ function TrustSignal({ icon, label }: { icon: "lock" | "eye-off" | "clock"; labe
           </svg>
         )}
         {icon === "clock" && (
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: "var(--daimo-text-muted)" }}>
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            style={{ color: "var(--daimo-text-muted)" }}
+          >
             <circle cx="12" cy="12" r="10" />
             <polyline points="12 6 12 12 16 14" />
           </svg>
         )}
       </div>
-      <span className="daimo-text-[10px] daimo-text-[var(--daimo-text-muted)]">{label}</span>
+      <span className="daimo-text-[10px] daimo-text-[var(--daimo-text-muted)]">
+        {label}
+      </span>
     </div>
   );
 }
@@ -397,7 +444,10 @@ function EnrollmentIneligible({
         <div className="daimo-flex daimo-flex-col daimo-items-center daimo-gap-4 daimo-px-6 daimo-text-center">
           <div
             className="daimo-flex daimo-h-16 daimo-w-16 daimo-items-center daimo-justify-center daimo-rounded-full"
-            style={{ backgroundColor: "var(--daimo-warning-light, var(--daimo-surface-secondary))" }}
+            style={{
+              backgroundColor:
+                "var(--daimo-warning-light, var(--daimo-surface-secondary))",
+            }}
           >
             <svg
               width="30"
@@ -471,7 +521,7 @@ function EnrollmentTerminal({
   );
 }
 
-/** Waiting view — pulsing dots with title and optional description. */
+/** Waiting view — stable skeleton placeholders for advancing account states. */
 function EnrollmentWaiting({
   title,
   label,
@@ -485,7 +535,17 @@ function EnrollmentWaiting({
     <div className="daimo-flex daimo-flex-col daimo-flex-1 daimo-min-h-0">
       <PageHeader title={title} onBack={onBack} />
       <CenteredContent>
-        <ProgressPulse label={label} />
+        <div
+          className="daimo-flex daimo-w-full daimo-max-w-[260px] daimo-flex-col daimo-items-center daimo-gap-4"
+          aria-busy="true"
+          aria-label={label ?? t.loading}
+        >
+          <Skeleton className="daimo-h-14 daimo-w-14" rounded="full" />
+          <SkeletonText
+            lines={label ? 2 : 1}
+            widths={label ? ["88%", "64%"] : ["56%"]}
+          />
+        </div>
       </CenteredContent>
     </div>
   );
@@ -572,9 +632,7 @@ function HostedAgreementPage({
           </span>
         </button>
         <p className="daimo-text-[11px] daimo-text-[var(--daimo-text-muted)] daimo-text-center daimo-leading-relaxed daimo-px-4">
-          {isChecking
-            ? step.checkingDescription
-            : step.autoContinueDescription}
+          {isChecking ? step.checkingDescription : step.autoContinueDescription}
         </p>
       </div>
     </div>

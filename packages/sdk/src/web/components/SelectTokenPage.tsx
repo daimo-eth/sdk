@@ -11,6 +11,7 @@ import {
   TokenIconWithChainBadge,
   useScrollBorder,
 } from "./shared.js";
+import { Skeleton } from "./Skeleton.js";
 
 type SelectTokenPageProps = {
   /** Token options, or null if not yet loaded */
@@ -119,27 +120,24 @@ export function SelectTokenPage({
 /** Skeleton loading row - matches TokenRow dimensions with token + chain badge */
 function SkeletonRow() {
   return (
-    <div className={`${LIST_ROW_CLASS} daimo-animate-daimo-pulse`}>
+    <div className={LIST_ROW_CLASS}>
       <div className="daimo-flex-1 daimo-min-w-0 daimo-mr-3">
-        <div
+        <Skeleton
           className="daimo-h-5 daimo-w-48 daimo-rounded daimo-mb-2"
-          style={{ backgroundColor: "var(--daimo-skeleton)" }}
+          rounded="sm"
         />
-        <div
-          className="daimo-h-4 daimo-w-32 daimo-rounded"
-          style={{ backgroundColor: "var(--daimo-skeleton)" }}
-        />
+        <Skeleton className="daimo-h-4 daimo-w-32 daimo-rounded" rounded="sm" />
       </div>
       {/* Token icon + chain badge skeleton */}
       <div className="daimo-relative daimo-w-8 daimo-h-8 daimo-shrink-0">
-        <div
+        <Skeleton
           className="daimo-w-8 daimo-h-8 daimo-rounded-full"
-          style={{ backgroundColor: "var(--daimo-skeleton)" }}
+          rounded="full"
         />
-        <div
+        <Skeleton
           className="daimo-absolute -daimo-bottom-0.5 -daimo-right-0.5 daimo-w-[15px] daimo-h-[15px] daimo-rounded-full"
+          rounded="full"
           style={{
-            backgroundColor: "var(--daimo-skeleton)",
             border: "1px solid var(--daimo-surface-secondary)",
           }}
         />
@@ -160,7 +158,13 @@ type TokenRowProps = {
  * Token option row - 64px height, matching ChooseOptionPage row style.
  * Shows "$X TOKEN on Chain" with "Y TOKEN" subtitle.
  */
-function TokenRow({ option, showRequired = false, onSelect, disabled = false, baseUrl }: TokenRowProps) {
+function TokenRow({
+  option,
+  showRequired = false,
+  onSelect,
+  disabled = false,
+  baseUrl,
+}: TokenRowProps) {
   const display = showRequired ? option.required : option.balance;
   const chainName = getChainName(display.token.chainId);
   const tokenAmount = formatTokenAmount(display.amount, display.token);
@@ -181,7 +185,13 @@ function TokenRow({ option, showRequired = false, onSelect, disabled = false, ba
     <ListRow
       label={title}
       subtitle={subtitle}
-      right={<TokenIconWithChainBadge token={display.token} size="sm" baseUrl={baseUrl} />}
+      right={
+        <TokenIconWithChainBadge
+          token={display.token}
+          size="sm"
+          baseUrl={baseUrl}
+        />
+      }
       onClick={() => onSelect(option)}
       disabled={disabled}
     />

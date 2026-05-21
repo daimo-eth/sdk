@@ -10,6 +10,7 @@ import { useDaimoClient } from "../hooks/DaimoClientContext.js";
 import { t } from "../hooks/locale.js";
 import { createNavLogger } from "../hooks/navEvent.js";
 import { QRCode } from "./QRCode.js";
+import { Skeleton } from "./Skeleton.js";
 import {
   CopyableInfoCard,
   PageHeader,
@@ -362,17 +363,8 @@ function QRToggleButton({
 function AddressSkeleton() {
   return (
     <div className="daimo-w-full daimo-min-h-[56px] daimo-p-4 daimo-bg-[var(--daimo-surface-secondary)] daimo-rounded-[var(--daimo-radius-sm)] daimo-flex daimo-flex-col daimo-gap-2">
-      <div
-        className="daimo-h-3 daimo-w-24 daimo-rounded daimo-animate-daimo-pulse"
-        style={{ backgroundColor: "var(--daimo-skeleton)" }}
-      />
-      <div
-        className="daimo-h-5 daimo-w-40 daimo-rounded daimo-animate-daimo-pulse"
-        style={{
-          backgroundColor: "var(--daimo-skeleton)",
-          animationDelay: "100ms",
-        }}
-      />
+      <Skeleton className="daimo-h-3 daimo-w-24" rounded="sm" />
+      <Skeleton className="daimo-h-5 daimo-w-40" rounded="sm" delayMs={100} />
     </div>
   );
 }

@@ -26,6 +26,7 @@ import {
 } from "../icons.js";
 import { DepositAddressContent } from "../WaitingDepositAddressPage.js";
 import { PageHeader, resolveIconUrl, ScrollContent } from "../shared.js";
+import { Skeleton } from "../Skeleton.js";
 
 type AccountBankDetailsPageProps = {
   rail: AccountRail;
@@ -330,26 +331,30 @@ function BankDetailsSkeleton({
                     className={`daimo-mt-2 daimo-h-4 ${widthClass}`}
                   />
                 </div>
-                <SkeletonBlock className="daimo-h-8 daimo-w-8 daimo-shrink-0 daimo-rounded-[var(--daimo-radius-sm)]" />
+                <SkeletonBlock className="daimo-h-8 daimo-w-8 daimo-shrink-0" />
               </div>
             ),
           )}
         </div>
       </ScrollContent>
       <div className="daimo-mt-3 daimo-px-6 daimo-pt-2 daimo-pb-6 daimo-flex daimo-justify-center">
-        <SkeletonBlock className="daimo-h-[54px] daimo-w-full daimo-max-w-xs daimo-rounded-[var(--daimo-radius-lg)]" />
+        <SkeletonBlock
+          className="daimo-h-[54px] daimo-w-full daimo-max-w-xs"
+          rounded="lg"
+        />
       </div>
     </div>
   );
 }
 
-function SkeletonBlock({ className }: { className: string }) {
-  return (
-    <div
-      className={className}
-      style={{ backgroundColor: "var(--daimo-skeleton)" }}
-    />
-  );
+function SkeletonBlock({
+  className,
+  rounded = "sm",
+}: {
+  className: string;
+  rounded?: "sm" | "lg";
+}) {
+  return <Skeleton className={className} rounded={rounded} />;
 }
 
 function DirectionsActions({
