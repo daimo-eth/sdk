@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useState } from "react";
 
 import type {
   AccountDepositEta,
@@ -8,9 +8,8 @@ import { useDaimoClient } from "../../hooks/DaimoClientContext.js";
 import { t } from "../../hooks/locale.js";
 import { useDepositPoller } from "../../hooks/useDepositPoller.js";
 import { ConfirmationSpinner } from "../ConfirmationSpinner.js";
-import { ExternalLinkIcon } from "../icons.js";
 import { ErrorPage } from "../ErrorPage.js";
-import { CenteredContent, PageHeader } from "../shared.js";
+import { CenteredContent, PageHeader, ShowReceiptButton } from "../shared.js";
 
 type AccountStatusPageProps = {
   sessionId: string;
@@ -76,8 +75,6 @@ export function AccountStatusPage({
     : t.accountDepositReceived;
   const statusLabel = getStatusLabel(status);
   const displayEta = eta ? getStatusEta(status, eta) : null;
-  const receiptUrl = `${baseUrl}/receipt?id=${sessionId}`;
-  const accountUrl = `${baseUrl}/account/activity?session=${encodeURIComponent(sessionId)}`;
 
   return (
     <div className="daimo-flex daimo-flex-col daimo-flex-1 daimo-min-h-0">
@@ -91,16 +88,7 @@ export function AccountStatusPage({
       </CenteredContent>
 
       <div className="daimo-flex daimo-flex-col daimo-items-center daimo-gap-2 daimo-px-6 daimo-pb-6">
-        <ActionLink
-          href={accountUrl}
-          icon={<AccountIcon />}
-          label={t.accountViewAccount}
-        />
-        <ActionLink
-          href={receiptUrl}
-          icon={<ReceiptIcon />}
-          label={t.showReceipt}
-        />
+        <ShowReceiptButton sessionId={sessionId} baseUrl={baseUrl} />
       </div>
     </div>
   );
@@ -134,72 +122,5 @@ function StatusLine({ label, eta }: { label: string; eta: string | null }) {
         </>
       )}
     </div>
-  );
-}
-
-function ActionLink({
-  href,
-  icon,
-  label,
-}: {
-  href: string;
-  icon: ReactNode;
-  label: string;
-}) {
-  return (
-    <a
-      href={href}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="daimo-flex daimo-w-full daimo-max-w-xs daimo-min-h-[52px] daimo-touch-action-manipulation daimo-items-center daimo-gap-3 daimo-rounded-[var(--daimo-radius-lg)] daimo-bg-[var(--daimo-surface-secondary)] daimo-px-4 daimo-py-3 daimo-text-[var(--daimo-text)] daimo-transition-[background-color] daimo-duration-100 daimo-ease hover:[@media(hover:hover)]:daimo-bg-[var(--daimo-surface-hover)]"
-    >
-      <span className="daimo-text-[var(--daimo-text-muted)]">{icon}</span>
-      <span className="daimo-flex-1 daimo-text-sm daimo-font-medium">
-        {label}
-      </span>
-      <ExternalLinkIcon
-        size={14}
-        className="daimo-shrink-0 daimo-text-[var(--daimo-text-muted)]"
-      />
-    </a>
-  );
-}
-
-function AccountIcon() {
-  return (
-    <svg
-      width="18"
-      height="18"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <circle cx="12" cy="8" r="4" />
-      <path d="M20 21a8 8 0 0 0-16 0" />
-    </svg>
-  );
-}
-
-function ReceiptIcon() {
-  return (
-    <svg
-      width="18"
-      height="18"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="M5 3v18l2-1.25L9 21l2-1.25L13 21l2-1.25L17 21l2-1.25V3l-2 1.25L15 3l-2 1.25L11 3 9 4.25 7 3 5 4.25Z" />
-      <path d="M8 9h8" />
-      <path d="M8 13h8" />
-    </svg>
   );
 }
