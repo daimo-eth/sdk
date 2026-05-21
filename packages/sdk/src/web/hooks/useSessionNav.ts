@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { AccountRail } from "../../common/account.js";
 import type {
   NavNode,
   NavNodeCashApp,
@@ -11,11 +12,7 @@ import type {
 import type { WalletPaymentOption } from "../api/walletTypes.js";
 
 import { getAccountPaymentEntryTarget } from "../components/account/accountNav.js";
-import {
-  detectPlatform,
-  isDesktop,
-  type DaimoPlatform,
-} from "../platform.js";
+import { detectPlatform, isDesktop, type DaimoPlatform } from "../platform.js";
 import { useDaimoClient } from "./DaimoClientContext.js";
 import { formatUserError } from "./formatUserError.js";
 import { t } from "./locale.js";
@@ -28,8 +25,14 @@ import { isUserRejection, type WalletFlowResult } from "./useWalletFlow.js";
 type NodeContext = { nodeId: string | null; nodeType: NavNodeType | null };
 type ExchangeId = "Coinbase" | "Binance" | "Lemon" | "MtPelerin" | "CashApp";
 type ExchangeNode = NavNodeExchange | NavNodeCashApp;
-
-import type { AccountRail } from "../../common/account.js";
+type AccountAuthChallengeEntryType = Extract<
+  NavEntry["type"],
+  "account-otp" | "account-phone-otp"
+>;
+type AccountAuthEntryType = Extract<
+  NavEntry["type"],
+  "account-email" | "account-otp" | "account-phone" | "account-phone-otp"
+>;
 
 type SessionNavResult = {
   stack: NavEntry[];
@@ -70,6 +73,38 @@ function getExchangeSelection(node: ExchangeNode): {
     return { exchangeId: "CashApp", nodeType: "CashApp" };
   }
   return { exchangeId: node.exchangeId, nodeType: "Exchange" };
+}
+
+const ACCOUNT_AUTH_CHALLENGE_ENTRY_TYPES =
+  new Set<AccountAuthChallengeEntryType>(["account-otp", "account-phone-otp"]);
+
+const ACCOUNT_AUTH_ENTRY_TYPES = new Set<AccountAuthEntryType>([
+  "account-email",
+  "account-otp",
+  "account-phone",
+  "account-phone-otp",
+]);
+
+function isAccountAuthChallengeEntryType(
+  type: NavEntry["type"],
+): type is AccountAuthChallengeEntryType {
+  return ACCOUNT_AUTH_CHALLENGE_ENTRY_TYPES.has(
+    type as AccountAuthChallengeEntryType,
+  );
+}
+
+function isAccountAuthEntryType(
+  type: NavEntry["type"],
+): type is AccountAuthEntryType {
+  return ACCOUNT_AUTH_ENTRY_TYPES.has(type as AccountAuthEntryType);
+}
+
+function pruneCompletedAccountAuth(
+  stack: NavEntry[],
+  nextType: NavEntry["type"],
+) {
+  if (isAccountAuthChallengeEntryType(nextType)) return stack;
+  return stack.filter((entry) => !isAccountAuthEntryType(entry.type));
 }
 
 export function useSessionNav(
@@ -302,8 +337,7 @@ export function useSessionNav(
             nodeId,
             rail,
             autoNav,
-            message:
-              "account deposit is not available for this session.",
+            message: "account deposit is not available for this session.",
           },
         ]);
         return;
@@ -321,7 +355,10 @@ export function useSessionNav(
       // If user has an active Privy session, check their account status
       // to skip onboarding steps they've already completed.
       if (token) {
-        const sessionCtx = { sessionId: session.sessionId, clientSecret: session.clientSecret };
+        const sessionCtx = {
+          sessionId: session.sessionId,
+          clientSecret: session.clientSecret,
+        };
         const result = await accountFlow.getAccount(client, sessionCtx, {
           rail,
         });
@@ -844,15 +881,9 @@ export function useSessionNav(
     [topEntry, fireWalletSend],
   );
 
-  const handleShowMobileWallets = useCallback(
-    (nodeId: string) => {
-      setStack((prev) => [
-        ...prev,
-        { type: "wallet-mobile-grid", nodeId },
-      ]);
-    },
-    [],
-  );
+  const handleShowMobileWallets = useCallback((nodeId: string) => {
+    setStack((prev) => [...prev, { type: "wallet-mobile-grid", nodeId }]);
+  }, []);
 
   // ─── Internal effects ──────────────────────────────────────────────────
 
@@ -906,10 +937,10 @@ export function useSessionNav(
     (nextType: NavEntry["type"]) => {
       if (!topEntry || !("rail" in topEntry)) return;
       const { nodeId, rail } = topEntry as NavEntry & { rail: AccountRail };
-      setStack((prev) => [
-        ...prev,
-        { type: nextType, nodeId, rail } as NavEntry,
-      ]);
+      setStack((prev) => {
+        const nextStack = pruneCompletedAccountAuth(prev, nextType);
+        return [...nextStack, { type: nextType, nodeId, rail } as NavEntry];
+      });
     },
     [topEntry],
   );

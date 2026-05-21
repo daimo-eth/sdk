@@ -3,11 +3,7 @@ import { useCallback, useRef, useState } from "react";
 import { t } from "../../hooks/locale.js";
 import { useAccountFlow } from "../../hooks/useAccountFlow.js";
 import { PrimaryButton, SecondaryLinkButton } from "../buttons.js";
-import {
-  CenteredContent,
-  ErrorMessage,
-  PageHeader,
-} from "../shared.js";
+import { CenteredContent, ErrorMessage, PageHeader } from "../shared.js";
 
 export type OtpVerifyOutcome = { ok: true } | { ok: false; msg?: string };
 
@@ -134,7 +130,9 @@ export function AccountOtpCodeEntry({
           {digits.map((digit, i) => (
             <input
               key={i}
-              ref={(el) => { inputsRef.current[i] = el; }}
+              ref={(el) => {
+                inputsRef.current[i] = el;
+              }}
               type="text"
               inputMode="numeric"
               maxLength={1}
@@ -173,7 +171,7 @@ const OTP_CELL_BASE =
 
 function otpCellClass(status: OtpStatus): string {
   if (status === "success") {
-    return `${OTP_CELL_BASE} daimo-bg-[var(--daimo-success-light)] daimo-text-[var(--daimo-success)] daimo-ring-2 daimo-ring-[var(--daimo-success)]`;
+    return `${OTP_CELL_BASE} daimo-bg-[var(--daimo-brand-green-light)] daimo-text-[var(--daimo-brand-green)] daimo-ring-2 daimo-ring-[var(--daimo-brand-green)]`;
   }
   if (status === "error") {
     return `${OTP_CELL_BASE} daimo-bg-[var(--daimo-error-light)] daimo-text-[var(--daimo-error)] daimo-ring-2 daimo-ring-[var(--daimo-error)]`;

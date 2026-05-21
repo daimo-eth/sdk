@@ -23,6 +23,8 @@
   --daimo-success: #22c55e;
   --daimo-success-light: #dcfce7;
   --daimo-checkmark: #22c55e;
+  --daimo-brand-green: #009110;
+  --daimo-brand-green-light: #e6f4e8;
   --daimo-error: #ef4444;
   --daimo-error-light: #fee2e2;
   --daimo-warning: #f97316;
@@ -68,6 +70,8 @@
     --daimo-success: #4ade80;
     --daimo-success-light: #14532d;
     --daimo-checkmark: #f3f4f6;
+    --daimo-brand-green: #009110;
+    --daimo-brand-green-light: #12351a;
     --daimo-error: #f87171;
     --daimo-error-light: #7f1d1d;
     --daimo-warning: #fb923c;
@@ -310,10 +314,23 @@
 }
 
 @keyframes daimo-otp-shake {
-  10%, 90% { transform: translateX(-2px); }
-  20%, 80% { transform: translateX(3px); }
-  30%, 50%, 70% { transform: translateX(-5px); }
-  40%, 60% { transform: translateX(5px); }
+  10%,
+  90% {
+    transform: translateX(-2px);
+  }
+  20%,
+  80% {
+    transform: translateX(3px);
+  }
+  30%,
+  50%,
+  70% {
+    transform: translateX(-5px);
+  }
+  40%,
+  60% {
+    transform: translateX(5px);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -339,7 +356,6 @@
   .daimo-otp-shake {
     animation: none;
   }
-
 }
 
 /* Dark mode: explicit override */
@@ -361,6 +377,8 @@
   --daimo-success: #4ade80;
   --daimo-success-light: #14532d;
   --daimo-checkmark: #f3f4f6;
+  --daimo-brand-green: #009110;
+  --daimo-brand-green-light: #12351a;
   --daimo-error: #f87171;
   --daimo-error-light: #7f1d1d;
   --daimo-warning: #fb923c;
