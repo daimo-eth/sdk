@@ -13,7 +13,7 @@ import { t } from "../../hooks/locale.js";
 import type { DaimoPlatform } from "../../platform.js";
 import { PrimaryButton } from "../buttons.js";
 import { Skeleton } from "../Skeleton.js";
-import { CenteredContent, PageHeader } from "../shared.js";
+import { PageHeader } from "../shared.js";
 import {
   TokenAmountEntry,
   type TokenAmountEntryValue,
@@ -95,7 +95,7 @@ export function AccountPaymentPage({
   return (
     <div className="daimo-flex daimo-flex-col daimo-flex-1 daimo-min-h-0">
       <PageHeader title={t.accountPayment} onBack={onBack} />
-      <CenteredContent>
+      <div className="daimo-flex-1 daimo-flex daimo-flex-col daimo-items-center daimo-p-6">
         {constraints ? (
           <TokenAmountEntry
             token={constraints.destinationToken}
@@ -134,9 +134,7 @@ export function AccountPaymentPage({
         ) : (
           <AmountEntrySkeleton />
         )}
-      </CenteredContent>
 
-      <div className="daimo-px-6 daimo-pb-6 daimo-flex daimo-flex-col daimo-items-center">
         <PrimaryButton
           onClick={() =>
             isValid && handleSubmit({ amountUsd, nativeAmount: amountNative })
