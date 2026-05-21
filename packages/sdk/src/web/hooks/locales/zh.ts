@@ -136,7 +136,7 @@ export const zh: typeof en = {
   accountTosCta: "继续",
   accountKycIntroTitle: "验证您的身份",
   accountKycIntroDesc:
-    "部分充值方式需要身份验证。您的数据已加密，仅用于本次验证。",
+    "请确认一些信息以使用此充值方式。您的信息会保持加密和私密。",
   accountKycIntroCta: "继续",
   accountKycTrustEncrypted: "已加密",
   accountKycTrustPrivate: "私密",

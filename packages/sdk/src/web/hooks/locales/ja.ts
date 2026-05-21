@@ -138,7 +138,7 @@ export const ja: typeof en = {
   accountTosCta: "続ける",
   accountKycIntroTitle: "本人確認",
   accountKycIntroDesc:
-    "一部の入金方法では本人確認が必要です。データは暗号化され、この確認にのみ使用されます。",
+    "この入金方法を利用するために、いくつかの情報を確認します。情報は暗号化され、非公開で扱われます。",
   accountKycIntroCta: "続ける",
   accountKycTrustEncrypted: "暗号化",
   accountKycTrustPrivate: "非公開",

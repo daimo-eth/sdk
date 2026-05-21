@@ -135,7 +135,7 @@ export const en = {
   accountTosCta: "Continue",
   accountKycIntroTitle: "Verify your identity",
   accountKycIntroDesc:
-    "Some deposit methods require identity verification. Your data is encrypted and only used for this check.",
+    "Confirm a few details so you can use this deposit method. Your information stays encrypted and private.",
   accountKycIntroCta: "Continue",
   accountKycTrustEncrypted: "Encrypted",
   accountKycTrustPrivate: "Private",

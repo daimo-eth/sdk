@@ -137,7 +137,7 @@ export const ko: typeof en = {
   accountTosCta: "계속",
   accountKycIntroTitle: "본인 인증",
   accountKycIntroDesc:
-    "일부 입금 방법은 본인 인증이 필요합니다. 데이터는 암호화되며 이 확인에만 사용됩니다.",
+    "이 입금 방법을 사용하려면 몇 가지 정보를 확인해야 합니다. 정보는 암호화되어 비공개로 처리됩니다.",
   accountKycIntroCta: "계속",
   accountKycTrustEncrypted: "암호화",
   accountKycTrustPrivate: "비공개",

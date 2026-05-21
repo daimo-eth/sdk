@@ -107,7 +107,7 @@ export const es: typeof en = {
   accountTosCta: "Continuar",
   accountKycIntroTitle: "Verifica tu identidad",
   accountKycIntroDesc:
-    "Algunos métodos de depósito requieren verificación de identidad. Tus datos están cifrados y solo se usan para esta revisión.",
+    "Confirma algunos datos para usar este método de depósito. Tu información permanece cifrada y privada.",
   accountKycIntroCta: "Continuar",
   accountKycTrustEncrypted: "Cifrado",
   accountKycTrustPrivate: "Privado",
