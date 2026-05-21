@@ -1,6 +1,12 @@
 import { useCallback, useEffect, useState } from "react";
 
 import type { DaimoPayToken } from "../api/walletTypes.js";
+import {
+  formatAmountInput,
+  formatFixedAmount,
+  isValidAmountInput,
+  parseDisplayAmount,
+} from "../formatAmount.js";
 import { t } from "../hooks/locale.js";
 import { isDesktop, type DaimoPlatform } from "../platform.js";
 import { SwitchArrowsIcon } from "./icons.js";
@@ -8,8 +14,8 @@ import { TokenIconWithChainBadge } from "./shared.js";
 
 /** How to label the "native" (non-USD) side of the input. */
 export type NativeDisplay =
-  | { kind: "prefix"; symbol: string }   // e.g. "CA$100"
-  | { kind: "suffix"; symbol: string };  // e.g. "100 JPYC"
+  | { kind: "prefix"; symbol: string } // e.g. "CA$100"
+  | { kind: "suffix"; symbol: string }; // e.g. "100 JPYC"
 
 export type TokenAmountEntryValue = {
   amountUsd: number;
@@ -100,8 +106,7 @@ export function TokenAmountEntry({
     validationAmountUsd <= maxUsdForValidation;
   const hasAmount = isEditingUsd ? usdStr !== "" : nativeStr !== "";
   const showMinWarning = hasAmount && validationAmountUsd < minimumUsd;
-  const showMaxWarning =
-    hasAmount && validationAmountUsd > maxUsdForValidation;
+  const showMaxWarning = hasAmount && validationAmountUsd > maxUsdForValidation;
   const showMaxButton = showMax && showMaxWarning;
   const currentEntryValue = {
     amountUsd: validationAmountUsd,
@@ -117,10 +122,9 @@ export function TokenAmountEntry({
   }, [validationAmountUsd, nativeAmount, isValid, onChange]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
+    const value = parseDisplayAmount(e.target.value);
     const maxDecimals = isEditingUsd ? 2 : token.displayDecimals;
-    const regex = new RegExp(`^\\d*\\.?\\d{0,${maxDecimals}}$`);
-    if (value !== "" && !regex.test(value)) return;
+    if (!isValidAmountInput(value, maxDecimals)) return;
 
     if (isEditingUsd) {
       const newUsd = parseFloat(value) || 0;
@@ -151,9 +155,8 @@ export function TokenAmountEntry({
     // Re-format the side the user just switched away from, so it reads nicely.
     if (nextEditingUsd) {
       const nativeNum = parseFloat(nativeStr) || 0;
-      const formatted = nativeNum > 0
-        ? stripTrailingZeros(roundNative(nativeNum, token))
-        : "";
+      const formatted =
+        nativeNum > 0 ? stripTrailingZeros(roundNative(nativeNum, token)) : "";
       setNativeStr(formatted);
     } else {
       const usdNum = parseFloat(usdStr) || 0;
@@ -164,16 +167,22 @@ export function TokenAmountEntry({
 
   const shouldAutoFocus = isDesktop(platform);
   const currentValue = isEditingUsd ? usdStr : nativeStr;
+  const currentDisplayValue = formatAmountInput(currentValue);
   const inputWidth =
-    currentValue.length === 0
+    currentDisplayValue.length === 0
       ? "3.55ch"
-      : `${Math.min(currentValue.length - (currentValue.match(/\./g) || []).length * 0.55, 10)}ch`;
+      : `${Math.min(currentDisplayValue.length - (currentDisplayValue.match(/\./g) || []).length * 0.55, 12)}ch`;
 
   // Side decorations: $ prefix for USD mode; nativeDisplay for native mode.
   const showPrefix = isEditingUsd || nativeDisplay.kind === "prefix";
-  const prefixText = isEditingUsd ? "$" : nativeDisplay.kind === "prefix" ? nativeDisplay.symbol : "";
+  const prefixText = isEditingUsd
+    ? "$"
+    : nativeDisplay.kind === "prefix"
+      ? nativeDisplay.symbol
+      : "";
   const showSuffix = !isEditingUsd && nativeDisplay.kind === "suffix";
-  const suffixText = nativeDisplay.kind === "suffix" ? nativeDisplay.symbol : "";
+  const suffixText =
+    nativeDisplay.kind === "suffix" ? nativeDisplay.symbol : "";
 
   const message = buildMessage({
     showMinWarning,
@@ -193,7 +202,7 @@ export function TokenAmountEntry({
   // Secondary amount for the switch button.
   const secondaryAmount = isEditingUsd
     ? formatNative(nativeStr || "0", nativeDisplay)
-    : `$${usdStr || roundUsd(0)}`;
+    : `$${formatAmountInput(usdStr || roundUsd(0))}`;
 
   return (
     <div className="daimo-flex daimo-flex-col daimo-items-center">
@@ -228,7 +237,7 @@ export function TokenAmountEntry({
           <input
             type="text"
             inputMode="decimal"
-            value={currentValue}
+            value={currentDisplayValue}
             onChange={handleInputChange}
             onKeyDown={handleKeyDown}
             placeholder="0.00"
@@ -301,9 +310,10 @@ function stripTrailingZeros(val: string): string {
 }
 
 function formatNative(value: string, display: NativeDisplay): string {
+  const formatted = formatAmountInput(value);
   return display.kind === "prefix"
-    ? `${display.symbol}${value}`
-    : `${value} ${display.symbol}`;
+    ? `${display.symbol}${formatted}`
+    : `${formatted} ${display.symbol}`;
 }
 
 function buildMessage(args: {
@@ -316,10 +326,19 @@ function buildMessage(args: {
   nativeDisplay: NativeDisplay;
   balance?: { usd: number; nativeAmountUnits: number };
 }): string {
-  const { showMinWarning, showMaxWarning, minimumUsd, maximumUsd, isEditingUsd, token, nativeDisplay, balance } = args;
+  const {
+    showMinWarning,
+    showMaxWarning,
+    minimumUsd,
+    maximumUsd,
+    isEditingUsd,
+    token,
+    nativeDisplay,
+    balance,
+  } = args;
   const fmt = (usd: number) =>
     isEditingUsd
-      ? `$${roundUsd(usd)}`
+      ? `$${formatFixedAmount(usd)}`
       : formatNative(usdToNativeStr(usd, token), nativeDisplay);
   if (showMaxWarning) return `${t.maximum} ${fmt(maximumUsd)}`;
   if (showMinWarning) return `${t.minimum} ${fmt(minimumUsd)}`;
@@ -327,8 +346,8 @@ function buildMessage(args: {
     if (isEditingUsd) {
       const isUsdPegged = token.fiatISO === "USD";
       return isUsdPegged
-        ? `${t.balance} $${roundUsd(balance.usd)}`
-        : `${t.balance} $${roundUsd(balance.usd)} ${token.symbol}`;
+        ? `${t.balance} $${formatFixedAmount(balance.usd)}`
+        : `${t.balance} $${formatFixedAmount(balance.usd)} ${token.symbol}`;
     }
     return `${t.balance} ${formatNative(roundNative(balance.nativeAmountUnits, token), nativeDisplay)}`;
   }

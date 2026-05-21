@@ -20,6 +20,12 @@ import {
   worldchain,
 } from "../../common/chain.js";
 import type { DaimoPayToken } from "../api/walletTypes.js";
+import {
+  formatAmountInput,
+  formatFixedAmount,
+  isValidAmountInput,
+  parseDisplayAmount,
+} from "../formatAmount.js";
 
 import { t } from "../hooks/locale.js";
 import { SecondaryLinkButton } from "./buttons.js";
@@ -133,13 +139,13 @@ export function AmountInput({
   const showMaxWarning = inputValue !== "" && amount > maximum;
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    if (value === "" || /^\d*\.?\d{0,2}$/.test(value)) {
-      setInputValue(value);
-      const newAmount = parseFloat(value) || 0;
-      const newIsValid = newAmount >= minimum && newAmount <= maximum;
-      onChange?.(newAmount, newIsValid);
-    }
+    const value = parseDisplayAmount(e.target.value);
+    if (!isValidAmountInput(value, 2)) return;
+
+    setInputValue(value);
+    const newAmount = parseFloat(value) || 0;
+    const newIsValid = newAmount >= minimum && newAmount <= maximum;
+    onChange?.(newAmount, newIsValid);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -148,22 +154,18 @@ export function AmountInput({
     }
   };
 
+  const displayValue = formatAmountInput(inputValue);
   const inputWidth =
-    inputValue.length === 0
+    displayValue.length === 0
       ? "3.55ch"
-      : `${Math.min(inputValue.length - (inputValue.match(/\./g) || []).length * 0.55, 10)}ch`;
-
-  const fmtAmount = (n: number) =>
-    new Intl.NumberFormat(undefined, {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(n);
+      : `${Math.min(displayValue.length - (displayValue.match(/\./g) || []).length * 0.55, 12)}ch`;
 
   const label = showMinWarning
-    ? `${t.minimum} ${currencySymbol}${fmtAmount(minimum)}`
+    ? `${t.minimum} ${currencySymbol}${formatFixedAmount(minimum)}`
     : showMaxWarning
-      ? `${t.maximum} ${currencySymbol}${fmtAmount(maximum)}`
-      : (defaultLabel ?? `${t.minimum} ${currencySymbol}${fmtAmount(minimum)}`);
+      ? `${t.maximum} ${currencySymbol}${formatFixedAmount(maximum)}`
+      : (defaultLabel ??
+        `${t.minimum} ${currencySymbol}${formatFixedAmount(minimum)}`);
 
   const labelClass =
     showMinWarning || showMaxWarning
@@ -190,7 +192,7 @@ export function AmountInput({
           }}
           type="text"
           inputMode="decimal"
-          value={inputValue}
+          value={displayValue}
           disabled={disabled}
           onChange={handleInputChange}
           onKeyDown={handleKeyDown}
