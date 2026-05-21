@@ -127,15 +127,8 @@ export const zh: typeof en = {
   accountDirectionsShowInstructions: "查看存款说明",
   accountBankDetailsCopied: "已复制",
   accountBankDetailsMemoWarning: "请在转账中包含此备注",
-  accountBankTransferSubmittedTitle: "转账进行中",
-  accountBankTransferSubmittedDesc:
-    "银行转账通常需要1-3个工作日。您可以关闭此窗口，并在账户页面跟踪进度。",
-  accountSepaTransferSubmittedTitle: "正在等待转账",
-  accountSepaTransferSubmittedDesc:
-    "SEPA 转账通常会在几分钟内到账。您可以关闭此窗口，并在账户页面跟踪进度。",
-  accountDirectionsSubmittedTitle: "转账进行中",
-  accountDirectionsSubmittedDesc:
-    "JPYC 到达您的 Daimo 账户钱包后，我们会自动检测。您可以关闭此窗口，并在账户页面跟踪进度。",
+  accountBankDetailsAutoDetect: (amount: string) =>
+    `请通过银行转账准确发送 ${amount}，然后返回此页面。`,
   accountTosTitle: "服务条款",
   accountTosDesc: "继续前，请同意服务条款和隐私政策。",
   accountTosTerms: "服务条款",

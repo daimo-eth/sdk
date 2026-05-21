@@ -125,15 +125,8 @@ export const en = {
   accountDirectionsShowInstructions: "Show deposit instructions",
   accountBankDetailsCopied: "Copied",
   accountBankDetailsMemoWarning: "Include this memo in your transfer",
-  accountBankTransferSubmittedTitle: "Transfer on the way",
-  accountBankTransferSubmittedDesc:
-    "Bank transfers can take 1–3 business days. You can close this window and track progress from your account page.",
-  accountSepaTransferSubmittedTitle: "Watching for transfer",
-  accountSepaTransferSubmittedDesc:
-    "SEPA transfers usually arrive in minutes. You can close this window and track progress from your account page.",
-  accountDirectionsSubmittedTitle: "Transfer on the way",
-  accountDirectionsSubmittedDesc:
-    "We will detect the JPYC transfer once it lands in your Daimo account wallet. You can close this window and track progress from your account page.",
+  accountBankDetailsAutoDetect: (amount: string) =>
+    `Send exactly ${amount} via bank transfer and return to this page.`,
   accountTosTitle: "Terms of Service",
   accountTosDesc:
     "To continue, please agree to the terms of service and privacy policy.",

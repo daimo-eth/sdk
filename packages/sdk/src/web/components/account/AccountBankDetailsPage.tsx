@@ -1,4 +1,4 @@
-import { useState, type KeyboardEvent } from "react";
+import { useEffect, useState, type KeyboardEvent } from "react";
 import type {
   AccountRail,
   DepositPaymentInfo,
@@ -14,7 +14,6 @@ import {
 import { useCopyToClipboard } from "../../hooks/useCopyToClipboard.js";
 import { useDepositPoller } from "../../hooks/useDepositPoller.js";
 import { useDraftDeposit } from "../../hooks/useDraftDeposit.js";
-import { PrimaryButton } from "../buttons.js";
 import { ErrorPage } from "../ErrorPage.js";
 import {
   ChevronIcon,
@@ -25,7 +24,7 @@ import {
   YouTubeLogoIcon,
 } from "../icons.js";
 import { DepositAddressContent } from "../WaitingDepositAddressPage.js";
-import { PageHeader, resolveIconUrl, ScrollContent } from "../shared.js";
+import { PageHeader, resolveIconUrl } from "../shared.js";
 import { Skeleton } from "../Skeleton.js";
 
 type AccountBankDetailsPageProps = {
@@ -72,6 +71,25 @@ function isMemoField(label: string): boolean {
   return lower === "memo" || lower === "reference" || lower === "message";
 }
 
+function formatFiatAmount(
+  amount: string,
+  currency: DepositPaymentInfo["currency"],
+  locale: string,
+): string {
+  const value = Number(amount);
+  if (!Number.isFinite(value)) return `${currency.symbol}${amount}`;
+  try {
+    return new Intl.NumberFormat(locale, {
+      style: "currency",
+      currency: currency.code,
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(value);
+  } catch {
+    return `${currency.symbol}${value.toFixed(2)}`;
+  }
+}
+
 /**
  * Bank-transfer details page — shows formatted transfer instructions with copy
  * buttons. Used when the provider returns direct transfer instructions instead
@@ -88,8 +106,6 @@ export function AccountBankDetailsPage({
   const client = useDaimoClient();
   const accountFlow = useAccountFlow();
   const { depositState, setDepositState } = useSessionDepositState(sessionId);
-  const [submitError, setSubmitError] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [directionsView, setDirectionsView] = useState<DirectionsView>({
     type: "steps",
     stepIndex: 0,
@@ -135,6 +151,10 @@ export function AccountBankDetailsPage({
       : parseInstructions(instructions);
   const directionsPayment = payment?.flow === "directions" ? payment : null;
   const directionsLocale = getLocale();
+  const bankTransferAmount =
+    payment && !directionsPayment
+      ? formatFiatAmount(depositAmount, payment.currency, directionsLocale)
+      : "";
   const directionsStepIndex = directionsView.stepIndex;
   const directionsDeposit =
     directionsView.type === "deposit" && directionsPayment
@@ -148,7 +168,23 @@ export function AccountBankDetailsPage({
     : payment?.flow === "directions"
       ? t.accountDirections
       : t.accountBankDetails;
-  const showSubmitButton = payment?.flow !== "directions";
+
+  useEffect(() => {
+    if (!payment || !depositAmount || !currentDepositId) return;
+    if (depositState?.kind === "started") return;
+    setDepositState({
+      depositAmount,
+      kind: "started",
+      depositId: currentDepositId,
+      payment,
+    });
+  }, [
+    currentDepositId,
+    depositAmount,
+    depositState?.kind,
+    payment,
+    setDepositState,
+  ]);
 
   useDepositPoller({
     client,
@@ -164,41 +200,12 @@ export function AccountBankDetailsPage({
     },
   });
 
-  async function handleSubmitted() {
-    if (!accountFlow || !payment || !depositAmount || !currentDepositId) {
-      setSubmitError("deposit is not ready");
-      return;
-    }
-
-    setSubmitError(null);
-    setIsSubmitting(true);
-    try {
-      setDepositState({
-        depositAmount,
-        kind: "started",
-        depositId: currentDepositId,
-        payment,
-      });
-      onAdvance();
-    } catch (err) {
-      setSubmitError(
-        err instanceof Error ? err.message : "failed to update deposit",
-      );
-    } finally {
-      setIsSubmitting(false);
-    }
-  }
-
-  const error = submitError ?? draftError;
-  if (error) {
+  if (draftError) {
     return (
       <ErrorPage
-        message={error}
+        message={draftError}
         retryText={t.tryAgain}
-        onRetry={() => {
-          setSubmitError(null);
-          retryDraft();
-        }}
+        onRetry={retryDraft}
       />
     );
   }
@@ -266,36 +273,29 @@ export function AccountBankDetailsPage({
           />
         </div>
       ) : (
-        <ScrollContent>
-          <div className="daimo-flex daimo-flex-col daimo-gap-2 daimo-px-6 daimo-pt-4 daimo-pb-12">
-            <div className="daimo-flex daimo-flex-col daimo-gap-2">
-              {bankTransferFields.map((field, i) =>
-                field.label ? (
-                  <FieldRow
-                    key={i}
-                    label={field.label}
-                    value={field.value}
-                    emphasized={field.emphasized}
-                  />
-                ) : (
-                  <p
-                    key={i}
-                    className="daimo-text-sm daimo-text-[var(--daimo-text-secondary)] daimo-leading-relaxed daimo-pb-2"
-                  >
-                    {field.value}
-                  </p>
-                ),
-              )}
-            </div>
+        <div className="daimo-flex daimo-flex-col daimo-gap-2 daimo-px-6 daimo-pt-4 daimo-pb-12">
+          <div className="daimo-flex daimo-flex-col daimo-gap-2">
+            {bankTransferFields.map((field, i) =>
+              field.label ? (
+                <FieldRow
+                  key={i}
+                  label={field.label}
+                  value={field.value}
+                  emphasized={field.emphasized}
+                />
+              ) : (
+                <p
+                  key={i}
+                  className="daimo-text-sm daimo-text-[var(--daimo-text-secondary)] daimo-leading-relaxed daimo-pb-2"
+                >
+                  {field.value}
+                </p>
+              ),
+            )}
           </div>
-        </ScrollContent>
-      )}
-
-      {showSubmitButton && (
-        <div className="daimo-mt-3 daimo-px-6 daimo-pt-2 daimo-pb-6 daimo-flex daimo-justify-center">
-          <PrimaryButton onClick={handleSubmitted} disabled={isSubmitting}>
-            {isSubmitting ? t.loading : "I've sent the funds"}
-          </PrimaryButton>
+          <p className="daimo-mx-auto daimo-mt-10 daimo-max-w-xs daimo-text-center daimo-text-sm daimo-leading-relaxed daimo-text-[var(--daimo-text-secondary)]">
+            {t.accountBankDetailsAutoDetect(bankTransferAmount)}
+          </p>
         </div>
       )}
     </div>
@@ -316,32 +316,24 @@ function BankDetailsSkeleton({
       aria-label={t.loading}
     >
       <PageHeader title={title} onBack={onBack} />
-      <ScrollContent>
-        <div className="daimo-flex daimo-flex-col daimo-gap-2 daimo-px-6 daimo-pt-4 daimo-pb-12">
-          {["daimo-w-28", "daimo-w-44", "daimo-w-24", "daimo-w-52"].map(
-            (widthClass, index) => (
-              <div
-                key={index}
-                className="daimo-flex daimo-items-center daimo-justify-between daimo-gap-3 daimo-rounded-[var(--daimo-radius-md)] daimo-px-4 daimo-py-3"
-                style={{ backgroundColor: "var(--daimo-surface-secondary)" }}
-              >
-                <div className="daimo-flex daimo-min-w-0 daimo-flex-1 daimo-flex-col">
-                  <SkeletonBlock className="daimo-h-3 daimo-w-20" />
-                  <SkeletonBlock
-                    className={`daimo-mt-2 daimo-h-4 ${widthClass}`}
-                  />
-                </div>
-                <SkeletonBlock className="daimo-h-8 daimo-w-8 daimo-shrink-0" />
+      <div className="daimo-flex daimo-flex-col daimo-gap-2 daimo-px-6 daimo-pt-4 daimo-pb-12">
+        {["daimo-w-28", "daimo-w-44", "daimo-w-24", "daimo-w-52"].map(
+          (widthClass, index) => (
+            <div
+              key={index}
+              className="daimo-flex daimo-items-center daimo-justify-between daimo-gap-3 daimo-rounded-[var(--daimo-radius-md)] daimo-px-4 daimo-py-3"
+              style={{ backgroundColor: "var(--daimo-surface-secondary)" }}
+            >
+              <div className="daimo-flex daimo-min-w-0 daimo-flex-1 daimo-flex-col">
+                <SkeletonBlock className="daimo-h-3 daimo-w-20" />
+                <SkeletonBlock
+                  className={`daimo-mt-2 daimo-h-4 ${widthClass}`}
+                />
               </div>
-            ),
-          )}
-        </div>
-      </ScrollContent>
-      <div className="daimo-mt-3 daimo-px-6 daimo-pt-2 daimo-pb-6 daimo-flex daimo-justify-center">
-        <SkeletonBlock
-          className="daimo-h-[54px] daimo-w-full daimo-max-w-xs"
-          rounded="lg"
-        />
+              <SkeletonBlock className="daimo-h-8 daimo-w-8 daimo-shrink-0" />
+            </div>
+          ),
+        )}
       </div>
     </div>
   );

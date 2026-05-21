@@ -128,15 +128,8 @@ export const ja: typeof en = {
   accountDirectionsShowInstructions: "入金手順を見る",
   accountBankDetailsCopied: "コピーしました",
   accountBankDetailsMemoWarning: "振込時にこのメモを含めてください",
-  accountBankTransferSubmittedTitle: "送金手続き中",
-  accountBankTransferSubmittedDesc:
-    "銀行振込には1〜3営業日かかる場合があります。このウィンドウを閉じて、アカウントページで進捗を確認できます。",
-  accountSepaTransferSubmittedTitle: "送金を確認中",
-  accountSepaTransferSubmittedDesc:
-    "SEPA送金は通常数分で到着します。このウィンドウを閉じて、アカウントページで進捗を確認できます。",
-  accountDirectionsSubmittedTitle: "送金を確認中",
-  accountDirectionsSubmittedDesc:
-    "JPYCがDaimoアカウントのウォレットに着金すると自動で検出します。このウィンドウを閉じて、アカウントページで進捗を確認できます。",
+  accountBankDetailsAutoDetect: (amount: string) =>
+    `銀行振込で正確に${amount}を送金し、このページに戻ってください。`,
   accountTosTitle: "利用規約",
   accountTosDesc:
     "続行するには、利用規約とプライバシーポリシーに同意してください。",

@@ -59,8 +59,20 @@ export type NavEntry =
       autoNav?: boolean;
     }
   | { type: "wallet-mobile-grid"; nodeId: string; autoNav?: boolean }
-  | { type: "wallet-choose-chain"; nodeId: string; walletName: string; walletIcon: string; autoNav?: boolean }
-  | { type: "wallet-connect"; nodeId: string; walletName?: string; walletIcon?: string; autoNav?: boolean }
+  | {
+      type: "wallet-choose-chain";
+      nodeId: string;
+      walletName: string;
+      walletIcon: string;
+      autoNav?: boolean;
+    }
+  | {
+      type: "wallet-connect";
+      nodeId: string;
+      walletName?: string;
+      walletIcon?: string;
+      autoNav?: boolean;
+    }
   | { type: "wallet-select-token"; nodeId: string; autoNav?: boolean }
   | {
       type: "wallet-select-amount";
@@ -87,7 +99,6 @@ export type NavEntry =
   | ({ type: "account-payment" } & AccountNavBase)
   | ({ type: "account-canada-bank-picker" } & AccountNavBase)
   | ({ type: "account-bank-details" } & AccountNavBase)
-  | ({ type: "account-bank-transfer-submitted" } & AccountNavBase)
   | ({ type: "account-apple-pay" } & AccountNavBase)
   | ({ type: "account-stripe-onramp" } & AccountNavBase)
   | ({ type: "account-deeplink" } & AccountNavBase)
@@ -113,10 +124,7 @@ export function findNode(nodeId: string, nodes: NavNode[]): NavNode | null {
 }
 
 /** Helper to find a node by type in the nav tree */
-export function findNodeByType(
-  type: string,
-  nodes: NavNode[],
-): NavNode | null {
+export function findNodeByType(type: string, nodes: NavNode[]): NavNode | null {
   for (const node of nodes) {
     if (node.type === type) return node;
     if (node.type !== "ChooseOption") continue;
