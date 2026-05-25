@@ -4,6 +4,7 @@ import type { InjectedWallet } from "../hooks/useInjectedWallets.js";
 
 import { t } from "../hooks/locale.js";
 import { ApplePayLogo, isApplePayLogo } from "./ApplePayLogo.js";
+import { getKycRequirement } from "./account/kycRequirement.js";
 import { DaimoLogoIcon } from "./icons.js";
 import {
   ListRow,
@@ -170,11 +171,15 @@ function OptionRow({
   disabled?: boolean;
 }) {
   const label = option.label ?? option.title;
+  const subtitle =
+    option.type === "Fiat"
+      ? getKycRequirement(option.kycRequirement).rowLabel
+      : undefined;
 
   return (
     <ListRow
       label={label}
-      subtitle={disabled ? option.disabledReason : undefined}
+      subtitle={disabled ? option.disabledReason : subtitle}
       right={<OptionIcons option={option} baseUrl={baseUrl} />}
       onClick={onClick}
       disabled={disabled}

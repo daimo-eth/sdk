@@ -21,6 +21,40 @@ type NavNodeCommon = {
   disabledReason?: string;
 };
 
+export type NavNodeKycRequirementItem =
+  | "personal_info"
+  | "government_id"
+  | "selfie"
+  | "phone_number"
+  | "email";
+
+export type NavNodeKycRequirementKind =
+  | "none"
+  | "phone"
+  | "email"
+  | "phone_and_email"
+  | "id_only"
+  | "id_and_selfie"
+  | "personal_info";
+
+export type NavNodeKycRequirementIcon = "shield" | "person" | "id_card";
+
+export type NavNodeKycRequirementDisplayItem = {
+  id: NavNodeKycRequirementItem;
+  label: string;
+};
+
+export type NavNodeKycRequirement = {
+  kind: NavNodeKycRequirementKind;
+  icon: NavNodeKycRequirementIcon;
+  label: string;
+  rowLabel: string;
+  detailTitle: string;
+  summary: string;
+  requirements: NavNodeKycRequirementDisplayItem[];
+  estimatedTime?: string;
+};
+
 export type NavNodeChooseOption = NavNodeCommon & {
   type: "ChooseOption";
   options: NavNode[];
@@ -90,6 +124,7 @@ export type NavNodeFiat = NavNodeCommon & {
   type: "Fiat";
   fiatMethod: AccountRail;
   icon?: string;
+  kycRequirement?: NavNodeKycRequirement;
 };
 
 export type NavNode =

@@ -376,7 +376,12 @@ export function useSessionNav(
           if (result.nextAction === "enrollment") {
             setStack((prev) => [
               ...prev,
-              { type: "account-enrollment", nodeId, rail, autoNav },
+              {
+                type: "account-enrollment",
+                nodeId,
+                rail,
+                autoNav,
+              },
             ]);
             return;
           }
