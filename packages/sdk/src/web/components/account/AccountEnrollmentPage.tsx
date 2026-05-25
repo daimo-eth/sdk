@@ -1,14 +1,12 @@
 import SumsubWebSdk from "@sumsub/websdk-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import type {
-  AccountRail,
-  EnrollmentResponse,
-} from "../../../common/account.js";
+import type { EnrollmentResponse } from "../../../common/account.js";
+import type { NavNodeFiat } from "../../api/navTree.js";
 import { useDaimoClient } from "../../hooks/DaimoClientContext.js";
 import { t } from "../../hooks/locale.js";
 import { useAccountFlow } from "../../hooks/useAccountFlow.js";
-import { PrimaryButton, SecondaryButton } from "../buttons.js";
+import { SecondaryButton } from "../buttons.js";
 import { ErrorPage } from "../ErrorPage.js";
 import { ErrorIcon, ExternalLinkIcon } from "../icons.js";
 import { Skeleton, SkeletonText } from "../Skeleton.js";
@@ -17,9 +15,10 @@ import {
   ContactSupportButton,
   PageHeader,
 } from "../shared.js";
+import { AccountKycInfoPage } from "./AccountKycInfoPage.js";
 
 type AccountEnrollmentPageProps = {
-  rail: AccountRail;
+  node: NavNodeFiat;
   sessionId: string;
   onBack: () => void;
   onReady: () => void;
@@ -52,12 +51,13 @@ const FORWARD_FROM_KYC = new Set([
   "error",
 ]);
 export function AccountEnrollmentPage({
-  rail,
+  node,
   sessionId,
   onBack,
   onReady,
   onPhoneRequired,
 }: AccountEnrollmentPageProps) {
+  const rail = node.fiatMethod;
   const account = useAccountFlow();
   const client = useDaimoClient();
   const [response, setResponse] = useState<EnrollmentResponse | null>(null);
@@ -181,7 +181,11 @@ export function AccountEnrollmentPage({
     case "kyc_required":
       if (!kycAccepted) {
         return (
-          <KycIntro onContinue={() => setKycAccepted(true)} onBack={onBack} />
+          <AccountKycInfoPage
+            node={node}
+            onContinue={() => setKycAccepted(true)}
+            onBack={onBack}
+          />
         );
       }
       return (
@@ -340,160 +344,6 @@ function PhoneEntrySkeleton({ onBack }: { onBack: () => void }) {
       <div className="daimo-px-6 daimo-pb-6 daimo-flex daimo-flex-col daimo-items-center">
         <Skeleton className="daimo-h-[54px] daimo-w-full daimo-max-w-xs" />
       </div>
-    </div>
-  );
-}
-
-/** Pre-KYC intro — explains why verification is needed. */
-function KycIntro({
-  onContinue,
-  onBack,
-}: {
-  onContinue: () => void;
-  onBack: () => void;
-}) {
-  return (
-    <div className="daimo-flex daimo-flex-col daimo-flex-1 daimo-min-h-0">
-      <PageHeader title={t.accountKycIntroTitle} onBack={onBack} />
-
-      <div className="daimo-flex-1 daimo-flex daimo-flex-col daimo-items-center daimo-justify-center daimo-gap-5 daimo-px-6 daimo-pt-6 daimo-pb-3">
-        <div
-          className="daimo-w-20 daimo-h-20 daimo-rounded-full daimo-flex daimo-items-center daimo-justify-center"
-          style={{
-            backgroundColor: "var(--daimo-surface-secondary)",
-            animation:
-              "daimo-scale-in 400ms cubic-bezier(0.175, 0.885, 0.32, 1.1) both",
-          }}
-        >
-          <svg
-            width="34"
-            height="34"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.7"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            style={{ color: "var(--daimo-text-secondary)" }}
-            aria-hidden="true"
-          >
-            <path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z" />
-            <path d="m9 12 2 2 4-4" />
-          </svg>
-        </div>
-
-        <p
-          className="daimo-max-w-[300px] daimo-text-center daimo-text-sm daimo-leading-relaxed daimo-text-[var(--daimo-text-secondary)]"
-          style={{
-            animation:
-              "daimo-fade-up 300ms cubic-bezier(0.19, 1, 0.22, 1) 100ms both",
-          }}
-        >
-          {t.accountKycIntroDesc}
-        </p>
-
-        <div
-          className="daimo-grid daimo-w-full daimo-max-w-xs daimo-grid-cols-3 daimo-gap-2"
-          style={{
-            animation:
-              "daimo-fade-up 300ms cubic-bezier(0.19, 1, 0.22, 1) 200ms both",
-          }}
-        >
-          <TrustSignal icon="lock" label={t.accountKycTrustEncrypted} />
-          <TrustSignal icon="eye-off" label={t.accountKycTrustPrivate} />
-          <TrustSignal icon="clock" label={t.accountKycTrustQuick} />
-        </div>
-      </div>
-
-      <div
-        className="daimo-px-6 daimo-pb-6 daimo-flex daimo-flex-col daimo-items-center"
-        style={{
-          animation:
-            "daimo-fade-up 300ms cubic-bezier(0.19, 1, 0.22, 1) 300ms both",
-        }}
-      >
-        <PrimaryButton onClick={onContinue}>
-          {t.accountKycIntroCta}
-        </PrimaryButton>
-      </div>
-    </div>
-  );
-}
-
-/** Small trust signal with icon + label. */
-function TrustSignal({
-  icon,
-  label,
-}: {
-  icon: "lock" | "eye-off" | "clock";
-  label: string;
-}) {
-  return (
-    <div
-      className="daimo-flex daimo-min-h-[86px] daimo-flex-col daimo-items-center daimo-justify-center daimo-gap-2 daimo-rounded-[var(--daimo-radius-md)] daimo-px-2 daimo-py-3"
-      style={{ backgroundColor: "var(--daimo-surface-secondary)" }}
-    >
-      <div
-        className="daimo-w-9 daimo-h-9 daimo-rounded-full daimo-flex daimo-items-center daimo-justify-center"
-        style={{ backgroundColor: "var(--daimo-surface)" }}
-      >
-        {icon === "lock" && (
-          <svg
-            width="17"
-            height="17"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            style={{ color: "var(--daimo-text-secondary)" }}
-            aria-hidden="true"
-          >
-            <rect width="18" height="11" x="3" y="11" rx="2" ry="2" />
-            <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-          </svg>
-        )}
-        {icon === "eye-off" && (
-          <svg
-            width="17"
-            height="17"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            style={{ color: "var(--daimo-text-secondary)" }}
-            aria-hidden="true"
-          >
-            <path d="M10.733 5.076a10.744 10.744 0 0 1 11.205 6.575 1 1 0 0 1 0 .696 10.747 10.747 0 0 1-1.444 2.49" />
-            <path d="M14.084 14.158a3 3 0 0 1-4.242-4.242" />
-            <path d="M17.479 17.499a10.75 10.75 0 0 1-15.417-5.151 1 1 0 0 1 0-.696 10.75 10.75 0 0 1 4.446-5.143" />
-            <path d="m2 2 20 20" />
-          </svg>
-        )}
-        {icon === "clock" && (
-          <svg
-            width="17"
-            height="17"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            style={{ color: "var(--daimo-text-secondary)" }}
-            aria-hidden="true"
-          >
-            <circle cx="12" cy="12" r="10" />
-            <polyline points="12 6 12 12 16 14" />
-          </svg>
-        )}
-      </div>
-      <span className="daimo-text-xs daimo-font-medium daimo-text-[var(--daimo-text-secondary)]">
-        {label}
-      </span>
     </div>
   );
 }

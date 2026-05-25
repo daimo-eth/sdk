@@ -11,6 +11,11 @@ export type {
   NavNodeDepositAddress,
   NavNodeExchange,
   NavNodeFiat,
+  NavNodeKycRequirement,
+  NavNodeKycRequirementDisplayItem,
+  NavNodeKycRequirementIcon,
+  NavNodeKycRequirementItem,
+  NavNodeKycRequirementKind,
   NavNodeTronDeposit,
   SessionWithNav,
 } from "./navTree.js";

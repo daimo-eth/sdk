@@ -599,10 +599,12 @@ function renderEntry(
           onDone={() => ctx.onAccountAdvance("account-enrollment")}
         />
       );
-    case "account-enrollment":
+    case "account-enrollment": {
+      const node = findNode(entry.nodeId, ctx.session.navTree);
+      if (node?.type !== "Fiat") return null;
       return (
         <AccountEnrollmentPage
-          rail={entry.rail}
+          node={node}
           sessionId={ctx.session.sessionId}
           onBack={ctx.onBack}
           onReady={() =>
@@ -611,6 +613,7 @@ function renderEntry(
           onPhoneRequired={() => ctx.onAccountAdvance("account-phone")}
         />
       );
+    }
     case "account-phone":
       return (
         <AccountPhonePage
