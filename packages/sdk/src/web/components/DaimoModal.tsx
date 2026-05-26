@@ -220,6 +220,7 @@ export function DaimoModal(props: DaimoModalProps) {
     <ModalContainer
       onClose={handleClose}
       pageKey={pageKey}
+      reserveLoadingHeight={pageKey == null}
       showFooterSpacer={showFooterSpacer}
     >
       {wrapped}

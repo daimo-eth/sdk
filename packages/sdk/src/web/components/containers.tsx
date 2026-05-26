@@ -1,7 +1,11 @@
-import { ReactNode, useEffect, useRef } from "react";
+import { ReactNode, useLayoutEffect, useRef } from "react";
 
 import { t } from "../hooks/locale.js";
 import { CloseIcon } from "./icons.js";
+
+const MODAL_LOADING_MIN_HEIGHT = "min(440px, 90dvh)";
+const HEIGHT_MORPH_MS = 180;
+const HEIGHT_MORPH_EASING = "cubic-bezier(0.23, 1, 0.32, 1)";
 
 type ContainerProps = {
   children: ReactNode;
@@ -13,6 +17,8 @@ type ModalContainerProps = ContainerProps & {
   onClose?: () => void;
   /** Key identifying current page — height morphs on change */
   pageKey?: string;
+  /** Reserve the modal's expected picker height before async content loads. */
+  reserveLoadingHeight?: boolean;
 };
 
 /**
@@ -25,47 +31,90 @@ function usePageHeightMorph(
   pageKey: string | undefined,
 ) {
   const prevKey = useRef(pageKey);
-  const isFirst = useRef(true);
+  const measuredHeight = useRef<number | null>(null);
+  const stopAnimation = useRef<(() => void) | null>(null);
 
-  useEffect(() => {
-    if (prevKey.current === pageKey) return;
-    prevKey.current = pageKey;
-
-    // Skip height morph on first render — container animation handles it
-    if (isFirst.current) {
-      isFirst.current = false;
-      return;
-    }
-
+  useLayoutEffect(() => {
     const el = ref.current;
     if (!el) return;
 
-    // Snapshot current rendered height
-    const from = el.offsetHeight;
+    const previousHeight = measuredHeight.current;
+    const changed = prevKey.current !== pageKey;
+    prevKey.current = pageKey;
+    if (!changed) return;
 
-    // Remove any leftover explicit height so we can measure natural size
+    stopAnimation.current?.();
+    stopAnimation.current = null;
+
+    if (previousHeight == null || prefersReducedMotion()) return;
+
     el.style.transition = "none";
     el.style.height = "auto";
+    const nextHeight = el.offsetHeight;
+    if (Math.abs(previousHeight - nextHeight) < 1) {
+      measuredHeight.current = nextHeight;
+      return;
+    }
 
-    // Read new natural height
-    const to = el.scrollHeight;
-    if (from === to) return;
-
-    // FLIP: set to old height, then animate to new
-    el.style.height = `${from}px`;
-    // Force reflow so the browser registers the start value
+    el.style.height = `${previousHeight}px`;
     void el.offsetHeight;
 
-    el.style.transition = "height 180ms cubic-bezier(0.23, 1, 0.32, 1)";
-    el.style.height = `${to}px`;
+    let done = false;
+    let frame = 0;
+    let timeout = 0;
 
-    const cleanup = () => {
+    const finish = (event?: TransitionEvent) => {
+      if (event && (event.target !== el || event.propertyName !== "height")) {
+        return;
+      }
+      if (done) return;
+      done = true;
+      window.cancelAnimationFrame(frame);
+      window.clearTimeout(timeout);
+      el.removeEventListener("transitionend", finish);
       el.style.transition = "";
       el.style.height = "";
-      el.removeEventListener("transitionend", cleanup);
+      measuredHeight.current = el.offsetHeight;
+      stopAnimation.current = null;
     };
-    el.addEventListener("transitionend", cleanup);
+
+    stopAnimation.current = () => {
+      if (done) return;
+      done = true;
+      window.cancelAnimationFrame(frame);
+      window.clearTimeout(timeout);
+      el.removeEventListener("transitionend", finish);
+      const currentHeight = el.offsetHeight;
+      el.style.transition = "none";
+      el.style.height = `${currentHeight}px`;
+      measuredHeight.current = currentHeight;
+    };
+
+    frame = window.requestAnimationFrame(() => {
+      el.style.transition = `height ${HEIGHT_MORPH_MS}ms ${HEIGHT_MORPH_EASING}`;
+      el.style.height = `${nextHeight}px`;
+    });
+    timeout = window.setTimeout(finish, HEIGHT_MORPH_MS + 50);
+    el.addEventListener("transitionend", finish);
+
+    return () => {
+      stopAnimation.current?.();
+      stopAnimation.current = null;
+    };
   }, [ref, pageKey]);
+
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el || stopAnimation.current) return;
+    measuredHeight.current = el.offsetHeight;
+  });
+}
+
+function prefersReducedMotion(): boolean {
+  return (
+    typeof window !== "undefined" &&
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches
+  );
 }
 
 export function ModalContainer({
@@ -73,6 +122,7 @@ export function ModalContainer({
   showFooterSpacer = true,
   onClose,
   pageKey,
+  reserveLoadingHeight = false,
 }: ModalContainerProps) {
   const backdropClass =
     "daimo-modal-backdrop daimo-fixed daimo-inset-0 daimo-z-50 daimo-bg-black/50";
@@ -92,6 +142,11 @@ export function ModalContainer({
         <div
           ref={contentRef}
           className={`daimo-pointer-events-auto ${contentClass}`}
+          style={
+            reserveLoadingHeight
+              ? { minHeight: MODAL_LOADING_MIN_HEIGHT }
+              : undefined
+          }
           onClick={(e) => e.stopPropagation()}
         >
           {onClose && (
