@@ -15,7 +15,10 @@ import {
   ContactSupportButton,
   PageHeader,
 } from "../shared.js";
-import { AccountKycInfoPage } from "./AccountKycInfoPage.js";
+import {
+  AccountKycInfoPage,
+  AccountKycInfoSkeleton,
+} from "./AccountKycInfoPage.js";
 
 type AccountEnrollmentPageProps = {
   node: NavNodeFiat;
@@ -171,7 +174,7 @@ export function AccountEnrollmentPage({
     return rail === "apple_pay" ? (
       <PhoneEntrySkeleton onBack={onBack} />
     ) : (
-      <KycIntroSkeleton onBack={onBack} />
+      <AccountKycInfoSkeleton node={node} onBack={onBack} />
     );
   }
 
@@ -286,43 +289,6 @@ export function AccountEnrollmentPage({
 }
 
 // --- Sub-components ---
-
-function KycIntroSkeleton({ onBack }: { onBack: () => void }) {
-  return (
-    <div
-      className="daimo-flex daimo-flex-col daimo-flex-1 daimo-min-h-0"
-      aria-busy="true"
-      aria-label={t.loading}
-    >
-      <PageHeader title={t.accountKycIntroTitle} onBack={onBack} />
-
-      <div className="daimo-flex-1 daimo-flex daimo-flex-col daimo-items-center daimo-justify-center daimo-gap-5 daimo-px-6 daimo-pt-6 daimo-pb-3">
-        <Skeleton className="daimo-h-20 daimo-w-20" rounded="full" />
-        <SkeletonText
-          className="daimo-max-w-[300px]"
-          lines={3}
-          widths={["96%", "88%", "64%"]}
-        />
-        <div className="daimo-grid daimo-w-full daimo-max-w-xs daimo-grid-cols-3 daimo-gap-2">
-          {[0, 1, 2].map((index) => (
-            <div
-              key={index}
-              className="daimo-flex daimo-min-h-[86px] daimo-flex-col daimo-items-center daimo-justify-center daimo-gap-2 daimo-rounded-[var(--daimo-radius-md)] daimo-px-2 daimo-py-3"
-              style={{ backgroundColor: "var(--daimo-surface-secondary)" }}
-            >
-              <Skeleton className="daimo-h-9 daimo-w-9" rounded="full" />
-              <Skeleton className="daimo-h-3 daimo-w-14" rounded="sm" />
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div className="daimo-px-6 daimo-pb-6 daimo-flex daimo-flex-col daimo-items-center">
-        <Skeleton className="daimo-h-[54px] daimo-w-full daimo-max-w-xs" />
-      </div>
-    </div>
-  );
-}
 
 function PhoneEntrySkeleton({ onBack }: { onBack: () => void }) {
   return (

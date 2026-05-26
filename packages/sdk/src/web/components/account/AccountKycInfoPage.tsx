@@ -2,6 +2,7 @@ import type { NavNodeFiat } from "../../api/navTree.js";
 
 import { t } from "../../hooks/locale.js";
 import { PrimaryButton } from "../buttons.js";
+import { Skeleton } from "../Skeleton.js";
 import { PageHeader } from "../shared.js";
 import {
   getKycRequirement,
@@ -47,6 +48,46 @@ export function AccountKycInfoPage({
   );
 }
 
+export function AccountKycInfoSkeleton({
+  node,
+  onBack,
+}: {
+  node: NavNodeFiat;
+  onBack: (() => void) | null;
+}) {
+  const requirement = getKycRequirement(node.kycRequirement);
+  const rowCount = Math.max(requirement.requirements.length, 1);
+
+  return (
+    <div
+      className="daimo-flex daimo-flex-col daimo-flex-1 daimo-min-h-0"
+      aria-busy="true"
+      aria-label={t.loading}
+    >
+      <PageHeader title="Verification" onBack={onBack} />
+
+      <div className="daimo-flex-1 daimo-flex daimo-flex-col daimo-items-center daimo-justify-center daimo-gap-5 daimo-px-6 daimo-pt-4 daimo-pb-3">
+        <Skeleton className="daimo-h-16 daimo-w-16" rounded="full" />
+
+        <Skeleton
+          className="daimo-h-7 daimo-w-full daimo-max-w-[300px]"
+          rounded="sm"
+        />
+
+        <div className="daimo-flex daimo-w-full daimo-max-w-xs daimo-flex-col daimo-gap-2">
+          {Array.from({ length: rowCount }).map((_, index) => (
+            <KycRequirementRowSkeleton key={index} delayMs={index * 90} />
+          ))}
+        </div>
+      </div>
+
+      <div className="daimo-px-6 daimo-pb-6 daimo-flex daimo-flex-col daimo-items-center">
+        <Skeleton className="daimo-h-[54px] daimo-w-full daimo-max-w-xs" />
+      </div>
+    </div>
+  );
+}
+
 function RequirementList({ requirement }: { requirement: KycRequirement }) {
   const items = requirement.requirements;
 
@@ -59,6 +100,22 @@ function RequirementList({ requirement }: { requirement: KycRequirement }) {
           requirement={requirement}
         />
       ))}
+    </div>
+  );
+}
+
+function KycRequirementRowSkeleton({ delayMs }: { delayMs: number }) {
+  return (
+    <div
+      className="daimo-flex daimo-min-h-[44px] daimo-items-center daimo-gap-3 daimo-rounded-[var(--daimo-radius-md)] daimo-px-3 daimo-py-2.5"
+      style={{ backgroundColor: "var(--daimo-surface-secondary)" }}
+    >
+      <Skeleton className="daimo-h-5 daimo-w-5 daimo-shrink-0" rounded="full" />
+      <Skeleton
+        className="daimo-h-4 daimo-w-full daimo-max-w-[210px]"
+        rounded="sm"
+        delayMs={delayMs}
+      />
     </div>
   );
 }
