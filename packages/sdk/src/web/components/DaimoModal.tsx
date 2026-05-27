@@ -193,9 +193,7 @@ export function DaimoModal(props: DaimoModalProps) {
       setShowFooterSpacer={setShowFooterSpacer}
       setShowCloseButton={setShowCloseButton}
     />
-  ) : (
-    <SkeletonContent rowCount={3} />
-  );
+  ) : null;
 
   const wrapped = needsAccountProvider ? (
     <AccountFlowProvider privyAppId={privyAppId!}>
@@ -206,13 +204,34 @@ export function DaimoModal(props: DaimoModalProps) {
   );
 
   const handleClose = showCloseButton ? () => closeRef.current() : undefined;
+  const reserveLoadingHeight =
+    pageKey == null || pageKey.startsWith("account-loading-");
+  const showLoadingShell = reserveLoadingHeight;
+  const modalBody = (
+    <>
+      {showLoadingShell && (
+        <div key="loading-shell">
+          <SkeletonContent rowCount={3} showFooter={false} />
+        </div>
+      )}
+      {wrapped && (
+        <div
+          key="content"
+          style={showLoadingShell ? { display: "none" } : undefined}
+        >
+          {wrapped}
+        </div>
+      )}
+    </>
+  );
+
   if (embedded) {
     return (
       <EmbeddedContainer
         showFooterSpacer={showFooterSpacer}
         onClose={handleClose}
       >
-        {wrapped}
+        {modalBody}
       </EmbeddedContainer>
     );
   }
@@ -220,10 +239,10 @@ export function DaimoModal(props: DaimoModalProps) {
     <ModalContainer
       onClose={handleClose}
       pageKey={pageKey}
-      reserveLoadingHeight={pageKey == null}
+      reserveLoadingHeight={reserveLoadingHeight}
       showFooterSpacer={showFooterSpacer}
     >
-      {wrapped}
+      {modalBody}
     </ModalContainer>
   );
 }
@@ -578,6 +597,8 @@ function renderEntry(
       return renderWalletSelectAmount(entry, ctx);
     case "wallet-sending":
       return renderWalletSending(entry, ctx);
+    case "account-loading":
+      return <LoadingMessage />;
     case "account-email":
       return (
         <AccountEmailPage
@@ -1133,7 +1154,13 @@ function FlowErrorMessage({
   );
 }
 
-function SkeletonContent({ rowCount = 4 }: { rowCount?: number }) {
+function SkeletonContent({
+  rowCount = 4,
+  showFooter = true,
+}: {
+  rowCount?: number;
+  showFooter?: boolean;
+}) {
   return (
     <div className="daimo-flex daimo-flex-col">
       <div className="daimo-flex daimo-items-center daimo-justify-center daimo-p-6">
@@ -1149,9 +1176,11 @@ function SkeletonContent({ rowCount = 4 }: { rowCount?: number }) {
           />
         ))}
       </div>
-      <div className="daimo-py-4 daimo-text-center">
-        <SkeletonText lines={1} widths={["7rem"]} />
-      </div>
+      {showFooter && (
+        <div className="daimo-py-4 daimo-text-center">
+          <SkeletonText lines={1} widths={["7rem"]} />
+        </div>
+      )}
     </div>
   );
 }

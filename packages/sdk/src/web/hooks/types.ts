@@ -91,6 +91,7 @@ export type NavEntry =
       autoNav?: boolean;
     }
   | ({ type: "account-email" } & AccountNavBase)
+  | ({ type: "account-loading" } & AccountNavBase)
   | ({ type: "account-otp" } & AccountNavBase)
   | ({ type: "account-phone" } & AccountNavBase)
   | ({ type: "account-phone-otp" } & AccountNavBase)
