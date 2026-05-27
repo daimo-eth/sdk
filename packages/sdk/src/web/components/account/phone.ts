@@ -7,6 +7,10 @@ export function normalizeUsPhoneDigits(raw: string): string {
   return withoutCountryCode.slice(0, 10);
 }
 
+export function normalizeUsPhoneLocalDigits(raw: string): string {
+  return raw.replace(/\D/g, "").slice(0, 10);
+}
+
 export function formatUsPhoneInput(digits: string): string {
   if (digits.length === 0) return "";
   if (digits.length <= 3) return `+1 ${digits}`;

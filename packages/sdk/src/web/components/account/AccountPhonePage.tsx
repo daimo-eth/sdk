@@ -11,6 +11,7 @@ import {
 import {
   formatUsPhoneLocal,
   normalizeUsPhoneDigits,
+  normalizeUsPhoneLocalDigits,
   toUsPhoneE164,
 } from "./phone.js";
 
@@ -58,7 +59,7 @@ export function AccountPhonePage({ onBack, onOtpSent }: AccountPhonePageProps) {
     (e: React.ChangeEvent<HTMLInputElement>) => {
       if (account?.authError) account.setAuthError(null);
       const rawValue = e.target.value;
-      const nextDigits = normalizeUsPhoneDigits(rawValue);
+      const nextDigits = normalizeUsPhoneLocalDigits(rawValue);
       const selectionStart = e.target.selectionStart ?? rawValue.length;
       const digitIndex = Math.min(
         countDigits(rawValue.slice(0, selectionStart)),
@@ -125,6 +126,7 @@ export function AccountPhonePage({ onBack, onOtpSent }: AccountPhonePageProps) {
         </p>
 
         <div className="daimo-w-full daimo-max-w-xs daimo-flex daimo-items-center daimo-gap-3 daimo-px-4 daimo-py-3 daimo-bg-[var(--daimo-surface-secondary)] daimo-rounded-[var(--daimo-radius-md)] focus-within:daimo-ring-2 focus-within:daimo-ring-[var(--daimo-accent)] daimo-transition-shadow">
+          <UsFlagIcon />
           <span className="daimo-text-base daimo-font-medium daimo-text-[var(--daimo-text-secondary)] daimo-select-none">
             +1
           </span>
@@ -144,7 +146,6 @@ export function AccountPhonePage({ onBack, onOtpSent }: AccountPhonePageProps) {
             className="daimo-flex-1 daimo-min-w-0 daimo-bg-transparent daimo-border-none daimo-outline-none daimo-shadow-none daimo-ring-0 daimo-text-base daimo-text-[var(--daimo-text)] daimo-placeholder-[var(--daimo-placeholder)] daimo-caret-[var(--daimo-accent)] focus:daimo-outline-none focus:daimo-ring-0 focus:daimo-border-none focus:daimo-shadow-none"
           />
         </div>
-
         {account?.authError && <ErrorMessage message={account.authError} />}
       </CenteredContent>
 
@@ -157,6 +158,30 @@ export function AccountPhonePage({ onBack, onOtpSent }: AccountPhonePageProps) {
         </PrimaryButton>
       </div>
     </div>
+  );
+}
+
+function UsFlagIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 512 512"
+      className="daimo-h-5 daimo-w-5 daimo-shrink-0 daimo-overflow-hidden daimo-rounded-full"
+    >
+      <path
+        fill="#eee"
+        d="M256 0h256v64l-32 32 32 32v64l-32 32 32 32v64l-32 32 32 32v64l-256 32L0 448v-64l32-32-32-32v-64z"
+      />
+      <path
+        fill="#d80027"
+        d="M224 64h288v64H224Zm0 128h288v64H256ZM0 320h512v64H0Zm0 128h512v64H0Z"
+      />
+      <path fill="#0052b4" d="M0 0h256v256H0Z" />
+      <path
+        fill="#eee"
+        d="m187 243 57-41h-70l57 41-22-67zm-81 0 57-41H93l57 41-22-67zm-81 0 57-41H12l57 41-22-67zm162-81 57-41h-70l57 41-22-67zm-81 0 57-41H93l57 41-22-67zm-81 0 57-41H12l57 41-22-67Zm162-82 57-41h-70l57 41-22-67Zm-81 0 57-41H93l57 41-22-67zm-81 0 57-41H12l57 41-22-67Z"
+      />
+    </svg>
   );
 }
 
