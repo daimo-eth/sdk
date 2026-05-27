@@ -3,7 +3,7 @@ import { ReactNode, useLayoutEffect, useRef } from "react";
 import { t } from "../hooks/locale.js";
 import { CloseIcon } from "./icons.js";
 
-const MODAL_LOADING_MIN_HEIGHT = "min(440px, 90dvh)";
+const MODAL_LOADING_MIN_HEIGHT = "min(360px, 90dvh)";
 const HEIGHT_MORPH_MS = 180;
 const HEIGHT_MORPH_EASING = "cubic-bezier(0.23, 1, 0.32, 1)";
 
@@ -158,7 +158,9 @@ export function ModalContainer({
               <CloseIcon />
             </button>
           )}
-          <div className="daimo-flex-1 daimo-min-h-0 daimo-flex daimo-flex-col">{children}</div>
+          <div className="daimo-flex-1 daimo-min-h-0 daimo-flex daimo-flex-col">
+            {children}
+          </div>
           {showFooterSpacer && <div className="daimo-h-8 daimo-shrink-0" />}
         </div>
       </div>
@@ -173,9 +175,7 @@ export function EmbeddedContainer({
 }: ContainerProps & { onClose?: () => void }) {
   return (
     <div className="daimo-bg-transparent daimo-flex daimo-flex-col daimo-items-center">
-      <div
-        className="daimo-relative daimo-w-full daimo-max-w-[512px] daimo-bg-[var(--daimo-surface)] daimo-flex daimo-flex-col"
-      >
+      <div className="daimo-relative daimo-w-full daimo-max-w-[512px] daimo-bg-[var(--daimo-surface)] daimo-flex daimo-flex-col">
         {onClose && (
           <button
             onClick={onClose}

@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import type { AccountRail } from "../../common/account.js";
 import type {
   NavNode,
@@ -105,6 +112,25 @@ function pruneCompletedAccountAuth(
 ) {
   if (isAccountAuthChallengeEntryType(nextType)) return stack;
   return stack.filter((entry) => !isAccountAuthEntryType(entry.type));
+}
+
+function replacePendingAccountEntry(
+  stack: NavEntry[],
+  nodeId: string,
+  rail: AccountRail,
+  entry: NavEntry,
+) {
+  for (let index = stack.length - 1; index >= 0; index--) {
+    const item = stack[index];
+    if (
+      item.type === "account-loading" &&
+      item.nodeId === nodeId &&
+      item.rail === rail
+    ) {
+      return [...stack.slice(0, index), entry, ...stack.slice(index + 1)];
+    }
+  }
+  return stack;
 }
 
 export function useSessionNav(
@@ -328,18 +354,25 @@ export function useSessionNav(
   const handleAccountNavigate = useCallback(
     async (nodeId: string, node: NavNodeFiat, autoNav: boolean) => {
       const rail = node.fiatMethod;
+      setStack((prev) => [
+        ...prev,
+        { type: "account-loading", nodeId, rail, autoNav },
+      ]);
+
+      const replaceLoading = (entry: NavEntry) => {
+        setStack((prev) =>
+          replacePendingAccountEntry(prev, nodeId, rail, entry),
+        );
+      };
 
       if (!accountFlow) {
-        setStack((prev) => [
-          ...prev,
-          {
-            type: "account-error",
-            nodeId,
-            rail,
-            autoNav,
-            message: "account deposit is not available for this session.",
-          },
-        ]);
+        replaceLoading({
+          type: "account-error",
+          nodeId,
+          rail,
+          autoNav,
+          message: "account deposit is not available for this session.",
+        });
         return;
       }
 
@@ -367,32 +400,23 @@ export function useSessionNav(
             // Some rails skip the amount-first step and go straight to a
             // unified payment page.
             const entryType = getAccountPaymentEntryTarget(rail);
-            setStack((prev) => [
-              ...prev,
-              { type: entryType, nodeId, rail, autoNav },
-            ]);
+            replaceLoading({ type: entryType, nodeId, rail, autoNav });
             return;
           }
           if (result.nextAction === "enrollment") {
-            setStack((prev) => [
-              ...prev,
-              {
-                type: "account-enrollment",
-                nodeId,
-                rail,
-                autoNav,
-              },
-            ]);
+            replaceLoading({
+              type: "account-enrollment",
+              nodeId,
+              rail,
+              autoNav,
+            });
             return;
           }
         }
       }
 
       // New user or no session — start from email
-      setStack((prev) => [
-        ...prev,
-        { type: "account-email", nodeId, rail, autoNav },
-      ]);
+      replaceLoading({ type: "account-email", nodeId, rail, autoNav });
     },
     [accountFlow, client, session.clientSecret, session.sessionId],
   );
@@ -894,7 +918,7 @@ export function useSessionNav(
 
   // Auto-navigate through single-option ChooseOption chains
   const autoNavRef = useRef<string | null>(null);
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!isOpen) return;
 
     if (topEntry && topEntry.type !== "choose-option") {
