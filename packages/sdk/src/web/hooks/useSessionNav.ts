@@ -137,6 +137,7 @@ export function useSessionNav(
   session: SessionWithNav,
   setSession: React.Dispatch<React.SetStateAction<SessionWithNav>>,
   isOpen: boolean,
+  accountAuthEmail: string | null,
   platform?: DaimoPlatform,
   walletFlow?: WalletFlowResult,
   accountFlow?: AccountFlowState | null,
@@ -415,10 +416,26 @@ export function useSessionNav(
         }
       }
 
-      // New user or no session — start from email
+      if (accountAuthEmail) {
+        await accountFlow.logout();
+        accountFlow.setEmail(accountAuthEmail);
+        const sent = await accountFlow.sendOtp(accountAuthEmail);
+        if (sent) {
+          replaceLoading({ type: "account-otp", nodeId, rail, autoNav });
+          return;
+        }
+      }
+
+      // New user or no email hint — start from email
       replaceLoading({ type: "account-email", nodeId, rail, autoNav });
     },
-    [accountFlow, client, session.clientSecret, session.sessionId],
+    [
+      accountAuthEmail,
+      accountFlow,
+      client,
+      session.clientSecret,
+      session.sessionId,
+    ],
   );
 
   // ─── Navigation handlers ────────────────────────────────────────────────

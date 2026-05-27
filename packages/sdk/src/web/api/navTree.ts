@@ -2,14 +2,18 @@ import type { Address } from "viem";
 import type { AccountRail } from "../../common/account.js";
 import type { SessionPublicInfo } from "../../common/session.js";
 
-/** Session with navigation tree for the modal UI. */
-export type SessionWithNav = SessionPublicInfo & {
-  /** Client secret for session updates */
-  clientSecret: string;
+/** Session plus server-defined modal navigation data. */
+export type SessionNavInfo = SessionPublicInfo & {
   /** Server-defined nav */
   navTree: NavNode[];
   /** Base URL for receipt links and icon resolution (set by server). */
   baseUrl: string;
+};
+
+/** Session with navigation tree for the modal UI. */
+export type SessionWithNav = SessionNavInfo & {
+  /** Client secret for session updates */
+  clientSecret: string;
 };
 
 type NavNodeCommon = {

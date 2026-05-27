@@ -8,6 +8,7 @@ import {
 import type { Address } from "viem";
 import { tron } from "../../common/chain.js";
 import { isSessionTerminal } from "../../common/session.js";
+import type { AccountAuthConfig } from "../api/index.js";
 import type {
   NavNode,
   NavNodeCashApp,
@@ -108,6 +109,11 @@ export type DaimoModalProps = DaimoModalEventHandlers & {
 
 type NodeContext = { nodeId: string | null; nodeType: NavNodeType | null };
 
+type LoadedSession = {
+  session: SessionWithNav;
+  accountAuth: AccountAuthConfig | null;
+};
+
 function useModalCloseHandler(
   sessionId: string,
   clientSecret: string,
@@ -152,8 +158,7 @@ export function DaimoModal(props: DaimoModalProps) {
   autoDetectLocale();
 
   const client = useDaimoClient();
-  const [session, setSession] = useState<SessionWithNav | null>(null);
-  const [privyAppId, setPrivyAppId] = useState<string | undefined>();
+  const [loaded, setLoaded] = useState<LoadedSession | null>(null);
   const [isOpen, setIsOpen] = useState(defaultOpen);
   const [pageKey, setPageKey] = useState<string>();
   const [showFooterSpacer, setShowFooterSpacer] = useState(true);
@@ -168,24 +173,28 @@ export function DaimoModal(props: DaimoModalProps) {
     client.internal.sessions
       .retrieveWithNav(sessionId, clientSecret)
       .then((resp) => {
-        setSession({ ...resp.session, clientSecret });
-        if (resp.privyAppId) setPrivyAppId(resp.privyAppId);
+        setLoaded({
+          session: { ...resp.session, clientSecret },
+          accountAuth: resp.accountAuth ?? null,
+        });
       })
       .catch((err) => console.error("failed to fetch session:", err));
   }, [sessionId, clientSecret]);
 
-  // If the API returned a privyAppId and no AccountFlowProvider exists
+  // If the API returned account auth config and no AccountFlowProvider exists
   // upstream (e.g. customer didn't pass privyAppId to DaimoSDKProvider),
   // lazily wrap modal content so fiat flow works automatically.
   const existingAccountFlow = useAccountFlow();
-  const needsAccountProvider = !!privyAppId && !existingAccountFlow;
+  const accountAuth = loaded?.accountAuth;
+  const needsAccountProvider = !!accountAuth && !existingAccountFlow;
 
   if (!isOpen) return null;
 
-  const content = session ? (
+  const content = loaded ? (
     <DaimoModalInner
       {...props}
-      session={session}
+      session={loaded.session}
+      accountAuthEmail={loaded.accountAuth?.email ?? null}
       isOpen={isOpen}
       setIsOpen={setIsOpen}
       closeRef={closeRef}
@@ -195,13 +204,14 @@ export function DaimoModal(props: DaimoModalProps) {
     />
   ) : null;
 
-  const wrapped = needsAccountProvider ? (
-    <AccountFlowProvider privyAppId={privyAppId!}>
-      {content}
-    </AccountFlowProvider>
-  ) : (
-    content
-  );
+  const wrapped =
+    needsAccountProvider && accountAuth ? (
+      <AccountFlowProvider privyAppId={accountAuth.privyAppId}>
+        {content}
+      </AccountFlowProvider>
+    ) : (
+      content
+    );
 
   const handleClose = showCloseButton ? () => closeRef.current() : undefined;
   const reserveLoadingHeight =
@@ -259,6 +269,7 @@ const CONNECT_TO_ADDRESS_NAV: NavNode[] = [CONNECTED_WALLET_NODE];
 
 type DaimoModalInnerProps = DaimoModalProps & {
   session: SessionWithNav;
+  accountAuthEmail: string | null;
   isOpen: boolean;
   setIsOpen: (open: boolean) => void;
   closeRef: { current: () => void };
@@ -269,6 +280,7 @@ type DaimoModalInnerProps = DaimoModalProps & {
 
 function DaimoModalInner({
   session: initialSession,
+  accountAuthEmail,
   isOpen,
   setIsOpen,
   closeRef,
@@ -327,6 +339,7 @@ function DaimoModalInner({
     session,
     setSession,
     isOpen,
+    accountAuthEmail,
     resolvedPlatform,
     walletFlow,
     accountFlow,

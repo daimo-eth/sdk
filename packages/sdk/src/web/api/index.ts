@@ -1,5 +1,4 @@
-import type { SessionPublicInfo } from "../../common/session.js";
-import type { NavNode, SessionWithNav } from "./navTree.js";
+import type { SessionNavInfo, SessionWithNav } from "./navTree.js";
 import type { WalletPaymentOption } from "./walletTypes.js";
 
 export type {
@@ -17,6 +16,7 @@ export type {
   NavNodeKycRequirementItem,
   NavNodeKycRequirementKind,
   NavNodeTronDeposit,
+  SessionNavInfo,
   SessionWithNav,
 } from "./navTree.js";
 
@@ -26,16 +26,23 @@ export type {
   WalletPaymentOption,
 } from "./walletTypes.js";
 
+export type AccountAuthConfig = {
+  /** Embedded auth app ID used for account deposit flows. */
+  privyAppId: string;
+  /** Email to prefill and start OTP auth for fiat/account deposits. */
+  email?: string;
+};
+
 export type RetrieveSessionWithNavResponse = {
-  session: SessionPublicInfo & { navTree: NavNode[]; baseUrl: string };
-  /** Embedded auth app ID, present when the nav tree includes Fiat. */
-  privyAppId?: string;
+  session: SessionNavInfo;
+  /** Account auth config, present when the nav tree includes Fiat. */
+  accountAuth?: AccountAuthConfig;
 };
 
 export type RecreateSessionWithNavResponse = {
   session: SessionWithNav;
-  /** Embedded auth app ID, present when the nav tree includes Fiat. */
-  privyAppId?: string;
+  /** Account auth config, present when the nav tree includes Fiat. */
+  accountAuth?: AccountAuthConfig;
 };
 
 export type WalletOptionsResponse = WalletPaymentOption[];
