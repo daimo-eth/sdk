@@ -252,7 +252,7 @@ export function TextInput(props: React.InputHTMLAttributes<HTMLInputElement>) {
   return (
     <input
       {...rest}
-      className={`daimo-w-full daimo-px-3 daimo-py-2 daimo-text-sm daimo-bg-[var(--daimo-surface-secondary)] daimo-text-[var(--daimo-text)] daimo-placeholder-[var(--daimo-placeholder)] daimo-rounded-[var(--daimo-radius-md)] daimo-border-none daimo-outline-none focus:daimo-ring-2 focus:daimo-ring-[var(--daimo-accent)] daimo-transition-shadow ${className ?? ""}`}
+      className={`daimo-w-full daimo-px-3 daimo-py-2 daimo-text-base daimo-bg-[var(--daimo-surface-secondary)] daimo-text-[var(--daimo-text)] daimo-placeholder-[var(--daimo-placeholder)] daimo-rounded-[var(--daimo-radius-md)] daimo-border-none daimo-outline-none focus:daimo-ring-2 focus:daimo-ring-[var(--daimo-accent)] daimo-transition-shadow ${className ?? ""}`}
     />
   );
 }
