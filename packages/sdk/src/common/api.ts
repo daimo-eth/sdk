@@ -64,6 +64,8 @@ export const zTokenOptionsRequest = z
 export const zLogNavEventRequest = z.object({
   clientSecret: z.string(),
   event: z.string().min(1),
+  /** Action-specific context (nodeId, nodeType, targetNodeId, etc.). */
+  eventData: z.record(z.string(), z.any()).optional(),
 });
 
 export type CreatePaymentMethodRequest = z.output<

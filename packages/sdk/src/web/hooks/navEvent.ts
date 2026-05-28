@@ -54,9 +54,9 @@ export function createNavLogger(client: DaimoClient) {
     clientSecret: string,
     event: NavEvent,
   ): void {
-    const { action } = event;
+    const { action, ...eventData } = event;
     client.internal.sessions
-      .logNavEvent(sessionId, { clientSecret, event: action })
+      .logNavEvent(sessionId, { clientSecret, event: action, eventData })
       .catch((e) => {
         console.error("[navEvent] failed to log:", action, e);
       });
