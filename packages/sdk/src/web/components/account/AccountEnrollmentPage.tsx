@@ -14,7 +14,7 @@ import { t } from "../../hooks/locale.js";
 import { useAccountFlow } from "../../hooks/useAccountFlow.js";
 import { SecondaryButton, SecondaryLinkButton } from "../buttons.js";
 import { ErrorPage } from "../ErrorPage.js";
-import { ErrorIcon, ExternalLinkIcon } from "../icons.js";
+import { ErrorIcon, ExternalLinkIcon, WarningIcon } from "../icons.js";
 import { Skeleton, SkeletonText } from "../Skeleton.js";
 import {
   CenteredContent,
@@ -614,6 +614,7 @@ function HostedKycPage({
       <PageHeader title="Verification" onBack={onBack} />
 
       <div className="daimo-flex daimo-flex-1 daimo-min-h-0 daimo-flex-col daimo-gap-2 daimo-px-3 daimo-pb-3">
+        <HostedKycWarning description={step.description} />
         <div className="daimo-min-h-0 daimo-flex-1 daimo-overflow-hidden daimo-bg-white">
           <iframe
             src={iframeSrc}
@@ -631,6 +632,38 @@ function HostedKycPage({
         >
           Open verification in browser
         </SecondaryLinkButton>
+      </div>
+    </div>
+  );
+}
+
+function HostedKycWarning({ description }: { description: string }) {
+  return (
+    <div
+      className="daimo-flex daimo-gap-3 daimo-rounded-[var(--daimo-radius-md)] daimo-px-3 daimo-py-3"
+      style={{
+        backgroundColor: "var(--daimo-warning-light, #fff7ed)",
+        border: "1px solid var(--daimo-warning, #f97316)",
+      }}
+      role="note"
+      aria-label="Action required"
+    >
+      <span
+        className="daimo-mt-0.5 daimo-shrink-0"
+        style={{ color: "var(--daimo-warning, #f97316)" }}
+      >
+        <WarningIcon size={18} />
+      </span>
+      <div className="daimo-min-w-0">
+        <div
+          className="daimo-text-sm daimo-font-semibold daimo-leading-snug"
+          style={{ color: "var(--daimo-warning, #f97316)" }}
+        >
+          Action required
+        </div>
+        <p className="daimo-mt-1 daimo-text-xs daimo-leading-relaxed daimo-text-[var(--daimo-text-secondary)]">
+          {description}
+        </p>
       </div>
     </div>
   );
