@@ -215,12 +215,20 @@ function MobileWalletGrid({
   );
 }
 
+// A ChooseOption whose id starts with "Wallet-" represents a single wallet
+// that opens its own sub-flow (e.g. Trust expands into chain/token pickers).
+// Treat it as a leaf in the wallet grid so the user sees one tile per wallet.
+function isSingleWalletNode(option: NavNode): boolean {
+  return option.type === "ChooseOption" && option.id.startsWith("Wallet-");
+}
+
 function flattenWalletOptions(options: NavNode[]): NavNode[] {
-  return options.flatMap((option) =>
-    option.type === "ChooseOption"
-      ? flattenWalletOptions(option.options)
-      : [option],
-  );
+  return options.flatMap((option) => {
+    if (option.type !== "ChooseOption" || isSingleWalletNode(option)) {
+      return [option];
+    }
+    return flattenWalletOptions(option.options);
+  });
 }
 
 function getNestedOptionIcons(options: NavNode[], maxIcons = 4): string[] {
