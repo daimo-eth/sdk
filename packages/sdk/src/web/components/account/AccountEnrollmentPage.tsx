@@ -1,12 +1,18 @@
 import SumsubWebSdk from "@sumsub/websdk-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 
 import type { EnrollmentResponse } from "../../../common/account.js";
 import type { NavNodeFiat } from "../../api/navTree.js";
 import { useDaimoClient } from "../../hooks/DaimoClientContext.js";
 import { t } from "../../hooks/locale.js";
 import { useAccountFlow } from "../../hooks/useAccountFlow.js";
-import { SecondaryButton } from "../buttons.js";
+import { SecondaryButton, SecondaryLinkButton } from "../buttons.js";
 import { ErrorPage } from "../ErrorPage.js";
 import { ErrorIcon, ExternalLinkIcon } from "../icons.js";
 import { Skeleton, SkeletonText } from "../Skeleton.js";
@@ -27,6 +33,8 @@ type AccountEnrollmentPageProps = {
   onReady: () => void;
   /** Called when enrollment requires a phone OTP (e.g. Coinbase Headless). */
   onPhoneRequired: () => void;
+  /** Controls modal chrome when embedded provider UI has its own controls. */
+  setModalCloseVisible?: (show: boolean) => void;
 };
 
 /** Actions that should trigger polling — the state is still advancing. */
@@ -35,6 +43,7 @@ const POLLING_ACTIONS = new Set([
   "kyc_retry",
   "kyc_pending_review",
   "hosted_agreement_required",
+  "hosted_kyc_required",
   "provider_pending",
 ]);
 
@@ -47,6 +56,7 @@ const FORWARD_FROM_KYC = new Set([
   "kyc_rejected_final",
   "not_eligible",
   "hosted_agreement_required",
+  "hosted_kyc_required",
   "provider_pending",
   "phone_required",
   "active",
@@ -59,6 +69,7 @@ export function AccountEnrollmentPage({
   onBack,
   onReady,
   onPhoneRequired,
+  setModalCloseVisible,
 }: AccountEnrollmentPageProps) {
   const rail = node.fiatMethod;
   const account = useAccountFlow();
@@ -66,6 +77,7 @@ export function AccountEnrollmentPage({
   const [response, setResponse] = useState<EnrollmentResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [kycAccepted, setKycAccepted] = useState(false);
+  const [hostedKycAccepted, setHostedKycAccepted] = useState(false);
   const [isCheckingAgreement, setIsCheckingAgreement] = useState(false);
   const started = useRef(false);
   const responseRef = useRef<EnrollmentResponse | null>(null);
@@ -168,6 +180,14 @@ export function AccountEnrollmentPage({
     };
   }, []);
 
+  useLayoutEffect(() => {
+    if (!setModalCloseVisible) return;
+    const isHostedKycOpen =
+      response?.action === "hosted_kyc_required" && hostedKycAccepted;
+    setModalCloseVisible(!isHostedKycOpen);
+    return () => setModalCloseVisible(true);
+  }, [hostedKycAccepted, response?.action, setModalCloseVisible]);
+
   // --- Render ---
 
   if (isLoading) {
@@ -219,9 +239,31 @@ export function AccountEnrollmentPage({
         />
       );
 
+    case "hosted_kyc_required":
+      if (!hostedKycAccepted) {
+        return (
+          <AccountKycInfoPage
+            node={node}
+            onContinue={() => setHostedKycAccepted(true)}
+            onBack={onBack}
+          />
+        );
+      }
+      return (
+        <HostedEnrollmentPage
+          step={response}
+          isChecking={isCheckingAgreement}
+          onRefresh={async () => {
+            setIsCheckingAgreement(true);
+            await fetchEnrollment();
+          }}
+          onBack={() => setHostedKycAccepted(false)}
+        />
+      );
+
     case "hosted_agreement_required":
       return (
-        <HostedAgreementPage
+        <HostedEnrollmentPage
           step={response}
           isChecking={isCheckingAgreement}
           onRefresh={async () => {
@@ -285,6 +327,8 @@ export function AccountEnrollmentPage({
 
     case "active":
       return null;
+    default:
+      return assertUnreachable(response);
   }
 }
 
@@ -437,22 +481,38 @@ function EnrollmentWaiting({
   );
 }
 
-/** Hosted external agreement step. Polling drives completion. */
-function HostedAgreementPage({
+/** Hosted enrollment step. Polling drives completion. */
+function HostedEnrollmentPage({
   step,
   isChecking,
   onRefresh,
   onBack,
 }: {
-  step: Extract<EnrollmentResponse, { action: "hosted_agreement_required" }>;
+  step: Extract<
+    EnrollmentResponse,
+    { action: "hosted_agreement_required" | "hosted_kyc_required" }
+  >;
   isChecking: boolean;
   onRefresh: () => Promise<void>;
   onBack: () => void;
 }) {
-  const openAgreement = useCallback(() => {
+  const isKyc = step.action === "hosted_kyc_required";
+  const iframeSrc = isKyc ? toPersonaWidgetUrl(step.url) : step.url;
+  const openHostedStep = useCallback(() => {
     if (postNativeOpenUrl(step.url)) return;
     window.open(step.url, "_blank", "noopener,noreferrer");
   }, [step.url]);
+
+  if (isKyc) {
+    return (
+      <HostedKycPage
+        step={step}
+        iframeSrc={iframeSrc}
+        onBack={onBack}
+        onOpenExternal={openHostedStep}
+      />
+    );
+  }
 
   return (
     <div className="daimo-flex daimo-flex-col daimo-flex-1 daimo-min-h-0">
@@ -473,9 +533,19 @@ function HostedAgreementPage({
             }}
           >
             <iframe
-              src={step.url}
+              src={iframeSrc}
               title={step.title}
               className="daimo-block daimo-h-full daimo-w-full daimo-border-0"
+              allow={
+                isKyc
+                  ? "camera; clipboard-read; clipboard-write"
+                  : "clipboard-read; clipboard-write"
+              }
+              sandbox={
+                isKyc
+                  ? "allow-forms allow-modals allow-popups allow-popups-to-escape-sandbox allow-same-origin allow-scripts allow-top-navigation-by-user-activation"
+                  : undefined
+              }
             />
           </div>
 
@@ -485,7 +555,7 @@ function HostedAgreementPage({
             </p>
             <button
               type="button"
-              onClick={openAgreement}
+              onClick={openHostedStep}
               disabled={isChecking}
               aria-label={step.openExternalLabel}
               title={step.openExternalLabel}
@@ -525,6 +595,54 @@ function HostedAgreementPage({
   );
 }
 
+function HostedKycPage({
+  step,
+  iframeSrc,
+  onBack,
+  onOpenExternal,
+}: {
+  step: Extract<EnrollmentResponse, { action: "hosted_kyc_required" }>;
+  iframeSrc: string;
+  onBack: () => void;
+  onOpenExternal: () => void;
+}) {
+  return (
+    <div
+      className="daimo-flex daimo-flex-col daimo-min-h-0"
+      style={{ height: "min(720px, calc(90dvh - 32px))" }}
+    >
+      <PageHeader title="Verification" onBack={onBack} />
+
+      <div className="daimo-flex daimo-flex-1 daimo-min-h-0 daimo-flex-col daimo-gap-2 daimo-px-3 daimo-pb-3">
+        <div className="daimo-min-h-0 daimo-flex-1 daimo-overflow-hidden daimo-bg-white">
+          <iframe
+            src={iframeSrc}
+            title={step.title}
+            className="daimo-block daimo-h-full daimo-w-full daimo-border-0"
+            allow="camera; clipboard-read; clipboard-write"
+            sandbox="allow-forms allow-modals allow-popups allow-popups-to-escape-sandbox allow-same-origin allow-scripts allow-top-navigation-by-user-activation"
+          />
+        </div>
+
+        <SecondaryLinkButton
+          onClick={onOpenExternal}
+          className="daimo-mx-auto daimo-inline-flex daimo-min-h-[40px] daimo-items-center daimo-justify-center daimo-px-2"
+          style={{ touchAction: "manipulation" }}
+        >
+          Open verification in browser
+        </SecondaryLinkButton>
+      </div>
+    </div>
+  );
+}
+
+function toPersonaWidgetUrl(url: string): string {
+  const parsed = new URL(url);
+  parsed.pathname = parsed.pathname.replace("/verify", "/widget");
+  parsed.searchParams.set("iframe-origin", window.location.origin);
+  return parsed.toString();
+}
+
 function postNativeOpenUrl(url: string): boolean {
   const w = window as {
     webkit?: {
@@ -535,6 +653,10 @@ function postNativeOpenUrl(url: string): boolean {
   if (!handler) return false;
   handler.postMessage({ type: "openUrl", url });
   return true;
+}
+
+function assertUnreachable(value: never): never {
+  throw new Error(`unhandled enrollment response: ${JSON.stringify(value)}`);
 }
 
 /** SumSub identity verification widget. */

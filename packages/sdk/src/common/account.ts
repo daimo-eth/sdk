@@ -23,23 +23,25 @@ export type NextAction = "create_account" | "enrollment" | "ready_for_payment";
 export type ExistingAccountNextAction = Exclude<NextAction, "create_account">;
 
 /** Enrollment state machine response from startEnrollment. */
+type HostedEnrollmentResponse = {
+  title: string;
+  description: string;
+  url: string;
+  openExternalLabel: string;
+  continueLabel: string;
+  fallbackDescription: string;
+  autoContinueDescription: string;
+  checkingDescription: string;
+};
+
 export type EnrollmentResponse =
   | { action: "kyc_required"; kycToken: string }
   | { action: "kyc_retry"; kycToken: string; reason: string }
   | { action: "kyc_pending_review" }
   | { action: "kyc_rejected_final"; reason: string }
   | { action: "not_eligible"; reason: string }
-  | {
-      action: "hosted_agreement_required";
-      title: string;
-      description: string;
-      url: string;
-      openExternalLabel: string;
-      continueLabel: string;
-      fallbackDescription: string;
-      autoContinueDescription: string;
-      checkingDescription: string;
-    }
+  | ({ action: "hosted_agreement_required" } & HostedEnrollmentResponse)
+  | ({ action: "hosted_kyc_required" } & HostedEnrollmentResponse)
   | { action: "provider_pending" }
   /** User must verify a phone number before continuing. */
   | { action: "phone_required"; reason?: string }

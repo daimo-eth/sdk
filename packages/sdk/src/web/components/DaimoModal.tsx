@@ -304,6 +304,7 @@ function DaimoModalInner({
       : initialSession;
 
   const [pendingTxHash, setPendingTxHash] = useState<string | undefined>();
+  const [pageCloseVisible, setPageCloseVisible] = useState(true);
   const { session, setSession } = useSessionPolling(
     effectiveInitial,
     isOpen,
@@ -424,6 +425,7 @@ function DaimoModalInner({
       onWalletSelectToken: nav.handleWalletSelectToken,
       onWalletSending: nav.handleWalletSending,
       onAccountAdvance: nav.handleAccountAdvance,
+      setModalCloseVisible: setPageCloseVisible,
     });
   }
 
@@ -434,8 +436,8 @@ function DaimoModalInner({
     [showFooterSpacer, setShowFooterSpacer],
   );
   useLayoutEffect(
-    () => setShowCloseButton(showClose),
-    [showClose, setShowCloseButton],
+    () => setShowCloseButton(showClose && pageCloseVisible),
+    [pageCloseVisible, showClose, setShowCloseButton],
   );
 
   // Skip page-enter animation on first render — container animation handles it
@@ -491,6 +493,7 @@ type RenderContext = {
   onWalletSelectToken: (token: WalletPaymentOption) => void;
   onWalletSending: (token: WalletPaymentOption, amountUsd: number) => void;
   onAccountAdvance: (nextType: NavEntry["type"]) => void;
+  setModalCloseVisible: (show: boolean) => void;
 };
 
 function renderEntry(
@@ -646,6 +649,7 @@ function renderEntry(
             ctx.onAccountAdvance(getAccountPaymentEntryTarget(entry.rail))
           }
           onPhoneRequired={() => ctx.onAccountAdvance("account-phone")}
+          setModalCloseVisible={ctx.setModalCloseVisible}
         />
       );
     }
