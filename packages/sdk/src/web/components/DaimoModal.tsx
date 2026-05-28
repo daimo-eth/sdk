@@ -8,7 +8,7 @@ import {
 import type { Address } from "viem";
 import { tron } from "../../common/chain.js";
 import { isSessionTerminal } from "../../common/session.js";
-import type { AccountAuthConfig } from "../api/index.js";
+import type { AccountAuthConfig, AccountAuthHint } from "../api/index.js";
 import type {
   NavNode,
   NavNodeCashApp,
@@ -194,7 +194,7 @@ export function DaimoModal(props: DaimoModalProps) {
     <DaimoModalInner
       {...props}
       session={loaded.session}
-      accountAuthEmail={loaded.accountAuth?.email ?? null}
+      accountAuth={loaded.accountAuth}
       isOpen={isOpen}
       setIsOpen={setIsOpen}
       closeRef={closeRef}
@@ -269,7 +269,7 @@ const CONNECT_TO_ADDRESS_NAV: NavNode[] = [CONNECTED_WALLET_NODE];
 
 type DaimoModalInnerProps = DaimoModalProps & {
   session: SessionWithNav;
-  accountAuthEmail: string | null;
+  accountAuth: AccountAuthHint | null;
   isOpen: boolean;
   setIsOpen: (open: boolean) => void;
   closeRef: { current: () => void };
@@ -280,7 +280,7 @@ type DaimoModalInnerProps = DaimoModalProps & {
 
 function DaimoModalInner({
   session: initialSession,
-  accountAuthEmail,
+  accountAuth,
   isOpen,
   setIsOpen,
   closeRef,
@@ -340,7 +340,7 @@ function DaimoModalInner({
     session,
     setSession,
     isOpen,
-    accountAuthEmail,
+    accountAuth,
     resolvedPlatform,
     walletFlow,
     accountFlow,

@@ -26,11 +26,16 @@ export type {
   WalletPaymentOption,
 } from "./walletTypes.js";
 
-export type AccountAuthConfig = {
-  /** Embedded auth app ID used for account deposit flows. */
-  privyAppId: string;
+export type AccountAuthHint = {
   /** Email to prefill and start OTP auth for fiat/account deposits. */
   email?: string;
+  /** E.164 phone number to prefill and start SMS OTP for Apple Pay. */
+  phone?: string;
+};
+
+export type AccountAuthConfig = AccountAuthHint & {
+  /** Embedded auth app ID used for account deposit flows. */
+  privyAppId: string;
 };
 
 export type RetrieveSessionWithNavResponse = {

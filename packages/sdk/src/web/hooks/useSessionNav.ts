@@ -7,6 +7,7 @@ import {
   useState,
 } from "react";
 import type { AccountRail } from "../../common/account.js";
+import type { AccountAuthHint } from "../api/index.js";
 import type {
   NavNode,
   NavNodeCashApp,
@@ -137,7 +138,7 @@ export function useSessionNav(
   session: SessionWithNav,
   setSession: React.Dispatch<React.SetStateAction<SessionWithNav>>,
   isOpen: boolean,
-  accountAuthEmail: string | null,
+  accountAuth: AccountAuthHint | null,
   platform?: DaimoPlatform,
   walletFlow?: WalletFlowResult,
   accountFlow?: AccountFlowState | null,
@@ -416,10 +417,10 @@ export function useSessionNav(
         }
       }
 
-      if (accountAuthEmail) {
+      if (accountAuth?.email) {
         await accountFlow.logout();
-        accountFlow.setEmail(accountAuthEmail);
-        const sent = await accountFlow.sendOtp(accountAuthEmail);
+        accountFlow.setEmail(accountAuth.email);
+        const sent = await accountFlow.sendOtp(accountAuth.email);
         if (sent) {
           replaceLoading({ type: "account-otp", nodeId, rail, autoNav });
           return;
@@ -430,7 +431,7 @@ export function useSessionNav(
       replaceLoading({ type: "account-email", nodeId, rail, autoNav });
     },
     [
-      accountAuthEmail,
+      accountAuth,
       accountFlow,
       client,
       session.clientSecret,
@@ -983,12 +984,38 @@ export function useSessionNav(
     (nextType: NavEntry["type"]) => {
       if (!topEntry || !("rail" in topEntry)) return;
       const { nodeId, rail } = topEntry as NavEntry & { rail: AccountRail };
+
+      const pushPhoneEntry = (
+        type: "account-loading" | "account-phone" | "account-phone-otp",
+      ) => {
+        setStack((prev) => {
+          const nextStack = pruneCompletedAccountAuth(prev, type);
+          return [...nextStack, { type, nodeId, rail } as NavEntry];
+        });
+      };
+
+      if (
+        nextType === "account-phone" &&
+        rail === "apple_pay" &&
+        accountAuth?.phone &&
+        accountFlow
+      ) {
+        const phone = accountAuth.phone;
+        pushPhoneEntry("account-loading");
+        void (async () => {
+          accountFlow.setPhoneNumber(phone);
+          const sent = await accountFlow.sendPhoneOtp(phone);
+          pushPhoneEntry(sent ? "account-phone-otp" : "account-phone");
+        })();
+        return;
+      }
+
       setStack((prev) => {
         const nextStack = pruneCompletedAccountAuth(prev, nextType);
         return [...nextStack, { type: nextType, nodeId, rail } as NavEntry];
       });
     },
-    [topEntry],
+    [accountAuth, accountFlow, topEntry],
   );
 
   return useMemo(
