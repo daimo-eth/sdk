@@ -14,7 +14,7 @@ import { t } from "../../hooks/locale.js";
 import { useAccountFlow } from "../../hooks/useAccountFlow.js";
 import { SecondaryButton, SecondaryLinkButton } from "../buttons.js";
 import { ErrorPage } from "../ErrorPage.js";
-import { ErrorIcon, ExternalLinkIcon, WarningIcon } from "../icons.js";
+import { ErrorIcon } from "../icons.js";
 import { Skeleton, SkeletonText } from "../Skeleton.js";
 import {
   CenteredContent,
@@ -78,7 +78,6 @@ export function AccountEnrollmentPage({
   const [isLoading, setIsLoading] = useState(true);
   const [kycAccepted, setKycAccepted] = useState(false);
   const [hostedKycAccepted, setHostedKycAccepted] = useState(false);
-  const [isCheckingAgreement, setIsCheckingAgreement] = useState(false);
   const started = useRef(false);
   const responseRef = useRef<EnrollmentResponse | null>(null);
   const readyTimeoutRef = useRef<number | null>(null);
@@ -101,7 +100,6 @@ export function AccountEnrollmentPage({
     }
 
     if (isInitial) setIsLoading(false);
-    setIsCheckingAgreement(false);
     if (!result) return;
 
     // While awaiting webhook, only accept forward progress
@@ -252,11 +250,6 @@ export function AccountEnrollmentPage({
       return (
         <HostedEnrollmentPage
           step={response}
-          isChecking={isCheckingAgreement}
-          onRefresh={async () => {
-            setIsCheckingAgreement(true);
-            await fetchEnrollment();
-          }}
           onBack={() => setHostedKycAccepted(false)}
         />
       );
@@ -265,11 +258,6 @@ export function AccountEnrollmentPage({
       return (
         <HostedEnrollmentPage
           step={response}
-          isChecking={isCheckingAgreement}
-          onRefresh={async () => {
-            setIsCheckingAgreement(true);
-            await fetchEnrollment();
-          }}
           onBack={onBack}
         />
       );
@@ -484,16 +472,12 @@ function EnrollmentWaiting({
 /** Hosted enrollment step. Polling drives completion. */
 function HostedEnrollmentPage({
   step,
-  isChecking,
-  onRefresh,
   onBack,
 }: {
   step: Extract<
     EnrollmentResponse,
     { action: "hosted_agreement_required" | "hosted_kyc_required" }
   >;
-  isChecking: boolean;
-  onRefresh: () => Promise<void>;
   onBack: () => void;
 }) {
   const isKyc = step.action === "hosted_kyc_required";
@@ -515,81 +499,50 @@ function HostedEnrollmentPage({
   }
 
   return (
-    <div className="daimo-flex daimo-flex-col daimo-flex-1 daimo-min-h-0">
+    <HostedAgreementPage
+      step={step}
+      iframeSrc={iframeSrc}
+      onBack={onBack}
+      onOpenExternal={openHostedStep}
+    />
+  );
+}
+
+function HostedAgreementPage({
+  step,
+  iframeSrc,
+  onBack,
+  onOpenExternal,
+}: {
+  step: Extract<EnrollmentResponse, { action: "hosted_agreement_required" }>;
+  iframeSrc: string;
+  onBack: () => void;
+  onOpenExternal: () => void;
+}) {
+  return (
+    <div
+      className="daimo-flex daimo-flex-col daimo-min-h-0"
+      style={{ height: "min(720px, calc(90dvh - 32px))" }}
+    >
       <PageHeader title={step.title} onBack={onBack} />
 
-      <div className="daimo-flex-1 daimo-min-h-0 daimo-overflow-y-auto daimo-px-5 daimo-pb-3">
-        <div className="daimo-mx-auto daimo-flex daimo-w-full daimo-max-w-[420px] daimo-flex-col daimo-gap-3">
-          <p className="daimo-px-1 daimo-text-xs daimo-text-[var(--daimo-text-muted)] daimo-text-center daimo-leading-relaxed">
-            {step.description}
-          </p>
-
-          <div
-            className="daimo-w-full daimo-overflow-hidden daimo-rounded-[22px] daimo-border daimo-bg-white"
-            style={{
-              height: "clamp(460px, 64svh, 680px)",
-              borderColor: "var(--daimo-border)",
-              boxShadow: "0 12px 40px rgba(15, 23, 42, 0.08)",
-            }}
-          >
-            <iframe
-              src={iframeSrc}
-              title={step.title}
-              className="daimo-block daimo-h-full daimo-w-full daimo-border-0"
-              allow={
-                isKyc
-                  ? "camera; clipboard-read; clipboard-write"
-                  : "clipboard-read; clipboard-write"
-              }
-              sandbox={
-                isKyc
-                  ? "allow-forms allow-modals allow-popups allow-popups-to-escape-sandbox allow-same-origin allow-scripts allow-top-navigation-by-user-activation"
-                  : undefined
-              }
-            />
-          </div>
-
-          <div className="daimo-flex daimo-flex-col daimo-items-center daimo-gap-2">
-            <p className="daimo-mx-auto daimo-max-w-[340px] daimo-text-[11px] daimo-text-[var(--daimo-text-muted)] daimo-text-center daimo-leading-relaxed">
-              {step.fallbackDescription}
-            </p>
-            <button
-              type="button"
-              onClick={openHostedStep}
-              disabled={isChecking}
-              aria-label={step.openExternalLabel}
-              title={step.openExternalLabel}
-              className="daimo-inline-flex daimo-min-h-[44px] daimo-items-center daimo-justify-center daimo-gap-2 daimo-rounded-full daimo-px-4 daimo-text-xs daimo-font-medium daimo-transition-[background-color,border-color,color] daimo-duration-150 daimo-ease-out disabled:daimo-opacity-50"
-              style={{
-                color: "var(--daimo-text-secondary)",
-                backgroundColor: "var(--daimo-surface-secondary)",
-                touchAction: "manipulation",
-              }}
-            >
-              <ExternalLinkIcon size={14} className="daimo-text-current" />
-              <span>{step.openExternalLabel}</span>
-            </button>
-          </div>
+      <div className="daimo-flex daimo-flex-1 daimo-min-h-0 daimo-flex-col daimo-gap-2 daimo-px-3 daimo-pb-3">
+        <div className="daimo-min-h-0 daimo-flex-1 daimo-overflow-hidden daimo-bg-white">
+          <iframe
+            src={iframeSrc}
+            title={step.title}
+            className="daimo-block daimo-h-full daimo-w-full daimo-border-0"
+            allow="clipboard-read; clipboard-write"
+          />
         </div>
-      </div>
 
-      <div className="daimo-mx-auto daimo-w-full daimo-max-w-[420px] daimo-shrink-0 daimo-px-5 daimo-pb-5 daimo-flex daimo-flex-col daimo-gap-2">
-        <button
-          type="button"
-          onClick={() => void onRefresh()}
-          disabled={isChecking}
-          className="daimo-relative daimo-mx-auto daimo-w-full daimo-max-w-xs daimo-min-h-[44px] daimo-rounded-[var(--daimo-radius-lg)] daimo-border-0 daimo-bg-[var(--daimo-surface-secondary)] daimo-px-6 daimo-py-4 daimo-text-[var(--daimo-text)] daimo-touch-action-manipulation daimo-transition-[background-color] daimo-duration-100 daimo-ease disabled:daimo-text-[var(--daimo-text-muted)]"
+        <SecondaryLinkButton
+          onClick={onOpenExternal}
+          className="daimo-mx-auto daimo-inline-flex daimo-min-h-[40px] daimo-items-center daimo-justify-center daimo-px-2"
+          style={{ touchAction: "manipulation" }}
         >
-          <span
-            className="daimo-pointer-events-none daimo-absolute daimo-left-1/2 daimo-top-1/2 daimo-whitespace-nowrap daimo-text-center daimo-text-sm daimo-font-medium daimo-leading-none daimo--translate-y-1/2"
-            style={{ transform: "translate(calc(-50% + 1px), -50%)" }}
-          >
-            {isChecking ? t.accountProviderPending : step.continueLabel}
-          </span>
-        </button>
-        <p className="daimo-text-[11px] daimo-text-[var(--daimo-text-muted)] daimo-text-center daimo-leading-relaxed daimo-px-4">
-          {isChecking ? step.checkingDescription : step.autoContinueDescription}
-        </p>
+          Open in browser
+        </SecondaryLinkButton>
       </div>
     </div>
   );
@@ -614,7 +567,6 @@ function HostedKycPage({
       <PageHeader title="Verification" onBack={onBack} />
 
       <div className="daimo-flex daimo-flex-1 daimo-min-h-0 daimo-flex-col daimo-gap-2 daimo-px-3 daimo-pb-3">
-        <HostedKycWarning description={step.description} />
         <div className="daimo-min-h-0 daimo-flex-1 daimo-overflow-hidden daimo-bg-white">
           <iframe
             src={iframeSrc}
@@ -632,38 +584,6 @@ function HostedKycPage({
         >
           Open verification in browser
         </SecondaryLinkButton>
-      </div>
-    </div>
-  );
-}
-
-function HostedKycWarning({ description }: { description: string }) {
-  return (
-    <div
-      className="daimo-flex daimo-gap-3 daimo-rounded-[var(--daimo-radius-md)] daimo-px-3 daimo-py-3"
-      style={{
-        backgroundColor: "var(--daimo-warning-light, #fff7ed)",
-        border: "1px solid var(--daimo-warning, #f97316)",
-      }}
-      role="note"
-      aria-label="Action required"
-    >
-      <span
-        className="daimo-mt-0.5 daimo-shrink-0"
-        style={{ color: "var(--daimo-warning, #f97316)" }}
-      >
-        <WarningIcon size={18} />
-      </span>
-      <div className="daimo-min-w-0">
-        <div
-          className="daimo-text-sm daimo-font-semibold daimo-leading-snug"
-          style={{ color: "var(--daimo-warning, #f97316)" }}
-        >
-          Action required
-        </div>
-        <p className="daimo-mt-1 daimo-text-xs daimo-leading-relaxed daimo-text-[var(--daimo-text-secondary)]">
-          {description}
-        </p>
       </div>
     </div>
   );
