@@ -42,23 +42,37 @@ export function ExpiredIcon({ className, size = 40 }: IconProps) {
   );
 }
 
-/** X icon for error states */
+/** Alert icon for error states */
 export function ErrorIcon({ className, size = 40 }: IconProps) {
   return (
     <svg
+      aria-hidden="true"
       width={size}
       height={size}
       viewBox="0 0 24 24"
       fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={className ?? "daimo-text-[var(--daimo-error)]"}
+      className={className ?? "daimo-text-[var(--daimo-error-badge-mark)]"}
     >
-      <circle cx="12" cy="12" r="10" />
-      <path d="M15 9l-6 6" />
-      <path d="M9 9l6 6" />
+      <circle
+        cx="12"
+        cy="12"
+        r="8.25"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        opacity="0.95"
+      />
+      <path
+        d="M12 7.4v5.2"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+      />
+      <path
+        d="M12 16.55h.01"
+        stroke="currentColor"
+        strokeWidth="2.4"
+        strokeLinecap="round"
+      />
     </svg>
   );
 }

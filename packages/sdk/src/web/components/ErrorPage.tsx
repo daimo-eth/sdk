@@ -82,7 +82,10 @@ export function ErrorPage({
         {/* Error icon */}
         <div
           className="daimo-w-20 daimo-h-20 daimo-rounded-full daimo-flex daimo-items-center daimo-justify-center"
-          style={{ backgroundColor: "var(--daimo-error-light)" }}
+          style={{
+            backgroundColor: "var(--daimo-error-badge-bg)",
+            boxShadow: "inset 0 0 0 1px var(--daimo-error-badge-ring)",
+          }}
         >
           <ErrorIcon />
         </div>

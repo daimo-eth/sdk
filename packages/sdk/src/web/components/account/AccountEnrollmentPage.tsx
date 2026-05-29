@@ -420,7 +420,10 @@ function EnrollmentTerminal({
       <div className="daimo-flex-1 daimo-flex daimo-flex-col daimo-items-center daimo-justify-center daimo-p-6 daimo-gap-6">
         <div
           className="daimo-w-16 daimo-h-16 daimo-rounded-full daimo-flex daimo-items-center daimo-justify-center"
-          style={{ backgroundColor: "var(--daimo-error-light)" }}
+          style={{
+            backgroundColor: "var(--daimo-error-badge-bg)",
+            boxShadow: "inset 0 0 0 1px var(--daimo-error-badge-ring)",
+          }}
         >
           <ErrorIcon size={32} />
         </div>
