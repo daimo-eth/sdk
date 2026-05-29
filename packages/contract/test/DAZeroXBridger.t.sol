@@ -5,6 +5,11 @@ import "forge-std/Test.sol";
 import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 
 import {DAZeroXBridger} from "../src/DAZeroXBridger.sol";
+import {
+    DestinationType,
+    BridgeTokenAmount,
+    DestinationUtils
+} from "../src/DestinationUtils.sol";
 import {IDaimoPayBridger} from "../src/interfaces/IDaimoPayBridger.sol";
 import {TokenAmount} from "../src/TokenUtils.sol";
 import {TestUSDC} from "./utils/DummyUSDC.sol";
@@ -89,9 +94,9 @@ contract DAZeroXBridgerTest is Test {
         chains[0] = DST_CHAIN;
         chains[1] = DST_CHAIN;
 
-        address[] memory tokenOuts = new address[](2);
-        tokenOuts[0] = bridgeTokenOutA;
-        tokenOuts[1] = bridgeTokenOutB;
+        address[] memory tokenOutAddrs = new address[](2);
+        tokenOutAddrs[0] = bridgeTokenOutA;
+        tokenOutAddrs[1] = bridgeTokenOutB;
 
         DAZeroXBridger.ZeroXRoute[]
             memory routes = new DAZeroXBridger.ZeroXRoute[](2);
@@ -110,8 +115,9 @@ contract DAZeroXBridgerTest is Test {
             _owner: trustedSigner,
             _trustedSigner: trustedSigner,
             _maxQuoteAge: MAX_QUOTE_AGE,
+            _destinationTypes: _evmDestinationTypes(chains.length),
             _toChainIds: chains,
-            _bridgeTokenOuts: tokenOuts,
+            _bridgeTokenOuts: _evmTokenOuts(tokenOutAddrs),
             _bridgeRoutes: routes
         });
 
@@ -135,12 +141,34 @@ contract DAZeroXBridgerTest is Test {
         opts[0] = TokenAmount({token: IERC20(tokenOut), amount: amount});
     }
 
+    function _evmBytes(address addr) internal pure returns (bytes memory) {
+        return DestinationUtils.evmAddressToBytes(addr);
+    }
+
+    function _evmDestinationTypes(
+        uint256 n
+    ) internal pure returns (DestinationType[] memory destinationTypes) {
+        destinationTypes = new DestinationType[](n);
+        for (uint256 i = 0; i < n; ++i) {
+            destinationTypes[i] = DestinationType.EVM;
+        }
+    }
+
+    function _evmTokenOuts(
+        address[] memory tokenOuts
+    ) internal pure returns (bytes[] memory ret) {
+        ret = new bytes[](tokenOuts.length);
+        for (uint256 i = 0; i < tokenOuts.length; ++i) {
+            ret[i] = _evmBytes(tokenOuts[i]);
+        }
+    }
+
     function _baseQuote(
         address tokenOut,
         uint256 outAmount
     ) internal view returns (DAZeroXBridger.SignedQuote memory q) {
         q = DAZeroXBridger.SignedQuote({
-            bridgeTokenOut: tokenOut,
+            bridgeTokenOut: _evmBytes(tokenOut),
             outAmount: outAmount,
             allowanceTarget: address(router),
             callTarget: address(router),
@@ -150,9 +178,12 @@ contract DAZeroXBridgerTest is Test {
             ),
             callValue: 0,
             timestamp: block.timestamp,
-            quoteId: keccak256(abi.encode(tokenOut, outAmount, block.timestamp)),
+            quoteId: keccak256(
+                abi.encode(tokenOut, outAmount, block.timestamp)
+            ),
+            destinationType: DestinationType.EVM,
             toChainId: DST_CHAIN,
-            toAddress: toAddress,
+            toAddress: _evmBytes(toAddress),
             signature: ""
         });
     }
@@ -174,10 +205,11 @@ contract DAZeroXBridgerTest is Test {
             abi.encode(
                 chainId,
                 bridgerAddr,
+                q.destinationType,
                 q.toChainId,
-                q.toAddress,
+                keccak256(q.toAddress),
                 bridgeTokenIn,
-                q.bridgeTokenOut,
+                keccak256(q.bridgeTokenOut),
                 q.outAmount,
                 q.allowanceTarget,
                 q.callTarget,
@@ -199,7 +231,9 @@ contract DAZeroXBridgerTest is Test {
     ) internal view returns (DAZeroXBridger.SignedQuote memory) {
         q.signature = _sign(
             q,
-            _routeInToken(q.bridgeTokenOut),
+            _routeInToken(
+                DestinationUtils.decodeEvmAddressMemory(q.bridgeTokenOut)
+            ),
             TRUSTED_SIGNER_KEY,
             address(bridger),
             block.chainid
@@ -230,8 +264,9 @@ contract DAZeroXBridgerTest is Test {
                 trustedSigner,
                 trustedSigner,
                 MAX_QUOTE_AGE,
+                _evmDestinationTypes(chains.length),
                 chains,
-                tokenOuts,
+                _evmTokenOuts(tokenOuts),
                 routes
             );
     }
@@ -247,21 +282,19 @@ contract DAZeroXBridgerTest is Test {
         uint256 inAmount
     ) internal view returns (DAZeroXBridger.SignedQuote memory q) {
         q = DAZeroXBridger.SignedQuote({
-            bridgeTokenOut: tokenOut,
+            bridgeTokenOut: _evmBytes(tokenOut),
             outAmount: outAmount,
             allowanceTarget: address(router),
             callTarget: address(router),
-            callData: abi.encodeCall(
-                MockZeroXRouter.swap,
-                (tokenIn, inAmount)
-            ),
+            callData: abi.encodeCall(MockZeroXRouter.swap, (tokenIn, inAmount)),
             callValue: 0,
             timestamp: block.timestamp,
             quoteId: keccak256(
                 abi.encode(tokenOut, outAmount, inAmount, block.timestamp)
             ),
+            destinationType: DestinationType.EVM,
             toChainId: DST_CHAIN,
-            toAddress: toAddress,
+            toAddress: _evmBytes(toAddress),
             signature: ""
         });
         q.signature = _sign(
@@ -271,6 +304,82 @@ contract DAZeroXBridgerTest is Test {
             address(b),
             block.chainid
         );
+    }
+
+    function _solanaBytes(uint256 seed) internal pure returns (bytes memory) {
+        return abi.encodePacked(bytes32(seed));
+    }
+
+    function _deployDirectBridger(
+        DestinationType destinationType,
+        uint256 toChainId,
+        bytes memory tokenOut
+    ) internal returns (DAZeroXBridger) {
+        DestinationType[] memory destinationTypes = new DestinationType[](1);
+        destinationTypes[0] = destinationType;
+        uint256[] memory chains = new uint256[](1);
+        chains[0] = toChainId;
+        bytes[] memory tokenOuts = new bytes[](1);
+        tokenOuts[0] = tokenOut;
+        DAZeroXBridger.ZeroXRoute[]
+            memory routes = new DAZeroXBridger.ZeroXRoute[](1);
+        routes[0] = DAZeroXBridger.ZeroXRoute({
+            bridgeTokenIn: address(usdcIn),
+            bridgeTokenInDecimals: 6,
+            bridgeTokenOutDecimals: 6
+        });
+        return
+            new DAZeroXBridger(
+                trustedSigner,
+                trustedSigner,
+                MAX_QUOTE_AGE,
+                destinationTypes,
+                chains,
+                tokenOuts,
+                routes
+            );
+    }
+
+    function _baseDirectQuote(
+        DestinationType destinationType,
+        uint256 toChainId,
+        bytes memory tokenOut,
+        bytes memory recipient,
+        uint256 amount
+    ) internal view returns (DAZeroXBridger.SignedQuote memory q) {
+        q = DAZeroXBridger.SignedQuote({
+            bridgeTokenOut: tokenOut,
+            outAmount: amount,
+            allowanceTarget: address(router),
+            callTarget: address(router),
+            callData: abi.encodeCall(
+                MockZeroXRouter.swap,
+                (address(usdcIn), amount)
+            ),
+            callValue: 0,
+            timestamp: block.timestamp,
+            quoteId: keccak256(
+                abi.encode(destinationType, toChainId, tokenOut, amount)
+            ),
+            destinationType: destinationType,
+            toChainId: toChainId,
+            toAddress: recipient,
+            signature: ""
+        });
+    }
+
+    function _signDirectQuote(
+        DAZeroXBridger b,
+        DAZeroXBridger.SignedQuote memory q
+    ) internal view returns (DAZeroXBridger.SignedQuote memory) {
+        q.signature = _sign(
+            q,
+            address(usdcIn),
+            TRUSTED_SIGNER_KEY,
+            address(b),
+            block.chainid
+        );
+        return q;
     }
 
     // ---------------------------------------------------------------------
@@ -286,8 +395,9 @@ contract DAZeroXBridgerTest is Test {
             address(0),
             trustedSigner,
             MAX_QUOTE_AGE,
+            _evmDestinationTypes(chains.length),
             chains,
-            tokenOuts,
+            _evmTokenOuts(tokenOuts),
             routes
         );
     }
@@ -302,8 +412,9 @@ contract DAZeroXBridgerTest is Test {
             trustedSigner,
             address(0),
             MAX_QUOTE_AGE,
+            _evmDestinationTypes(chains.length),
             chains,
-            tokenOuts,
+            _evmTokenOuts(tokenOuts),
             routes
         );
     }
@@ -318,8 +429,9 @@ contract DAZeroXBridgerTest is Test {
             trustedSigner,
             trustedSigner,
             0,
+            _evmDestinationTypes(chains.length),
             chains,
-            tokenOuts,
+            _evmTokenOuts(tokenOuts),
             routes
         );
     }
@@ -347,8 +459,9 @@ contract DAZeroXBridgerTest is Test {
             trustedSigner,
             trustedSigner,
             MAX_QUOTE_AGE,
+            _evmDestinationTypes(chains.length),
             chains,
-            tokenOuts,
+            _evmTokenOuts(tokenOuts),
             routes
         );
     }
@@ -370,8 +483,9 @@ contract DAZeroXBridgerTest is Test {
             trustedSigner,
             trustedSigner,
             MAX_QUOTE_AGE,
+            _evmDestinationTypes(chains.length),
             chains,
-            tokenOuts,
+            _evmTokenOuts(tokenOuts),
             routes
         );
     }
@@ -393,8 +507,9 @@ contract DAZeroXBridgerTest is Test {
             trustedSigner,
             trustedSigner,
             MAX_QUOTE_AGE,
+            _evmDestinationTypes(chains.length),
             chains,
-            tokenOuts,
+            _evmTokenOuts(tokenOuts),
             routes
         );
     }
@@ -416,8 +531,9 @@ contract DAZeroXBridgerTest is Test {
             trustedSigner,
             trustedSigner,
             MAX_QUOTE_AGE,
+            _evmDestinationTypes(chains.length),
             chains,
-            tokenOuts,
+            _evmTokenOuts(tokenOuts),
             routes
         );
     }
@@ -439,8 +555,9 @@ contract DAZeroXBridgerTest is Test {
             trustedSigner,
             trustedSigner,
             MAX_QUOTE_AGE,
+            _evmDestinationTypes(chains.length),
             chains,
-            tokenOuts,
+            _evmTokenOuts(tokenOuts),
             routes
         );
     }
@@ -470,14 +587,8 @@ contract DAZeroXBridgerTest is Test {
 
     function testGetBridgeTokenIn_MultipleOptions_Reverts() public {
         TokenAmount[] memory opts = new TokenAmount[](2);
-        opts[0] = TokenAmount({
-            token: IERC20(bridgeTokenOutA),
-            amount: 100
-        });
-        opts[1] = TokenAmount({
-            token: IERC20(bridgeTokenOutB),
-            amount: 100
-        });
+        opts[0] = TokenAmount({token: IERC20(bridgeTokenOutA), amount: 100});
+        opts[1] = TokenAmount({token: IERC20(bridgeTokenOutB), amount: 100});
         vm.expectRevert(bytes("DAZX: multiple options"));
         bridger.getBridgeTokenIn(DST_CHAIN, opts);
     }
@@ -746,14 +857,8 @@ contract DAZeroXBridgerTest is Test {
 
     function testSendToChain_MultipleOptions_Reverts() public {
         TokenAmount[] memory opts = new TokenAmount[](2);
-        opts[0] = TokenAmount({
-            token: IERC20(bridgeTokenOutA),
-            amount: 100
-        });
-        opts[1] = TokenAmount({
-            token: IERC20(bridgeTokenOutB),
-            amount: 100
-        });
+        opts[0] = TokenAmount({token: IERC20(bridgeTokenOutA), amount: 100});
+        opts[1] = TokenAmount({token: IERC20(bridgeTokenOutB), amount: 100});
         DAZeroXBridger.SignedQuote memory q = _signQuote(
             _baseQuote(bridgeTokenOutA, 100)
         );
@@ -913,7 +1018,7 @@ contract DAZeroXBridgerTest is Test {
             bridgeTokenOutA,
             amount
         );
-        q.toAddress = address(0xBAD);
+        q.toAddress = _evmBytes(address(0xBAD));
         q = _signQuote(q);
 
         vm.prank(multiplexer);
@@ -1003,6 +1108,215 @@ contract DAZeroXBridgerTest is Test {
             DST_CHAIN,
             toAddress,
             opts,
+            refundAddress,
+            abi.encode(q)
+        );
+    }
+
+    // ---------------------------------------------------------------------
+    // direct bytes-aware sendToChain
+    // ---------------------------------------------------------------------
+
+    function testDirectSendToChain_SolanaHappyPath() public {
+        uint256 solanaChainId = 501;
+        bytes memory tokenOutBytes = _solanaBytes(1);
+        bytes memory recipient = _solanaBytes(2);
+        uint256 amount = 1_000_000;
+        DAZeroXBridger b = _deployDirectBridger(
+            DestinationType.SOLANA,
+            solanaChainId,
+            tokenOutBytes
+        );
+        vm.prank(multiplexer);
+        usdcIn.approve(address(b), type(uint256).max);
+
+        BridgeTokenAmount memory tokenOut = BridgeTokenAmount({
+            token: tokenOutBytes,
+            amount: amount
+        });
+        DAZeroXBridger.SignedQuote memory q = _signDirectQuote(
+            b,
+            _baseDirectQuote(
+                DestinationType.SOLANA,
+                solanaChainId,
+                tokenOutBytes,
+                recipient,
+                amount
+            )
+        );
+
+        vm.prank(multiplexer);
+        b.sendToChain(
+            DestinationType.SOLANA,
+            solanaChainId,
+            recipient,
+            tokenOut,
+            refundAddress,
+            abi.encode(q)
+        );
+
+        assertEq(router.lastPulled(), amount);
+        assertEq(router.lastInToken(), address(usdcIn));
+        assertEq(usdcIn.allowance(address(b), address(router)), 0);
+        assertEq(usdcIn.balanceOf(address(b)), 0);
+    }
+
+    function testDirectSendToChain_WrongRecipientBytes_Reverts() public {
+        uint256 solanaChainId = 501;
+        bytes memory tokenOutBytes = _solanaBytes(1);
+        bytes memory recipient = _solanaBytes(2);
+        uint256 amount = 100;
+        DAZeroXBridger b = _deployDirectBridger(
+            DestinationType.SOLANA,
+            solanaChainId,
+            tokenOutBytes
+        );
+        BridgeTokenAmount memory tokenOut = BridgeTokenAmount({
+            token: tokenOutBytes,
+            amount: amount
+        });
+        DAZeroXBridger.SignedQuote memory q = _signDirectQuote(
+            b,
+            _baseDirectQuote(
+                DestinationType.SOLANA,
+                solanaChainId,
+                tokenOutBytes,
+                _solanaBytes(3),
+                amount
+            )
+        );
+
+        vm.prank(multiplexer);
+        vm.expectRevert(bytes("DAZX: to address mismatch"));
+        b.sendToChain(
+            DestinationType.SOLANA,
+            solanaChainId,
+            recipient,
+            tokenOut,
+            refundAddress,
+            abi.encode(q)
+        );
+    }
+
+    function testDirectSendToChain_WrongTokenBytes_Reverts() public {
+        uint256 solanaChainId = 501;
+        bytes memory tokenOutBytes = _solanaBytes(1);
+        bytes memory recipient = _solanaBytes(2);
+        uint256 amount = 100;
+        DAZeroXBridger b = _deployDirectBridger(
+            DestinationType.SOLANA,
+            solanaChainId,
+            tokenOutBytes
+        );
+        BridgeTokenAmount memory tokenOut = BridgeTokenAmount({
+            token: tokenOutBytes,
+            amount: amount
+        });
+        DAZeroXBridger.SignedQuote memory q = _signDirectQuote(
+            b,
+            _baseDirectQuote(
+                DestinationType.SOLANA,
+                solanaChainId,
+                _solanaBytes(4),
+                recipient,
+                amount
+            )
+        );
+
+        vm.prank(multiplexer);
+        vm.expectRevert(bytes("DAZX: bridge token mismatch"));
+        b.sendToChain(
+            DestinationType.SOLANA,
+            solanaChainId,
+            recipient,
+            tokenOut,
+            refundAddress,
+            abi.encode(q)
+        );
+    }
+
+    function testDirectSendToChain_WrongDestinationType_Reverts() public {
+        uint256 solanaChainId = 501;
+        bytes memory tokenOutBytes = _solanaBytes(1);
+        bytes memory recipient = _solanaBytes(2);
+        uint256 amount = 100;
+        DAZeroXBridger b = _deployDirectBridger(
+            DestinationType.SOLANA,
+            solanaChainId,
+            tokenOutBytes
+        );
+        BridgeTokenAmount memory tokenOut = BridgeTokenAmount({
+            token: tokenOutBytes,
+            amount: amount
+        });
+        DAZeroXBridger.SignedQuote memory q = _signDirectQuote(
+            b,
+            _baseDirectQuote(
+                DestinationType.TRON,
+                solanaChainId,
+                tokenOutBytes,
+                recipient,
+                amount
+            )
+        );
+
+        vm.prank(multiplexer);
+        vm.expectRevert(bytes("DAZX: dest type mismatch"));
+        b.sendToChain(
+            DestinationType.SOLANA,
+            solanaChainId,
+            recipient,
+            tokenOut,
+            refundAddress,
+            abi.encode(q)
+        );
+    }
+
+    function testDirectSendToChain_QuoteReplay_Reverts() public {
+        uint256 solanaChainId = 501;
+        bytes memory tokenOutBytes = _solanaBytes(1);
+        bytes memory recipient = _solanaBytes(2);
+        uint256 amount = 100;
+        DAZeroXBridger b = _deployDirectBridger(
+            DestinationType.SOLANA,
+            solanaChainId,
+            tokenOutBytes
+        );
+        vm.prank(multiplexer);
+        usdcIn.approve(address(b), type(uint256).max);
+
+        BridgeTokenAmount memory tokenOut = BridgeTokenAmount({
+            token: tokenOutBytes,
+            amount: amount
+        });
+        DAZeroXBridger.SignedQuote memory q = _signDirectQuote(
+            b,
+            _baseDirectQuote(
+                DestinationType.SOLANA,
+                solanaChainId,
+                tokenOutBytes,
+                recipient,
+                amount
+            )
+        );
+
+        vm.prank(multiplexer);
+        b.sendToChain(
+            DestinationType.SOLANA,
+            solanaChainId,
+            recipient,
+            tokenOut,
+            refundAddress,
+            abi.encode(q)
+        );
+
+        vm.prank(multiplexer);
+        vm.expectRevert(bytes("DAZX: quote replayed"));
+        b.sendToChain(
+            DestinationType.SOLANA,
+            solanaChainId,
+            recipient,
+            tokenOut,
             refundAddress,
             abi.encode(q)
         );
@@ -1163,8 +1477,9 @@ contract DAZeroXBridgerTest is Test {
             trustedSigner,
             trustedSigner,
             MAX_QUOTE_AGE,
+            _evmDestinationTypes(chains.length),
             chains,
-            tokenOuts,
+            _evmTokenOuts(tokenOuts),
             routes
         );
 

@@ -6,6 +6,7 @@ import "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 
 import "../DaimoPay.sol";
+import {BridgeTokenAmount} from "../DestinationUtils.sol";
 import "../TokenUtils.sol";
 import {DepositAddressManager} from "../DepositAddressManager.sol";
 import {DAParams} from "../DepositAddress.sol";
@@ -460,7 +461,7 @@ contract DaimoPayRelayer is AccessControl {
         DepositAddressManager manager,
         DAParams calldata params,
         IERC20 paymentToken,
-        TokenAmount calldata bridgeTokenOut,
+        BridgeTokenAmount calldata bridgeTokenOut,
         PriceData calldata paymentTokenPrice,
         PriceData calldata bridgeTokenInPrice,
         address bridgerAdapter,
@@ -550,7 +551,7 @@ contract DaimoPayRelayer is AccessControl {
         TokenAmount calldata tokenIn,
         PriceData calldata bridgeTokenOutPrice,
         PriceData calldata toTokenPrice,
-        TokenAmount calldata bridgeTokenOut,
+        BridgeTokenAmount calldata bridgeTokenOut,
         bytes32 relaySalt,
         Call[] calldata calls,
         uint256 sourceChainId,
@@ -609,7 +610,7 @@ contract DaimoPayRelayer is AccessControl {
         DepositAddressManager manager,
         DAParams calldata params,
         Call[] calldata calls,
-        TokenAmount calldata bridgeTokenOut,
+        BridgeTokenAmount calldata bridgeTokenOut,
         PriceData calldata bridgeTokenOutPrice,
         PriceData calldata toTokenPrice,
         bytes32 relaySalt,
@@ -656,7 +657,7 @@ contract DaimoPayRelayer is AccessControl {
         TokenAmount calldata leg1BridgeTokenOut,
         uint256 leg1SourceChainId,
         PriceData calldata leg1BridgeTokenOutPrice,
-        TokenAmount calldata leg2BridgeTokenOut,
+        BridgeTokenAmount calldata leg2BridgeTokenOut,
         PriceData calldata leg2BridgeTokenInPrice,
         address bridgerAdapter,
         bytes32 relaySalt,

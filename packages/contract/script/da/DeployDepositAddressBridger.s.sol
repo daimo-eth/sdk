@@ -4,6 +4,13 @@ pragma solidity ^0.8.13;
 import "forge-std/Script.sol";
 
 import "../../src/DepositAddressBridger.sol";
+import {
+    DestinationType,
+    DestinationUtils
+} from "../../src/DestinationUtils.sol";
+import {
+    BridgeRecipientMode
+} from "../../src/interfaces/IDepositAddressBridger.sol";
 import "../../src/DaimoPayCCTPV2Bridger.sol";
 import "../../src/DaimoPayLayerZeroBridger.sol";
 import "../../src/DaimoPayHopBridger.sol";
@@ -43,16 +50,20 @@ import {
 contract DeployDepositAddressBridger is Script {
     function run() public {
         (
+            DestinationType[] memory destinationTypes,
             uint256[] memory chainIds,
-            address[] memory stableOuts,
-            address[] memory bridgers
+            bytes[] memory stableOuts,
+            address[] memory bridgers,
+            BridgeRecipientMode[] memory recipientModes
         ) = _getBridgerRoutes();
 
         console.log("--------------------------------");
         for (uint256 i = 0; i < chainIds.length; ++i) {
+            console.log("destinationType:", uint256(destinationTypes[i]));
             console.log("toChain:", chainIds[i]);
-            console.log("  stableOut:", stableOuts[i]);
+            console.logBytes(stableOuts[i]);
             console.log("  bridger:", bridgers[i]);
+            console.log("  recipientMode:", uint256(recipientModes[i]));
         }
         console.log("--------------------------------");
 
@@ -62,7 +73,13 @@ contract DeployDepositAddressBridger is Script {
             DEPLOY_SALT_DA_BRIDGER,
             abi.encodePacked(
                 type(DepositAddressBridger).creationCode,
-                abi.encode(chainIds, stableOuts, bridgers)
+                abi.encode(
+                    destinationTypes,
+                    chainIds,
+                    stableOuts,
+                    bridgers,
+                    recipientModes
+                )
             )
         );
 
@@ -75,9 +92,11 @@ contract DeployDepositAddressBridger is Script {
         private
         view
         returns (
+            DestinationType[] memory destinationTypes,
             uint256[] memory chainIds,
-            address[] memory stableOuts,
-            address[] memory bridgers
+            bytes[] memory stableOuts,
+            address[] memory bridgers,
+            BridgeRecipientMode[] memory recipientModes
         )
     {
         // Get addresses of deployed bridger implementations
@@ -157,8 +176,9 @@ contract DeployDepositAddressBridger is Script {
 
         // 0x
         (
+            DestinationType[] memory zeroXDestinationTypes,
             uint256[] memory zeroXChainIds,
-            address[] memory zeroXBridgeTokenOuts,
+            bytes[] memory zeroXBridgeTokenOuts,
 
         ) = getDAZeroXBridgeRoutes(block.chainid);
 
@@ -172,69 +192,104 @@ contract DeployDepositAddressBridger is Script {
             zeroXChainIds.length;
 
         // Initialize arrays for the combined result
+        destinationTypes = new DestinationType[](totalChains);
         chainIds = new uint256[](totalChains);
-        stableOuts = new address[](totalChains);
+        stableOuts = new bytes[](totalChains);
         bridgers = new address[](totalChains);
+        recipientModes = new BridgeRecipientMode[](totalChains);
 
         uint256 index = 0;
 
         // Add CCTP V2 routes
         for (uint256 i = 0; i < cctpV2ChainIds.length; ++i) {
+            destinationTypes[index] = DestinationType.EVM;
             chainIds[index] = cctpV2ChainIds[i];
-            stableOuts[index] = cctpV2BridgeRoutes[i].bridgeTokenOut;
+            stableOuts[index] = DestinationUtils.evmAddressToBytes(
+                cctpV2BridgeRoutes[i].bridgeTokenOut
+            );
             bridgers[index] = cctpV2Bridger;
+            recipientModes[index] = BridgeRecipientMode.FULFILLMENT;
             index++;
         }
 
         // Add Stargate USDC routes
         for (uint256 i = 0; i < stargateUSDCChainIds.length; ++i) {
+            destinationTypes[index] = DestinationType.EVM;
             chainIds[index] = stargateUSDCChainIds[i];
-            stableOuts[index] = stargateUSDCBridgeRoutes[i].bridgeTokenOut;
+            stableOuts[index] = DestinationUtils.evmAddressToBytes(
+                stargateUSDCBridgeRoutes[i].bridgeTokenOut
+            );
             bridgers[index] = stargateUSDCBridger;
+            recipientModes[index] = BridgeRecipientMode.FULFILLMENT;
             index++;
         }
 
         // Add Stargate USDT routes
         for (uint256 i = 0; i < stargateUSDTChainIds.length; ++i) {
+            destinationTypes[index] = DestinationType.EVM;
             chainIds[index] = stargateUSDTChainIds[i];
-            stableOuts[index] = stargateUSDTBridgeRoutes[i].bridgeTokenOut;
+            stableOuts[index] = DestinationUtils.evmAddressToBytes(
+                stargateUSDTBridgeRoutes[i].bridgeTokenOut
+            );
             bridgers[index] = stargateUSDTBridger;
+            recipientModes[index] = BridgeRecipientMode.FULFILLMENT;
             index++;
         }
 
         // Add Legacy Mesh routes
         for (uint256 i = 0; i < legacyMeshChainIds.length; i++) {
+            destinationTypes[index] = DestinationType.EVM;
             chainIds[index] = legacyMeshChainIds[i];
-            stableOuts[index] = legacyMeshBridgeRoutes[i].bridgeTokenOut;
+            stableOuts[index] = DestinationUtils.evmAddressToBytes(
+                legacyMeshBridgeRoutes[i].bridgeTokenOut
+            );
             bridgers[index] = legacyMeshBridger;
+            recipientModes[index] = BridgeRecipientMode.FULFILLMENT;
             index++;
         }
 
         // Add Hop routes
         for (uint256 i = 0; i < hopDestChainIds.length; ++i) {
+            destinationTypes[index] = finalChainCoins[i].destinationType;
             chainIds[index] = hopDestChainIds[i];
-            stableOuts[index] = finalChainCoins[i].coinAddr;
+            stableOuts[index] = finalChainCoins[i].coin;
             bridgers[index] = hopBridger;
+            recipientModes[index] = BridgeRecipientMode.FULFILLMENT;
             index++;
         }
 
         // Add USDT0 routes
         for (uint256 i = 0; i < usdt0ChainIds.length; ++i) {
+            destinationTypes[index] = DestinationType.EVM;
             chainIds[index] = usdt0ChainIds[i];
-            stableOuts[index] = usdt0BridgeRoutes[i].bridgeTokenOut;
+            stableOuts[index] = DestinationUtils.evmAddressToBytes(
+                usdt0BridgeRoutes[i].bridgeTokenOut
+            );
             bridgers[index] = usdt0Bridger;
+            recipientModes[index] = BridgeRecipientMode.FULFILLMENT;
             index++;
         }
 
         // Add 0x routes
         for (uint256 i = 0; i < zeroXChainIds.length; ++i) {
+            destinationTypes[index] = zeroXDestinationTypes[i];
             chainIds[index] = zeroXChainIds[i];
             stableOuts[index] = zeroXBridgeTokenOuts[i];
             bridgers[index] = zeroXBridger;
+            recipientModes[index] = zeroXDestinationTypes[i] ==
+                DestinationType.EVM
+                ? BridgeRecipientMode.FULFILLMENT
+                : BridgeRecipientMode.DIRECT;
             index++;
         }
 
-        return (chainIds, stableOuts, bridgers);
+        return (
+            destinationTypes,
+            chainIds,
+            stableOuts,
+            bridgers,
+            recipientModes
+        );
     }
 
     // Exclude from forge coverage

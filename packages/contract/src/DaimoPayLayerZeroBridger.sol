@@ -66,8 +66,9 @@ abstract contract DaimoPayLayerZeroBridger is IDaimoPayBridger {
     constructor(uint256[] memory _toChainIds, LZBridgeRoute[] memory _routes) {
         uint256 n = _toChainIds.length;
         require(n == _routes.length, "DPLZB: wrong routes length");
-        for (uint256 i = 0; i < n; ++i)
+        for (uint256 i = 0; i < n; ++i) {
             bridgeRouteMapping[_toChainIds[i]] = _routes[i];
+        }
     }
 
     /// @notice Accept native tokens for paying LayerZero fees and refunds.
