@@ -28,6 +28,7 @@
   --daimo-error: #ef4444;
   --daimo-error-light: #fee2e2;
   --daimo-warning: #f97316;
+  --daimo-warning-light: #fff7ed;
   --daimo-accent: #3b82f6;
 
   /* Placeholder/Inactive */
@@ -75,6 +76,7 @@
     --daimo-error: #f87171;
     --daimo-error-light: #7f1d1d;
     --daimo-warning: #fb923c;
+    --daimo-warning-light: #431407;
     --daimo-accent: #0977d5;
 
     /* Placeholder/Inactive */
@@ -382,6 +384,7 @@
   --daimo-error: #f87171;
   --daimo-error-light: #7f1d1d;
   --daimo-warning: #fb923c;
+  --daimo-warning-light: #431407;
   --daimo-accent: #0977d5;
 
   /* Placeholder/Inactive */
