@@ -45,7 +45,11 @@ contract DeployDaimoPayHopBridger is Script {
         console.log("--------------------------------");
         for (uint256 i = 0; i < finalChains.length; ++i) {
             console.log("Final chain:", finalChains[i]);
-            console.log("Final coin address:", finalChainCoins[i].coinAddr);
+            console.log(
+                "Destination type:",
+                uint256(finalChainCoins[i].destinationType)
+            );
+            console.logBytes(finalChainCoins[i].coin);
             console.log(
                 "Final coin decimals:",
                 finalChainCoins[i].coinDecimals

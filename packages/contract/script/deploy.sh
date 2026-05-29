@@ -14,6 +14,7 @@ SCRIPTS=(
     # "script/da/DeployDaimoPayLegacyMeshBridger.s.sol"
     # "script/da/DeployDaimoPayUSDT0Bridger.s.sol"
     # "script/da/DeployDaimoPayHopBridger.s.sol"
+    # "script/da/DeployDAZeroXBridger.s.sol"
     # "script/da/DeployDepositAddressBridger.s.sol"
 
     # === DA core ===
@@ -84,9 +85,9 @@ for SCRIPT in "${SCRIPTS[@]}"; do
         elif [[ "$RPC_URL" == *"tempo"* ]]; then
             FORGE_CMD="forge script $SCRIPT --sig run --fork-url $RPC_URL --private-key $PRIVATE_KEY --verify --verifier sourcify --broadcast"
         elif [[ "$RPC_URL" == *"hyperliquid"* ]]; then
-            FORGE_CMD="forge script $SCRIPT --sig run --fork-url $RPC_URL --private-key $PRIVATE_KEY --verify --verifier etherscan --verifier-url https://api.etherscan.io/v2/api?chainid=999 --etherscan-api-key $ETHERSCAN_API_KEY --broadcast"
+            FORGE_CMD="forge script $SCRIPT --sig run --fork-url $RPC_URL --private-key $PRIVATE_KEY --verify --verifier etherscan --verifier-url https://api.etherscan.io/v2/api?chainid=999& --etherscan-api-key $ETHERSCAN_API_KEY --broadcast"
         elif [[ "$RPC_URL" == *"megaeth"* ]]; then
-            FORGE_CMD="forge script $SCRIPT --sig run --fork-url $RPC_URL --private-key $PRIVATE_KEY --verify --verifier etherscan --verifier-url https://api.etherscan.io/v2/api?chainid=4326 --etherscan-api-key $ETHERSCAN_API_KEY --broadcast"
+            FORGE_CMD="forge script $SCRIPT --sig run --fork-url $RPC_URL --private-key $PRIVATE_KEY --verify --verifier etherscan --verifier-url https://api.etherscan.io/v2/api?chainid=4326& --etherscan-api-key $ETHERSCAN_API_KEY --broadcast"
         else
             FORGE_CMD="forge script $SCRIPT --sig run --fork-url $RPC_URL --private-key $PRIVATE_KEY --verify --etherscan-api-key $ETHERSCAN_API_KEY --broadcast"
         fi
@@ -121,7 +122,7 @@ for SCRIPT in "${SCRIPTS[@]}"; do
         # gas limit. 200M is safe — MegaETH's block gas limit is 10B.
         # NOTE: --skip-simulation also skips auto-verification. Contracts
         # must be verified manually after deploy using forge verify-contract
-        # with --verifier-url "https://api.etherscan.io/v2/api?chainid=4326".
+        # with --verifier-url "https://api.etherscan.io/v2/api?chainid=4326&".
         if [[ "$RPC_URL" == *"megaeth"* ]]; then
             FORGE_CMD="$FORGE_CMD --legacy --skip-simulation --gas-limit 200000000"
         fi
