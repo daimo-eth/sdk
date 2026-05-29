@@ -220,13 +220,17 @@ export function DaimoModal(props: DaimoModalProps) {
   const modalBody = (
     <>
       {showLoadingShell && (
-        <div key="loading-shell">
+        <div
+          key="loading-shell"
+          className="daimo-flex daimo-flex-1 daimo-min-h-0 daimo-flex-col"
+        >
           <SkeletonContent rowCount={3} showFooter={false} />
         </div>
       )}
       {wrapped && (
         <div
           key="content"
+          className="daimo-flex daimo-flex-1 daimo-min-h-0 daimo-flex-col"
           style={showLoadingShell ? { display: "none" } : undefined}
         >
           {wrapped}
