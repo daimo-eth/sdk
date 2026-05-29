@@ -14,7 +14,7 @@ import { t } from "../../hooks/locale.js";
 import { useAccountFlow } from "../../hooks/useAccountFlow.js";
 import { SecondaryButton, SecondaryLinkButton } from "../buttons.js";
 import { ErrorPage } from "../ErrorPage.js";
-import { ErrorIcon } from "../icons.js";
+import { CloseIcon, ErrorIcon } from "../icons.js";
 import { Skeleton, SkeletonText } from "../Skeleton.js";
 import {
   CenteredContent,
@@ -557,6 +557,13 @@ function HostedKycPage({
   onOpenExternal: () => void;
 }) {
   const iframeKey = `${step.warning == null ? "default" : "warning"}:${iframeSrc}`;
+  const warning = step.warning;
+  const warningKey =
+    warning == null ? null : `${warning.title}:${warning.description}:${iframeSrc}`;
+  const [dismissedWarningKey, setDismissedWarningKey] = useState<string | null>(
+    null,
+  );
+  const showWarning = warning != null && dismissedWarningKey !== warningKey;
 
   return (
     <div
@@ -566,10 +573,11 @@ function HostedKycPage({
       <PageHeader title="Verification" onBack={onBack} />
 
       <div className="daimo-flex daimo-flex-1 daimo-min-h-0 daimo-flex-col daimo-gap-2 daimo-px-3 daimo-pb-3">
-        {step.warning != null && (
+        {showWarning && warning != null && (
           <HostedKycRetryNotice
-            title={step.warning.title}
-            description={step.warning.description}
+            title={warning.title}
+            description={warning.description}
+            onDismiss={() => setDismissedWarningKey(warningKey)}
           />
         )}
 
@@ -599,9 +607,11 @@ function HostedKycPage({
 function HostedKycRetryNotice({
   title,
   description,
+  onDismiss,
 }: {
   title: string;
   description: string;
+  onDismiss: () => void;
 }) {
   return (
     <div
@@ -634,7 +644,7 @@ function HostedKycRetryNotice({
           <path d="M12 17h.01" />
         </svg>
       </div>
-      <div className="daimo-flex daimo-min-w-0 daimo-flex-col daimo-gap-1">
+      <div className="daimo-flex daimo-min-w-0 daimo-flex-1 daimo-flex-col daimo-gap-1">
         <p
           className="daimo-text-sm daimo-font-semibold"
           style={{ color: "var(--daimo-warning, #f97316)" }}
@@ -645,6 +655,19 @@ function HostedKycRetryNotice({
           {description}
         </p>
       </div>
+      <button
+        type="button"
+        aria-label="Dismiss warning"
+        onClick={onDismiss}
+        className="daimo-flex daimo-h-8 daimo-w-8 daimo-shrink-0 daimo-items-center daimo-justify-center daimo-rounded-full daimo-border-0 daimo-bg-transparent daimo-p-0"
+        style={{
+          color: "var(--daimo-text-secondary)",
+          cursor: "pointer",
+          touchAction: "manipulation",
+        }}
+      >
+        <CloseIcon size={12} />
+      </button>
     </div>
   );
 }
