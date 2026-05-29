@@ -55,6 +55,10 @@ export const es: typeof en = {
   tronUnavailable: "Tron no disponible. Intenta más tarde.",
   networkErrorOffline: "Error de red. ¿Sin conexión?",
   somethingWentWrong: "Algo salió mal",
+  applePayRegionUnsupported:
+    "Los depósitos con Apple Pay no están disponibles en tu región.",
+  applePayUsPhoneRequired:
+    "Los depósitos con Apple Pay requieren un número de teléfono de EE. UU.",
   missingSessionParam: "falta el parámetro de sesión",
   failedToLoadSession: "no se pudo cargar la sesión",
   accountEmail: "Inicia sesión en Daimo",

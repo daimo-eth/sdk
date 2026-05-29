@@ -4,6 +4,14 @@ import { t } from "./locale.js";
 function getErrorMappings(): [pattern: string | RegExp, message: string][] {
   return [
     [/^(failed to fetch|fetch failed)$/i, t.networkErrorOffline],
+    [
+      /guest_region_forbidden|guest onramp transactions are not allowed|region.*not supported|not supported in your region/i,
+      t.applePayRegionUnsupported,
+    ],
+    [
+      /\bus_phone_required\b|require.*us phone number/i,
+      t.applePayUsPhoneRequired,
+    ],
   ];
 }
 

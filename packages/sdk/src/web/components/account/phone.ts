@@ -1,3 +1,5 @@
+import { parsePhoneNumberFromString } from "libphonenumber-js/min";
+
 export function normalizeUsPhoneDigits(raw: string): string {
   const allDigits = raw.replace(/\D/g, "");
   const withoutCountryCode =
@@ -34,6 +36,9 @@ export function formatUsPhoneDisplay(raw: string): string {
   return digits.length === 0 ? raw : formatUsPhoneInput(digits);
 }
 
-export function toUsPhoneE164(digits: string): string {
-  return digits.length === 10 ? `+1${digits}` : "";
+export function parseUsPhoneNumber(raw: string): string | null {
+  const phone = parsePhoneNumberFromString(raw, "US");
+  if (!phone || !phone.isValid() || phone.country !== "US") return null;
+  if (!/^\d{10}$/.test(phone.nationalNumber)) return null;
+  return phone.number;
 }

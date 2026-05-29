@@ -80,6 +80,9 @@ export const en = {
   // formatUserError
   networkErrorOffline: "Network error. Offline?",
   somethingWentWrong: "Something went wrong",
+  applePayRegionUnsupported:
+    "Apple Pay deposits are not supported in your region.",
+  applePayUsPhoneRequired: "Apple Pay deposits require a US phone number.",
 
   // embed page
   missingSessionParam: "missing session parameter",

@@ -82,6 +82,8 @@ export const zh: typeof en = {
   // formatUserError
   networkErrorOffline: "网络错误，是否已断开连接？",
   somethingWentWrong: "出了点问题",
+  applePayRegionUnsupported: "你所在的地区不支持 Apple Pay 入金。",
+  applePayUsPhoneRequired: "Apple Pay 入金需要美国电话号码。",
 
   // embed page
   missingSessionParam: "缺少会话参数",

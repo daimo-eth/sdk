@@ -3,17 +3,18 @@ import { useCallback, useMemo, useRef, useState } from "react";
 import { t } from "../../hooks/locale.js";
 import { useAccountFlow } from "../../hooks/useAccountFlow.js";
 import { PrimaryButton } from "../buttons.js";
-import {
-  CenteredContent,
-  ErrorMessage,
-  PageHeader,
-} from "../shared.js";
+import { CenteredContent, ErrorMessage, PageHeader } from "../shared.js";
 import {
   formatUsPhoneLocal,
   normalizeUsPhoneDigits,
   normalizeUsPhoneLocalDigits,
-  toUsPhoneE164,
+  parseUsPhoneNumber,
 } from "./phone.js";
+
+type PhoneState =
+  | { kind: "incomplete" }
+  | { kind: "invalid" }
+  | { kind: "valid"; e164: string };
 
 type AccountPhonePageProps = {
   onBack: () => void;
@@ -31,8 +32,14 @@ export function AccountPhonePage({ onBack, onOtpSent }: AccountPhonePageProps) {
   );
   const inputRef = useRef<HTMLInputElement | null>(null);
 
-  const e164 = useMemo(() => toUsPhoneE164(phoneDigits), [phoneDigits]);
-  const isValidPhone = e164.length === 12;
+  const phone = useMemo<PhoneState>(() => {
+    if (phoneDigits.length < 10) return { kind: "incomplete" };
+    const e164 = parseUsPhoneNumber(phoneDigits);
+    return e164 ? { kind: "valid", e164 } : { kind: "invalid" };
+  }, [phoneDigits]);
+  const errorMessage =
+    account?.authError ??
+    (phone.kind === "invalid" ? t.applePayUsPhoneRequired : null);
   const formattedPhone = useMemo(
     () => formatUsPhoneLocal(phoneDigits),
     [phoneDigits],
@@ -49,11 +56,11 @@ export function AccountPhonePage({ onBack, onOtpSent }: AccountPhonePageProps) {
   }, []);
 
   const handleSubmit = useCallback(async () => {
-    if (!account || !isValidPhone) return;
-    account.setPhoneNumber(e164);
-    const sent = await account.sendPhoneOtp(e164);
+    if (!account || phone.kind !== "valid") return;
+    account.setPhoneNumber(phone.e164);
+    const sent = await account.sendPhoneOtp(phone.e164);
     if (sent) onOtpSent();
-  }, [account, e164, isValidPhone, onOtpSent]);
+  }, [account, phone, onOtpSent]);
 
   const handleChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -73,7 +80,7 @@ export function AccountPhonePage({ onBack, onOtpSent }: AccountPhonePageProps) {
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLInputElement>) => {
-      if (e.key === "Enter" && isValidPhone) {
+      if (e.key === "Enter" && phone.kind === "valid") {
         e.preventDefault();
         handleSubmit();
         return;
@@ -96,7 +103,14 @@ export function AccountPhonePage({ onBack, onOtpSent }: AccountPhonePageProps) {
       setPhoneDigits(nextDigits);
       restoreCaret(removeIndex, nextDigits);
     },
-    [account, formattedPhone, handleSubmit, isValidPhone, phoneDigits, restoreCaret],
+    [
+      account,
+      formattedPhone,
+      handleSubmit,
+      phone.kind,
+      phoneDigits,
+      restoreCaret,
+    ],
   );
 
   const handlePaste = useCallback(
@@ -140,19 +154,19 @@ export function AccountPhonePage({ onBack, onOtpSent }: AccountPhonePageProps) {
             onKeyDown={handleKeyDown}
             onPaste={handlePaste}
             onFocus={handleFocus}
-            placeholder="555 123 4567"
+            placeholder="650 555 1234"
             aria-label={t.accountPhone}
             autoFocus
             className="daimo-flex-1 daimo-min-w-0 daimo-bg-transparent daimo-border-none daimo-outline-none daimo-shadow-none daimo-ring-0 daimo-text-base daimo-text-[var(--daimo-text)] daimo-placeholder-[var(--daimo-placeholder)] daimo-caret-[var(--daimo-accent)] focus:daimo-outline-none focus:daimo-ring-0 focus:daimo-border-none focus:daimo-shadow-none"
           />
         </div>
-        {account?.authError && <ErrorMessage message={account.authError} />}
+        {errorMessage && <ErrorMessage message={errorMessage} />}
       </CenteredContent>
 
       <div className="daimo-px-6 daimo-pb-6 daimo-flex daimo-flex-col daimo-items-center">
         <PrimaryButton
           onClick={handleSubmit}
-          disabled={!isValidPhone || account?.isLoggingIn}
+          disabled={phone.kind !== "valid" || account?.isLoggingIn}
         >
           {account?.isLoggingIn ? t.loading : t.continue}
         </PrimaryButton>

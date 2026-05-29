@@ -10,6 +10,7 @@ import {
   type AccountFlowState,
   useSessionDepositState,
 } from "./useAccountFlow.js";
+import { formatUserError } from "./formatUserError.js";
 
 type UseDraftDepositArgs = {
   client: DaimoClient;
@@ -75,21 +76,22 @@ export function useDraftDeposit({
 
       void (async () => {
         try {
-          const result = draftMode === "signed"
-            ? await createSignedDraftDeposit({
-                client,
-                accountFlow,
-                sessionId,
-                rail,
-                depositAmount,
-              })
-            : await upsertPlainDraftDeposit({
-                client,
-                accountFlow,
-                sessionId,
-                rail,
-                depositAmount,
-              });
+          const result =
+            draftMode === "signed"
+              ? await createSignedDraftDeposit({
+                  client,
+                  accountFlow,
+                  sessionId,
+                  rail,
+                  depositAmount,
+                })
+              : await upsertPlainDraftDeposit({
+                  client,
+                  accountFlow,
+                  sessionId,
+                  rail,
+                  depositAmount,
+                });
           if (seq !== requestSeqRef.current) return;
           setDepositState({
             depositAmount,
@@ -107,9 +109,7 @@ export function useDraftDeposit({
             error: err instanceof Error ? err.message : String(err),
           });
           setDepositState({ depositAmount, kind: "idle" });
-          setError(
-            err instanceof Error ? err.message : "failed to create deposit",
-          );
+          setError(formatUserError(err, "failed to create deposit"));
         }
       })();
     }, 350);

@@ -82,6 +82,9 @@ export const ko: typeof en = {
   // formatUserError
   networkErrorOffline: "네트워크 오류. 오프라인인가요?",
   somethingWentWrong: "문제가 발생했습니다",
+  applePayRegionUnsupported:
+    "현재 지역에서는 Apple Pay 입금을 사용할 수 없습니다.",
+  applePayUsPhoneRequired: "Apple Pay 입금에는 미국 전화번호가 필요합니다.",
 
   // embed page
   missingSessionParam: "세션 매개변수가 없습니다",

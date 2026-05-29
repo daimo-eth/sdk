@@ -2,6 +2,7 @@ import { useCallback } from "react";
 
 import type { AccountRail } from "../../../common/account.js";
 import { useDaimoClient } from "../../hooks/DaimoClientContext.js";
+import { formatUserError } from "../../hooks/formatUserError.js";
 import { useAccountFlow } from "../../hooks/useAccountFlow.js";
 import {
   AccountOtpCodeEntry,
@@ -45,17 +46,25 @@ export function AccountPhoneOtpPage({
         case "phone_required":
           return {
             ok: false,
-            msg: result.reason ?? "phone verification not recognized",
+            msg: result.reason
+              ? formatUserError(result.reason)
+              : "phone verification not recognized",
           };
         case "error":
           return { ok: false, msg: result.message };
         case "suspended":
         case "not_eligible":
           return { ok: false, msg: result.reason };
-        default:
-          // Route unexpected states back through the enrollment page so the
-          // generic server-driven state machine can handle them.
+        case "kyc_required":
+        case "kyc_retry":
+        case "kyc_pending_review":
+        case "kyc_rejected_final":
+        case "hosted_agreement_required":
+        case "hosted_kyc_required":
+        case "provider_pending":
           return { ok: true };
+        default:
+          return assertUnreachable(result);
       }
     },
     [account, client, rail],
@@ -79,4 +88,8 @@ export function AccountPhoneOtpPage({
       onResend={handleResend}
     />
   );
+}
+
+function assertUnreachable(value: never): never {
+  throw new Error(`unhandled enrollment response: ${JSON.stringify(value)}`);
 }
