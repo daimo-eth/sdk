@@ -40,10 +40,11 @@ export function SelectAmountPage({
   error,
   baseUrl,
 }: SelectAmountPageProps) {
-  const { amount: amountUsd, isValid, handleChange } = useAmountInput(
-    minimumUsd,
-    maximumUsd,
-  );
+  const {
+    amount: amountUsd,
+    isValid,
+    handleChange,
+  } = useAmountInput(minimumUsd, maximumUsd);
 
   // Create pseudo-token for display if tokenSuffix is USDC or USDT and chainId is provided
   const selectedToken =
@@ -103,7 +104,9 @@ export function SelectAmountPage({
 
         {/* Error message */}
         {error && (
-          <div className="daimo-text-red-500 daimo-text-sm daimo-text-center daimo-mb-3">{error}</div>
+          <div className="daimo-text-[var(--daimo-error)] daimo-text-sm daimo-text-center daimo-mb-3">
+            {error}
+          </div>
         )}
 
         <PrimaryButton

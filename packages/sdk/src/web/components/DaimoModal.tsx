@@ -45,6 +45,7 @@ import {
   type InjectedWallet,
 } from "../hooks/useInjectedWallets.js";
 import { detectPlatform, isDesktop, type DaimoPlatform } from "../platform.js";
+import { DaimoThemeStylesheet } from "../theme.js";
 import { useWalletFlow } from "../hooks/useWalletFlow.js";
 import { ExternalLinkIcon, PrimaryButton } from "./buttons.js";
 import { ChooseChainPage } from "./ChooseChainPage.js";
@@ -454,12 +455,17 @@ function DaimoModalInner({
   }, []);
 
   return (
-    <div
-      key={pageKey}
-      className={`${animate ? "daimo-page-enter " : ""}daimo-flex-1 daimo-min-h-0 daimo-flex daimo-flex-col`}
-    >
-      {content}
-    </div>
+    <>
+      {session.display.themeCssUrl && (
+        <DaimoThemeStylesheet url={session.display.themeCssUrl} />
+      )}
+      <div
+        key={pageKey}
+        className={`${animate ? "daimo-page-enter " : ""}daimo-flex-1 daimo-min-h-0 daimo-flex daimo-flex-col`}
+      >
+        {content}
+      </div>
+    </>
   );
 }
 
