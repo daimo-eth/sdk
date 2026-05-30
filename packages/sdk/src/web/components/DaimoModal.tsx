@@ -677,6 +677,7 @@ function renderEntry(
         <AccountPaymentPage
           rail={entry.rail}
           sessionId={ctx.session.sessionId}
+          initialAmount={ctx.session.destination.amountUnits}
           platform={ctx.platform}
           baseUrl={ctx.session.baseUrl}
           onBack={ctx.canGoBack ? ctx.onBack : null}

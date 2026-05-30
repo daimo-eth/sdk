@@ -22,6 +22,7 @@ import {
 type AccountPaymentPageProps = {
   rail: AccountRail;
   sessionId: string;
+  initialAmount?: string;
   platform: DaimoPlatform;
   baseUrl: string;
   onBack?: (() => void) | null;
@@ -32,6 +33,7 @@ type AccountPaymentPageProps = {
 export function AccountPaymentPage({
   rail,
   sessionId,
+  initialAmount,
   platform,
   baseUrl,
   onBack,
@@ -91,6 +93,12 @@ export function AccountPaymentPage({
     },
     [accountFlow, constraints, onAdvance, setDepositState],
   );
+  const initialAmountUsd =
+    depositState?.depositAmount != null
+      ? parseFloat(depositState.depositAmount) * (constraints?.destinationToken.usd ?? 1)
+      : initialAmount != null
+        ? parseFloat(initialAmount)
+        : undefined;
 
   return (
     <div className="daimo-flex daimo-flex-col daimo-flex-1 daimo-min-h-0">
@@ -112,12 +120,7 @@ export function AccountPaymentPage({
               symbol: constraints.currency.symbol,
             }}
             initialMode="native"
-            initialAmountUsd={
-              depositState?.depositAmount
-                ? parseFloat(depositState.depositAmount) *
-                  constraints.destinationToken.usd
-                : undefined
-            }
+            initialAmountUsd={initialAmountUsd}
             onContinue={handleSubmit}
             onChange={handleChange}
             iconLogoURI={constraints.icon.logoURI}
