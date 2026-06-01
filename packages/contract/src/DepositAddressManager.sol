@@ -16,6 +16,7 @@ import "./SwapMath.sol";
 import "./interfaces/IDaimoPayBridger.sol";
 import "./interfaces/IDepositAddressBridger.sol";
 import "./interfaces/IDaimoPayPricer.sol";
+import {IDepositAddressManager} from "./interfaces/IDepositAddressManager.sol";
 
 /// @author Daimo, Inc
 /// @custom:security-contact security@daimo.com
@@ -37,7 +38,11 @@ import "./interfaces/IDaimoPayPricer.sol";
 /// `fastFinish` to finish Alice's transfer immediately. Later, when the
 /// funds arrive from the bridge, the relayer will call `claim` to get
 /// repaid for their fast-finish.
-contract DepositAddressManager is Ownable, ReentrancyGuard {
+contract DepositAddressManager is
+    Ownable,
+    ReentrancyGuard,
+    IDepositAddressManager
+{
     using SafeERC20 for IERC20;
 
     error AlreadyClaimed();
@@ -250,7 +255,7 @@ contract DepositAddressManager is Ownable, ReentrancyGuard {
         bytes32 relaySalt,
         Call[] calldata calls,
         bytes calldata bridgeExtraData
-    ) external nonReentrant onlyRelayer {
+    ) external override nonReentrant onlyRelayer {
         require(block.chainid != params.toChainId, StartOnDestChain());
         require(params.escrow == address(this), WrongEscrow());
         require(!isDAExpired(params), Expired());
@@ -398,7 +403,7 @@ contract DepositAddressManager is Ownable, ReentrancyGuard {
         PriceData calldata paymentTokenPrice,
         PriceData calldata toTokenPrice,
         Call[] calldata calls
-    ) external nonReentrant onlyRelayer {
+    ) external override nonReentrant onlyRelayer {
         _requireEvmDestination(params);
         require(params.toChainId == block.chainid, WrongChain());
         require(params.escrow == address(this), WrongEscrow());
@@ -475,7 +480,7 @@ contract DepositAddressManager is Ownable, ReentrancyGuard {
         BridgeTokenAmount calldata bridgeTokenOut,
         bytes32 relaySalt,
         uint256 sourceChainId
-    ) external nonReentrant onlyRelayer {
+    ) external override nonReentrant onlyRelayer {
         _requireEvmDestination(params);
         _requireValidBridgeTokenOut(params, bridgeTokenOut);
         require(sourceChainId != block.chainid, SameChainFinishSource());
@@ -561,7 +566,7 @@ contract DepositAddressManager is Ownable, ReentrancyGuard {
         PriceData calldata toTokenPrice,
         bytes32 relaySalt,
         uint256 sourceChainId
-    ) external nonReentrant onlyRelayer {
+    ) external override nonReentrant onlyRelayer {
         _requireEvmDestination(params);
         _requireValidBridgeTokenOut(params, bridgeTokenOut);
         require(params.toChainId == block.chainid, WrongChain());
@@ -689,7 +694,7 @@ contract DepositAddressManager is Ownable, ReentrancyGuard {
         bytes32 relaySalt,
         Call[] calldata calls,
         bytes calldata bridgeExtraData
-    ) external nonReentrant onlyRelayer {
+    ) external override nonReentrant onlyRelayer {
         _requireValidDestination(params);
         _requireValidBridgeTokenOut(params, leg2BridgeTokenOut);
         // Must be on hop chain (not source, not dest)
@@ -885,10 +890,10 @@ contract DepositAddressManager is Ownable, ReentrancyGuard {
         });
 
         (address fulfillmentAddress, ) = computeFulfillmentAddress(fulfillment);
-
-        // Block refund if fast-finished, claimed, or hopped
+        address recipient = fulfillmentToRecipient[fulfillmentAddress];
+        // Don't allow refund if there's a pending fast finish
         require(
-            fulfillmentToRecipient[fulfillmentAddress] == address(0),
+            recipient == address(0) || recipient == ADDR_MAX,
             AlreadyFinished()
         );
         // Mark as done to prevent subsequent claim/hopStart

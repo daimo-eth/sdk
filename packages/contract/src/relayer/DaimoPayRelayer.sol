@@ -8,7 +8,7 @@ import "@openzeppelin/contracts/access/AccessControl.sol";
 import "../DaimoPay.sol";
 import {BridgeTokenAmount} from "../DestinationUtils.sol";
 import "../TokenUtils.sol";
-import {DepositAddressManager} from "../DepositAddressManager.sol";
+import {IDepositAddressManager} from "../interfaces/IDepositAddressManager.sol";
 import {DAParams} from "../DepositAddress.sol";
 import {PriceData} from "../interfaces/IDaimoPayPricer.sol";
 
@@ -458,7 +458,7 @@ contract DaimoPayRelayer is AccessControl {
     /// Starts a new Deposit Address fulfillment.
     function daStart(
         Call[] calldata preCalls,
-        DepositAddressManager manager,
+        IDepositAddressManager manager,
         DAParams calldata params,
         IERC20 paymentToken,
         BridgeTokenAmount calldata bridgeTokenOut,
@@ -506,7 +506,7 @@ contract DaimoPayRelayer is AccessControl {
     /// Same-chain finish for a Deposit Address fulfillment.
     function daSameChainFinish(
         Call[] calldata preCalls,
-        DepositAddressManager manager,
+        IDepositAddressManager manager,
         DAParams calldata params,
         IERC20 paymentToken,
         PriceData calldata paymentTokenPrice,
@@ -546,7 +546,7 @@ contract DaimoPayRelayer is AccessControl {
     /// Fast finish for a Deposit Address fulfillment.
     function daFastFinish(
         Call[] calldata preCalls,
-        DepositAddressManager manager,
+        IDepositAddressManager manager,
         DAParams calldata params,
         TokenAmount calldata tokenIn,
         PriceData calldata bridgeTokenOutPrice,
@@ -607,7 +607,7 @@ contract DaimoPayRelayer is AccessControl {
     /// Claim a Deposit Address fulfillment after bridge arrival.
     function daClaim(
         Call[] calldata preCalls,
-        DepositAddressManager manager,
+        IDepositAddressManager manager,
         DAParams calldata params,
         Call[] calldata calls,
         BridgeTokenAmount calldata bridgeTokenOut,
@@ -652,7 +652,7 @@ contract DaimoPayRelayer is AccessControl {
     /// initiate bridge to dest.
     function daHopStart(
         Call[] calldata preCalls,
-        DepositAddressManager manager,
+        IDepositAddressManager manager,
         DAParams calldata params,
         TokenAmount calldata leg1BridgeTokenOut,
         uint256 leg1SourceChainId,

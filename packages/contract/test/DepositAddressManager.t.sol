@@ -1829,7 +1829,9 @@ contract DepositAddressManagerTest is Test {
 
         vm.startPrank(RELAYER);
         usdc.transfer(address(manager), BRIDGE_AMOUNT);
-        vm.expectRevert(DepositAddressManager.BridgeTokenOutPriceInvalid.selector);
+        vm.expectRevert(
+            DepositAddressManager.BridgeTokenOutPriceInvalid.selector
+        );
         manager.fastFinish({
             params: params,
             calls: calls,
@@ -3585,7 +3587,9 @@ contract DepositAddressManagerTest is Test {
 
         Call[] memory calls = new Call[](0);
 
-        vm.expectRevert(DepositAddressManager.BridgeTokenOutPriceInvalid.selector);
+        vm.expectRevert(
+            DepositAddressManager.BridgeTokenOutPriceInvalid.selector
+        );
         vm.prank(RELAYER);
         manager.claim({
             params: params,
@@ -5008,7 +5012,7 @@ contract DepositAddressManagerTest is Test {
         });
     }
 
-    function test_refundFulfillment_RevertsAfterClaim() public {
+    function test_refundFulfillment_RescuesLateFundsAfterClaim() public {
         vm.chainId(DEST_CHAIN_ID);
 
         DAParams memory params = _createDAParams();
@@ -5060,9 +5064,11 @@ contract DepositAddressManagerTest is Test {
         IERC20[] memory tokens = new IERC20[](1);
         tokens[0] = usdc;
 
-        // Refund should revert — already claimed
+        // Funds arrive at the fulfillment after the claim. Refund must succeed
+        // so stragglers are rescued to the refund address instead of being
+        // permanently locked at the fulfillment.
+        usdc.transfer(fulfillmentAddress, BRIDGE_AMOUNT);
         vm.prank(RELAYER);
-        vm.expectRevert(DepositAddressManager.AlreadyFinished.selector);
         manager.refundFulfillment({
             params: params,
             bridgeTokenOut: bridgeTokenOut,
@@ -5070,6 +5076,13 @@ contract DepositAddressManagerTest is Test {
             sourceChainId: SOURCE_CHAIN_ID,
             tokens: tokens
         });
+
+        assertEq(usdc.balanceOf(REFUND_ADDRESS), BRIDGE_AMOUNT);
+        assertEq(usdc.balanceOf(fulfillmentAddress), 0);
+        assertEq(
+            manager.fulfillmentToRecipient(fulfillmentAddress),
+            manager.ADDR_MAX()
+        );
     }
 
     function test_claim_RevertsAfterRefundFulfillment() public {
@@ -5139,7 +5152,7 @@ contract DepositAddressManagerTest is Test {
         });
     }
 
-    function test_refundFulfillment_RevertsDoubleRefund() public {
+    function test_refundFulfillment_RescuesLateFundsAfterRefund() public {
         vm.chainId(DEST_CHAIN_ID);
 
         DAParams memory params = _createDAParams();
@@ -5162,12 +5175,29 @@ contract DepositAddressManagerTest is Test {
             fulfillment
         );
 
-        // Fund fulfillment and refund
-        usdc.transfer(fulfillmentAddress, BRIDGE_AMOUNT);
-
         IERC20[] memory tokens = new IERC20[](1);
         tokens[0] = usdc;
 
+        // First refund (e.g. an early refund before the bridge has delivered).
+        usdc.transfer(fulfillmentAddress, BRIDGE_AMOUNT);
+        vm.prank(RELAYER);
+        manager.refundFulfillment({
+            params: params,
+            bridgeTokenOut: bridgeTokenOut,
+            relaySalt: relaySalt,
+            sourceChainId: SOURCE_CHAIN_ID,
+            tokens: tokens
+        });
+        assertEq(usdc.balanceOf(REFUND_ADDRESS), BRIDGE_AMOUNT);
+        assertEq(
+            manager.fulfillmentToRecipient(fulfillmentAddress),
+            manager.ADDR_MAX()
+        );
+
+        // Funds arrive at the fulfillment after the first refund. A second
+        // refund must still succeed so they can be rescued, rather than being
+        // permanently locked. Marking ADDR_MAX must not block future refunds.
+        usdc.transfer(fulfillmentAddress, BRIDGE_AMOUNT);
         vm.prank(RELAYER);
         manager.refundFulfillment({
             params: params,
@@ -5177,16 +5207,13 @@ contract DepositAddressManagerTest is Test {
             tokens: tokens
         });
 
-        // Second refund should revert
-        vm.prank(RELAYER);
-        vm.expectRevert(DepositAddressManager.AlreadyFinished.selector);
-        manager.refundFulfillment({
-            params: params,
-            bridgeTokenOut: bridgeTokenOut,
-            relaySalt: relaySalt,
-            sourceChainId: SOURCE_CHAIN_ID,
-            tokens: tokens
-        });
+        // Both refunds reached the refund address; fulfillment swept clean.
+        assertEq(usdc.balanceOf(REFUND_ADDRESS), BRIDGE_AMOUNT * 2);
+        assertEq(usdc.balanceOf(fulfillmentAddress), 0);
+        assertEq(
+            manager.fulfillmentToRecipient(fulfillmentAddress),
+            manager.ADDR_MAX()
+        );
     }
 
     // ---------------------------------------------------------------------
