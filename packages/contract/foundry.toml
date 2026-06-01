@@ -15,6 +15,7 @@ evm_version = "london"
 # block gas limit. It is compiled at a lower optimizer_runs so it fits. This MUST be
 # uniform across all chains in order to compute the same fulfillment addresses
 # across chains.
+[[profile.default.additional_compiler_profiles]]
 name = "da-manager-low-opt"
 via_ir = true
 optimizer = true
