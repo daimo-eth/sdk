@@ -99,7 +99,8 @@ export const zh: typeof en = {
   accountEnrollment: "账户设置",
   accountEnrollmentRetry: "重新提交文件",
   accountEnrollmentPending: "正在审核您的信息",
-  accountEnrollmentPendingDesc: "通常需要几分钟",
+  accountEnrollmentPendingDesc:
+    "感谢你提交信息。如需更多信息，我们会与你联系。",
   accountProviderPending: "正在完成账户设置",
   accountProviderPendingDesc: "这可能需要一点时间",
   accountEnrollmentRejected: "无法完成验证",

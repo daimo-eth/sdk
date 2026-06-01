@@ -34,15 +34,6 @@ type HostedEnrollmentResponse = {
   checkingDescription: string;
 };
 
-type HostedKycWarning = {
-  title: string;
-  description: string;
-};
-
-type HostedKycEnrollmentResponse = HostedEnrollmentResponse & {
-  warning: HostedKycWarning | null;
-};
-
 export type EnrollmentResponse =
   | { action: "kyc_required"; kycToken: string }
   | { action: "kyc_retry"; kycToken: string; reason: string }
@@ -50,7 +41,7 @@ export type EnrollmentResponse =
   | { action: "kyc_rejected_final"; reason: string }
   | { action: "not_eligible"; reason: string }
   | ({ action: "hosted_agreement_required" } & HostedEnrollmentResponse)
-  | ({ action: "hosted_kyc_required" } & HostedKycEnrollmentResponse)
+  | ({ action: "hosted_kyc_required" } & HostedEnrollmentResponse)
   | { action: "provider_pending" }
   /** User must verify a phone number before continuing. */
   | { action: "phone_required"; reason?: string }

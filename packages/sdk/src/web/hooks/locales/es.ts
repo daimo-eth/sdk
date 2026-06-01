@@ -70,7 +70,8 @@ export const es: typeof en = {
   accountEnrollment: "Configurar cuenta",
   accountEnrollmentRetry: "Reenviar documentos",
   accountEnrollmentPending: "Revisando tu información",
-  accountEnrollmentPendingDesc: "Esto suele tardar unos minutos",
+  accountEnrollmentPendingDesc:
+    "Gracias por enviar tu información. Te contactaremos si necesitamos algo más.",
   accountProviderPending: "Casi listo",
   accountProviderPendingDesc: "Esto puede tardar un momento",
   accountEnrollmentRejected: "No se pudo completar la verificación",

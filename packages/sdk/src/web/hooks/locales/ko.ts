@@ -100,7 +100,8 @@ export const ko: typeof en = {
   accountEnrollment: "계정 설정",
   accountEnrollmentRetry: "서류 재제출",
   accountEnrollmentPending: "정보 검토 중",
-  accountEnrollmentPendingDesc: "보통 몇 분 정도 소요됩니다",
+  accountEnrollmentPendingDesc:
+    "정보를 제출해 주셔서 감사합니다. 추가 정보가 필요하면 연락드리겠습니다.",
   accountProviderPending: "계정 마무리 중",
   accountProviderPendingDesc: "잠시 시간이 걸릴 수 있습니다",
   accountEnrollmentRejected: "인증을 완료할 수 없습니다",

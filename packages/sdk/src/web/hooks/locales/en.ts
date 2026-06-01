@@ -98,7 +98,8 @@ export const en = {
   accountEnrollment: "Account setup",
   accountEnrollmentRetry: "Resubmit documents",
   accountEnrollmentPending: "Reviewing your information",
-  accountEnrollmentPendingDesc: "This usually takes a few minutes",
+  accountEnrollmentPendingDesc:
+    "Thanks for submitting your information. We'll be in touch if we need anything else.",
   accountProviderPending: "Finalizing account",
   accountProviderPendingDesc: "This may take a moment",
   accountEnrollmentRejected: "Verification could not be completed",

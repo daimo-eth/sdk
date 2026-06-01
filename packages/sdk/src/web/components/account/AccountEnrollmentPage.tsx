@@ -14,7 +14,7 @@ import { t } from "../../hooks/locale.js";
 import { useAccountFlow } from "../../hooks/useAccountFlow.js";
 import { SecondaryButton, SecondaryLinkButton } from "../buttons.js";
 import { ErrorPage } from "../ErrorPage.js";
-import { CloseIcon, ErrorIcon } from "../icons.js";
+import { CheckIcon, ErrorIcon } from "../icons.js";
 import { Skeleton, SkeletonText } from "../Skeleton.js";
 import {
   CenteredContent,
@@ -227,9 +227,9 @@ export function AccountEnrollmentPage({
 
     case "kyc_pending_review":
       return (
-        <EnrollmentWaiting
+        <EnrollmentReviewSubmitted
           title={t.accountEnrollmentPending}
-          label={t.accountEnrollmentPendingDesc}
+          message={t.accountEnrollmentPendingDesc}
           onBack={onBack}
         />
       );
@@ -252,12 +252,7 @@ export function AccountEnrollmentPage({
       );
 
     case "hosted_agreement_required":
-      return (
-        <HostedEnrollmentPage
-          step={response}
-          onBack={onBack}
-        />
-      );
+      return <HostedEnrollmentPage step={response} onBack={onBack} />;
 
     case "provider_pending":
       return (
@@ -439,6 +434,41 @@ function EnrollmentTerminal({
   );
 }
 
+function EnrollmentReviewSubmitted({
+  title,
+  message,
+  onBack,
+}: {
+  title: string;
+  message: string;
+  onBack: () => void;
+}) {
+  return (
+    <div className="daimo-flex daimo-flex-col daimo-flex-1 daimo-min-h-0">
+      <PageHeader title="Verification" onBack={onBack} />
+      <CenteredContent>
+        <div className="daimo-flex daimo-w-full daimo-max-w-[320px] daimo-flex-col daimo-items-center daimo-gap-5 daimo-px-6 daimo-text-center">
+          <div
+            className="daimo-flex daimo-h-16 daimo-w-16 daimo-items-center daimo-justify-center daimo-rounded-full"
+            style={{ backgroundColor: "var(--daimo-success-light)" }}
+            aria-hidden="true"
+          >
+            <CheckIcon size={34} />
+          </div>
+          <div className="daimo-flex daimo-flex-col daimo-gap-2">
+            <h2 className="daimo-text-xl daimo-font-semibold daimo-text-[var(--daimo-text)]">
+              {title}
+            </h2>
+            <p className="daimo-text-sm daimo-leading-relaxed daimo-text-[var(--daimo-text-secondary)]">
+              {message}
+            </p>
+          </div>
+        </div>
+      </CenteredContent>
+    </div>
+  );
+}
+
 /** Waiting view — stable skeleton placeholders for advancing account states. */
 function EnrollmentWaiting({
   title,
@@ -559,15 +589,6 @@ function HostedKycPage({
   onBack: () => void;
   onOpenExternal: () => void;
 }) {
-  const iframeKey = `${step.warning == null ? "default" : "warning"}:${iframeSrc}`;
-  const warning = step.warning;
-  const warningKey =
-    warning == null ? null : `${warning.title}:${warning.description}:${iframeSrc}`;
-  const [dismissedWarningKey, setDismissedWarningKey] = useState<string | null>(
-    null,
-  );
-  const showWarning = warning != null && dismissedWarningKey !== warningKey;
-
   return (
     <div
       className="daimo-flex daimo-flex-col daimo-min-h-0"
@@ -576,17 +597,8 @@ function HostedKycPage({
       <PageHeader title="Verification" onBack={onBack} />
 
       <div className="daimo-flex daimo-flex-1 daimo-min-h-0 daimo-flex-col daimo-gap-2 daimo-px-3 daimo-pb-3">
-        {showWarning && warning != null && (
-          <HostedKycRetryNotice
-            title={warning.title}
-            description={warning.description}
-            onDismiss={() => setDismissedWarningKey(warningKey)}
-          />
-        )}
-
         <div className="daimo-min-h-0 daimo-flex-1 daimo-overflow-hidden daimo-bg-white">
           <iframe
-            key={iframeKey}
             src={iframeSrc}
             title={step.title}
             className="daimo-block daimo-h-full daimo-w-full daimo-border-0"
@@ -603,74 +615,6 @@ function HostedKycPage({
           Open verification in browser
         </SecondaryLinkButton>
       </div>
-    </div>
-  );
-}
-
-function HostedKycRetryNotice({
-  title,
-  description,
-  onDismiss,
-}: {
-  title: string;
-  description: string;
-  onDismiss: () => void;
-}) {
-  return (
-    <div
-      role="status"
-      className="daimo-flex daimo-gap-3 daimo-rounded-lg daimo-p-3 daimo-text-left"
-      style={{
-        backgroundColor: "var(--daimo-warning-light, #fff7ed)",
-        border: "1px solid var(--daimo-warning, #f97316)",
-      }}
-    >
-      <div
-        className="daimo-flex daimo-h-8 daimo-w-8 daimo-shrink-0 daimo-items-center daimo-justify-center daimo-rounded-full"
-        style={{
-          backgroundColor: "var(--daimo-warning, #f97316)",
-          color: "white",
-        }}
-        aria-hidden="true"
-      >
-        <svg
-          width="18"
-          height="18"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2.25"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          <path d="M12 8v5" />
-          <path d="M12 17h.01" />
-        </svg>
-      </div>
-      <div className="daimo-flex daimo-min-w-0 daimo-flex-1 daimo-flex-col daimo-gap-1">
-        <p
-          className="daimo-text-sm daimo-font-semibold"
-          style={{ color: "var(--daimo-warning, #f97316)" }}
-        >
-          {title}
-        </p>
-        <p className="daimo-text-sm daimo-leading-relaxed daimo-text-[var(--daimo-text-secondary)]">
-          {description}
-        </p>
-      </div>
-      <button
-        type="button"
-        aria-label="Dismiss warning"
-        onClick={onDismiss}
-        className="daimo-flex daimo-h-8 daimo-w-8 daimo-shrink-0 daimo-items-center daimo-justify-center daimo-rounded-full daimo-border-0 daimo-bg-transparent daimo-p-0"
-        style={{
-          color: "var(--daimo-text-secondary)",
-          cursor: "pointer",
-          touchAction: "manipulation",
-        }}
-      >
-        <CloseIcon size={12} />
-      </button>
     </div>
   );
 }

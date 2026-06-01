@@ -100,7 +100,8 @@ export const ja: typeof en = {
   accountEnrollment: "アカウント設定",
   accountEnrollmentRetry: "書類を再提出",
   accountEnrollmentPending: "情報を確認中",
-  accountEnrollmentPendingDesc: "通常数分で完了します",
+  accountEnrollmentPendingDesc:
+    "情報をご提出いただきありがとうございます。追加情報が必要な場合はご連絡します。",
   accountProviderPending: "アカウントを仕上げています",
   accountProviderPendingDesc: "少し時間がかかる場合があります",
   accountEnrollmentRejected: "確認を完了できませんでした",
