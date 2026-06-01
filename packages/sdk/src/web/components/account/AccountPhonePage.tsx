@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useRef, useState } from "react";
 
+import { useDaimoClient } from "../../hooks/DaimoClientContext.js";
 import { t } from "../../hooks/locale.js";
 import { useAccountFlow } from "../../hooks/useAccountFlow.js";
 import { PrimaryButton } from "../buttons.js";
@@ -27,6 +28,7 @@ type AccountPhonePageProps = {
  */
 export function AccountPhonePage({ onBack, onOtpSent }: AccountPhonePageProps) {
   const account = useAccountFlow();
+  const client = useDaimoClient();
   const [phoneDigits, setPhoneDigits] = useState(() =>
     normalizeUsPhoneDigits(account?.phoneNumber ?? ""),
   );
@@ -58,9 +60,9 @@ export function AccountPhonePage({ onBack, onOtpSent }: AccountPhonePageProps) {
   const handleSubmit = useCallback(async () => {
     if (!account || phone.kind !== "valid") return;
     account.setPhoneNumber(phone.e164);
-    const sent = await account.sendPhoneOtp(phone.e164);
+    const sent = await account.sendPhoneOtp(phone.e164, client);
     if (sent) onOtpSent();
-  }, [account, phone, onOtpSent]);
+  }, [account, client, phone, onOtpSent]);
 
   const handleChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {

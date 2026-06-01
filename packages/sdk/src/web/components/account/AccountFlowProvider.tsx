@@ -7,7 +7,6 @@
 import {
   PrivyProvider,
   useLoginWithEmail,
-  useLoginWithSms,
   usePrivy,
   useWallets,
 } from "@privy-io/react-auth";
@@ -28,7 +27,10 @@ type AccountFlowProviderProps = {
   children: ReactNode;
 };
 
-export function AccountFlowProvider({ privyAppId, children }: AccountFlowProviderProps) {
+export function AccountFlowProvider({
+  privyAppId,
+  children,
+}: AccountFlowProviderProps) {
   const accountFlow = useAccountFlowState();
 
   return (
@@ -58,10 +60,6 @@ function PrivyConsumer({
     usePrivy();
   const { sendCode: rawSendCode, loginWithCode: rawLoginWithCode } =
     useLoginWithEmail();
-  const {
-    sendCode: rawSendPhoneCode,
-    loginWithCode: rawLoginWithPhoneCode,
-  } = useLoginWithSms();
   const { wallets, ready: walletsReady } = useWallets();
 
   const sendCode = useCallback(
@@ -76,20 +74,6 @@ function PrivyConsumer({
       await rawLoginWithCode({ code });
     },
     [rawLoginWithCode],
-  );
-
-  const sendPhoneCode = useCallback(
-    async (phoneNumber: string) => {
-      await rawSendPhoneCode({ phoneNumber });
-    },
-    [rawSendPhoneCode],
-  );
-
-  const loginWithPhoneCode = useCallback(
-    async (code: string) => {
-      await rawLoginWithPhoneCode({ code });
-    },
-    [rawLoginWithPhoneCode],
   );
 
   const walletAddress = getCanonicalPrivyWalletAddress({
@@ -123,8 +107,6 @@ function PrivyConsumer({
     () => ({
       sendCode,
       loginWithCode,
-      sendPhoneCode,
-      loginWithPhoneCode,
       createWallet,
       getAccessToken,
       signTypedData,
@@ -145,8 +127,6 @@ function PrivyConsumer({
       phoneNumber,
       sendCode,
       loginWithCode,
-      sendPhoneCode,
-      loginWithPhoneCode,
       createWallet,
       getAccessToken,
       signTypedData,
