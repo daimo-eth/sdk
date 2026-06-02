@@ -1,4 +1,4 @@
-import { Address, Hex } from "viem";
+import type { Address, Hex } from "viem";
 import { z } from "zod";
 
 import type { AccountRail } from "./account.js";
@@ -31,7 +31,9 @@ export type SessionDisplay = {
   themeCssUrl?: string;
 };
 
-export type SessionDestination = SessionDestinationEvm;
+export type SessionDestination =
+  | SessionDestinationEvm
+  | SessionDestinationSolana;
 
 export type SessionDestinationEvm = {
   type: "evm";
@@ -60,6 +62,31 @@ export type SessionDestinationEvm = {
   delivery?: {
     /** Transaction hash of the delivery or refund. */
     txHash: Hex;
+    /** Amount received in destination token units, e.g. "1.23". */
+    receivedUnits: string;
+  };
+};
+
+export type SessionDestinationSolana = {
+  type: "solana";
+  /** Destination address, base58 encoded. */
+  address: SolanaAddress;
+  /** Destination token mint, base58 encoded. */
+  tokenAddress: SolanaAddress;
+  /** Destination token symbol, e.g. "USDC". */
+  tokenSymbol: string;
+  /**
+   * Requested amount in destination token units. e.g. "1.23" for $1.23 USDC.
+   * Omitted for open-amount sessions.
+   */
+  amountUnits?: string;
+  /**
+   * Present when status is "succeeded".
+   * The delivery tx is a Solana transaction signature.
+   */
+  delivery?: {
+    /** Solana transaction signature of the delivery. */
+    txHash: SolanaTxHash;
     /** Amount received in destination token units, e.g. "1.23". */
     receivedUnits: string;
   };

@@ -4,6 +4,7 @@ pragma solidity ^0.8.13;
 import "forge-std/Script.sol";
 
 import "../../src/DAZeroXBridger.sol";
+import {DestinationType} from "../../src/DestinationUtils.sol";
 import {
     getDAZeroXBridgeRoutes
 } from "./constants/DAZeroXBridgeRouteConstants.sol";
@@ -18,8 +19,9 @@ contract DeployDAZeroXBridger is Script {
         uint256 maxQuoteAge = vm.envUint("MAX_ZEROX_QUOTE_AGE");
 
         (
+            DestinationType[] memory destinationTypes,
             uint256[] memory toChainIds,
-            address[] memory bridgeTokenOuts,
+            bytes[] memory bridgeTokenOuts,
             DAZeroXBridger.ZeroXRoute[] memory bridgeRoutes
         ) = getDAZeroXBridgeRoutes(block.chainid);
 
@@ -28,8 +30,9 @@ contract DeployDAZeroXBridger is Script {
         }
 
         for (uint256 i = 0; i < toChainIds.length; ++i) {
+            console.log("destinationType:", uint256(destinationTypes[i]));
             console.log("toChainId:", toChainIds[i]);
-            console.log("bridgeTokenOut:", bridgeTokenOuts[i]);
+            console.logBytes(bridgeTokenOuts[i]);
             console.log("bridgeTokenIn:", bridgeRoutes[i].bridgeTokenIn);
             console.log("--------------------------------");
         }
@@ -44,6 +47,7 @@ contract DeployDAZeroXBridger is Script {
                     signer, // _owner
                     signer, // _trustedSigner
                     maxQuoteAge,
+                    destinationTypes,
                     toChainIds,
                     bridgeTokenOuts,
                     bridgeRoutes

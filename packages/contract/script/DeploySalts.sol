@@ -12,13 +12,11 @@ bytes32 constant DEPLOY_SALT_PAY_INTENT_FACTORY = keccak256(
 
 // Deposit address contracts
 bytes32 constant DEPLOY_SALT_DA_FACTORY = keccak256(
-    "DepositAddressFactory-flexible4"
+    "DepositAddressFactory-sol1"
 );
-bytes32 constant DEPLOY_SALT_DA_EXECUTOR = keccak256(
-    "DaimoPayExecutor-flexible6"
-);
+bytes32 constant DEPLOY_SALT_DA_EXECUTOR = keccak256("DaimoPayExecutor-sol3");
 bytes32 constant DEPLOY_SALT_DA_MANAGER = keccak256(
-    "DepositAddressManager-flexible7"
+    "DepositAddressManager-sol3"
 );
 
 bytes32 constant DEPLOY_SALT_DAIMO_PAY_PRICER = keccak256(
@@ -33,10 +31,10 @@ bytes32 constant DEPLOY_SALT_DAIMO_PAY_BRIDGER = keccak256(
     "DaimoPayBridger-deploy37"
 );
 bytes32 constant DEPLOY_SALT_DA_BRIDGER = keccak256(
-    "DepositAddressBridger-prod-flexible1"
+    "DepositAddressBridger-prod-sol1"
 );
 // bytes32 constant DEPLOY_SALT_DA_BRIDGER = keccak256(
-//     "DepositAddressBridger-dev-flexible3"
+//     "DepositAddressBridger-dev-sol1"
 // );
 
 bytes32 constant DEPLOY_SALT_ACROSS_BRIDGER = keccak256(
@@ -51,9 +49,7 @@ bytes32 constant DEPLOY_SALT_CCTP_BRIDGER = keccak256(
 bytes32 constant DEPLOY_SALT_CCTP_V2_BRIDGER = keccak256(
     "DaimoPayCCTPV2Bridger-flexible3"
 );
-bytes32 constant DEPLOY_SALT_HOP_BRIDGER = keccak256(
-    "DaimoPayHopBridger-flexible9"
-);
+bytes32 constant DEPLOY_SALT_HOP_BRIDGER = keccak256("DaimoPayHopBridger-sol1");
 bytes32 constant DEPLOY_SALT_PAY_ORDER_HOP_BRIDGER = keccak256(
     "DaimoPayHopBridger-pay-order2"
 );
@@ -73,18 +69,18 @@ bytes32 constant DEPLOY_SALT_STARGATE_USDT_BRIDGER = keccak256(
     "DaimoPayStargateUSDTBridger-flexible3"
 );
 bytes32 constant DEPLOY_SALT_ZEROX_BRIDGER = keccak256(
-    "DAZeroXBridger-prod3"
+    "DAZeroXBridger-prod-sol1"
 );
 // bytes32 constant DEPLOY_SALT_ZEROX_BRIDGER = keccak256(
-//     "DAZeroXBridger-dev3"
+//     "DAZeroXBridger-dev-sol1"
 // );
 
 // Relayer contract
 bytes32 constant DEPLOY_SALT_DAIMO_PAY_RELAYER = keccak256(
-    "DaimoPayRelayer-prod-flexible2"
+    "DaimoPayRelayer-prod-sol2"
 );
 // bytes32 constant DEPLOY_SALT_DAIMO_PAY_RELAYER = keccak256(
-//     "DaimoPayRelayer-dev-flexible2"
+//     "DaimoPayRelayer-dev-sol2"
 // );
 
 // Final call adapters

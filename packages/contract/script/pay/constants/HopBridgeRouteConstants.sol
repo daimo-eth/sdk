@@ -2,6 +2,7 @@
 pragma solidity ^0.8.12;
 
 import "../../../src/DaimoPayHopBridger.sol";
+import "../../../src/DestinationUtils.sol";
 import {
     DEPLOY_SALT_ACROSS_BRIDGER,
     DEPLOY_SALT_CCTP_V2_BRIDGER,
@@ -155,24 +156,27 @@ function getHopBridgeRoutes(
         // 10 -> 56
         destChainIds[0] = 56;
         finalChainCoins[0] = DaimoPayHopBridger.FinalChainCoin({
+            destinationType: DestinationType.EVM,
             finalChainId: 56,
-            coinAddr: 0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d,
+            coin: abi.encodePacked(0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d),
             coinDecimals: 18
         });
 
         // 10 -> 100
         destChainIds[1] = 100;
         finalChainCoins[1] = DaimoPayHopBridger.FinalChainCoin({
+            destinationType: DestinationType.EVM,
             finalChainId: 100,
-            coinAddr: 0x2a22f9c3b484c3629090FeED35F17Ff8F88f76F0,
+            coin: abi.encodePacked(0x2a22f9c3b484c3629090FeED35F17Ff8F88f76F0),
             coinDecimals: 6
         });
 
         // 10 -> 42220
         destChainIds[2] = 42220;
         finalChainCoins[2] = DaimoPayHopBridger.FinalChainCoin({
+            destinationType: DestinationType.EVM,
             finalChainId: 42220,
-            coinAddr: 0x48065fbBE25f71C9282ddf5e1cD6D6A887483D5e,
+            coin: abi.encodePacked(0x48065fbBE25f71C9282ddf5e1cD6D6A887483D5e),
             coinDecimals: 6
         });
 
@@ -187,56 +191,63 @@ function getHopBridgeRoutes(
         // 56 -> 10
         destChainIds[0] = 10;
         finalChainCoins[0] = DaimoPayHopBridger.FinalChainCoin({
+            destinationType: DestinationType.EVM,
             finalChainId: 10,
-            coinAddr: 0x0b2C639c533813f4Aa9D7837CAf62653d097Ff85,
+            coin: abi.encodePacked(0x0b2C639c533813f4Aa9D7837CAf62653d097Ff85),
             coinDecimals: 6
         });
 
         // 56 -> 143
         destChainIds[1] = 143;
         finalChainCoins[1] = DaimoPayHopBridger.FinalChainCoin({
+            destinationType: DestinationType.EVM,
             finalChainId: 143,
-            coinAddr: 0x754704Bc059F8C67012fEd69BC8A327a5aafb603,
+            coin: abi.encodePacked(0x754704Bc059F8C67012fEd69BC8A327a5aafb603),
             coinDecimals: 6
         });
 
         // 56 -> 480
         destChainIds[2] = 480;
         finalChainCoins[2] = DaimoPayHopBridger.FinalChainCoin({
+            destinationType: DestinationType.EVM,
             finalChainId: 480,
-            coinAddr: 0x79A02482A880bCE3F13e09Da970dC34db4CD24d1,
+            coin: abi.encodePacked(0x79A02482A880bCE3F13e09Da970dC34db4CD24d1),
             coinDecimals: 6
         });
 
         // 56 -> 999
         destChainIds[3] = 999;
         finalChainCoins[3] = DaimoPayHopBridger.FinalChainCoin({
+            destinationType: DestinationType.EVM,
             finalChainId: 999,
-            coinAddr: 0xb88339CB7199b77E23DB6E890353E22632Ba630f,
+            coin: abi.encodePacked(0xb88339CB7199b77E23DB6E890353E22632Ba630f),
             coinDecimals: 6
         });
 
         // 56 -> 4326
         destChainIds[4] = 4326;
         finalChainCoins[4] = DaimoPayHopBridger.FinalChainCoin({
+            destinationType: DestinationType.EVM,
             finalChainId: 4326,
-            coinAddr: 0xB8CE59FC3717ada4C02eaDF9682A9e934F625ebb,
+            coin: abi.encodePacked(0xB8CE59FC3717ada4C02eaDF9682A9e934F625ebb),
             coinDecimals: 6
         });
 
         // 56 -> 42220
         destChainIds[5] = 42220;
         finalChainCoins[5] = DaimoPayHopBridger.FinalChainCoin({
+            destinationType: DestinationType.EVM,
             finalChainId: 42220,
-            coinAddr: 0x48065fbBE25f71C9282ddf5e1cD6D6A887483D5e,
+            coin: abi.encodePacked(0x48065fbBE25f71C9282ddf5e1cD6D6A887483D5e),
             coinDecimals: 6
         });
 
         // 56 -> 59144
         destChainIds[6] = 59144;
         finalChainCoins[6] = DaimoPayHopBridger.FinalChainCoin({
+            destinationType: DestinationType.EVM,
             finalChainId: 59144,
-            coinAddr: 0x176211869cA2b568f2A7D4EE941E073a821EE1ff,
+            coin: abi.encodePacked(0x176211869cA2b568f2A7D4EE941E073a821EE1ff),
             coinDecimals: 6
         });
 
@@ -251,56 +262,63 @@ function getHopBridgeRoutes(
         // 100 -> 10
         destChainIds[0] = 10;
         finalChainCoins[0] = DaimoPayHopBridger.FinalChainCoin({
+            destinationType: DestinationType.EVM,
             finalChainId: 10,
-            coinAddr: 0x0b2C639c533813f4Aa9D7837CAf62653d097Ff85,
+            coin: abi.encodePacked(0x0b2C639c533813f4Aa9D7837CAf62653d097Ff85),
             coinDecimals: 6
         });
 
         // 100 -> 143
         destChainIds[1] = 143;
         finalChainCoins[1] = DaimoPayHopBridger.FinalChainCoin({
+            destinationType: DestinationType.EVM,
             finalChainId: 143,
-            coinAddr: 0x754704Bc059F8C67012fEd69BC8A327a5aafb603,
+            coin: abi.encodePacked(0x754704Bc059F8C67012fEd69BC8A327a5aafb603),
             coinDecimals: 6
         });
 
         // 100 -> 480
         destChainIds[2] = 480;
         finalChainCoins[2] = DaimoPayHopBridger.FinalChainCoin({
+            destinationType: DestinationType.EVM,
             finalChainId: 480,
-            coinAddr: 0x79A02482A880bCE3F13e09Da970dC34db4CD24d1,
+            coin: abi.encodePacked(0x79A02482A880bCE3F13e09Da970dC34db4CD24d1),
             coinDecimals: 6
         });
 
         // 100 -> 999
         destChainIds[3] = 999;
         finalChainCoins[3] = DaimoPayHopBridger.FinalChainCoin({
+            destinationType: DestinationType.EVM,
             finalChainId: 999,
-            coinAddr: 0xb88339CB7199b77E23DB6E890353E22632Ba630f,
+            coin: abi.encodePacked(0xb88339CB7199b77E23DB6E890353E22632Ba630f),
             coinDecimals: 6
         });
 
         // 100 -> 4326
         destChainIds[4] = 4326;
         finalChainCoins[4] = DaimoPayHopBridger.FinalChainCoin({
+            destinationType: DestinationType.EVM,
             finalChainId: 4326,
-            coinAddr: 0xB8CE59FC3717ada4C02eaDF9682A9e934F625ebb,
+            coin: abi.encodePacked(0xB8CE59FC3717ada4C02eaDF9682A9e934F625ebb),
             coinDecimals: 6
         });
 
         // 100 -> 42220
         destChainIds[5] = 42220;
         finalChainCoins[5] = DaimoPayHopBridger.FinalChainCoin({
+            destinationType: DestinationType.EVM,
             finalChainId: 42220,
-            coinAddr: 0x48065fbBE25f71C9282ddf5e1cD6D6A887483D5e,
+            coin: abi.encodePacked(0x48065fbBE25f71C9282ddf5e1cD6D6A887483D5e),
             coinDecimals: 6
         });
 
         // 100 -> 59144
         destChainIds[6] = 59144;
         finalChainCoins[6] = DaimoPayHopBridger.FinalChainCoin({
+            destinationType: DestinationType.EVM,
             finalChainId: 59144,
-            coinAddr: 0x176211869cA2b568f2A7D4EE941E073a821EE1ff,
+            coin: abi.encodePacked(0x176211869cA2b568f2A7D4EE941E073a821EE1ff),
             coinDecimals: 6
         });
 
@@ -315,8 +333,9 @@ function getHopBridgeRoutes(
         // 137 -> 42220
         destChainIds[0] = 42220;
         finalChainCoins[0] = DaimoPayHopBridger.FinalChainCoin({
+            destinationType: DestinationType.EVM,
             finalChainId: 42220,
-            coinAddr: 0x48065fbBE25f71C9282ddf5e1cD6D6A887483D5e,
+            coin: abi.encodePacked(0x48065fbBE25f71C9282ddf5e1cD6D6A887483D5e),
             coinDecimals: 6
         });
 
@@ -331,32 +350,36 @@ function getHopBridgeRoutes(
         // 143 -> 56
         destChainIds[0] = 56;
         finalChainCoins[0] = DaimoPayHopBridger.FinalChainCoin({
+            destinationType: DestinationType.EVM,
             finalChainId: 56,
-            coinAddr: 0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d,
+            coin: abi.encodePacked(0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d),
             coinDecimals: 18
         });
 
         // 143 -> 100
         destChainIds[1] = 100;
         finalChainCoins[1] = DaimoPayHopBridger.FinalChainCoin({
+            destinationType: DestinationType.EVM,
             finalChainId: 100,
-            coinAddr: 0x2a22f9c3b484c3629090FeED35F17Ff8F88f76F0,
+            coin: abi.encodePacked(0x2a22f9c3b484c3629090FeED35F17Ff8F88f76F0),
             coinDecimals: 6
         });
 
         // 143 -> 4217
         destChainIds[2] = 4217;
         finalChainCoins[2] = DaimoPayHopBridger.FinalChainCoin({
+            destinationType: DestinationType.EVM,
             finalChainId: 4217,
-            coinAddr: 0x20C000000000000000000000b9537d11c60E8b50,
+            coin: abi.encodePacked(0x20C000000000000000000000b9537d11c60E8b50),
             coinDecimals: 6
         });
 
         // 143 -> 42220
         destChainIds[3] = 42220;
         finalChainCoins[3] = DaimoPayHopBridger.FinalChainCoin({
+            destinationType: DestinationType.EVM,
             finalChainId: 42220,
-            coinAddr: 0x48065fbBE25f71C9282ddf5e1cD6D6A887483D5e,
+            coin: abi.encodePacked(0x48065fbBE25f71C9282ddf5e1cD6D6A887483D5e),
             coinDecimals: 6
         });
 
@@ -371,40 +394,45 @@ function getHopBridgeRoutes(
         // 480 -> 56
         destChainIds[0] = 56;
         finalChainCoins[0] = DaimoPayHopBridger.FinalChainCoin({
+            destinationType: DestinationType.EVM,
             finalChainId: 56,
-            coinAddr: 0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d,
+            coin: abi.encodePacked(0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d),
             coinDecimals: 18
         });
 
         // 480 -> 100
         destChainIds[1] = 100;
         finalChainCoins[1] = DaimoPayHopBridger.FinalChainCoin({
+            destinationType: DestinationType.EVM,
             finalChainId: 100,
-            coinAddr: 0x2a22f9c3b484c3629090FeED35F17Ff8F88f76F0,
+            coin: abi.encodePacked(0x2a22f9c3b484c3629090FeED35F17Ff8F88f76F0),
             coinDecimals: 6
         });
 
         // 480 -> 4217
         destChainIds[2] = 4217;
         finalChainCoins[2] = DaimoPayHopBridger.FinalChainCoin({
+            destinationType: DestinationType.EVM,
             finalChainId: 4217,
-            coinAddr: 0x20C000000000000000000000b9537d11c60E8b50,
+            coin: abi.encodePacked(0x20C000000000000000000000b9537d11c60E8b50),
             coinDecimals: 6
         });
 
         // 480 -> 4326
         destChainIds[3] = 4326;
         finalChainCoins[3] = DaimoPayHopBridger.FinalChainCoin({
+            destinationType: DestinationType.EVM,
             finalChainId: 4326,
-            coinAddr: 0xB8CE59FC3717ada4C02eaDF9682A9e934F625ebb,
+            coin: abi.encodePacked(0xB8CE59FC3717ada4C02eaDF9682A9e934F625ebb),
             coinDecimals: 6
         });
 
         // 480 -> 42220
         destChainIds[4] = 42220;
         finalChainCoins[4] = DaimoPayHopBridger.FinalChainCoin({
+            destinationType: DestinationType.EVM,
             finalChainId: 42220,
-            coinAddr: 0x48065fbBE25f71C9282ddf5e1cD6D6A887483D5e,
+            coin: abi.encodePacked(0x48065fbBE25f71C9282ddf5e1cD6D6A887483D5e),
             coinDecimals: 6
         });
 
@@ -419,32 +447,36 @@ function getHopBridgeRoutes(
         // 999 -> 56
         destChainIds[0] = 56;
         finalChainCoins[0] = DaimoPayHopBridger.FinalChainCoin({
+            destinationType: DestinationType.EVM,
             finalChainId: 56,
-            coinAddr: 0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d,
+            coin: abi.encodePacked(0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d),
             coinDecimals: 18
         });
 
         // 999 -> 100
         destChainIds[1] = 100;
         finalChainCoins[1] = DaimoPayHopBridger.FinalChainCoin({
+            destinationType: DestinationType.EVM,
             finalChainId: 100,
-            coinAddr: 0x2a22f9c3b484c3629090FeED35F17Ff8F88f76F0,
+            coin: abi.encodePacked(0x2a22f9c3b484c3629090FeED35F17Ff8F88f76F0),
             coinDecimals: 6
         });
 
         // 999 -> 4217
         destChainIds[2] = 4217;
         finalChainCoins[2] = DaimoPayHopBridger.FinalChainCoin({
+            destinationType: DestinationType.EVM,
             finalChainId: 4217,
-            coinAddr: 0x20C000000000000000000000b9537d11c60E8b50,
+            coin: abi.encodePacked(0x20C000000000000000000000b9537d11c60E8b50),
             coinDecimals: 6
         });
 
         // 999 -> 42220
         destChainIds[3] = 42220;
         finalChainCoins[3] = DaimoPayHopBridger.FinalChainCoin({
+            destinationType: DestinationType.EVM,
             finalChainId: 42220,
-            coinAddr: 0x48065fbBE25f71C9282ddf5e1cD6D6A887483D5e,
+            coin: abi.encodePacked(0x48065fbBE25f71C9282ddf5e1cD6D6A887483D5e),
             coinDecimals: 6
         });
 
@@ -459,48 +491,54 @@ function getHopBridgeRoutes(
         // 4217 -> 143
         destChainIds[0] = 143;
         finalChainCoins[0] = DaimoPayHopBridger.FinalChainCoin({
+            destinationType: DestinationType.EVM,
             finalChainId: 143,
-            coinAddr: 0x754704Bc059F8C67012fEd69BC8A327a5aafb603,
+            coin: abi.encodePacked(0x754704Bc059F8C67012fEd69BC8A327a5aafb603),
             coinDecimals: 6
         });
 
         // 4217 -> 480
         destChainIds[1] = 480;
         finalChainCoins[1] = DaimoPayHopBridger.FinalChainCoin({
+            destinationType: DestinationType.EVM,
             finalChainId: 480,
-            coinAddr: 0x79A02482A880bCE3F13e09Da970dC34db4CD24d1,
+            coin: abi.encodePacked(0x79A02482A880bCE3F13e09Da970dC34db4CD24d1),
             coinDecimals: 6
         });
 
         // 4217 -> 999
         destChainIds[2] = 999;
         finalChainCoins[2] = DaimoPayHopBridger.FinalChainCoin({
+            destinationType: DestinationType.EVM,
             finalChainId: 999,
-            coinAddr: 0xb88339CB7199b77E23DB6E890353E22632Ba630f,
+            coin: abi.encodePacked(0xb88339CB7199b77E23DB6E890353E22632Ba630f),
             coinDecimals: 6
         });
 
         // 4217 -> 4326
         destChainIds[3] = 4326;
         finalChainCoins[3] = DaimoPayHopBridger.FinalChainCoin({
+            destinationType: DestinationType.EVM,
             finalChainId: 4326,
-            coinAddr: 0xB8CE59FC3717ada4C02eaDF9682A9e934F625ebb,
+            coin: abi.encodePacked(0xB8CE59FC3717ada4C02eaDF9682A9e934F625ebb),
             coinDecimals: 6
         });
 
         // 4217 -> 42220
         destChainIds[4] = 42220;
         finalChainCoins[4] = DaimoPayHopBridger.FinalChainCoin({
+            destinationType: DestinationType.EVM,
             finalChainId: 42220,
-            coinAddr: 0x48065fbBE25f71C9282ddf5e1cD6D6A887483D5e,
+            coin: abi.encodePacked(0x48065fbBE25f71C9282ddf5e1cD6D6A887483D5e),
             coinDecimals: 6
         });
 
         // 4217 -> 59144
         destChainIds[5] = 59144;
         finalChainCoins[5] = DaimoPayHopBridger.FinalChainCoin({
+            destinationType: DestinationType.EVM,
             finalChainId: 59144,
-            coinAddr: 0x176211869cA2b568f2A7D4EE941E073a821EE1ff,
+            coin: abi.encodePacked(0x176211869cA2b568f2A7D4EE941E073a821EE1ff),
             coinDecimals: 6
         });
 
@@ -515,56 +553,63 @@ function getHopBridgeRoutes(
         // 4326 -> 56
         destChainIds[0] = 56;
         finalChainCoins[0] = DaimoPayHopBridger.FinalChainCoin({
+            destinationType: DestinationType.EVM,
             finalChainId: 56,
-            coinAddr: 0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d,
+            coin: abi.encodePacked(0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d),
             coinDecimals: 18
         });
 
         // 4326 -> 100
         destChainIds[1] = 100;
         finalChainCoins[1] = DaimoPayHopBridger.FinalChainCoin({
+            destinationType: DestinationType.EVM,
             finalChainId: 100,
-            coinAddr: 0x2a22f9c3b484c3629090FeED35F17Ff8F88f76F0,
+            coin: abi.encodePacked(0x2a22f9c3b484c3629090FeED35F17Ff8F88f76F0),
             coinDecimals: 6
         });
 
         // 4326 -> 480
         destChainIds[2] = 480;
         finalChainCoins[2] = DaimoPayHopBridger.FinalChainCoin({
+            destinationType: DestinationType.EVM,
             finalChainId: 480,
-            coinAddr: 0x79A02482A880bCE3F13e09Da970dC34db4CD24d1,
+            coin: abi.encodePacked(0x79A02482A880bCE3F13e09Da970dC34db4CD24d1),
             coinDecimals: 6
         });
 
         // 4326 -> 4217
         destChainIds[3] = 4217;
         finalChainCoins[3] = DaimoPayHopBridger.FinalChainCoin({
+            destinationType: DestinationType.EVM,
             finalChainId: 4217,
-            coinAddr: 0x20C000000000000000000000b9537d11c60E8b50,
+            coin: abi.encodePacked(0x20C000000000000000000000b9537d11c60E8b50),
             coinDecimals: 6
         });
 
         // 4326 -> 8453
         destChainIds[4] = 8453;
         finalChainCoins[4] = DaimoPayHopBridger.FinalChainCoin({
+            destinationType: DestinationType.EVM,
             finalChainId: 8453,
-            coinAddr: 0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913,
+            coin: abi.encodePacked(0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913),
             coinDecimals: 6
         });
 
         // 4326 -> 42220
         destChainIds[5] = 42220;
         finalChainCoins[5] = DaimoPayHopBridger.FinalChainCoin({
+            destinationType: DestinationType.EVM,
             finalChainId: 42220,
-            coinAddr: 0x48065fbBE25f71C9282ddf5e1cD6D6A887483D5e,
+            coin: abi.encodePacked(0x48065fbBE25f71C9282ddf5e1cD6D6A887483D5e),
             coinDecimals: 6
         });
 
         // 4326 -> 59144
         destChainIds[6] = 59144;
         finalChainCoins[6] = DaimoPayHopBridger.FinalChainCoin({
+            destinationType: DestinationType.EVM,
             finalChainId: 59144,
-            coinAddr: 0x176211869cA2b568f2A7D4EE941E073a821EE1ff,
+            coin: abi.encodePacked(0x176211869cA2b568f2A7D4EE941E073a821EE1ff),
             coinDecimals: 6
         });
 
@@ -579,16 +624,18 @@ function getHopBridgeRoutes(
         // 8453 -> 4326
         destChainIds[0] = 4326;
         finalChainCoins[0] = DaimoPayHopBridger.FinalChainCoin({
+            destinationType: DestinationType.EVM,
             finalChainId: 4326,
-            coinAddr: 0xB8CE59FC3717ada4C02eaDF9682A9e934F625ebb,
+            coin: abi.encodePacked(0xB8CE59FC3717ada4C02eaDF9682A9e934F625ebb),
             coinDecimals: 6
         });
 
         // 8453 -> 42220
         destChainIds[1] = 42220;
         finalChainCoins[1] = DaimoPayHopBridger.FinalChainCoin({
+            destinationType: DestinationType.EVM,
             finalChainId: 42220,
-            coinAddr: 0x48065fbBE25f71C9282ddf5e1cD6D6A887483D5e,
+            coin: abi.encodePacked(0x48065fbBE25f71C9282ddf5e1cD6D6A887483D5e),
             coinDecimals: 6
         });
 
@@ -603,88 +650,99 @@ function getHopBridgeRoutes(
         // 42220 -> 10
         destChainIds[0] = 10;
         finalChainCoins[0] = DaimoPayHopBridger.FinalChainCoin({
+            destinationType: DestinationType.EVM,
             finalChainId: 10,
-            coinAddr: 0x0b2C639c533813f4Aa9D7837CAf62653d097Ff85,
+            coin: abi.encodePacked(0x0b2C639c533813f4Aa9D7837CAf62653d097Ff85),
             coinDecimals: 6
         });
 
         // 42220 -> 56
         destChainIds[1] = 56;
         finalChainCoins[1] = DaimoPayHopBridger.FinalChainCoin({
+            destinationType: DestinationType.EVM,
             finalChainId: 56,
-            coinAddr: 0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d,
+            coin: abi.encodePacked(0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d),
             coinDecimals: 18
         });
 
         // 42220 -> 100
         destChainIds[2] = 100;
         finalChainCoins[2] = DaimoPayHopBridger.FinalChainCoin({
+            destinationType: DestinationType.EVM,
             finalChainId: 100,
-            coinAddr: 0x2a22f9c3b484c3629090FeED35F17Ff8F88f76F0,
+            coin: abi.encodePacked(0x2a22f9c3b484c3629090FeED35F17Ff8F88f76F0),
             coinDecimals: 6
         });
 
         // 42220 -> 137
         destChainIds[3] = 137;
         finalChainCoins[3] = DaimoPayHopBridger.FinalChainCoin({
+            destinationType: DestinationType.EVM,
             finalChainId: 137,
-            coinAddr: 0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359,
+            coin: abi.encodePacked(0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359),
             coinDecimals: 6
         });
 
         // 42220 -> 143
         destChainIds[4] = 143;
         finalChainCoins[4] = DaimoPayHopBridger.FinalChainCoin({
+            destinationType: DestinationType.EVM,
             finalChainId: 143,
-            coinAddr: 0x754704Bc059F8C67012fEd69BC8A327a5aafb603,
+            coin: abi.encodePacked(0x754704Bc059F8C67012fEd69BC8A327a5aafb603),
             coinDecimals: 6
         });
 
         // 42220 -> 480
         destChainIds[5] = 480;
         finalChainCoins[5] = DaimoPayHopBridger.FinalChainCoin({
+            destinationType: DestinationType.EVM,
             finalChainId: 480,
-            coinAddr: 0x79A02482A880bCE3F13e09Da970dC34db4CD24d1,
+            coin: abi.encodePacked(0x79A02482A880bCE3F13e09Da970dC34db4CD24d1),
             coinDecimals: 6
         });
 
         // 42220 -> 999
         destChainIds[6] = 999;
         finalChainCoins[6] = DaimoPayHopBridger.FinalChainCoin({
+            destinationType: DestinationType.EVM,
             finalChainId: 999,
-            coinAddr: 0xb88339CB7199b77E23DB6E890353E22632Ba630f,
+            coin: abi.encodePacked(0xb88339CB7199b77E23DB6E890353E22632Ba630f),
             coinDecimals: 6
         });
 
         // 42220 -> 4217
         destChainIds[7] = 4217;
         finalChainCoins[7] = DaimoPayHopBridger.FinalChainCoin({
+            destinationType: DestinationType.EVM,
             finalChainId: 4217,
-            coinAddr: 0x20C000000000000000000000b9537d11c60E8b50,
+            coin: abi.encodePacked(0x20C000000000000000000000b9537d11c60E8b50),
             coinDecimals: 6
         });
 
         // 42220 -> 4326
         destChainIds[8] = 4326;
         finalChainCoins[8] = DaimoPayHopBridger.FinalChainCoin({
+            destinationType: DestinationType.EVM,
             finalChainId: 4326,
-            coinAddr: 0xB8CE59FC3717ada4C02eaDF9682A9e934F625ebb,
+            coin: abi.encodePacked(0xB8CE59FC3717ada4C02eaDF9682A9e934F625ebb),
             coinDecimals: 6
         });
 
         // 42220 -> 8453
         destChainIds[9] = 8453;
         finalChainCoins[9] = DaimoPayHopBridger.FinalChainCoin({
+            destinationType: DestinationType.EVM,
             finalChainId: 8453,
-            coinAddr: 0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913,
+            coin: abi.encodePacked(0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913),
             coinDecimals: 6
         });
 
         // 42220 -> 59144
         destChainIds[10] = 59144;
         finalChainCoins[10] = DaimoPayHopBridger.FinalChainCoin({
+            destinationType: DestinationType.EVM,
             finalChainId: 59144,
-            coinAddr: 0x176211869cA2b568f2A7D4EE941E073a821EE1ff,
+            coin: abi.encodePacked(0x176211869cA2b568f2A7D4EE941E073a821EE1ff),
             coinDecimals: 6
         });
 
@@ -699,40 +757,45 @@ function getHopBridgeRoutes(
         // 59144 -> 56
         destChainIds[0] = 56;
         finalChainCoins[0] = DaimoPayHopBridger.FinalChainCoin({
+            destinationType: DestinationType.EVM,
             finalChainId: 56,
-            coinAddr: 0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d,
+            coin: abi.encodePacked(0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d),
             coinDecimals: 18
         });
 
         // 59144 -> 100
         destChainIds[1] = 100;
         finalChainCoins[1] = DaimoPayHopBridger.FinalChainCoin({
+            destinationType: DestinationType.EVM,
             finalChainId: 100,
-            coinAddr: 0x2a22f9c3b484c3629090FeED35F17Ff8F88f76F0,
+            coin: abi.encodePacked(0x2a22f9c3b484c3629090FeED35F17Ff8F88f76F0),
             coinDecimals: 6
         });
 
         // 59144 -> 4217
         destChainIds[2] = 4217;
         finalChainCoins[2] = DaimoPayHopBridger.FinalChainCoin({
+            destinationType: DestinationType.EVM,
             finalChainId: 4217,
-            coinAddr: 0x20C000000000000000000000b9537d11c60E8b50,
+            coin: abi.encodePacked(0x20C000000000000000000000b9537d11c60E8b50),
             coinDecimals: 6
         });
 
         // 59144 -> 4326
         destChainIds[3] = 4326;
         finalChainCoins[3] = DaimoPayHopBridger.FinalChainCoin({
+            destinationType: DestinationType.EVM,
             finalChainId: 4326,
-            coinAddr: 0xB8CE59FC3717ada4C02eaDF9682A9e934F625ebb,
+            coin: abi.encodePacked(0xB8CE59FC3717ada4C02eaDF9682A9e934F625ebb),
             coinDecimals: 6
         });
 
         // 59144 -> 42220
         destChainIds[4] = 42220;
         finalChainCoins[4] = DaimoPayHopBridger.FinalChainCoin({
+            destinationType: DestinationType.EVM,
             finalChainId: 42220,
-            coinAddr: 0x48065fbBE25f71C9282ddf5e1cD6D6A887483D5e,
+            coin: abi.encodePacked(0x48065fbBE25f71C9282ddf5e1cD6D6A887483D5e),
             coinDecimals: 6
         });
 

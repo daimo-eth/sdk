@@ -7,8 +7,10 @@ import "openzeppelin-contracts/contracts/utils/ReentrancyGuard.sol";
 import "openzeppelin-contracts/contracts/utils/cryptography/ECDSA.sol";
 import "openzeppelin-contracts/contracts/utils/cryptography/MessageHashUtils.sol";
 
+import "./DestinationUtils.sol";
 import "./TokenUtils.sol";
 import "./interfaces/IDaimoPayBridger.sol";
+import "./interfaces/IDepositAddressBridger.sol";
 
 /// @author Daimo, Inc
 /// @custom:security-contact security@daimo.com
@@ -24,9 +26,12 @@ import "./interfaces/IDaimoPayBridger.sol";
 /// `minBuyAmount` may be smaller than `outAmount` due to slippage and
 /// underlying-bridge fees; the recipient eats that difference.
 /// Multiple destination tokens per chain are supported via the nested
-/// `bridgeRouteMapping[toChainId][bridgeTokenOut] -> ZeroXRoute`. Caller
-/// (DepositAddressBridger) always passes a single-element option array.
-contract DAZeroXBridger is IDaimoPayBridger, ReentrancyGuard {
+/// `bridgeRouteMapping[destinationType][toChainId][bridgeTokenOutHash]`.
+contract DAZeroXBridger is
+    IDaimoPayBridger,
+    IDepositAddressBridgeAdapter,
+    ReentrancyGuard
+{
     using SafeERC20 for IERC20;
     using ECDSA for bytes32;
     using MessageHashUtils for bytes32;
@@ -40,7 +45,7 @@ contract DAZeroXBridger is IDaimoPayBridger, ReentrancyGuard {
     struct SignedQuote {
         // route + amount. outAmount is denominated in bridgeTokenOut decimals;
         // the source-side inAmount is derived from outAmount + route decimals.
-        address bridgeTokenOut;
+        bytes bridgeTokenOut;
         uint256 outAmount;
         // execution
         address allowanceTarget;
@@ -51,8 +56,9 @@ contract DAZeroXBridger is IDaimoPayBridger, ReentrancyGuard {
         uint256 timestamp;
         bytes32 quoteId;
         // bound to caller args
+        DestinationType destinationType;
         uint256 toChainId;
-        address toAddress;
+        bytes toAddress;
         // sig
         bytes signature;
     }
@@ -66,10 +72,9 @@ contract DAZeroXBridger is IDaimoPayBridger, ReentrancyGuard {
     /// @notice Authorized to sweep balances. Set at deploy-time
     address public immutable owner;
 
-    /// @notice Maps (destination chainId, bridge output token) to the
-    /// configured route. The same chainId can have multiple bridgeTokenOut
-    /// entries with distinct bridgeTokenIn assets.
-    mapping(uint256 toChainId => mapping(address bridgeTokenOut => ZeroXRoute bridgeRoute))
+    /// @notice Maps (destination type, chainId, bridge output token) to the
+    /// configured route.
+    mapping(DestinationType destinationType => mapping(uint256 toChainId => mapping(bytes32 bridgeTokenOutHash => ZeroXRoute bridgeRoute)))
         public bridgeRouteMapping;
 
     /// @notice Quote IDs already consumed.
@@ -79,8 +84,9 @@ contract DAZeroXBridger is IDaimoPayBridger, ReentrancyGuard {
         address _owner,
         address _trustedSigner,
         uint256 _maxQuoteAge,
+        DestinationType[] memory _destinationTypes,
         uint256[] memory _toChainIds,
-        address[] memory _bridgeTokenOuts,
+        bytes[] memory _bridgeTokenOuts,
         ZeroXRoute[] memory _bridgeRoutes
     ) {
         require(_owner != address(0), "DAZX: invalid owner");
@@ -92,13 +98,29 @@ contract DAZeroXBridger is IDaimoPayBridger, ReentrancyGuard {
 
         uint256 n = _toChainIds.length;
         require(
-            n == _bridgeTokenOuts.length && n == _bridgeRoutes.length,
+            n == _destinationTypes.length &&
+                n == _bridgeTokenOuts.length &&
+                n == _bridgeRoutes.length,
             "DAZX: length mismatch"
         );
         for (uint256 i = 0; i < n; ++i) {
             require(
-                _bridgeTokenOuts[i] != address(0) &&
-                    _bridgeRoutes[i].bridgeTokenIn != address(0),
+                DestinationUtils.isValidDestinationBytesMemory(
+                    _destinationTypes[i],
+                    _bridgeTokenOuts[i]
+                ),
+                "DAZX: bad route token"
+            );
+            require(
+                _destinationTypes[i] != DestinationType.EVM ||
+                    DestinationUtils.decodeEvmAddressMemory(
+                        _bridgeTokenOuts[i]
+                    ) !=
+                    address(0),
+                "DAZX: zero token in route"
+            );
+            require(
+                _bridgeRoutes[i].bridgeTokenIn != address(0),
                 "DAZX: zero token in route"
             );
             require(
@@ -106,8 +128,8 @@ contract DAZeroXBridger is IDaimoPayBridger, ReentrancyGuard {
                     _bridgeRoutes[i].bridgeTokenOutDecimals > 0,
                 "DAZX: zero decimals in route"
             );
-            bridgeRouteMapping[_toChainIds[i]][
-                _bridgeTokenOuts[i]
+            bridgeRouteMapping[_destinationTypes[i]][_toChainIds[i]][
+                keccak256(_bridgeTokenOuts[i])
             ] = _bridgeRoutes[i];
         }
     }
@@ -126,18 +148,30 @@ contract DAZeroXBridger is IDaimoPayBridger, ReentrancyGuard {
         require(bridgeTokenOutOptions.length == 1, "DAZX: multiple options");
 
         TokenAmount calldata option = bridgeTokenOutOptions[0];
-        ZeroXRoute memory route = bridgeRouteMapping[toChainId][
-            address(option.token)
-        ];
-        require(route.bridgeTokenIn != address(0), "DAZX: route not found");
+        return
+            _getBridgeTokenIn({
+                destinationType: DestinationType.EVM,
+                toChainId: toChainId,
+                bridgeTokenOut: DestinationUtils.evmAddressToBytes(
+                    address(option.token)
+                ),
+                outAmount: option.amount
+            });
+    }
 
-        bridgeTokenIn = route.bridgeTokenIn;
-        inAmount = TokenUtils.convertTokenAmountDecimals({
-            amount: option.amount,
-            fromDecimals: route.bridgeTokenOutDecimals,
-            toDecimals: route.bridgeTokenInDecimals,
-            roundUp: true
-        });
+    /// @inheritdoc IDepositAddressBridgeAdapter
+    function getBridgeTokenIn(
+        DestinationType destinationType,
+        uint256 toChainId,
+        BridgeTokenAmount calldata tokenOut
+    ) external view returns (address bridgeTokenIn, uint256 inAmount) {
+        return
+            _getBridgeTokenIn({
+                destinationType: destinationType,
+                toChainId: toChainId,
+                bridgeTokenOut: tokenOut.token,
+                outAmount: tokenOut.amount
+            });
     }
 
     /// @inheritdoc IDaimoPayBridger
@@ -151,25 +185,108 @@ contract DAZeroXBridger is IDaimoPayBridger, ReentrancyGuard {
         address refundAddress,
         bytes calldata extraData
     ) external nonReentrant {
-        require(toChainId != block.chainid, "DAZX: same chain");
         // The DepositAddressBridger should only ever send one option
         require(bridgeTokenOutOptions.length == 1, "DAZX: multiple options");
 
         TokenAmount calldata option = bridgeTokenOutOptions[0];
-        require(option.amount > 0, "DAZX: zero amount");
+        BridgeTokenAmount memory tokenOut = BridgeTokenAmount({
+            token: DestinationUtils.evmAddressToBytes(address(option.token)),
+            amount: option.amount
+        });
+
+        _sendToChain({
+            destinationType: DestinationType.EVM,
+            toChainId: toChainId,
+            toAddress: DestinationUtils.evmAddressToBytes(toAddress),
+            tokenOut: tokenOut,
+            refundAddress: refundAddress,
+            extraData: extraData
+        });
+    }
+
+    /// @inheritdoc IDepositAddressBridgeAdapter
+    function sendToChain(
+        DestinationType destinationType,
+        uint256 toChainId,
+        bytes calldata toAddress,
+        BridgeTokenAmount calldata tokenOut,
+        address refundAddress,
+        bytes calldata extraData
+    ) external nonReentrant {
+        _sendToChain({
+            destinationType: destinationType,
+            toChainId: toChainId,
+            toAddress: toAddress,
+            tokenOut: tokenOut,
+            refundAddress: refundAddress,
+            extraData: extraData
+        });
+    }
+
+    /// @notice Send the contract's full balance of `token` to `to`.
+    /// Pass `token == address(0)` to sweep native. Bridges may refund
+    /// unspent ERC20 / native to this contract.
+    function sweep(address token, address payable to) external {
+        require(msg.sender == owner, "DAZX: not owner");
+        require(to != address(0), "DAZX: zero recipient");
+        TokenUtils.transferBalance({token: IERC20(token), recipient: to});
+    }
+
+    function _sendToChain(
+        DestinationType destinationType,
+        uint256 toChainId,
+        bytes memory toAddress,
+        BridgeTokenAmount memory tokenOut,
+        address refundAddress,
+        bytes calldata extraData
+    ) private {
+        require(toChainId != block.chainid, "DAZX: same chain");
+        require(tokenOut.amount > 0, "DAZX: zero amount");
+        require(
+            DestinationUtils.isValidDestinationBytesMemory(
+                destinationType,
+                toAddress
+            ),
+            "DAZX: bad to address"
+        );
+        require(
+            DestinationUtils.isValidDestinationBytesMemory(
+                destinationType,
+                tokenOut.token
+            ),
+            "DAZX: bad bridge token"
+        );
 
         SignedQuote memory q = abi.decode(extraData, (SignedQuote));
 
         require(
-            q.bridgeTokenOut == address(option.token),
+            q.destinationType == destinationType,
+            "DAZX: dest type mismatch"
+        );
+        require(q.toChainId == toChainId, "DAZX: chain id mismatch");
+        require(
+            keccak256(q.toAddress) == keccak256(toAddress),
+            "DAZX: to address mismatch"
+        );
+        require(
+            keccak256(q.bridgeTokenOut) == keccak256(tokenOut.token),
             "DAZX: bridge token mismatch"
         );
-        require(q.outAmount == option.amount, "DAZX: out amount mismatch");
+        require(q.outAmount == tokenOut.amount, "DAZX: out amount mismatch");
+        require(
+            block.timestamp <= q.timestamp + maxQuoteAge,
+            "DAZX: quote stale"
+        );
 
-        ZeroXRoute memory route = bridgeRouteMapping[toChainId][
-            q.bridgeTokenOut
-        ];
+        ZeroXRoute memory route = bridgeRouteMapping[destinationType][
+            toChainId
+        ][keccak256(q.bridgeTokenOut)];
         require(route.bridgeTokenIn != address(0), "DAZX: route not found");
+
+        require(!usedQuoteIds[q.quoteId], "DAZX: quote replayed");
+        usedQuoteIds[q.quoteId] = true;
+
+        _verifySignature(q, route.bridgeTokenIn);
 
         // Convert dest-decimal outAmount to source-decimal inAmount.
         // Round up so we never under-fund the 0x call; any residue (zero in
@@ -180,19 +297,6 @@ contract DAZeroXBridger is IDaimoPayBridger, ReentrancyGuard {
             toDecimals: route.bridgeTokenInDecimals,
             roundUp: true
         });
-
-        require(q.toChainId == toChainId, "DAZX: chain id mismatch");
-        require(q.toAddress == toAddress, "DAZX: to address mismatch");
-
-        require(
-            block.timestamp <= q.timestamp + maxQuoteAge,
-            "DAZX: quote stale"
-        );
-
-        require(!usedQuoteIds[q.quoteId], "DAZX: quote replayed");
-        usedQuoteIds[q.quoteId] = true;
-
-        _verifySignature(q, route.bridgeTokenIn);
 
         // Move input token from caller to this contract and approve 0x.
         IERC20(route.bridgeTokenIn).safeTransferFrom({
@@ -234,25 +338,32 @@ contract DAZeroXBridger is IDaimoPayBridger, ReentrancyGuard {
             require(nativeOk, "DAZX: native refund failed");
         }
 
-        emit BridgeInitiated({
+        if (destinationType == DestinationType.EVM) {
+            emit BridgeInitiated({
+                fromAddress: msg.sender,
+                fromToken: route.bridgeTokenIn,
+                fromAmount: inAmount,
+                toChainId: toChainId,
+                toAddress: DestinationUtils.decodeEvmAddressMemory(toAddress),
+                toToken: DestinationUtils.decodeEvmAddressMemory(
+                    q.bridgeTokenOut
+                ),
+                toAmount: q.outAmount,
+                refundAddress: refundAddress
+            });
+        }
+
+        emit BridgeInitiatedBytes({
             fromAddress: msg.sender,
             fromToken: route.bridgeTokenIn,
             fromAmount: inAmount,
+            destinationType: destinationType,
             toChainId: toChainId,
             toAddress: toAddress,
             toToken: q.bridgeTokenOut,
             toAmount: q.outAmount,
             refundAddress: refundAddress
         });
-    }
-
-    /// @notice Send the contract's full balance of `token` to `to`.
-    /// Pass `token == address(0)` to sweep native. Bridges may refund
-    /// unspent ERC20 / native to this contract.
-    function sweep(address token, address payable to) external {
-        require(msg.sender == owner, "DAZX: not owner");
-        require(to != address(0), "DAZX: zero recipient");
-        TokenUtils.transferBalance({token: IERC20(token), recipient: to});
     }
 
     function _verifySignature(
@@ -263,10 +374,11 @@ contract DAZeroXBridger is IDaimoPayBridger, ReentrancyGuard {
             abi.encode(
                 block.chainid,
                 address(this),
+                q.destinationType,
                 q.toChainId,
-                q.toAddress,
+                keccak256(q.toAddress),
                 bridgeTokenIn,
-                q.bridgeTokenOut,
+                keccak256(q.bridgeTokenOut),
                 q.outAmount,
                 q.allowanceTarget,
                 q.callTarget,
@@ -279,5 +391,25 @@ contract DAZeroXBridger is IDaimoPayBridger, ReentrancyGuard {
         bytes32 ethSignedMessageHash = messageHash.toEthSignedMessageHash();
         address recovered = ethSignedMessageHash.recover(q.signature);
         require(recovered == trustedSigner, "DAZX: bad signature");
+    }
+
+    function _getBridgeTokenIn(
+        DestinationType destinationType,
+        uint256 toChainId,
+        bytes memory bridgeTokenOut,
+        uint256 outAmount
+    ) private view returns (address bridgeTokenIn, uint256 inAmount) {
+        ZeroXRoute memory route = bridgeRouteMapping[destinationType][
+            toChainId
+        ][keccak256(bridgeTokenOut)];
+        require(route.bridgeTokenIn != address(0), "DAZX: route not found");
+
+        bridgeTokenIn = route.bridgeTokenIn;
+        inAmount = TokenUtils.convertTokenAmountDecimals({
+            amount: outAmount,
+            fromDecimals: route.bridgeTokenOutDecimals,
+            toDecimals: route.bridgeTokenInDecimals,
+            roundUp: true
+        });
     }
 }

@@ -17,8 +17,14 @@ import {
 import {DaimoPayPricer} from "../src/DaimoPayPricer.sol";
 import {PriceData} from "../src/interfaces/IDaimoPayPricer.sol";
 import {
-    IDepositAddressBridger
+    IDepositAddressBridger,
+    BridgeRecipientMode
 } from "../src/interfaces/IDepositAddressBridger.sol";
+import {
+    DestinationType,
+    BridgeTokenAmount,
+    DestinationUtils
+} from "../src/DestinationUtils.sol";
 import {TokenAmount} from "../src/TokenUtils.sol";
 import {DaimoPayExecutor, Call} from "../src/DaimoPayExecutor.sol";
 import {TestUSDC} from "./utils/DummyUSDC.sol";
@@ -104,9 +110,10 @@ contract DepositAddressManagerTest is Test {
     function _createDAParams() internal view returns (DAParams memory) {
         return
             DAParams({
+                destinationType: DestinationType.EVM,
                 toChainId: DEST_CHAIN_ID,
-                toToken: usdc,
-                toAddress: RECIPIENT,
+                toToken: _addressBytes(address(usdc)),
+                toAddress: _addressBytes(RECIPIENT),
                 refundAddress: REFUND_ADDRESS,
                 finalCallData: "",
                 escrow: address(manager),
@@ -117,6 +124,49 @@ contract DepositAddressManagerTest is Test {
                 maxSameChainFinishSlippageBps: MAX_SAME_CHAIN_FINISH_SLIPPAGE_BPS,
                 expiresAt: block.timestamp + 1000
             });
+    }
+
+    function _addressBytes(address addr) internal pure returns (bytes memory) {
+        return DestinationUtils.evmAddressToBytes(addr);
+    }
+
+    function _bridgeTokenOut(
+        IERC20 token,
+        uint256 amount
+    ) internal pure returns (BridgeTokenAmount memory) {
+        return
+            BridgeTokenAmount({
+                token: _addressBytes(address(token)),
+                amount: amount
+            });
+    }
+
+    function _nonEvmBridgeTokenOut(
+        bytes memory token,
+        uint256 amount
+    ) internal pure returns (BridgeTokenAmount memory) {
+        return BridgeTokenAmount({token: token, amount: amount});
+    }
+
+    function _solanaBytes(uint256 seed) internal pure returns (bytes memory) {
+        return abi.encodePacked(bytes32(seed));
+    }
+
+    function _tronBytes(uint160 addr) internal pure returns (bytes memory) {
+        return abi.encodePacked(bytes1(0x41), bytes20(addr));
+    }
+
+    function _createNonEvmDAParams(
+        DestinationType destinationType,
+        uint256 toChainId,
+        bytes memory toToken,
+        bytes memory toAddress
+    ) internal view returns (DAParams memory params) {
+        params = _createDAParams();
+        params.destinationType = destinationType;
+        params.toChainId = toChainId;
+        params.toToken = toToken;
+        params.toAddress = toAddress;
     }
 
     /// @dev Creates price data and signs it with the trusted signer
@@ -193,10 +243,10 @@ contract DepositAddressManagerTest is Test {
         );
 
         // Create bridge token out
-        TokenAmount memory bridgeTokenOut = TokenAmount({
-            token: usdc,
-            amount: BRIDGE_AMOUNT
-        });
+        BridgeTokenAmount memory bridgeTokenOut = _bridgeTokenOut(
+            usdc,
+            BRIDGE_AMOUNT
+        );
 
         bytes32 relaySalt = keccak256("test-salt");
 
@@ -229,7 +279,9 @@ contract DepositAddressManagerTest is Test {
         (address fulfillmentAddress, ) = manager.computeFulfillmentAddress(
             fulfillment
         );
-        assertTrue(manager.fulfillmentUsed(fulfillmentAddress));
+        assertTrue(
+            manager.fulfillmentUsed(manager.computeFulfillmentId(fulfillment))
+        );
 
         // Verify bridger burned the tokens
         assertTrue(usdc.balanceOf(address(0xdead)) == BRIDGE_AMOUNT);
@@ -252,10 +304,10 @@ contract DepositAddressManagerTest is Test {
             block.timestamp
         );
 
-        TokenAmount memory bridgeTokenOut = TokenAmount({
-            token: usdc,
-            amount: BRIDGE_AMOUNT
-        });
+        BridgeTokenAmount memory bridgeTokenOut = _bridgeTokenOut(
+            usdc,
+            BRIDGE_AMOUNT
+        );
 
         bytes32 relaySalt = keccak256("test-salt");
         Call[] memory calls = new Call[](0);
@@ -271,14 +323,18 @@ contract DepositAddressManagerTest is Test {
         (address fulfillmentAddress, ) = manager.computeFulfillmentAddress(
             fulfillment
         );
+        bytes32 fulfillmentId = manager.computeFulfillmentId(fulfillment);
+        bytes memory bridgeRecipient = _addressBytes(fulfillmentAddress);
 
         // Expect Start event
-        vm.expectEmit(true, true, false, true);
+        vm.expectEmit(true, true, true, true);
         emit DepositAddressManager.Start({
             depositAddress: address(vault),
+            fulfillmentId: fulfillmentId,
             fulfillmentAddress: fulfillmentAddress,
             params: params,
             fulfillment: fulfillment,
+            bridgeRecipient: bridgeRecipient,
             paymentToken: address(usdc),
             paymentAmount: PAYMENT_AMOUNT,
             paymentTokenPriceUsd: USDC_PRICE,
@@ -315,10 +371,10 @@ contract DepositAddressManagerTest is Test {
             block.timestamp
         );
 
-        TokenAmount memory bridgeTokenOut = TokenAmount({
-            token: usdc,
-            amount: BRIDGE_AMOUNT
-        });
+        BridgeTokenAmount memory bridgeTokenOut = _bridgeTokenOut(
+            usdc,
+            BRIDGE_AMOUNT
+        );
 
         Call[] memory calls = new Call[](0);
         bytes memory bridgeExtraData = "";
@@ -356,8 +412,338 @@ contract DepositAddressManagerTest is Test {
             (address fulfillmentAddress, ) = manager.computeFulfillmentAddress(
                 fulfillment
             );
-            assertTrue(manager.fulfillmentUsed(fulfillmentAddress));
+            assertTrue(
+                manager.fulfillmentUsed(
+                    manager.computeFulfillmentId(fulfillment)
+                )
+            );
         }
+    }
+
+    function test_depositAddress_DestinationTypesProduceDistinctAddresses()
+        public
+        view
+    {
+        DAParams memory evmParams = _createDAParams();
+        DAParams memory solanaParams = _createNonEvmDAParams({
+            destinationType: DestinationType.SOLANA,
+            toChainId: 501,
+            toToken: _solanaBytes(1),
+            toAddress: _solanaBytes(2)
+        });
+        DAParams memory tronParams = _createNonEvmDAParams({
+            destinationType: DestinationType.TRON,
+            toChainId: 728126428,
+            toToken: _tronBytes(0x1111),
+            toAddress: _tronBytes(0x2222)
+        });
+
+        address evmDepositAddress = factory.getDepositAddress(evmParams);
+        address solanaDepositAddress = factory.getDepositAddress(solanaParams);
+        address tronDepositAddress = factory.getDepositAddress(tronParams);
+
+        assertTrue(evmDepositAddress != solanaDepositAddress);
+        assertTrue(evmDepositAddress != tronDepositAddress);
+        assertTrue(solanaDepositAddress != tronDepositAddress);
+    }
+
+    function test_start_SolanaDirectDelivery() public {
+        DAParams memory params = _createNonEvmDAParams({
+            destinationType: DestinationType.SOLANA,
+            toChainId: 501,
+            toToken: _solanaBytes(1),
+            toAddress: _solanaBytes(2)
+        });
+        DepositAddress vault = factory.createDepositAddress(params);
+        _fundDepositAddress(vault, PAYMENT_AMOUNT);
+        bridger.setBridgeTokenInOverride(address(usdc));
+
+        BridgeTokenAmount memory bridgeTokenOut = _nonEvmBridgeTokenOut(
+            params.toToken,
+            BRIDGE_AMOUNT
+        );
+        PriceData memory paymentTokenPrice = _createSignedPriceData(
+            address(usdc),
+            USDC_PRICE,
+            block.timestamp
+        );
+        PriceData memory bridgeTokenInPrice = _createSignedPriceData(
+            address(usdc),
+            USDC_PRICE,
+            block.timestamp
+        );
+        bytes32 relaySalt = keccak256("solana-salt");
+        Call[] memory calls = new Call[](0);
+
+        vm.prank(RELAYER);
+        manager.start({
+            params: params,
+            paymentToken: usdc,
+            bridgeTokenOut: bridgeTokenOut,
+            paymentTokenPrice: paymentTokenPrice,
+            bridgeTokenInPrice: bridgeTokenInPrice,
+            bridgerAdapter: address(bridger),
+            relaySalt: relaySalt,
+            calls: calls,
+            bridgeExtraData: ""
+        });
+
+        DAFulfillmentParams memory fulfillment = DAFulfillmentParams({
+            depositAddress: address(vault),
+            relaySalt: relaySalt,
+            bridgeTokenOut: bridgeTokenOut,
+            sourceChainId: SOURCE_CHAIN_ID
+        });
+        assertTrue(
+            manager.fulfillmentUsed(manager.computeFulfillmentId(fulfillment))
+        );
+        assertEq(
+            uint256(bridger.lastDestinationType()),
+            uint256(DestinationType.SOLANA)
+        );
+        assertEq(bridger.lastToChainId(), params.toChainId);
+        assertEq(
+            keccak256(bridger.lastToAddress()),
+            keccak256(params.toAddress)
+        );
+        assertEq(keccak256(bridger.lastTokenOut()), keccak256(params.toToken));
+        assertEq(bridger.lastAmount(), BRIDGE_AMOUNT);
+        assertEq(usdc.balanceOf(address(0xdead)), BRIDGE_AMOUNT);
+    }
+
+    function test_start_SolanaHopDeliveryUsesFulfillmentRecipient() public {
+        DAParams memory params = _createNonEvmDAParams({
+            destinationType: DestinationType.SOLANA,
+            toChainId: 501,
+            toToken: _solanaBytes(1),
+            toAddress: _solanaBytes(2)
+        });
+        DepositAddress vault = factory.createDepositAddress(params);
+        _fundDepositAddress(vault, PAYMENT_AMOUNT);
+        bridger.setBridgeTokenInOverride(address(usdc));
+        bridger.setBridgeRecipientMode(BridgeRecipientMode.FULFILLMENT);
+
+        BridgeTokenAmount memory bridgeTokenOut = _nonEvmBridgeTokenOut(
+            params.toToken,
+            BRIDGE_AMOUNT
+        );
+        PriceData memory paymentTokenPrice = _createSignedPriceData(
+            address(usdc),
+            USDC_PRICE,
+            block.timestamp
+        );
+        PriceData memory bridgeTokenInPrice = _createSignedPriceData(
+            address(usdc),
+            USDC_PRICE,
+            block.timestamp
+        );
+        bytes32 relaySalt = keccak256("solana-hop-salt");
+        Call[] memory calls = new Call[](0);
+
+        vm.prank(RELAYER);
+        manager.start({
+            params: params,
+            paymentToken: usdc,
+            bridgeTokenOut: bridgeTokenOut,
+            paymentTokenPrice: paymentTokenPrice,
+            bridgeTokenInPrice: bridgeTokenInPrice,
+            bridgerAdapter: address(bridger),
+            relaySalt: relaySalt,
+            calls: calls,
+            bridgeExtraData: ""
+        });
+
+        DAFulfillmentParams memory fulfillment = DAFulfillmentParams({
+            depositAddress: address(vault),
+            relaySalt: relaySalt,
+            bridgeTokenOut: bridgeTokenOut,
+            sourceChainId: SOURCE_CHAIN_ID
+        });
+        (address fulfillmentAddress, ) = manager.computeFulfillmentAddress(
+            fulfillment
+        );
+
+        assertEq(
+            keccak256(bridger.lastToAddress()),
+            keccak256(DestinationUtils.evmAddressToBytes(fulfillmentAddress))
+        );
+    }
+
+    function test_start_TronDirectDelivery() public {
+        DAParams memory params = _createNonEvmDAParams({
+            destinationType: DestinationType.TRON,
+            toChainId: 728126428,
+            toToken: _tronBytes(0x1111),
+            toAddress: _tronBytes(0x2222)
+        });
+        DepositAddress vault = factory.createDepositAddress(params);
+        _fundDepositAddress(vault, PAYMENT_AMOUNT);
+        bridger.setBridgeTokenInOverride(address(usdc));
+
+        BridgeTokenAmount memory bridgeTokenOut = _nonEvmBridgeTokenOut(
+            params.toToken,
+            BRIDGE_AMOUNT
+        );
+        PriceData memory paymentTokenPrice = _createSignedPriceData(
+            address(usdc),
+            USDC_PRICE,
+            block.timestamp
+        );
+        PriceData memory bridgeTokenInPrice = _createSignedPriceData(
+            address(usdc),
+            USDC_PRICE,
+            block.timestamp
+        );
+        bytes32 relaySalt = keccak256("tron-salt");
+        Call[] memory calls = new Call[](0);
+
+        vm.prank(RELAYER);
+        manager.start({
+            params: params,
+            paymentToken: usdc,
+            bridgeTokenOut: bridgeTokenOut,
+            paymentTokenPrice: paymentTokenPrice,
+            bridgeTokenInPrice: bridgeTokenInPrice,
+            bridgerAdapter: address(bridger),
+            relaySalt: relaySalt,
+            calls: calls,
+            bridgeExtraData: ""
+        });
+
+        DAFulfillmentParams memory fulfillment = DAFulfillmentParams({
+            depositAddress: address(vault),
+            relaySalt: relaySalt,
+            bridgeTokenOut: bridgeTokenOut,
+            sourceChainId: SOURCE_CHAIN_ID
+        });
+        assertTrue(
+            manager.fulfillmentUsed(manager.computeFulfillmentId(fulfillment))
+        );
+        assertEq(
+            uint256(bridger.lastDestinationType()),
+            uint256(DestinationType.TRON)
+        );
+        assertEq(
+            keccak256(bridger.lastToAddress()),
+            keccak256(params.toAddress)
+        );
+        assertEq(keccak256(bridger.lastTokenOut()), keccak256(params.toToken));
+        assertEq(bridger.lastAmount(), BRIDGE_AMOUNT);
+    }
+
+    function test_start_RevertsNonEvmFinalCallData() public {
+        DAParams memory params = _createNonEvmDAParams({
+            destinationType: DestinationType.SOLANA,
+            toChainId: 501,
+            toToken: _solanaBytes(1),
+            toAddress: _solanaBytes(2)
+        });
+        params.finalCallData = hex"01";
+        BridgeTokenAmount memory bridgeTokenOut = _nonEvmBridgeTokenOut(
+            params.toToken,
+            BRIDGE_AMOUNT
+        );
+        PriceData memory paymentTokenPrice = _createSignedPriceData(
+            address(usdc),
+            USDC_PRICE,
+            block.timestamp
+        );
+        PriceData memory bridgeTokenInPrice = _createSignedPriceData(
+            address(usdc),
+            USDC_PRICE,
+            block.timestamp
+        );
+        Call[] memory calls = new Call[](0);
+
+        vm.expectRevert(DepositAddressManager.FinalCallUnsupported.selector);
+        vm.prank(RELAYER);
+        manager.start({
+            params: params,
+            paymentToken: usdc,
+            bridgeTokenOut: bridgeTokenOut,
+            paymentTokenPrice: paymentTokenPrice,
+            bridgeTokenInPrice: bridgeTokenInPrice,
+            bridgerAdapter: address(bridger),
+            relaySalt: keccak256("bad-final-call"),
+            calls: calls,
+            bridgeExtraData: ""
+        });
+    }
+
+    function test_start_RevertsNonEvmBridgeTokenMismatch() public {
+        DAParams memory params = _createNonEvmDAParams({
+            destinationType: DestinationType.SOLANA,
+            toChainId: 501,
+            toToken: _solanaBytes(1),
+            toAddress: _solanaBytes(2)
+        });
+        BridgeTokenAmount memory bridgeTokenOut = _nonEvmBridgeTokenOut(
+            _solanaBytes(3),
+            BRIDGE_AMOUNT
+        );
+        PriceData memory paymentTokenPrice = _createSignedPriceData(
+            address(usdc),
+            USDC_PRICE,
+            block.timestamp
+        );
+        PriceData memory bridgeTokenInPrice = _createSignedPriceData(
+            address(usdc),
+            USDC_PRICE,
+            block.timestamp
+        );
+        Call[] memory calls = new Call[](0);
+
+        vm.expectRevert(DepositAddressManager.DirectTokenMismatch.selector);
+        vm.prank(RELAYER);
+        manager.start({
+            params: params,
+            paymentToken: usdc,
+            bridgeTokenOut: bridgeTokenOut,
+            paymentTokenPrice: paymentTokenPrice,
+            bridgeTokenInPrice: bridgeTokenInPrice,
+            bridgerAdapter: address(bridger),
+            relaySalt: keccak256("bad-token"),
+            calls: calls,
+            bridgeExtraData: ""
+        });
+    }
+
+    function test_start_RevertsBadDestinationBytes() public {
+        DAParams memory params = _createNonEvmDAParams({
+            destinationType: DestinationType.TRON,
+            toChainId: 728126428,
+            toToken: abi.encodePacked(bytes1(0x42), bytes20(uint160(0x1111))),
+            toAddress: _tronBytes(0x2222)
+        });
+        BridgeTokenAmount memory bridgeTokenOut = _nonEvmBridgeTokenOut(
+            params.toToken,
+            BRIDGE_AMOUNT
+        );
+        PriceData memory paymentTokenPrice = _createSignedPriceData(
+            address(usdc),
+            USDC_PRICE,
+            block.timestamp
+        );
+        PriceData memory bridgeTokenInPrice = _createSignedPriceData(
+            address(usdc),
+            USDC_PRICE,
+            block.timestamp
+        );
+        Call[] memory calls = new Call[](0);
+
+        vm.expectRevert(DepositAddressManager.BadDestinationToken.selector);
+        vm.prank(RELAYER);
+        manager.start({
+            params: params,
+            paymentToken: usdc,
+            bridgeTokenOut: bridgeTokenOut,
+            paymentTokenPrice: paymentTokenPrice,
+            bridgeTokenInPrice: bridgeTokenInPrice,
+            bridgerAdapter: address(bridger),
+            relaySalt: keccak256("bad-tron"),
+            calls: calls,
+            bridgeExtraData: ""
+        });
     }
 
     // ---------------------------------------------------------------------
@@ -383,16 +769,16 @@ contract DepositAddressManagerTest is Test {
             block.timestamp
         );
 
-        TokenAmount memory bridgeTokenOut = TokenAmount({
-            token: usdc,
-            amount: BRIDGE_AMOUNT
-        });
+        BridgeTokenAmount memory bridgeTokenOut = _bridgeTokenOut(
+            usdc,
+            BRIDGE_AMOUNT
+        );
 
         bytes32 relaySalt = keccak256("test-salt");
         Call[] memory calls = new Call[](0);
         bytes memory bridgeExtraData = "";
 
-        vm.expectRevert(bytes("DAM: start on dest chain"));
+        vm.expectRevert(DepositAddressManager.StartOnDestChain.selector);
         vm.prank(RELAYER);
         manager.start({
             params: params,
@@ -425,16 +811,16 @@ contract DepositAddressManagerTest is Test {
             block.timestamp
         );
 
-        TokenAmount memory bridgeTokenOut = TokenAmount({
-            token: usdc,
-            amount: BRIDGE_AMOUNT
-        });
+        BridgeTokenAmount memory bridgeTokenOut = _bridgeTokenOut(
+            usdc,
+            BRIDGE_AMOUNT
+        );
 
         bytes32 relaySalt = keccak256("test-salt");
         Call[] memory calls = new Call[](0);
         bytes memory bridgeExtraData = "";
 
-        vm.expectRevert(bytes("DAM: wrong escrow"));
+        vm.expectRevert(DepositAddressManager.WrongEscrow.selector);
         vm.prank(RELAYER);
         manager.start({
             params: params,
@@ -471,10 +857,10 @@ contract DepositAddressManagerTest is Test {
             block.timestamp
         );
 
-        TokenAmount memory bridgeTokenOut = TokenAmount({
-            token: usdc,
-            amount: BRIDGE_AMOUNT
-        });
+        BridgeTokenAmount memory bridgeTokenOut = _bridgeTokenOut(
+            usdc,
+            BRIDGE_AMOUNT
+        );
 
         bytes32 relaySalt = keccak256("test-salt");
         Call[] memory calls = new Call[](0);
@@ -482,7 +868,7 @@ contract DepositAddressManagerTest is Test {
 
         // Expect revert
         vm.prank(RELAYER);
-        vm.expectRevert("DAM: expired");
+        vm.expectRevert(DepositAddressManager.Expired.selector);
         manager.start({
             params: params,
             paymentToken: usdc,
@@ -516,16 +902,16 @@ contract DepositAddressManagerTest is Test {
             block.timestamp
         );
 
-        TokenAmount memory bridgeTokenOut = TokenAmount({
-            token: usdc,
-            amount: BRIDGE_AMOUNT
-        });
+        BridgeTokenAmount memory bridgeTokenOut = _bridgeTokenOut(
+            usdc,
+            BRIDGE_AMOUNT
+        );
 
         bytes32 relaySalt = keccak256("test-salt");
         Call[] memory calls = new Call[](0);
         bytes memory bridgeExtraData = "";
 
-        vm.expectRevert(bytes("DAM: payment price invalid"));
+        vm.expectRevert(DepositAddressManager.PaymentPriceInvalid.selector);
         vm.prank(RELAYER);
         manager.start({
             params: params,
@@ -563,16 +949,16 @@ contract DepositAddressManagerTest is Test {
             0xBAD
         );
 
-        TokenAmount memory bridgeTokenOut = TokenAmount({
-            token: usdc,
-            amount: BRIDGE_AMOUNT
-        });
+        BridgeTokenAmount memory bridgeTokenOut = _bridgeTokenOut(
+            usdc,
+            BRIDGE_AMOUNT
+        );
 
         bytes32 relaySalt = keccak256("test-salt");
         Call[] memory calls = new Call[](0);
         bytes memory bridgeExtraData = "";
 
-        vm.expectRevert(bytes("DAM: bridge price invalid"));
+        vm.expectRevert(DepositAddressManager.BridgePriceInvalid.selector);
         vm.prank(RELAYER);
         manager.start({
             params: params,
@@ -603,10 +989,10 @@ contract DepositAddressManagerTest is Test {
             block.timestamp
         );
 
-        TokenAmount memory bridgeTokenOut = TokenAmount({
-            token: usdc,
-            amount: BRIDGE_AMOUNT
-        });
+        BridgeTokenAmount memory bridgeTokenOut = _bridgeTokenOut(
+            usdc,
+            BRIDGE_AMOUNT
+        );
 
         bytes32 relaySalt = keccak256("test-salt");
         Call[] memory calls = new Call[](0);
@@ -630,7 +1016,7 @@ contract DepositAddressManagerTest is Test {
         _fundDepositAddress(vault, PAYMENT_AMOUNT);
 
         // Second call with same salt should revert
-        vm.expectRevert(bytes("DAM: fulfillment used"));
+        vm.expectRevert(DepositAddressManager.FulfillmentUsed.selector);
         vm.prank(RELAYER);
         manager.start({
             params: params,
@@ -664,16 +1050,16 @@ contract DepositAddressManagerTest is Test {
             block.timestamp
         );
 
-        TokenAmount memory bridgeTokenOut = TokenAmount({
-            token: usdc,
-            amount: BRIDGE_AMOUNT
-        });
+        BridgeTokenAmount memory bridgeTokenOut = _bridgeTokenOut(
+            usdc,
+            BRIDGE_AMOUNT
+        );
 
         bytes32 relaySalt = keccak256("test-salt");
         Call[] memory calls = new Call[](0);
         bytes memory bridgeExtraData = "";
 
-        vm.expectRevert(bytes("DAM: bridge token mismatch"));
+        vm.expectRevert(DepositAddressManager.BridgeTokenMismatch.selector);
         vm.prank(RELAYER);
         manager.start({
             params: params,
@@ -707,16 +1093,16 @@ contract DepositAddressManagerTest is Test {
             block.timestamp
         );
 
-        TokenAmount memory bridgeTokenOut = TokenAmount({
-            token: usdc,
-            amount: BRIDGE_AMOUNT
-        });
+        BridgeTokenAmount memory bridgeTokenOut = _bridgeTokenOut(
+            usdc,
+            BRIDGE_AMOUNT
+        );
 
         bytes32 relaySalt = keccak256("test-salt");
         Call[] memory calls = new Call[](0);
         bytes memory bridgeExtraData = "";
 
-        vm.expectRevert(bytes("DAM: payment token mismatch"));
+        vm.expectRevert(DepositAddressManager.PaymentTokenMismatch.selector);
         vm.prank(RELAYER);
         manager.start({
             params: params,
@@ -748,16 +1134,13 @@ contract DepositAddressManagerTest is Test {
         );
 
         // Bridge amount too low - less than minimum after slippage
-        TokenAmount memory bridgeTokenOut = TokenAmount({
-            token: usdc,
-            amount: 50e6 // Much less than expected
-        });
+        BridgeTokenAmount memory bridgeTokenOut = _bridgeTokenOut(usdc, 50e6);
 
         bytes32 relaySalt = keccak256("test-salt");
         Call[] memory calls = new Call[](0);
         bytes memory bridgeExtraData = "";
 
-        vm.expectRevert(bytes("DAM: bridge input low"));
+        vm.expectRevert(DepositAddressManager.BridgeInputLow.selector);
         vm.prank(RELAYER);
         manager.start({
             params: params,
@@ -788,16 +1171,16 @@ contract DepositAddressManagerTest is Test {
             block.timestamp
         );
 
-        TokenAmount memory bridgeTokenOut = TokenAmount({
-            token: usdc,
-            amount: BRIDGE_AMOUNT
-        });
+        BridgeTokenAmount memory bridgeTokenOut = _bridgeTokenOut(
+            usdc,
+            BRIDGE_AMOUNT
+        );
 
         bytes32 relaySalt = keccak256("test-salt");
         Call[] memory calls = new Call[](0);
         bytes memory bridgeExtraData = "";
 
-        vm.expectRevert(bytes("DAM: not relayer"));
+        vm.expectRevert(DepositAddressManager.NotRelayer.selector);
         vm.prank(address(0x1111));
         manager.start({
             params: params,
@@ -820,10 +1203,10 @@ contract DepositAddressManagerTest is Test {
         DAParams memory params = _createDAParams();
         DepositAddress vault = factory.createDepositAddress(params);
 
-        TokenAmount memory bridgeTokenOut = TokenAmount({
-            token: usdc,
-            amount: BRIDGE_AMOUNT
-        });
+        BridgeTokenAmount memory bridgeTokenOut = _bridgeTokenOut(
+            usdc,
+            BRIDGE_AMOUNT
+        );
 
         bytes32 relaySalt = keccak256("test-salt");
 
@@ -852,10 +1235,10 @@ contract DepositAddressManagerTest is Test {
         DAParams memory params = _createDAParams();
         DepositAddress vault = factory.createDepositAddress(params);
 
-        TokenAmount memory bridgeTokenOut = TokenAmount({
-            token: usdc,
-            amount: BRIDGE_AMOUNT
-        });
+        BridgeTokenAmount memory bridgeTokenOut = _bridgeTokenOut(
+            usdc,
+            BRIDGE_AMOUNT
+        );
 
         DAFulfillmentParams memory fulfillment1 = DAFulfillmentParams({
             depositAddress: address(vault),
@@ -889,14 +1272,14 @@ contract DepositAddressManagerTest is Test {
         DAFulfillmentParams memory fulfillment1 = DAFulfillmentParams({
             depositAddress: address(vault),
             relaySalt: relaySalt,
-            bridgeTokenOut: TokenAmount({token: usdc, amount: 100e6}),
+            bridgeTokenOut: _bridgeTokenOut(usdc, 100e6),
             sourceChainId: SOURCE_CHAIN_ID
         });
 
         DAFulfillmentParams memory fulfillment2 = DAFulfillmentParams({
             depositAddress: address(vault),
             relaySalt: relaySalt,
-            bridgeTokenOut: TokenAmount({token: usdc, amount: 200e6}),
+            bridgeTokenOut: _bridgeTokenOut(usdc, 200e6),
             sourceChainId: SOURCE_CHAIN_ID
         });
 
@@ -933,10 +1316,10 @@ contract DepositAddressManagerTest is Test {
         // Bridge amount should account for slippage
         uint256 bridgeAmount = (amount * (10_000 - MAX_START_SLIPPAGE_BPS)) /
             10_000;
-        TokenAmount memory bridgeTokenOut = TokenAmount({
-            token: usdc,
-            amount: bridgeAmount
-        });
+        BridgeTokenAmount memory bridgeTokenOut = _bridgeTokenOut(
+            usdc,
+            bridgeAmount
+        );
 
         bytes32 relaySalt = keccak256(abi.encodePacked("salt", amount));
         Call[] memory calls = new Call[](0);
@@ -965,7 +1348,9 @@ contract DepositAddressManagerTest is Test {
         (address fulfillmentAddress, ) = manager.computeFulfillmentAddress(
             fulfillment
         );
-        assertTrue(manager.fulfillmentUsed(fulfillmentAddress));
+        assertTrue(
+            manager.fulfillmentUsed(manager.computeFulfillmentId(fulfillment))
+        );
     }
 
     function testFuzz_computeFulfillmentAddress_UniqueSalts(
@@ -977,10 +1362,10 @@ contract DepositAddressManagerTest is Test {
         DAParams memory params = _createDAParams();
         DepositAddress vault = factory.createDepositAddress(params);
 
-        TokenAmount memory bridgeTokenOut = TokenAmount({
-            token: usdc,
-            amount: BRIDGE_AMOUNT
-        });
+        BridgeTokenAmount memory bridgeTokenOut = _bridgeTokenOut(
+            usdc,
+            BRIDGE_AMOUNT
+        );
 
         DAFulfillmentParams memory fulfillment1 = DAFulfillmentParams({
             depositAddress: address(vault),
@@ -1015,10 +1400,10 @@ contract DepositAddressManagerTest is Test {
         address depositAddress = factory.getDepositAddress(params);
 
         // Create bridge token out
-        TokenAmount memory bridgeTokenOut = TokenAmount({
-            token: usdc,
-            amount: BRIDGE_AMOUNT
-        });
+        BridgeTokenAmount memory bridgeTokenOut = _bridgeTokenOut(
+            usdc,
+            BRIDGE_AMOUNT
+        );
 
         bytes32 relaySalt = keccak256("test-salt");
 
@@ -1080,10 +1465,10 @@ contract DepositAddressManagerTest is Test {
         DAParams memory params = _createDAParams();
         address depositAddress = factory.getDepositAddress(params);
 
-        TokenAmount memory bridgeTokenOut = TokenAmount({
-            token: usdc,
-            amount: BRIDGE_AMOUNT
-        });
+        BridgeTokenAmount memory bridgeTokenOut = _bridgeTokenOut(
+            usdc,
+            BRIDGE_AMOUNT
+        );
 
         bytes32 relaySalt = keccak256("test-salt");
 
@@ -1149,10 +1534,10 @@ contract DepositAddressManagerTest is Test {
         DAParams memory params = _createDAParams();
         address depositAddress = factory.getDepositAddress(params);
 
-        TokenAmount memory bridgeTokenOut = TokenAmount({
-            token: usdc,
-            amount: BRIDGE_AMOUNT
-        });
+        BridgeTokenAmount memory bridgeTokenOut = _bridgeTokenOut(
+            usdc,
+            BRIDGE_AMOUNT
+        );
 
         PriceData memory bridgeTokenOutPrice = _createSignedPriceData(
             address(usdc),
@@ -1221,9 +1606,10 @@ contract DepositAddressManagerTest is Test {
 
         // Create params that points to source chain
         DAParams memory params = DAParams({
+            destinationType: DestinationType.EVM,
             toChainId: SOURCE_CHAIN_ID,
-            toToken: usdc,
-            toAddress: RECIPIENT,
+            toToken: _addressBytes(address(usdc)),
+            toAddress: _addressBytes(RECIPIENT),
             refundAddress: REFUND_ADDRESS,
             finalCallData: "",
             escrow: address(manager),
@@ -1235,10 +1621,10 @@ contract DepositAddressManagerTest is Test {
             expiresAt: block.timestamp + 1000
         });
 
-        TokenAmount memory bridgeTokenOut = TokenAmount({
-            token: usdc,
-            amount: BRIDGE_AMOUNT
-        });
+        BridgeTokenAmount memory bridgeTokenOut = _bridgeTokenOut(
+            usdc,
+            BRIDGE_AMOUNT
+        );
 
         bytes32 relaySalt = keccak256("test-salt");
 
@@ -1259,7 +1645,7 @@ contract DepositAddressManagerTest is Test {
 
         vm.startPrank(RELAYER);
         usdc.transfer(address(manager), BRIDGE_AMOUNT);
-        vm.expectRevert(bytes("DAM: same chain finish"));
+        vm.expectRevert(DepositAddressManager.SameChainFinishSource.selector);
         manager.fastFinish({
             params: params,
             calls: calls,
@@ -1279,10 +1665,10 @@ contract DepositAddressManagerTest is Test {
 
         DAParams memory params = _createDAParams(); // toChainId = DEST_CHAIN_ID
 
-        TokenAmount memory bridgeTokenOut = TokenAmount({
-            token: usdc,
-            amount: BRIDGE_AMOUNT
-        });
+        BridgeTokenAmount memory bridgeTokenOut = _bridgeTokenOut(
+            usdc,
+            BRIDGE_AMOUNT
+        );
 
         bytes32 relaySalt = keccak256("test-salt");
 
@@ -1303,7 +1689,7 @@ contract DepositAddressManagerTest is Test {
 
         vm.startPrank(RELAYER);
         usdc.transfer(address(manager), BRIDGE_AMOUNT);
-        vm.expectRevert(bytes("DAM: wrong chain"));
+        vm.expectRevert(DepositAddressManager.WrongChain.selector);
         manager.fastFinish({
             params: params,
             calls: calls,
@@ -1323,10 +1709,10 @@ contract DepositAddressManagerTest is Test {
         DAParams memory params = _createDAParams();
         params.escrow = address(0xDEAD); // Wrong escrow
 
-        TokenAmount memory bridgeTokenOut = TokenAmount({
-            token: usdc,
-            amount: BRIDGE_AMOUNT
-        });
+        BridgeTokenAmount memory bridgeTokenOut = _bridgeTokenOut(
+            usdc,
+            BRIDGE_AMOUNT
+        );
 
         bytes32 relaySalt = keccak256("test-salt");
 
@@ -1347,7 +1733,7 @@ contract DepositAddressManagerTest is Test {
 
         vm.startPrank(RELAYER);
         usdc.transfer(address(manager), BRIDGE_AMOUNT);
-        vm.expectRevert(bytes("DAM: wrong escrow"));
+        vm.expectRevert(DepositAddressManager.WrongEscrow.selector);
         manager.fastFinish({
             params: params,
             calls: calls,
@@ -1373,10 +1759,10 @@ contract DepositAddressManagerTest is Test {
         // Fund relayer with tokens to fast finish
         usdc.transfer(RELAYER, BRIDGE_AMOUNT);
 
-        TokenAmount memory bridgeTokenOut = TokenAmount({
-            token: usdc,
-            amount: BRIDGE_AMOUNT
-        });
+        BridgeTokenAmount memory bridgeTokenOut = _bridgeTokenOut(
+            usdc,
+            BRIDGE_AMOUNT
+        );
 
         PriceData memory bridgeTokenOutPrice = _createSignedPriceData(
             address(usdc),
@@ -1394,7 +1780,7 @@ contract DepositAddressManagerTest is Test {
 
         // Expect revert
         vm.prank(RELAYER);
-        vm.expectRevert("DAM: expired");
+        vm.expectRevert(DepositAddressManager.Expired.selector);
         manager.fastFinish({
             params: params,
             calls: calls,
@@ -1412,10 +1798,10 @@ contract DepositAddressManagerTest is Test {
 
         DAParams memory params = _createDAParams();
 
-        TokenAmount memory bridgeTokenOut = TokenAmount({
-            token: usdc,
-            amount: BRIDGE_AMOUNT
-        });
+        BridgeTokenAmount memory bridgeTokenOut = _bridgeTokenOut(
+            usdc,
+            BRIDGE_AMOUNT
+        );
 
         bytes32 relaySalt = keccak256("test-salt");
 
@@ -1443,7 +1829,9 @@ contract DepositAddressManagerTest is Test {
 
         vm.startPrank(RELAYER);
         usdc.transfer(address(manager), BRIDGE_AMOUNT);
-        vm.expectRevert(bytes("DAM: bridgeTokenOut price invalid"));
+        vm.expectRevert(
+            DepositAddressManager.BridgeTokenOutPriceInvalid.selector
+        );
         manager.fastFinish({
             params: params,
             calls: calls,
@@ -1462,10 +1850,10 @@ contract DepositAddressManagerTest is Test {
 
         DAParams memory params = _createDAParams();
 
-        TokenAmount memory bridgeTokenOut = TokenAmount({
-            token: usdc,
-            amount: BRIDGE_AMOUNT
-        });
+        BridgeTokenAmount memory bridgeTokenOut = _bridgeTokenOut(
+            usdc,
+            BRIDGE_AMOUNT
+        );
 
         bytes32 relaySalt = keccak256("test-salt");
 
@@ -1490,7 +1878,7 @@ contract DepositAddressManagerTest is Test {
 
         vm.startPrank(RELAYER);
         usdc.transfer(address(manager), BRIDGE_AMOUNT);
-        vm.expectRevert(bytes("DAM: toToken price invalid"));
+        vm.expectRevert(DepositAddressManager.ToTokenPriceInvalid.selector);
         manager.fastFinish({
             params: params,
             calls: calls,
@@ -1509,10 +1897,10 @@ contract DepositAddressManagerTest is Test {
 
         DAParams memory params = _createDAParams();
 
-        TokenAmount memory bridgeTokenOut = TokenAmount({
-            token: usdc,
-            amount: BRIDGE_AMOUNT
-        });
+        BridgeTokenAmount memory bridgeTokenOut = _bridgeTokenOut(
+            usdc,
+            BRIDGE_AMOUNT
+        );
 
         bytes32 relaySalt = keccak256("test-salt");
 
@@ -1553,7 +1941,7 @@ contract DepositAddressManagerTest is Test {
         // Second fast finish with same salt should revert
         vm.startPrank(RELAYER);
         usdc.transfer(address(manager), BRIDGE_AMOUNT);
-        vm.expectRevert(bytes("DAM: already finished"));
+        vm.expectRevert(DepositAddressManager.AlreadyFinished.selector);
         manager.fastFinish({
             params: params,
             calls: calls,
@@ -1572,10 +1960,10 @@ contract DepositAddressManagerTest is Test {
 
         DAParams memory params = _createDAParams();
 
-        TokenAmount memory bridgeTokenOut = TokenAmount({
-            token: usdc,
-            amount: BRIDGE_AMOUNT
-        });
+        BridgeTokenAmount memory bridgeTokenOut = _bridgeTokenOut(
+            usdc,
+            BRIDGE_AMOUNT
+        );
 
         bytes32 relaySalt = keccak256("test-salt");
 
@@ -1598,7 +1986,7 @@ contract DepositAddressManagerTest is Test {
 
         vm.startPrank(RELAYER);
         usdc.transfer(address(manager), BRIDGE_AMOUNT);
-        vm.expectRevert(bytes("DAM: bridgeTokenOut mismatch"));
+        vm.expectRevert(DepositAddressManager.BridgeTokenOutMismatch.selector);
         manager.fastFinish({
             params: params,
             calls: calls,
@@ -1617,10 +2005,10 @@ contract DepositAddressManagerTest is Test {
 
         DAParams memory params = _createDAParams();
 
-        TokenAmount memory bridgeTokenOut = TokenAmount({
-            token: usdc,
-            amount: BRIDGE_AMOUNT
-        });
+        BridgeTokenAmount memory bridgeTokenOut = _bridgeTokenOut(
+            usdc,
+            BRIDGE_AMOUNT
+        );
 
         bytes32 relaySalt = keccak256("test-salt");
 
@@ -1644,7 +2032,7 @@ contract DepositAddressManagerTest is Test {
 
         vm.startPrank(RELAYER);
         usdc.transfer(address(manager), BRIDGE_AMOUNT);
-        vm.expectRevert(bytes("DAM: toToken mismatch"));
+        vm.expectRevert(DepositAddressManager.ToTokenMismatch.selector);
         manager.fastFinish({
             params: params,
             calls: calls,
@@ -1663,10 +2051,10 @@ contract DepositAddressManagerTest is Test {
 
         DAParams memory params = _createDAParams();
 
-        TokenAmount memory bridgeTokenOut = TokenAmount({
-            token: usdc,
-            amount: BRIDGE_AMOUNT
-        });
+        BridgeTokenAmount memory bridgeTokenOut = _bridgeTokenOut(
+            usdc,
+            BRIDGE_AMOUNT
+        );
 
         bytes32 relaySalt = keccak256("test-salt");
 
@@ -1688,7 +2076,7 @@ contract DepositAddressManagerTest is Test {
 
         vm.startPrank(notRelayer);
         usdc.transfer(address(manager), BRIDGE_AMOUNT);
-        vm.expectRevert(bytes("DAM: not relayer"));
+        vm.expectRevert(DepositAddressManager.NotRelayer.selector);
         manager.fastFinish({
             params: params,
             calls: calls,
@@ -1719,10 +2107,7 @@ contract DepositAddressManagerTest is Test {
         uint256 toAmount = (amount * (10_000 - MAX_FAST_FINISH_SLIPPAGE_BPS)) /
             10_000;
 
-        TokenAmount memory bridgeTokenOut = TokenAmount({
-            token: usdc,
-            amount: amount
-        });
+        BridgeTokenAmount memory bridgeTokenOut = _bridgeTokenOut(usdc, amount);
 
         bytes32 relaySalt = keccak256(abi.encodePacked("salt", amount));
 
@@ -1880,7 +2265,7 @@ contract DepositAddressManagerTest is Test {
 
         for (uint256 i = 0; i < recipients.length; i++) {
             DAParams memory params = _createDAParams();
-            params.toAddress = recipients[i];
+            params.toAddress = _addressBytes(recipients[i]);
 
             DepositAddress vault = factory.createDepositAddress(params);
             _fundDepositAddress(vault, PAYMENT_AMOUNT);
@@ -1925,7 +2310,7 @@ contract DepositAddressManagerTest is Test {
 
         Call[] memory calls = new Call[](0);
 
-        vm.expectRevert(bytes("DAM: wrong chain"));
+        vm.expectRevert(DepositAddressManager.WrongChain.selector);
         vm.prank(RELAYER);
         manager.sameChainFinish({
             params: params,
@@ -1958,7 +2343,7 @@ contract DepositAddressManagerTest is Test {
 
         Call[] memory calls = new Call[](0);
 
-        vm.expectRevert(bytes("DAM: wrong escrow"));
+        vm.expectRevert(DepositAddressManager.WrongEscrow.selector);
         vm.prank(RELAYER);
         manager.sameChainFinish({
             params: params,
@@ -1998,7 +2383,7 @@ contract DepositAddressManagerTest is Test {
 
         // Expect revert
         vm.prank(RELAYER);
-        vm.expectRevert("DAM: expired");
+        vm.expectRevert(DepositAddressManager.Expired.selector);
         manager.sameChainFinish({
             params: params,
             paymentToken: usdc,
@@ -2032,7 +2417,7 @@ contract DepositAddressManagerTest is Test {
 
         Call[] memory calls = new Call[](0);
 
-        vm.expectRevert(bytes("DAM: payment price invalid"));
+        vm.expectRevert(DepositAddressManager.PaymentPriceInvalid.selector);
         vm.prank(RELAYER);
         manager.sameChainFinish({
             params: params,
@@ -2067,7 +2452,7 @@ contract DepositAddressManagerTest is Test {
 
         Call[] memory calls = new Call[](0);
 
-        vm.expectRevert(bytes("DAM: toToken price invalid"));
+        vm.expectRevert(DepositAddressManager.ToTokenPriceInvalid.selector);
         vm.prank(RELAYER);
         manager.sameChainFinish({
             params: params,
@@ -2100,7 +2485,7 @@ contract DepositAddressManagerTest is Test {
 
         Call[] memory calls = new Call[](0);
 
-        vm.expectRevert(bytes("DAM: payment token mismatch"));
+        vm.expectRevert(DepositAddressManager.PaymentTokenMismatch.selector);
         vm.prank(RELAYER);
         manager.sameChainFinish({
             params: params,
@@ -2134,7 +2519,7 @@ contract DepositAddressManagerTest is Test {
 
         Call[] memory calls = new Call[](0);
 
-        vm.expectRevert(bytes("DAM: toToken mismatch"));
+        vm.expectRevert(DepositAddressManager.ToTokenMismatch.selector);
         vm.prank(RELAYER);
         manager.sameChainFinish({
             params: params,
@@ -2165,7 +2550,7 @@ contract DepositAddressManagerTest is Test {
 
         Call[] memory calls = new Call[](0);
 
-        vm.expectRevert(bytes("DAM: not relayer"));
+        vm.expectRevert(DepositAddressManager.NotRelayer.selector);
         vm.prank(address(0x1111)); // Not the relayer
         manager.sameChainFinish({
             params: params,
@@ -2266,10 +2651,10 @@ contract DepositAddressManagerTest is Test {
         DAParams memory params = _createDAParams();
         address depositAddress = factory.getDepositAddress(params);
 
-        TokenAmount memory bridgeTokenOut = TokenAmount({
-            token: usdc,
-            amount: BRIDGE_AMOUNT
-        });
+        BridgeTokenAmount memory bridgeTokenOut = _bridgeTokenOut(
+            usdc,
+            BRIDGE_AMOUNT
+        );
 
         bytes32 relaySalt = keccak256("test-salt");
 
@@ -2329,10 +2714,10 @@ contract DepositAddressManagerTest is Test {
         DAParams memory params = _createDAParams();
         address depositAddress = factory.getDepositAddress(params);
 
-        TokenAmount memory bridgeTokenOut = TokenAmount({
-            token: usdc,
-            amount: BRIDGE_AMOUNT
-        });
+        BridgeTokenAmount memory bridgeTokenOut = _bridgeTokenOut(
+            usdc,
+            BRIDGE_AMOUNT
+        );
 
         bytes32 relaySalt = keccak256("test-salt");
 
@@ -2413,10 +2798,10 @@ contract DepositAddressManagerTest is Test {
         DAParams memory params = _createDAParams();
         address depositAddress = factory.getDepositAddress(params);
 
-        TokenAmount memory bridgeTokenOut = TokenAmount({
-            token: usdc,
-            amount: BRIDGE_AMOUNT
-        });
+        BridgeTokenAmount memory bridgeTokenOut = _bridgeTokenOut(
+            usdc,
+            BRIDGE_AMOUNT
+        );
 
         bytes32 relaySalt = keccak256("test-salt");
 
@@ -2476,10 +2861,10 @@ contract DepositAddressManagerTest is Test {
         DAParams memory params = _createDAParams();
         address depositAddress = factory.getDepositAddress(params);
 
-        TokenAmount memory bridgeTokenOut = TokenAmount({
-            token: usdc,
-            amount: BRIDGE_AMOUNT
-        });
+        BridgeTokenAmount memory bridgeTokenOut = _bridgeTokenOut(
+            usdc,
+            BRIDGE_AMOUNT
+        );
 
         bytes32 relaySalt = keccak256("test-salt");
 
@@ -2555,10 +2940,10 @@ contract DepositAddressManagerTest is Test {
         DAParams memory params = _createDAParams();
         address depositAddress = factory.getDepositAddress(params);
 
-        TokenAmount memory bridgeTokenOut = TokenAmount({
-            token: usdc,
-            amount: BRIDGE_AMOUNT
-        });
+        BridgeTokenAmount memory bridgeTokenOut = _bridgeTokenOut(
+            usdc,
+            BRIDGE_AMOUNT
+        );
 
         PriceData memory bridgeTokenOutPrice = _createSignedPriceData(
             address(usdc),
@@ -2620,10 +3005,10 @@ contract DepositAddressManagerTest is Test {
         DAParams memory params = _createDAParams();
         address depositAddress = factory.getDepositAddress(params);
 
-        TokenAmount memory bridgeTokenOut = TokenAmount({
-            token: usdc,
-            amount: BRIDGE_AMOUNT
-        });
+        BridgeTokenAmount memory bridgeTokenOut = _bridgeTokenOut(
+            usdc,
+            BRIDGE_AMOUNT
+        );
 
         bytes32 relaySalt = keccak256("test-salt");
 
@@ -2677,10 +3062,10 @@ contract DepositAddressManagerTest is Test {
         DAParams memory params = _createDAParams();
         address depositAddress = factory.getDepositAddress(params);
 
-        TokenAmount memory bridgeTokenOut = TokenAmount({
-            token: usdc,
-            amount: BRIDGE_AMOUNT
-        });
+        BridgeTokenAmount memory bridgeTokenOut = _bridgeTokenOut(
+            usdc,
+            BRIDGE_AMOUNT
+        );
 
         bytes32 relaySalt = keccak256("test-salt");
 
@@ -2739,10 +3124,10 @@ contract DepositAddressManagerTest is Test {
         DAParams memory params = _createDAParams();
         address depositAddress = factory.getDepositAddress(params);
 
-        TokenAmount memory bridgeTokenOut = TokenAmount({
-            token: usdc,
-            amount: BRIDGE_AMOUNT
-        });
+        BridgeTokenAmount memory bridgeTokenOut = _bridgeTokenOut(
+            usdc,
+            BRIDGE_AMOUNT
+        );
 
         bytes32 relaySalt = keccak256("test-salt");
 
@@ -2798,10 +3183,10 @@ contract DepositAddressManagerTest is Test {
 
         DAParams memory params = _createDAParams(); // toChainId = DEST_CHAIN_ID
 
-        TokenAmount memory bridgeTokenOut = TokenAmount({
-            token: usdc,
-            amount: BRIDGE_AMOUNT
-        });
+        BridgeTokenAmount memory bridgeTokenOut = _bridgeTokenOut(
+            usdc,
+            BRIDGE_AMOUNT
+        );
 
         bytes32 relaySalt = keccak256("test-salt");
 
@@ -2818,7 +3203,7 @@ contract DepositAddressManagerTest is Test {
 
         Call[] memory calls = new Call[](0);
 
-        vm.expectRevert(bytes("DAM: wrong chain"));
+        vm.expectRevert(DepositAddressManager.WrongChain.selector);
         vm.prank(RELAYER);
         manager.claim({
             params: params,
@@ -2837,10 +3222,10 @@ contract DepositAddressManagerTest is Test {
         DAParams memory params = _createDAParams();
         params.escrow = address(0xDEAD); // Wrong escrow
 
-        TokenAmount memory bridgeTokenOut = TokenAmount({
-            token: usdc,
-            amount: BRIDGE_AMOUNT
-        });
+        BridgeTokenAmount memory bridgeTokenOut = _bridgeTokenOut(
+            usdc,
+            BRIDGE_AMOUNT
+        );
 
         bytes32 relaySalt = keccak256("test-salt");
 
@@ -2857,7 +3242,7 @@ contract DepositAddressManagerTest is Test {
 
         Call[] memory calls = new Call[](0);
 
-        vm.expectRevert(bytes("DAM: wrong escrow"));
+        vm.expectRevert(DepositAddressManager.WrongEscrow.selector);
         vm.prank(RELAYER);
         manager.claim({
             params: params,
@@ -2876,10 +3261,10 @@ contract DepositAddressManagerTest is Test {
         DAParams memory params = _createDAParams();
         address depositAddress = factory.getDepositAddress(params);
 
-        TokenAmount memory bridgeTokenOut = TokenAmount({
-            token: usdc,
-            amount: BRIDGE_AMOUNT
-        });
+        BridgeTokenAmount memory bridgeTokenOut = _bridgeTokenOut(
+            usdc,
+            BRIDGE_AMOUNT
+        );
 
         bytes32 relaySalt = keccak256("test-salt");
 
@@ -2911,7 +3296,7 @@ contract DepositAddressManagerTest is Test {
 
         Call[] memory calls = new Call[](0);
 
-        vm.expectRevert(bytes("DAM: bridgeTokenOut mismatch"));
+        vm.expectRevert(DepositAddressManager.BridgeTokenOutMismatch.selector);
         vm.prank(RELAYER);
         manager.claim({
             params: params,
@@ -2930,10 +3315,10 @@ contract DepositAddressManagerTest is Test {
         DAParams memory params = _createDAParams();
         address depositAddress = factory.getDepositAddress(params);
 
-        TokenAmount memory bridgeTokenOut = TokenAmount({
-            token: usdc,
-            amount: BRIDGE_AMOUNT
-        });
+        BridgeTokenAmount memory bridgeTokenOut = _bridgeTokenOut(
+            usdc,
+            BRIDGE_AMOUNT
+        );
 
         bytes32 relaySalt = keccak256("test-salt");
 
@@ -2966,7 +3351,7 @@ contract DepositAddressManagerTest is Test {
 
         Call[] memory calls = new Call[](0);
 
-        vm.expectRevert(bytes("DAM: toToken mismatch"));
+        vm.expectRevert(DepositAddressManager.ToTokenMismatch.selector);
         vm.prank(RELAYER);
         manager.claim({
             params: params,
@@ -2985,10 +3370,10 @@ contract DepositAddressManagerTest is Test {
         DAParams memory params = _createDAParams();
         address depositAddress = factory.getDepositAddress(params);
 
-        TokenAmount memory bridgeTokenOut = TokenAmount({
-            token: usdc,
-            amount: BRIDGE_AMOUNT
-        });
+        BridgeTokenAmount memory bridgeTokenOut = _bridgeTokenOut(
+            usdc,
+            BRIDGE_AMOUNT
+        );
 
         bytes32 relaySalt = keccak256("test-salt");
 
@@ -3034,7 +3419,7 @@ contract DepositAddressManagerTest is Test {
         usdc.transfer(fulfillmentAddress, BRIDGE_AMOUNT);
 
         // Second claim with same salt should revert
-        vm.expectRevert(bytes("DAM: already claimed"));
+        vm.expectRevert(DepositAddressManager.AlreadyClaimed.selector);
         vm.prank(RELAYER);
         manager.claim({
             params: params,
@@ -3053,10 +3438,10 @@ contract DepositAddressManagerTest is Test {
         DAParams memory params = _createDAParams();
         address depositAddress = factory.getDepositAddress(params);
 
-        TokenAmount memory bridgeTokenOut = TokenAmount({
-            token: usdc,
-            amount: BRIDGE_AMOUNT
-        });
+        BridgeTokenAmount memory bridgeTokenOut = _bridgeTokenOut(
+            usdc,
+            BRIDGE_AMOUNT
+        );
 
         bytes32 relaySalt = keccak256("test-salt");
 
@@ -3086,7 +3471,7 @@ contract DepositAddressManagerTest is Test {
 
         Call[] memory calls = new Call[](0);
 
-        vm.expectRevert(bytes("DAM: bridged amount too low"));
+        vm.expectRevert(DepositAddressManager.BridgedAmountTooLow.selector);
         vm.prank(RELAYER);
         manager.claim({
             params: params,
@@ -3105,10 +3490,10 @@ contract DepositAddressManagerTest is Test {
         DAParams memory params = _createDAParams();
         address depositAddress = factory.getDepositAddress(params);
 
-        TokenAmount memory bridgeTokenOut = TokenAmount({
-            token: usdc,
-            amount: BRIDGE_AMOUNT
-        });
+        BridgeTokenAmount memory bridgeTokenOut = _bridgeTokenOut(
+            usdc,
+            BRIDGE_AMOUNT
+        );
 
         bytes32 relaySalt = keccak256("test-salt");
 
@@ -3142,7 +3527,7 @@ contract DepositAddressManagerTest is Test {
         vm.stopPrank();
 
         // Claim immediately without funding the fulfillment (grief attack)
-        vm.expectRevert(bytes("DAM: bridged amount too low"));
+        vm.expectRevert(DepositAddressManager.BridgedAmountTooLow.selector);
         vm.prank(RELAYER);
         manager.claim({
             params: params,
@@ -3163,10 +3548,10 @@ contract DepositAddressManagerTest is Test {
         DAParams memory params = _createDAParams();
         address depositAddress = factory.getDepositAddress(params);
 
-        TokenAmount memory bridgeTokenOut = TokenAmount({
-            token: usdc,
-            amount: BRIDGE_AMOUNT
-        });
+        BridgeTokenAmount memory bridgeTokenOut = _bridgeTokenOut(
+            usdc,
+            BRIDGE_AMOUNT
+        );
 
         bytes32 relaySalt = keccak256("test-salt");
 
@@ -3202,7 +3587,9 @@ contract DepositAddressManagerTest is Test {
 
         Call[] memory calls = new Call[](0);
 
-        vm.expectRevert(bytes("DAM: bridgeTokenOut price invalid"));
+        vm.expectRevert(
+            DepositAddressManager.BridgeTokenOutPriceInvalid.selector
+        );
         vm.prank(RELAYER);
         manager.claim({
             params: params,
@@ -3221,10 +3608,10 @@ contract DepositAddressManagerTest is Test {
         DAParams memory params = _createDAParams();
         address depositAddress = factory.getDepositAddress(params);
 
-        TokenAmount memory bridgeTokenOut = TokenAmount({
-            token: usdc,
-            amount: BRIDGE_AMOUNT
-        });
+        BridgeTokenAmount memory bridgeTokenOut = _bridgeTokenOut(
+            usdc,
+            BRIDGE_AMOUNT
+        );
 
         bytes32 relaySalt = keccak256("test-salt");
 
@@ -3257,7 +3644,7 @@ contract DepositAddressManagerTest is Test {
 
         Call[] memory calls = new Call[](0);
 
-        vm.expectRevert(bytes("DAM: toToken price invalid"));
+        vm.expectRevert(DepositAddressManager.ToTokenPriceInvalid.selector);
         vm.prank(RELAYER);
         manager.claim({
             params: params,
@@ -3276,10 +3663,10 @@ contract DepositAddressManagerTest is Test {
         DAParams memory params = _createDAParams();
         address depositAddress = factory.getDepositAddress(params);
 
-        TokenAmount memory bridgeTokenOut = TokenAmount({
-            token: usdc,
-            amount: BRIDGE_AMOUNT
-        });
+        BridgeTokenAmount memory bridgeTokenOut = _bridgeTokenOut(
+            usdc,
+            BRIDGE_AMOUNT
+        );
 
         bytes32 relaySalt = keccak256("test-salt");
 
@@ -3308,7 +3695,7 @@ contract DepositAddressManagerTest is Test {
 
         Call[] memory calls = new Call[](0);
 
-        vm.expectRevert(bytes("DAM: not relayer"));
+        vm.expectRevert(DepositAddressManager.NotRelayer.selector);
         vm.prank(address(0x1111)); // Not the relayer
         manager.claim({
             params: params,
@@ -3331,10 +3718,10 @@ contract DepositAddressManagerTest is Test {
         DAParams memory params = _createDAParams();
         address depositAddress = factory.getDepositAddress(params);
 
-        TokenAmount memory bridgeTokenOut = TokenAmount({
-            token: usdc,
-            amount: BRIDGE_AMOUNT
-        });
+        BridgeTokenAmount memory bridgeTokenOut = _bridgeTokenOut(
+            usdc,
+            BRIDGE_AMOUNT
+        );
 
         bytes32 relaySalt = keccak256("test-salt");
 
@@ -3435,10 +3822,7 @@ contract DepositAddressManagerTest is Test {
         DAParams memory params = _createDAParams();
         address depositAddress = factory.getDepositAddress(params);
 
-        TokenAmount memory bridgeTokenOut = TokenAmount({
-            token: usdc,
-            amount: amount
-        });
+        BridgeTokenAmount memory bridgeTokenOut = _bridgeTokenOut(usdc, amount);
 
         bytes32 relaySalt = keccak256(abi.encodePacked("salt", amount));
 
@@ -3496,10 +3880,10 @@ contract DepositAddressManagerTest is Test {
         DAParams memory params = _createDAParams();
         address depositAddress = factory.getDepositAddress(params);
 
-        TokenAmount memory bridgeTokenOut = TokenAmount({
-            token: usdc,
-            amount: BRIDGE_AMOUNT
-        });
+        BridgeTokenAmount memory bridgeTokenOut = _bridgeTokenOut(
+            usdc,
+            BRIDGE_AMOUNT
+        );
 
         PriceData memory bridgeTokenOutPrice = _createSignedPriceData(
             address(usdc),
@@ -3584,10 +3968,10 @@ contract DepositAddressManagerTest is Test {
         DAParams memory params = _createDAParams();
         address depositAddress = factory.getDepositAddress(params);
 
-        TokenAmount memory bridgeTokenOut = TokenAmount({
-            token: usdc,
-            amount: BRIDGE_AMOUNT
-        });
+        BridgeTokenAmount memory bridgeTokenOut = _bridgeTokenOut(
+            usdc,
+            BRIDGE_AMOUNT
+        );
 
         bytes32 relaySalt = keccak256(abi.encodePacked("salt", surplus));
 
@@ -3779,7 +4163,7 @@ contract DepositAddressManagerTest is Test {
         tokens[0] = usdc;
 
         // Expect revert
-        vm.expectRevert("DAM: not expired");
+        vm.expectRevert(DepositAddressManager.NotExpired.selector);
         manager.refundDepositAddress({params: params, tokens: tokens});
     }
 
@@ -3795,7 +4179,7 @@ contract DepositAddressManagerTest is Test {
         tokens[0] = usdc;
 
         // Expect revert
-        vm.expectRevert("DAM: wrong escrow");
+        vm.expectRevert(DepositAddressManager.WrongEscrow.selector);
         manager.refundDepositAddress({params: params, tokens: tokens});
     }
 
@@ -3944,7 +4328,7 @@ contract DepositAddressManagerTest is Test {
 
         // Non-relayer calling before expiry should revert
         vm.prank(address(0xBEEF));
-        vm.expectRevert("DAM: not expired");
+        vm.expectRevert(DepositAddressManager.NotExpired.selector);
         manager.refundDepositAddress({params: params, tokens: tokens});
     }
 
@@ -3958,7 +4342,7 @@ contract DepositAddressManagerTest is Test {
 
         // Relayer calling with wrong escrow should revert
         vm.prank(RELAYER);
-        vm.expectRevert("DAM: wrong escrow");
+        vm.expectRevert(DepositAddressManager.WrongEscrow.selector);
         manager.refundDepositAddress({params: params, tokens: tokens});
     }
 
@@ -3984,10 +4368,10 @@ contract DepositAddressManagerTest is Test {
             USDC_PRICE,
             block.timestamp
         );
-        TokenAmount memory bridgeTokenOut = TokenAmount({
-            token: usdc,
-            amount: BRIDGE_AMOUNT
-        });
+        BridgeTokenAmount memory bridgeTokenOut = _bridgeTokenOut(
+            usdc,
+            BRIDGE_AMOUNT
+        );
         bytes32 relaySalt = keccak256("test-salt");
         Call[] memory calls = new Call[](0);
 
@@ -4027,10 +4411,10 @@ contract DepositAddressManagerTest is Test {
         address depositAddress = factory.getDepositAddress(params);
 
         bytes32 relaySalt = keccak256("test-refund-salt");
-        TokenAmount memory bridgeTokenOut = TokenAmount({
-            token: usdc,
-            amount: BRIDGE_AMOUNT
-        });
+        BridgeTokenAmount memory bridgeTokenOut = _bridgeTokenOut(
+            usdc,
+            BRIDGE_AMOUNT
+        );
 
         // Compute fulfillment address
         DAFulfillmentParams memory fulfillment = DAFulfillmentParams({
@@ -4079,10 +4463,10 @@ contract DepositAddressManagerTest is Test {
         address depositAddress = factory.getDepositAddress(params);
 
         bytes32 relaySalt = keccak256("test-refund-salt");
-        TokenAmount memory bridgeTokenOut = TokenAmount({
-            token: usdc,
-            amount: BRIDGE_AMOUNT
-        });
+        BridgeTokenAmount memory bridgeTokenOut = _bridgeTokenOut(
+            usdc,
+            BRIDGE_AMOUNT
+        );
 
         DAFulfillmentParams memory fulfillment = DAFulfillmentParams({
             depositAddress: depositAddress,
@@ -4132,10 +4516,10 @@ contract DepositAddressManagerTest is Test {
         address depositAddress = factory.getDepositAddress(params);
 
         bytes32 relaySalt = keccak256("test-refund-salt");
-        TokenAmount memory bridgeTokenOut = TokenAmount({
-            token: usdc,
-            amount: BRIDGE_AMOUNT
-        });
+        BridgeTokenAmount memory bridgeTokenOut = _bridgeTokenOut(
+            usdc,
+            BRIDGE_AMOUNT
+        );
 
         // Compute fulfillment address
         DAFulfillmentParams memory fulfillment = DAFulfillmentParams({
@@ -4190,10 +4574,10 @@ contract DepositAddressManagerTest is Test {
         address depositAddress = factory.getDepositAddress(params);
 
         bytes32 relaySalt = keccak256("test-refund-salt");
-        TokenAmount memory bridgeTokenOut = TokenAmount({
-            token: usdc,
-            amount: BRIDGE_AMOUNT
-        });
+        BridgeTokenAmount memory bridgeTokenOut = _bridgeTokenOut(
+            usdc,
+            BRIDGE_AMOUNT
+        );
 
         // Compute fulfillment address
         DAFulfillmentParams memory fulfillment = DAFulfillmentParams({
@@ -4244,10 +4628,10 @@ contract DepositAddressManagerTest is Test {
         DAParams memory params = _createDAParams();
 
         bytes32 relaySalt = keccak256("test-refund-salt");
-        TokenAmount memory bridgeTokenOut = TokenAmount({
-            token: usdc,
-            amount: BRIDGE_AMOUNT
-        });
+        BridgeTokenAmount memory bridgeTokenOut = _bridgeTokenOut(
+            usdc,
+            BRIDGE_AMOUNT
+        );
 
         // Don't fund the fulfillment - it has zero balance
 
@@ -4281,10 +4665,10 @@ contract DepositAddressManagerTest is Test {
         params.escrow = address(0x1234); // Wrong escrow
 
         bytes32 relaySalt = keccak256("test-refund-salt");
-        TokenAmount memory bridgeTokenOut = TokenAmount({
-            token: usdc,
-            amount: BRIDGE_AMOUNT
-        });
+        BridgeTokenAmount memory bridgeTokenOut = _bridgeTokenOut(
+            usdc,
+            BRIDGE_AMOUNT
+        );
 
         // Create tokens array
         IERC20[] memory tokens = new IERC20[](1);
@@ -4292,7 +4676,7 @@ contract DepositAddressManagerTest is Test {
 
         // Expect revert
         vm.prank(RELAYER);
-        vm.expectRevert("DAM: wrong escrow");
+        vm.expectRevert(DepositAddressManager.WrongEscrow.selector);
         manager.refundFulfillment({
             params: params,
             bridgeTokenOut: bridgeTokenOut,
@@ -4310,10 +4694,10 @@ contract DepositAddressManagerTest is Test {
         address depositAddress = factory.getDepositAddress(params);
 
         bytes32 relaySalt = keccak256("test-refund-salt");
-        TokenAmount memory bridgeTokenOut = TokenAmount({
-            token: usdc,
-            amount: BRIDGE_AMOUNT
-        });
+        BridgeTokenAmount memory bridgeTokenOut = _bridgeTokenOut(
+            usdc,
+            BRIDGE_AMOUNT
+        );
 
         // Compute fulfillment address
         DAFulfillmentParams memory fulfillment = DAFulfillmentParams({
@@ -4335,7 +4719,7 @@ contract DepositAddressManagerTest is Test {
 
         // Expect revert when called by non-relayer
         vm.prank(address(0xBEEF));
-        vm.expectRevert("DAM: not relayer");
+        vm.expectRevert(DepositAddressManager.NotRelayer.selector);
         manager.refundFulfillment({
             params: params,
             bridgeTokenOut: bridgeTokenOut,
@@ -4356,10 +4740,10 @@ contract DepositAddressManagerTest is Test {
         address depositAddress = factory.getDepositAddress(params);
         bytes32 relaySalt = keccak256("test-refund-salt");
 
-        TokenAmount memory bridgeTokenOut = TokenAmount({
-            token: usdc,
-            amount: BRIDGE_AMOUNT
-        });
+        BridgeTokenAmount memory bridgeTokenOut = _bridgeTokenOut(
+            usdc,
+            BRIDGE_AMOUNT
+        );
 
         // Compute hop fulfillment address (where leg1 bridged tokens would arrive)
         DAFulfillmentParams memory fulfillment = DAFulfillmentParams({
@@ -4394,6 +4778,73 @@ contract DepositAddressManagerTest is Test {
         assertEq(usdc.balanceOf(hopFulfillmentAddress), 0);
     }
 
+    function test_refundFulfillment_SolanaHopChainRefund() public {
+        _assertNonEvmHopChainRefund({
+            destinationType: DestinationType.SOLANA,
+            toChainId: 501,
+            toToken: _solanaBytes(1),
+            toAddress: _solanaBytes(2)
+        });
+    }
+
+    function test_refundFulfillment_TronHopChainRefund() public {
+        _assertNonEvmHopChainRefund({
+            destinationType: DestinationType.TRON,
+            toChainId: 728126428,
+            toToken: _tronBytes(1),
+            toAddress: _tronBytes(2)
+        });
+    }
+
+    function _assertNonEvmHopChainRefund(
+        DestinationType destinationType,
+        uint256 toChainId,
+        bytes memory toToken,
+        bytes memory toAddress
+    ) internal {
+        vm.chainId(HOP_CHAIN_ID);
+
+        DAParams memory params = _createNonEvmDAParams({
+            destinationType: destinationType,
+            toChainId: toChainId,
+            toToken: toToken,
+            toAddress: toAddress
+        });
+        address depositAddress = factory.getDepositAddress(params);
+        bytes32 relaySalt = keccak256("test-non-evm-refund-salt");
+        BridgeTokenAmount memory bridgeTokenOut = _nonEvmBridgeTokenOut({
+            token: params.toToken,
+            amount: BRIDGE_AMOUNT
+        });
+
+        DAFulfillmentParams memory fulfillment = DAFulfillmentParams({
+            depositAddress: depositAddress,
+            relaySalt: relaySalt,
+            bridgeTokenOut: bridgeTokenOut,
+            sourceChainId: SOURCE_CHAIN_ID
+        });
+        (address hopFulfillmentAddress, ) = manager.computeFulfillmentAddress(
+            fulfillment
+        );
+
+        usdc.transfer(hopFulfillmentAddress, BRIDGE_AMOUNT);
+
+        IERC20[] memory tokens = new IERC20[](1);
+        tokens[0] = usdc;
+
+        vm.prank(RELAYER);
+        manager.refundFulfillment({
+            params: params,
+            bridgeTokenOut: bridgeTokenOut,
+            relaySalt: relaySalt,
+            sourceChainId: SOURCE_CHAIN_ID,
+            tokens: tokens
+        });
+
+        assertEq(usdc.balanceOf(REFUND_ADDRESS), BRIDGE_AMOUNT);
+        assertEq(usdc.balanceOf(hopFulfillmentAddress), 0);
+    }
+
     function test_refundFulfillment_Leg2FulfillmentRefund() public {
         // Test refunding tokens stuck on the destination chain after a hop
         // Scenario: source -> hop -> dest bridge completed, but never claimed
@@ -4412,10 +4863,10 @@ contract DepositAddressManagerTest is Test {
         });
 
         // Leg 2: hop -> dest
-        TokenAmount memory leg2BridgeTokenOut = TokenAmount({
-            token: usdc,
-            amount: BRIDGE_AMOUNT
-        });
+        BridgeTokenAmount memory leg2BridgeTokenOut = _bridgeTokenOut(
+            usdc,
+            BRIDGE_AMOUNT
+        );
 
         // Compute and fund leg1 fulfillment
         DAFulfillmentParams memory fulfillment = DAFulfillmentParams({
@@ -4498,10 +4949,10 @@ contract DepositAddressManagerTest is Test {
         DAParams memory params = _createDAParams();
         address depositAddress = factory.getDepositAddress(params);
 
-        TokenAmount memory bridgeTokenOut = TokenAmount({
-            token: usdc,
-            amount: BRIDGE_AMOUNT
-        });
+        BridgeTokenAmount memory bridgeTokenOut = _bridgeTokenOut(
+            usdc,
+            BRIDGE_AMOUNT
+        );
 
         bytes32 relaySalt = keccak256("test-salt");
 
@@ -4551,7 +5002,7 @@ contract DepositAddressManagerTest is Test {
 
         // Refund should revert — relayer already fast-finished
         vm.prank(RELAYER);
-        vm.expectRevert("DAM: already finished");
+        vm.expectRevert(DepositAddressManager.AlreadyFinished.selector);
         manager.refundFulfillment({
             params: params,
             bridgeTokenOut: bridgeTokenOut,
@@ -4561,16 +5012,16 @@ contract DepositAddressManagerTest is Test {
         });
     }
 
-    function test_refundFulfillment_RevertsAfterClaim() public {
+    function test_refundFulfillment_RescuesLateFundsAfterClaim() public {
         vm.chainId(DEST_CHAIN_ID);
 
         DAParams memory params = _createDAParams();
         address depositAddress = factory.getDepositAddress(params);
 
-        TokenAmount memory bridgeTokenOut = TokenAmount({
-            token: usdc,
-            amount: BRIDGE_AMOUNT
-        });
+        BridgeTokenAmount memory bridgeTokenOut = _bridgeTokenOut(
+            usdc,
+            BRIDGE_AMOUNT
+        );
 
         bytes32 relaySalt = keccak256("test-salt");
 
@@ -4613,9 +5064,11 @@ contract DepositAddressManagerTest is Test {
         IERC20[] memory tokens = new IERC20[](1);
         tokens[0] = usdc;
 
-        // Refund should revert — already claimed
+        // Funds arrive at the fulfillment after the claim. Refund must succeed
+        // so stragglers are rescued to the refund address instead of being
+        // permanently locked at the fulfillment.
+        usdc.transfer(fulfillmentAddress, BRIDGE_AMOUNT);
         vm.prank(RELAYER);
-        vm.expectRevert("DAM: already finished");
         manager.refundFulfillment({
             params: params,
             bridgeTokenOut: bridgeTokenOut,
@@ -4623,6 +5076,13 @@ contract DepositAddressManagerTest is Test {
             sourceChainId: SOURCE_CHAIN_ID,
             tokens: tokens
         });
+
+        assertEq(usdc.balanceOf(REFUND_ADDRESS), BRIDGE_AMOUNT);
+        assertEq(usdc.balanceOf(fulfillmentAddress), 0);
+        assertEq(
+            manager.fulfillmentToRecipient(fulfillmentAddress),
+            manager.ADDR_MAX()
+        );
     }
 
     function test_claim_RevertsAfterRefundFulfillment() public {
@@ -4631,10 +5091,10 @@ contract DepositAddressManagerTest is Test {
         DAParams memory params = _createDAParams();
         address depositAddress = factory.getDepositAddress(params);
 
-        TokenAmount memory bridgeTokenOut = TokenAmount({
-            token: usdc,
-            amount: BRIDGE_AMOUNT
-        });
+        BridgeTokenAmount memory bridgeTokenOut = _bridgeTokenOut(
+            usdc,
+            BRIDGE_AMOUNT
+        );
 
         bytes32 relaySalt = keccak256("test-salt");
 
@@ -4680,7 +5140,7 @@ contract DepositAddressManagerTest is Test {
 
         // Claim should revert — already refunded
         vm.prank(RELAYER);
-        vm.expectRevert("DAM: already claimed");
+        vm.expectRevert(DepositAddressManager.AlreadyClaimed.selector);
         manager.claim({
             params: params,
             calls: calls,
@@ -4692,16 +5152,16 @@ contract DepositAddressManagerTest is Test {
         });
     }
 
-    function test_refundFulfillment_RevertsDoubleRefund() public {
+    function test_refundFulfillment_RescuesLateFundsAfterRefund() public {
         vm.chainId(DEST_CHAIN_ID);
 
         DAParams memory params = _createDAParams();
         address depositAddress = factory.getDepositAddress(params);
 
-        TokenAmount memory bridgeTokenOut = TokenAmount({
-            token: usdc,
-            amount: BRIDGE_AMOUNT
-        });
+        BridgeTokenAmount memory bridgeTokenOut = _bridgeTokenOut(
+            usdc,
+            BRIDGE_AMOUNT
+        );
 
         bytes32 relaySalt = keccak256("test-salt");
 
@@ -4715,12 +5175,29 @@ contract DepositAddressManagerTest is Test {
             fulfillment
         );
 
-        // Fund fulfillment and refund
-        usdc.transfer(fulfillmentAddress, BRIDGE_AMOUNT);
-
         IERC20[] memory tokens = new IERC20[](1);
         tokens[0] = usdc;
 
+        // First refund (e.g. an early refund before the bridge has delivered).
+        usdc.transfer(fulfillmentAddress, BRIDGE_AMOUNT);
+        vm.prank(RELAYER);
+        manager.refundFulfillment({
+            params: params,
+            bridgeTokenOut: bridgeTokenOut,
+            relaySalt: relaySalt,
+            sourceChainId: SOURCE_CHAIN_ID,
+            tokens: tokens
+        });
+        assertEq(usdc.balanceOf(REFUND_ADDRESS), BRIDGE_AMOUNT);
+        assertEq(
+            manager.fulfillmentToRecipient(fulfillmentAddress),
+            manager.ADDR_MAX()
+        );
+
+        // Funds arrive at the fulfillment after the first refund. A second
+        // refund must still succeed so they can be rescued, rather than being
+        // permanently locked. Marking ADDR_MAX must not block future refunds.
+        usdc.transfer(fulfillmentAddress, BRIDGE_AMOUNT);
         vm.prank(RELAYER);
         manager.refundFulfillment({
             params: params,
@@ -4730,16 +5207,13 @@ contract DepositAddressManagerTest is Test {
             tokens: tokens
         });
 
-        // Second refund should revert
-        vm.prank(RELAYER);
-        vm.expectRevert("DAM: already finished");
-        manager.refundFulfillment({
-            params: params,
-            bridgeTokenOut: bridgeTokenOut,
-            relaySalt: relaySalt,
-            sourceChainId: SOURCE_CHAIN_ID,
-            tokens: tokens
-        });
+        // Both refunds reached the refund address; fulfillment swept clean.
+        assertEq(usdc.balanceOf(REFUND_ADDRESS), BRIDGE_AMOUNT * 2);
+        assertEq(usdc.balanceOf(fulfillmentAddress), 0);
+        assertEq(
+            manager.fulfillmentToRecipient(fulfillmentAddress),
+            manager.ADDR_MAX()
+        );
     }
 
     // ---------------------------------------------------------------------
@@ -4775,7 +5249,7 @@ contract DepositAddressManagerTest is Test {
 
         // Create params using the reentrant token
         DAParams memory params = _createDAParams();
-        params.toToken = evilToken;
+        params.toToken = _addressBytes(address(evilToken));
 
         // Create deposit address
         address vault = address(factory.createDepositAddress(params));
@@ -4797,10 +5271,10 @@ contract DepositAddressManagerTest is Test {
         );
 
         // Prepare fulfillment parameters
-        TokenAmount memory bridgeTokenOut = TokenAmount({
-            token: usdc,
-            amount: BRIDGE_AMOUNT
-        });
+        BridgeTokenAmount memory bridgeTokenOut = _bridgeTokenOut(
+            usdc,
+            BRIDGE_AMOUNT
+        );
 
         Call[] memory startCalls = new Call[](0);
         bytes memory bridgeExtraData = "";
@@ -4835,7 +5309,7 @@ contract DepositAddressManagerTest is Test {
 
         // Create params
         DAParams memory params = _createDAParams();
-        params.toToken = evilToken;
+        params.toToken = _addressBytes(address(evilToken));
 
         // Mint tokens to relayer
         evilToken.transfer(RELAYER, PAYMENT_AMOUNT);
@@ -4853,10 +5327,10 @@ contract DepositAddressManagerTest is Test {
         );
 
         // Prepare fulfillment parameters
-        TokenAmount memory bridgeTokenOut = TokenAmount({
-            token: usdc,
-            amount: BRIDGE_AMOUNT
-        });
+        BridgeTokenAmount memory bridgeTokenOut = _bridgeTokenOut(
+            usdc,
+            BRIDGE_AMOUNT
+        );
 
         Call[] memory finishCalls = new Call[](0);
 
@@ -4893,7 +5367,7 @@ contract DepositAddressManagerTest is Test {
         // Create params with same source and dest chain
         DAParams memory params = _createDAParams();
         params.toChainId = SOURCE_CHAIN_ID; // Same chain
-        params.toToken = evilToken;
+        params.toToken = _addressBytes(address(evilToken));
 
         // Create deposit address and fund it
         address vault = address(factory.createDepositAddress(params));
@@ -4949,10 +5423,10 @@ contract DepositAddressManagerTest is Test {
 
         // Leg 2: hop -> dest (e.g., Arbitrum -> Base)
         // Use same amount since dummy bridger doesn't charge fees
-        TokenAmount memory leg2BridgeTokenOut = TokenAmount({
-            token: usdc,
-            amount: BRIDGE_AMOUNT
-        });
+        BridgeTokenAmount memory leg2BridgeTokenOut = _bridgeTokenOut(
+            usdc,
+            BRIDGE_AMOUNT
+        );
 
         // Compute leg 1 fulfillment (where funds from source->hop arrive)
         DAFulfillmentParams memory fulfillment = DAFulfillmentParams({
@@ -5005,10 +5479,81 @@ contract DepositAddressManagerTest is Test {
         );
 
         // Verify the fulfillment is marked as used (hopStart reuses fulfillment address)
-        assertTrue(manager.fulfillmentUsed(fulfillmentAddress));
+        assertTrue(
+            manager.fulfillmentUsed(manager.computeFulfillmentId(fulfillment))
+        );
 
         // Verify bridger received tokens (burned to 0xdead by dummy bridger)
         assertEq(usdc.balanceOf(address(0xdead)), leg2BridgeTokenOut.amount);
+    }
+
+    function test_hopStart_SolanaDirectFinalLeg() public {
+        vm.chainId(HOP_CHAIN_ID);
+
+        DAParams memory params = _createNonEvmDAParams({
+            destinationType: DestinationType.SOLANA,
+            toChainId: 501,
+            toToken: _solanaBytes(1),
+            toAddress: _solanaBytes(2)
+        });
+        bridger.setBridgeTokenInOverride(address(usdc));
+        address depositAddress = factory.getDepositAddress(params);
+        bytes32 relaySalt = keccak256("solana-hopstart-salt");
+
+        TokenAmount memory leg1BridgeTokenOut = TokenAmount({
+            token: usdc,
+            amount: BRIDGE_AMOUNT
+        });
+        BridgeTokenAmount memory leg2BridgeTokenOut = _nonEvmBridgeTokenOut(
+            params.toToken,
+            BRIDGE_AMOUNT
+        );
+
+        DAFulfillmentParams memory fulfillment = DAFulfillmentParams({
+            depositAddress: depositAddress,
+            relaySalt: relaySalt,
+            bridgeTokenOut: leg2BridgeTokenOut,
+            sourceChainId: SOURCE_CHAIN_ID
+        });
+        (address fulfillmentAddress, ) = manager.computeFulfillmentAddress(
+            fulfillment
+        );
+        usdc.transfer(fulfillmentAddress, BRIDGE_AMOUNT);
+
+        PriceData memory leg1BridgeTokenOutPrice = _createSignedPriceData(
+            address(usdc),
+            USDC_PRICE,
+            block.timestamp
+        );
+        PriceData memory leg2BridgeTokenInPrice = _createSignedPriceData(
+            address(usdc),
+            USDC_PRICE,
+            block.timestamp
+        );
+        Call[] memory calls = new Call[](0);
+
+        vm.prank(RELAYER);
+        manager.hopStart({
+            params: params,
+            leg1BridgeTokenOut: leg1BridgeTokenOut,
+            leg1SourceChainId: SOURCE_CHAIN_ID,
+            leg1BridgeTokenOutPrice: leg1BridgeTokenOutPrice,
+            leg2BridgeTokenOut: leg2BridgeTokenOut,
+            leg2BridgeTokenInPrice: leg2BridgeTokenInPrice,
+            bridgerAdapter: address(bridger),
+            relaySalt: relaySalt,
+            calls: calls,
+            bridgeExtraData: ""
+        });
+
+        assertEq(
+            manager.fulfillmentToRecipient(fulfillmentAddress),
+            manager.ADDR_MAX()
+        );
+        assertEq(
+            keccak256(bridger.lastToAddress()),
+            keccak256(params.toAddress)
+        );
     }
 
     function test_hopStart_EmitsHopEvent() public {
@@ -5023,10 +5568,10 @@ contract DepositAddressManagerTest is Test {
             amount: BRIDGE_AMOUNT
         });
 
-        TokenAmount memory leg2BridgeTokenOut = TokenAmount({
-            token: usdc,
-            amount: BRIDGE_AMOUNT
-        });
+        BridgeTokenAmount memory leg2BridgeTokenOut = _bridgeTokenOut(
+            usdc,
+            BRIDGE_AMOUNT
+        );
 
         DAFulfillmentParams memory fulfillment = DAFulfillmentParams({
             depositAddress: depositAddress,
@@ -5093,10 +5638,10 @@ contract DepositAddressManagerTest is Test {
             token: usdc,
             amount: BRIDGE_AMOUNT
         });
-        TokenAmount memory leg2BridgeTokenOut = TokenAmount({
-            token: usdc,
-            amount: BRIDGE_AMOUNT
-        });
+        BridgeTokenAmount memory leg2BridgeTokenOut = _bridgeTokenOut(
+            usdc,
+            BRIDGE_AMOUNT
+        );
 
         PriceData memory leg1Price = _createSignedPriceData(
             address(usdc),
@@ -5109,7 +5654,7 @@ contract DepositAddressManagerTest is Test {
             block.timestamp
         );
 
-        vm.expectRevert(bytes("DAM: hop on source chain"));
+        vm.expectRevert(DepositAddressManager.HopOnSourceChain.selector);
         vm.prank(RELAYER);
         manager.hopStart({
             params: params,
@@ -5135,10 +5680,10 @@ contract DepositAddressManagerTest is Test {
             token: usdc,
             amount: BRIDGE_AMOUNT
         });
-        TokenAmount memory leg2BridgeTokenOut = TokenAmount({
-            token: usdc,
-            amount: BRIDGE_AMOUNT
-        });
+        BridgeTokenAmount memory leg2BridgeTokenOut = _bridgeTokenOut(
+            usdc,
+            BRIDGE_AMOUNT
+        );
 
         PriceData memory leg1Price = _createSignedPriceData(
             address(usdc),
@@ -5151,7 +5696,7 @@ contract DepositAddressManagerTest is Test {
             block.timestamp
         );
 
-        vm.expectRevert(bytes("DAM: hop on dest chain"));
+        vm.expectRevert(DepositAddressManager.HopOnDestChain.selector);
         vm.prank(RELAYER);
         manager.hopStart({
             params: params,
@@ -5177,10 +5722,10 @@ contract DepositAddressManagerTest is Test {
             token: usdc,
             amount: BRIDGE_AMOUNT
         });
-        TokenAmount memory leg2BridgeTokenOut = TokenAmount({
-            token: usdc,
-            amount: BRIDGE_AMOUNT
-        });
+        BridgeTokenAmount memory leg2BridgeTokenOut = _bridgeTokenOut(
+            usdc,
+            BRIDGE_AMOUNT
+        );
 
         PriceData memory leg1Price = _createSignedPriceData(
             address(usdc),
@@ -5193,7 +5738,7 @@ contract DepositAddressManagerTest is Test {
             block.timestamp
         );
 
-        vm.expectRevert(bytes("DAM: wrong escrow"));
+        vm.expectRevert(DepositAddressManager.WrongEscrow.selector);
         vm.prank(RELAYER);
         manager.hopStart({
             params: params,
@@ -5218,10 +5763,10 @@ contract DepositAddressManagerTest is Test {
             token: usdc,
             amount: BRIDGE_AMOUNT
         });
-        TokenAmount memory leg2BridgeTokenOut = TokenAmount({
-            token: usdc,
-            amount: BRIDGE_AMOUNT
-        });
+        BridgeTokenAmount memory leg2BridgeTokenOut = _bridgeTokenOut(
+            usdc,
+            BRIDGE_AMOUNT
+        );
 
         PriceData memory leg1Price = _createSignedPriceData(
             address(usdc),
@@ -5234,7 +5779,7 @@ contract DepositAddressManagerTest is Test {
             block.timestamp
         );
 
-        vm.expectRevert(bytes("DAM: not relayer"));
+        vm.expectRevert(DepositAddressManager.NotRelayer.selector);
         vm.prank(address(0x1111)); // Not the relayer
         manager.hopStart({
             params: params,
@@ -5262,15 +5807,18 @@ contract DepositAddressManagerTest is Test {
         });
         bytes32 leg1RelaySalt = keccak256("leg1-salt");
 
-        TokenAmount memory leg2BridgeTokenOut = TokenAmount({
-            token: usdc,
-            amount: BRIDGE_AMOUNT
-        });
+        BridgeTokenAmount memory leg2BridgeTokenOut = _bridgeTokenOut(
+            usdc,
+            BRIDGE_AMOUNT
+        );
 
         DAFulfillmentParams memory fulfillment = DAFulfillmentParams({
             depositAddress: depositAddress,
             relaySalt: leg1RelaySalt,
-            bridgeTokenOut: leg1BridgeTokenOut,
+            bridgeTokenOut: _bridgeTokenOut(
+                leg1BridgeTokenOut.token,
+                leg1BridgeTokenOut.amount
+            ),
             sourceChainId: SOURCE_CHAIN_ID
         });
         (address hopFulfillmentAddress, ) = manager.computeFulfillmentAddress(
@@ -5308,7 +5856,7 @@ contract DepositAddressManagerTest is Test {
         });
 
         // Second hop with same leg1 params should fail (already claimed)
-        vm.expectRevert(bytes("DAM: already claimed"));
+        vm.expectRevert(DepositAddressManager.AlreadyClaimed.selector);
         vm.prank(RELAYER);
         manager.hopStart({
             params: params,
@@ -5339,7 +5887,10 @@ contract DepositAddressManagerTest is Test {
         DAFulfillmentParams memory fulfillment = DAFulfillmentParams({
             depositAddress: depositAddress,
             relaySalt: leg1RelaySalt,
-            bridgeTokenOut: leg1BridgeTokenOut,
+            bridgeTokenOut: _bridgeTokenOut(
+                leg1BridgeTokenOut.token,
+                leg1BridgeTokenOut.amount
+            ),
             sourceChainId: SOURCE_CHAIN_ID
         });
         (address hopFulfillmentAddress, ) = manager.computeFulfillmentAddress(
@@ -5349,10 +5900,10 @@ contract DepositAddressManagerTest is Test {
         // Fund with less than expected
         usdc.transfer(hopFulfillmentAddress, BRIDGE_AMOUNT / 2);
 
-        TokenAmount memory leg2BridgeTokenOut = TokenAmount({
-            token: usdc,
-            amount: BRIDGE_AMOUNT
-        });
+        BridgeTokenAmount memory leg2BridgeTokenOut = _bridgeTokenOut(
+            usdc,
+            BRIDGE_AMOUNT
+        );
 
         PriceData memory leg1Price = _createSignedPriceData(
             address(usdc),
@@ -5396,7 +5947,10 @@ contract DepositAddressManagerTest is Test {
         DAFulfillmentParams memory fulfillment = DAFulfillmentParams({
             depositAddress: depositAddress,
             relaySalt: leg1RelaySalt,
-            bridgeTokenOut: leg1BridgeTokenOut,
+            bridgeTokenOut: _bridgeTokenOut(
+                leg1BridgeTokenOut.token,
+                leg1BridgeTokenOut.amount
+            ),
             sourceChainId: SOURCE_CHAIN_ID
         });
         (address hopFulfillmentAddress, ) = manager.computeFulfillmentAddress(
@@ -5404,10 +5958,10 @@ contract DepositAddressManagerTest is Test {
         );
         usdc.transfer(hopFulfillmentAddress, BRIDGE_AMOUNT);
 
-        TokenAmount memory leg2BridgeTokenOut = TokenAmount({
-            token: usdc,
-            amount: BRIDGE_AMOUNT
-        });
+        BridgeTokenAmount memory leg2BridgeTokenOut = _bridgeTokenOut(
+            usdc,
+            BRIDGE_AMOUNT
+        );
 
         // Invalid signature
         PriceData memory leg1Price = PriceData({
@@ -5424,7 +5978,7 @@ contract DepositAddressManagerTest is Test {
             block.timestamp
         );
 
-        vm.expectRevert(bytes("DAM: leg1 price invalid"));
+        vm.expectRevert(DepositAddressManager.Leg1PriceInvalid.selector);
         vm.prank(RELAYER);
         manager.hopStart({
             params: params,
@@ -5452,10 +6006,10 @@ contract DepositAddressManagerTest is Test {
             amount: BRIDGE_AMOUNT
         });
 
-        TokenAmount memory leg2BridgeTokenOut = TokenAmount({
-            token: usdc,
-            amount: BRIDGE_AMOUNT
-        });
+        BridgeTokenAmount memory leg2BridgeTokenOut = _bridgeTokenOut(
+            usdc,
+            BRIDGE_AMOUNT
+        );
 
         DAFulfillmentParams memory fulfillment = DAFulfillmentParams({
             depositAddress: depositAddress,
@@ -5483,7 +6037,7 @@ contract DepositAddressManagerTest is Test {
         });
         leg2Price.signature = _signPriceData(leg2Price, 0xBAD);
 
-        vm.expectRevert(bytes("DAM: leg2 price invalid"));
+        vm.expectRevert(DepositAddressManager.Leg2PriceInvalid.selector);
         vm.prank(RELAYER);
         manager.hopStart({
             params: params,
@@ -5511,9 +6065,10 @@ contract DepositAddressManagerTest is Test {
 
         // Create params with finalCallData - toAddress is now the adapter
         DAParams memory params = DAParams({
+            destinationType: DestinationType.EVM,
             toChainId: DEST_CHAIN_ID,
-            toToken: usdc,
-            toAddress: address(adapter),
+            toToken: _addressBytes(address(usdc)),
+            toAddress: _addressBytes(address(adapter)),
             refundAddress: REFUND_ADDRESS,
             finalCallData: abi.encodeCall(
                 MockDepositAdapter.deposit,
@@ -5573,9 +6128,10 @@ contract DepositAddressManagerTest is Test {
         MockDepositAdapter adapter = new MockDepositAdapter(usdc);
 
         DAParams memory params = DAParams({
+            destinationType: DestinationType.EVM,
             toChainId: DEST_CHAIN_ID,
-            toToken: usdc,
-            toAddress: address(adapter),
+            toToken: _addressBytes(address(usdc)),
+            toAddress: _addressBytes(address(adapter)),
             refundAddress: REFUND_ADDRESS,
             finalCallData: abi.encodeCall(
                 MockDepositAdapter.deposit,
@@ -5640,9 +6196,10 @@ contract DepositAddressManagerTest is Test {
         );
 
         DAParams memory params = DAParams({
+            destinationType: DestinationType.EVM,
             toChainId: DEST_CHAIN_ID,
-            toToken: usdc,
-            toAddress: address(partialAdapter),
+            toToken: _addressBytes(address(usdc)),
+            toAddress: _addressBytes(address(partialAdapter)),
             refundAddress: REFUND_ADDRESS,
             finalCallData: abi.encodeCall(
                 PartialDepositAdapter.deposit,
@@ -5713,9 +6270,10 @@ contract DepositAddressManagerTest is Test {
         MockDepositAdapter adapter = new MockDepositAdapter(usdc);
 
         DAParams memory params = DAParams({
+            destinationType: DestinationType.EVM,
             toChainId: DEST_CHAIN_ID,
-            toToken: usdc,
-            toAddress: address(adapter),
+            toToken: _addressBytes(address(usdc)),
+            toAddress: _addressBytes(address(adapter)),
             refundAddress: REFUND_ADDRESS,
             finalCallData: abi.encodeCall(
                 MockDepositAdapter.deposit,
@@ -5744,10 +6302,10 @@ contract DepositAddressManagerTest is Test {
             block.timestamp
         );
 
-        TokenAmount memory bridgeTokenOut = TokenAmount({
-            token: usdc,
-            amount: PAYMENT_AMOUNT
-        });
+        BridgeTokenAmount memory bridgeTokenOut = _bridgeTokenOut(
+            usdc,
+            PAYMENT_AMOUNT
+        );
 
         Call[] memory calls = new Call[](0);
 

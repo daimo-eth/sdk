@@ -7,19 +7,22 @@ import "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 import "openzeppelin-contracts/contracts/utils/ReentrancyGuard.sol";
 
 import "./TokenUtils.sol";
+import "./DestinationUtils.sol";
 import "./interfaces/IDepositAddressBridger.sol";
 import "./interfaces/IDaimoPayPricer.sol";
 
 /// @notice Parameters that uniquely identify a Deposit Address.
 struct DAParams {
+    /// Destination chain type
+    DestinationType destinationType;
     /// Destination chain
     uint256 toChainId;
     /// Final token received on destination chain
-    IERC20 toToken;
+    bytes toToken;
     /// Destination address. If finalCallData is empty, tokens are transferred
     /// here. Otherwise, tokens are transferred here and a call is made with
     /// finalCallData (e.g., toAddress is an adapter contract).
-    address toAddress;
+    bytes toAddress;
     /// Recipient for refunds
     address refundAddress;
     /// Optional calldata to execute on toAddress after swapping to toToken.
@@ -52,7 +55,7 @@ struct DAFulfillmentParams {
     /// Unique salt/nonce provided by the relayer
     bytes32 relaySalt;
     /// Address and amount of token bridged to destination chain
-    TokenAmount bridgeTokenOut;
+    BridgeTokenAmount bridgeTokenOut;
     /// Chain ID where the bridge transfer originated
     uint256 sourceChainId;
 }
