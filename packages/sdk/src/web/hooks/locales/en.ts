@@ -102,6 +102,11 @@ export const en = {
     "Thanks for submitting your information. We'll be in touch if we need anything else.",
   accountProviderPending: "Finalizing account",
   accountProviderPendingDesc: "This may take a moment",
+  accountLegalNameTitle: "Your legal name",
+  accountLegalNameDesc:
+    "Enter your name exactly as it appears on your bank account or ID.",
+  accountLegalNameFirst: "First name",
+  accountLegalNameLast: "Last name",
   accountEnrollmentRejected: "Verification could not be completed",
   accountSuspended: "Account suspended",
   accountEnrollmentError: "Account setup failed",

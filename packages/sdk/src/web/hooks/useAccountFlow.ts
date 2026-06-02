@@ -5,6 +5,7 @@ import type {
   DepositPaymentInfo,
   EnrollmentResponse,
   GetAccountResponse,
+  StartEnrollmentRequest,
 } from "../../common/account.js";
 import type { DaimoClient } from "../../client/createDaimoClient.js";
 
@@ -92,7 +93,7 @@ export type AccountFlowState = {
   ) => Promise<GetAccountResponse | null>;
   startEnrollment: (
     client: DaimoClient,
-    target: { rail: AccountRail },
+    target: StartEnrollmentRequest,
   ) => Promise<EnrollmentResponse | null>;
   logout: () => Promise<void>;
 
@@ -369,7 +370,7 @@ export function useAccountFlowState(): AccountFlowState {
   const startEnrollment = useCallback(
     async (
       client: DaimoClient,
-      target: { rail: AccountRail },
+      target: StartEnrollmentRequest,
     ): Promise<EnrollmentResponse | null> => {
       const token = await getAccessToken();
       if (!token) return null;

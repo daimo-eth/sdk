@@ -18,6 +18,17 @@ export const zAccountRail = z.enum([
 ]);
 export type AccountRail = z.infer<typeof zAccountRail>;
 
+export const zAccountLegalName = z.object({
+  firstName: z.string().trim().min(1).max(80),
+  lastName: z.string().trim().min(1).max(80),
+});
+export type AccountLegalName = z.infer<typeof zAccountLegalName>;
+
+export type StartEnrollmentRequest = {
+  rail: AccountRail;
+  legalName?: AccountLegalName;
+};
+
 /** What the user needs to do next in the account onboarding flow. */
 export type NextAction = "create_account" | "enrollment" | "ready_for_payment";
 export type ExistingAccountNextAction = Exclude<NextAction, "create_account">;

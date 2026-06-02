@@ -104,6 +104,11 @@ export const ja: typeof en = {
     "情報をご提出いただきありがとうございます。追加情報が必要な場合はご連絡します。",
   accountProviderPending: "アカウントを仕上げています",
   accountProviderPendingDesc: "少し時間がかかる場合があります",
+  accountLegalNameTitle: "法的氏名",
+  accountLegalNameDesc:
+    "銀行口座または身分証明書に記載されている通りに氏名を入力してください。",
+  accountLegalNameFirst: "名",
+  accountLegalNameLast: "姓",
   accountEnrollmentRejected: "確認を完了できませんでした",
   accountSuspended: "アカウントが停止されました",
   accountEnrollmentError: "アカウント設定に失敗しました",

@@ -7,12 +7,19 @@ import {
   useState,
 } from "react";
 
-import type { EnrollmentResponse } from "../../../common/account.js";
+import type {
+  AccountLegalName,
+  EnrollmentResponse,
+} from "../../../common/account.js";
 import type { NavNodeFiat } from "../../api/navTree.js";
 import { useDaimoClient } from "../../hooks/DaimoClientContext.js";
 import { t } from "../../hooks/locale.js";
 import { useAccountFlow } from "../../hooks/useAccountFlow.js";
-import { SecondaryButton, SecondaryLinkButton } from "../buttons.js";
+import {
+  PrimaryButton,
+  SecondaryButton,
+  SecondaryLinkButton,
+} from "../buttons.js";
 import { ErrorPage } from "../ErrorPage.js";
 import { CheckIcon, ErrorIcon } from "../icons.js";
 import { Skeleton, SkeletonText } from "../Skeleton.js";
@@ -20,6 +27,7 @@ import {
   CenteredContent,
   ContactSupportButton,
   PageHeader,
+  TextInput,
 } from "../shared.js";
 import {
   AccountKycInfoPage,
@@ -72,12 +80,14 @@ export function AccountEnrollmentPage({
   setModalCloseVisible,
 }: AccountEnrollmentPageProps) {
   const rail = node.fiatMethod;
+  const requiresLegalNameBeforeEnrollment = rail === "ach" || rail === "sepa";
   const account = useAccountFlow();
   const client = useDaimoClient();
   const [response, setResponse] = useState<EnrollmentResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [kycAccepted, setKycAccepted] = useState(false);
   const [hostedKycAccepted, setHostedKycAccepted] = useState(false);
+  const [legalName, setLegalName] = useState<AccountLegalName | null>(null);
   const started = useRef(false);
   const responseRef = useRef<EnrollmentResponse | null>(null);
   const readyTimeoutRef = useRef<number | null>(null);
@@ -92,7 +102,10 @@ export function AccountEnrollmentPage({
 
     let result: EnrollmentResponse | null;
     try {
-      result = await account.startEnrollment(client, { rail });
+      result = await account.startEnrollment(client, {
+        rail,
+        ...(legalName ? { legalName } : {}),
+      });
     } catch (err) {
       console.error("[enrollment] fetch failed:", err);
       if (awaitingWebhook.current) return;
@@ -144,7 +157,7 @@ export function AccountEnrollmentPage({
       responseRef.current = result;
       setResponse(result);
     }
-  }, [account, client, rail, onReady, onPhoneRequired]);
+  }, [account, client, legalName, rail, onReady, onPhoneRequired]);
 
   /** Called when SumSub reports docs submitted. Optimistically show review. */
   const handleKycSubmitted = useCallback(() => {
@@ -156,9 +169,10 @@ export function AccountEnrollmentPage({
   // Initial fetch
   useEffect(() => {
     if (started.current) return;
+    if (requiresLegalNameBeforeEnrollment && legalName == null) return;
     started.current = true;
     fetchEnrollment();
-  }, [fetchEnrollment]);
+  }, [requiresLegalNameBeforeEnrollment, fetchEnrollment, legalName]);
 
   // Poll while the state is still advancing
   useEffect(() => {
@@ -184,6 +198,27 @@ export function AccountEnrollmentPage({
   }, [hostedKycAccepted, response?.action, setModalCloseVisible]);
 
   // --- Render ---
+
+  if (requiresLegalNameBeforeEnrollment && legalName == null) {
+    if (!kycAccepted) {
+      return (
+        <AccountKycInfoPage
+          node={node}
+          onContinue={() => setKycAccepted(true)}
+          onBack={onBack}
+        />
+      );
+    }
+    return (
+      <AccountLegalNamePage
+        onBack={() => setKycAccepted(false)}
+        onSubmit={(name) => {
+          setLegalName(name);
+          setHostedKycAccepted(true);
+        }}
+      />
+    );
+  }
 
   if (isLoading) {
     return rail === "apple_pay" ? (
@@ -235,7 +270,10 @@ export function AccountEnrollmentPage({
       );
 
     case "hosted_kyc_required":
-      if (!hostedKycAccepted) {
+      if (
+        !hostedKycAccepted &&
+        !(requiresLegalNameBeforeEnrollment && legalName)
+      ) {
         return (
           <AccountKycInfoPage
             node={node}
@@ -247,7 +285,11 @@ export function AccountEnrollmentPage({
       return (
         <HostedEnrollmentPage
           step={response}
-          onBack={() => setHostedKycAccepted(false)}
+          onBack={
+            requiresLegalNameBeforeEnrollment && legalName
+              ? onBack
+              : () => setHostedKycAccepted(false)
+          }
         />
       );
 
@@ -313,6 +355,85 @@ export function AccountEnrollmentPage({
 }
 
 // --- Sub-components ---
+
+function AccountLegalNamePage({
+  onBack,
+  onSubmit,
+}: {
+  onBack: () => void;
+  onSubmit: (name: AccountLegalName) => void;
+}) {
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const normalizedFirst = firstName.trim();
+  const normalizedLast = lastName.trim();
+  const canSubmit = normalizedFirst.length > 0 && normalizedLast.length > 0;
+
+  const submit = useCallback(() => {
+    if (!canSubmit) return;
+    onSubmit({ firstName: normalizedFirst, lastName: normalizedLast });
+  }, [canSubmit, normalizedFirst, normalizedLast, onSubmit]);
+
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLInputElement>) => {
+      if (e.key === "Enter") submit();
+    },
+    [submit],
+  );
+
+  return (
+    <div className="daimo-flex daimo-flex-col daimo-flex-1 daimo-min-h-0">
+      <PageHeader title={t.accountLegalNameTitle} onBack={onBack} />
+
+      <CenteredContent>
+        <div className="daimo-flex daimo-w-full daimo-max-w-xs daimo-flex-col daimo-gap-4">
+          <p className="daimo-text-center daimo-text-sm daimo-leading-relaxed daimo-text-[var(--daimo-text-secondary)]">
+            {t.accountLegalNameDesc}
+          </p>
+
+          <div className="daimo-flex daimo-flex-col daimo-gap-3">
+            <label className="daimo-flex daimo-flex-col daimo-gap-1.5">
+              <span className="daimo-text-xs daimo-font-medium daimo-text-[var(--daimo-text-secondary)]">
+                {t.accountLegalNameFirst}
+              </span>
+              <TextInput
+                type="text"
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder="Daimo"
+                autoComplete="given-name"
+                autoFocus
+                className="daimo-px-4 daimo-py-3"
+              />
+            </label>
+
+            <label className="daimo-flex daimo-flex-col daimo-gap-1.5">
+              <span className="daimo-text-xs daimo-font-medium daimo-text-[var(--daimo-text-secondary)]">
+                {t.accountLegalNameLast}
+              </span>
+              <TextInput
+                type="text"
+                value={lastName}
+                onChange={(e) => setLastName(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder="Account"
+                autoComplete="family-name"
+                className="daimo-px-4 daimo-py-3"
+              />
+            </label>
+          </div>
+        </div>
+      </CenteredContent>
+
+      <div className="daimo-px-6 daimo-pb-6 daimo-flex daimo-flex-col daimo-items-center">
+        <PrimaryButton onClick={submit} disabled={!canSubmit}>
+          {t.continue}
+        </PrimaryButton>
+      </div>
+    </div>
+  );
+}
 
 function PhoneEntrySkeleton({ onBack }: { onBack: () => void }) {
   return (

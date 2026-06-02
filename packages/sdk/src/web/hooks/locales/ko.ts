@@ -104,6 +104,11 @@ export const ko: typeof en = {
     "정보를 제출해 주셔서 감사합니다. 추가 정보가 필요하면 연락드리겠습니다.",
   accountProviderPending: "계정 마무리 중",
   accountProviderPendingDesc: "잠시 시간이 걸릴 수 있습니다",
+  accountLegalNameTitle: "법적 이름",
+  accountLegalNameDesc:
+    "은행 계좌 또는 신분증에 표시된 이름을 그대로 입력하세요.",
+  accountLegalNameFirst: "이름",
+  accountLegalNameLast: "성",
   accountEnrollmentRejected: "인증을 완료할 수 없습니다",
   accountSuspended: "계정이 정지되었습니다",
   accountEnrollmentError: "계정 설정 실패",

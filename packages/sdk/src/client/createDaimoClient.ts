@@ -7,6 +7,7 @@ import type {
   GetAccountResponse,
   GetDepositResponse,
   RoutingSignDataResponse,
+  StartEnrollmentRequest,
 } from "../common/account.js";
 import type {
   CheckSessionRequest,
@@ -69,7 +70,7 @@ export type DaimoClient = {
      * the client can call this after an auth event to refresh as well.
      */
     startEnrollment(
-      input: AccountRailTarget,
+      input: StartEnrollmentRequest,
       auth: BearerAuth,
     ): Promise<EnrollmentResponse>;
     /** Get currency, min/max amount constraints for a deposit. */

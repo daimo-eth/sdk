@@ -74,6 +74,11 @@ export const es: typeof en = {
     "Gracias por enviar tu información. Te contactaremos si necesitamos algo más.",
   accountProviderPending: "Casi listo",
   accountProviderPendingDesc: "Esto puede tardar un momento",
+  accountLegalNameTitle: "Tu nombre legal",
+  accountLegalNameDesc:
+    "Ingresa tu nombre exactamente como aparece en tu cuenta bancaria o identificación.",
+  accountLegalNameFirst: "Nombre",
+  accountLegalNameLast: "Apellido",
   accountEnrollmentRejected: "No se pudo completar la verificación",
   accountSuspended: "Cuenta suspendida",
   accountEnrollmentError: "No se pudo configurar la cuenta",
