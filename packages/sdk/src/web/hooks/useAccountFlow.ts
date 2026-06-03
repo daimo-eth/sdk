@@ -1,4 +1,10 @@
-import { createContext, useCallback, useContext, useRef, useState } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useRef,
+  useState,
+} from "react";
 
 import type {
   AccountRail,
@@ -13,8 +19,6 @@ import type { DaimoClient } from "../../client/createDaimoClient.js";
 export type PrivyHooks = {
   sendCode: (email: string) => Promise<void>;
   loginWithCode: (code: string) => Promise<void>;
-  sendPhoneCode: (phoneNumber: string) => Promise<void>;
-  loginWithPhoneCode: (code: string) => Promise<void>;
   createWallet: () => Promise<{ address: string }>;
   getAccessToken: () => Promise<string | null>;
   signTypedData: (typedData: Record<string, unknown>) => Promise<string>;
@@ -67,10 +71,13 @@ export type AccountFlowState = {
   sendOtp: (email?: string) => Promise<boolean>;
   verifyOtp: (code: string) => Promise<boolean>;
 
-  /** Send a phone OTP. Links the phone if the user is signed in. */
-  sendPhoneOtp: (phoneNumber?: string) => Promise<boolean>;
-  /** Verify a phone OTP code. On success, the phone is linked to the current user. */
-  verifyPhoneOtp: (code: string) => Promise<boolean>;
+  /** Send a Daimo-owned phone OTP for Apple Pay enrollment. */
+  sendPhoneOtp: (
+    phoneNumber: string | undefined,
+    client: DaimoClient,
+  ) => Promise<boolean>;
+  /** Verify a Daimo-owned phone OTP code for Apple Pay enrollment. */
+  verifyPhoneOtp: (code: string, client: DaimoClient) => Promise<boolean>;
   isCreatingWallet: boolean;
   walletAddress: string | null;
   ensureWallet: () => Promise<string | null>;
@@ -79,13 +86,14 @@ export type AccountFlowState = {
   signTypedData: (typedData: Record<string, unknown>) => Promise<string>;
 
   getDepositState: (sessionId: string) => DepositState | null;
-  setDepositState: (
-    sessionId: string,
-    state: DepositStateInput,
-  ) => void;
+  setDepositState: (sessionId: string, state: DepositStateInput) => void;
   clearDepositState: (sessionId: string) => void;
 
-  createAccount: (client: DaimoClient, session: SessionContext, walletAddress: string) => Promise<void>;
+  createAccount: (
+    client: DaimoClient,
+    session: SessionContext,
+    walletAddress: string,
+  ) => Promise<void>;
   getAccount: (
     client: DaimoClient,
     session: SessionContext,
@@ -157,7 +165,9 @@ export function useAccountFlowState(): AccountFlowState {
     setWalletAddress(hooks.walletAddress);
     if (hooks.phoneNumber) {
       setPhoneNumber((current) =>
-        current === hooks.phoneNumber ? current : hooks.phoneNumber ?? current,
+        current === hooks.phoneNumber
+          ? current
+          : (hooks.phoneNumber ?? current),
       );
     }
   }, []);
@@ -184,49 +194,64 @@ export function useAccountFlowState(): AccountFlowState {
     });
   }, []);
 
-  const sendOtp = useCallback(async (overrideEmail?: string): Promise<boolean> => {
-    const target = overrideEmail ?? email;
-    if (!privyRef.current) {
-      setAuthError("privy not initialized");
-      return false;
-    }
-    if (!target) {
-      setAuthError("email is required");
-      return false;
-    }
-    setIsLoggingIn(true);
-    setAuthError(null);
-    try {
-      await waitForReady();
-      await privyRef.current.sendCode(target);
-      return true;
-    } catch (err) {
-      setAuthError(err instanceof Error ? err.message : "failed to send code");
-      return false;
-    } finally {
-      setIsLoggingIn(false);
-    }
-  }, [email, waitForReady]);
+  const getAccessToken = useCallback(async (): Promise<string | null> => {
+    return privyRef.current?.getAccessToken() ?? null;
+  }, []);
 
-  const verifyOtp = useCallback(async (code: string): Promise<boolean> => {
-    if (!privyRef.current) return false;
-    setIsLoggingIn(true);
-    setAuthError(null);
-    try {
-      await waitForReady();
-      await privyRef.current.loginWithCode(code);
-      setIsAuthenticated(true);
-      return true;
-    } catch (err) {
-      setAuthError(privyAuthErrorMessage(err));
-      return false;
-    } finally {
-      setIsLoggingIn(false);
-    }
-  }, [waitForReady]);
+  const sendOtp = useCallback(
+    async (overrideEmail?: string): Promise<boolean> => {
+      const target = overrideEmail ?? email;
+      if (!privyRef.current) {
+        setAuthError("privy not initialized");
+        return false;
+      }
+      if (!target) {
+        setAuthError("email is required");
+        return false;
+      }
+      setIsLoggingIn(true);
+      setAuthError(null);
+      try {
+        await waitForReady();
+        await privyRef.current.sendCode(target);
+        return true;
+      } catch (err) {
+        setAuthError(
+          err instanceof Error ? err.message : "failed to send code",
+        );
+        return false;
+      } finally {
+        setIsLoggingIn(false);
+      }
+    },
+    [email, waitForReady],
+  );
+
+  const verifyOtp = useCallback(
+    async (code: string): Promise<boolean> => {
+      if (!privyRef.current) return false;
+      setIsLoggingIn(true);
+      setAuthError(null);
+      try {
+        await waitForReady();
+        await privyRef.current.loginWithCode(code);
+        setIsAuthenticated(true);
+        return true;
+      } catch (err) {
+        setAuthError(privyAuthErrorMessage(err));
+        return false;
+      } finally {
+        setIsLoggingIn(false);
+      }
+    },
+    [waitForReady],
+  );
 
   const sendPhoneOtp = useCallback(
-    async (overridePhone?: string): Promise<boolean> => {
+    async (
+      overridePhone: string | undefined,
+      client: DaimoClient,
+    ): Promise<boolean> => {
       const target = overridePhone ?? phoneNumber;
       if (!privyRef.current) {
         setAuthError("privy not initialized");
@@ -240,7 +265,12 @@ export function useAccountFlowState(): AccountFlowState {
       setAuthError(null);
       try {
         await waitForReady();
-        await privyRef.current.sendPhoneCode(target);
+        const token = await getAccessToken();
+        if (!token) throw new Error("not authenticated");
+        await client.account.sendPhoneOtp(
+          { phoneNumber: target },
+          { bearerToken: token },
+        );
         return true;
       } catch (err) {
         setAuthError(
@@ -251,24 +281,33 @@ export function useAccountFlowState(): AccountFlowState {
         setIsLoggingIn(false);
       }
     },
-    [phoneNumber, waitForReady],
+    [getAccessToken, phoneNumber, waitForReady],
   );
 
-  const verifyPhoneOtp = useCallback(async (code: string): Promise<boolean> => {
-    if (!privyRef.current) return false;
-    setIsLoggingIn(true);
-    setAuthError(null);
-    try {
-      await waitForReady();
-      await privyRef.current.loginWithPhoneCode(code);
-      return true;
-    } catch (err) {
-      setAuthError(privyAuthErrorMessage(err));
-      return false;
-    } finally {
-      setIsLoggingIn(false);
-    }
-  }, [waitForReady]);
+  const verifyPhoneOtp = useCallback(
+    async (code: string, client: DaimoClient): Promise<boolean> => {
+      if (!privyRef.current) return false;
+      setIsLoggingIn(true);
+      setAuthError(null);
+      try {
+        await waitForReady();
+        if (!phoneNumber) throw new Error("phone number is required");
+        const token = await getAccessToken();
+        if (!token) throw new Error("not authenticated");
+        await client.account.verifyPhoneOtp(
+          { phoneNumber, code },
+          { bearerToken: token },
+        );
+        return true;
+      } catch (err) {
+        setAuthError(privyAuthErrorMessage(err));
+        return false;
+      } finally {
+        setIsLoggingIn(false);
+      }
+    },
+    [getAccessToken, phoneNumber, waitForReady],
+  );
 
   const ensureWallet = useCallback((): Promise<string | null> => {
     if (ensureWalletRef.current) return ensureWalletRef.current;
@@ -301,10 +340,6 @@ export function useAccountFlowState(): AccountFlowState {
 
     return ensureWalletRef.current;
   }, [waitForReady, waitForWalletsReady]);
-
-  const getAccessToken = useCallback(async (): Promise<string | null> => {
-    return privyRef.current?.getAccessToken() ?? null;
-  }, []);
 
   const signTypedData = useCallback(
     async (typedData: Record<string, unknown>): Promise<string> => {
@@ -339,11 +374,9 @@ export function useAccountFlowState(): AccountFlowState {
     async (client: DaimoClient, session: SessionContext, addr: string) => {
       const token = await getAccessToken();
       if (!token) throw new Error("not authenticated");
-      await client.account.create(
-        { walletAddress: addr },
-        session,
-        { bearerToken: token },
-      );
+      await client.account.create({ walletAddress: addr }, session, {
+        bearerToken: token,
+      });
     },
     [getAccessToken],
   );

@@ -32,10 +32,10 @@ export function AccountPhoneOtpPage({
   const handleVerify = useCallback(
     async (code: string): Promise<OtpVerifyOutcome> => {
       if (!account) return { ok: false };
-      const verified = await account.verifyPhoneOtp(code);
+      const verified = await account.verifyPhoneOtp(code, client);
       if (!verified) return { ok: false };
-      // startEnrollment runs the adapter's prepareAdvance hook, which copies
-      // the just-verified Privy phone into the enrollment metadata.
+      // startEnrollment advances the provider state machine after the Daimo
+      // phone verification endpoint stores the Coinbase checkpoint.
       const result = await account.startEnrollment(client, { rail });
       if (!result) {
         return { ok: false, msg: "failed to submit phone verification" };
@@ -72,8 +72,8 @@ export function AccountPhoneOtpPage({
 
   const handleResend = useCallback(async () => {
     if (!account) return;
-    await account.sendPhoneOtp();
-  }, [account]);
+    await account.sendPhoneOtp(undefined, client);
+  }, [account, client]);
 
   const destination = account?.phoneNumber
     ? formatUsPhoneDisplay(account.phoneNumber)

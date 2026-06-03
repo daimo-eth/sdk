@@ -7,7 +7,7 @@ import {
   useState,
 } from "react";
 import type { AccountRail } from "../../common/account.js";
-import type { AccountAuthHint } from "../api/index.js";
+import type { AccountAuthConfig } from "../api/index.js";
 import type {
   NavNode,
   NavNodeCashApp,
@@ -138,7 +138,7 @@ export function useSessionNav(
   session: SessionWithNav,
   setSession: React.Dispatch<React.SetStateAction<SessionWithNav>>,
   isOpen: boolean,
-  accountAuth: AccountAuthHint | null,
+  accountAuth: AccountAuthConfig | null,
   platform?: DaimoPlatform,
   walletFlow?: WalletFlowResult,
   accountFlow?: AccountFlowState | null,
@@ -430,13 +430,7 @@ export function useSessionNav(
       // New user or no email hint — start from email
       replaceLoading({ type: "account-email", nodeId, rail, autoNav });
     },
-    [
-      accountAuth,
-      accountFlow,
-      client,
-      session.clientSecret,
-      session.sessionId,
-    ],
+    [accountAuth, accountFlow, client, session.clientSecret, session.sessionId],
   );
 
   // ─── Navigation handlers ────────────────────────────────────────────────
@@ -1004,7 +998,7 @@ export function useSessionNav(
         pushPhoneEntry("account-loading");
         void (async () => {
           accountFlow.setPhoneNumber(phone);
-          const sent = await accountFlow.sendPhoneOtp(phone);
+          const sent = await accountFlow.sendPhoneOtp(phone, client);
           pushPhoneEntry(sent ? "account-phone-otp" : "account-phone");
         })();
         return;

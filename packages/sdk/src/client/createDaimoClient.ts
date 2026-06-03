@@ -37,6 +37,7 @@ function authHeaders(auth: BearerAuth): Record<string, string> {
 type SessionContext = { sessionId: string; clientSecret: string };
 
 type AccountRailTarget = { rail: AccountRail };
+type AccountPhoneOtpResponse = { ok: true };
 
 /** Request shape for `account.upsertDeposit`. */
 export type UpsertDepositRequest = {
@@ -64,15 +65,23 @@ export type DaimoClient = {
       auth: BearerAuth,
     ): Promise<CreateAccountResponse>;
     /**
-     * Advance the account enrollment state machine. Each call also lets the
-     * provider adapter pull any external auth state it cares about — e.g.
-     * Coinbase copies a just-verified Privy phone into the enrollment — so
-     * the client can call this after an auth event to refresh as well.
+     * Advance the account enrollment state machine after account auth or
+     * provider-specific setup changes.
      */
     startEnrollment(
       input: StartEnrollmentRequest,
       auth: BearerAuth,
     ): Promise<EnrollmentResponse>;
+    /** Send a Daimo-owned phone OTP for account enrollment. */
+    sendPhoneOtp(
+      input: { phoneNumber: string },
+      auth: BearerAuth,
+    ): Promise<AccountPhoneOtpResponse>;
+    /** Verify a Daimo-owned phone OTP for account enrollment. */
+    verifyPhoneOtp(
+      input: { phoneNumber: string; code: string },
+      auth: BearerAuth,
+    ): Promise<AccountPhoneOtpResponse>;
     /** Get currency, min/max amount constraints for a deposit. */
     getDepositConstraints(
       params: { sessionId: string } & AccountRailTarget,
@@ -95,9 +104,11 @@ export type DaimoClient = {
       auth: BearerAuth,
     ): Promise<RoutingSignDataResponse>;
     /** Poll deposit status. No auth required — uses clientSecret. */
-    getDeposit(
-      params: { sessionId: string; clientSecret: string; refresh?: boolean },
-    ): Promise<GetDepositResponse>;
+    getDeposit(params: {
+      sessionId: string;
+      clientSecret: string;
+      refresh?: boolean;
+    }): Promise<GetDepositResponse>;
   };
   sessions: {
     retrieve(sessionId: string): Promise<RetrieveSessionResponse>;
@@ -136,10 +147,7 @@ export type DaimoClient = {
           solanaAddress?: string;
         },
       ): Promise<WalletOptionsResponse>;
-      logNavEvent(
-        sessionId: string,
-        input: LogNavEventRequest,
-      ): Promise<void>;
+      logNavEvent(sessionId: string, input: LogNavEventRequest): Promise<void>;
     };
   };
 };
@@ -169,6 +177,22 @@ export function createDaimoClient(config: TransportConfig): DaimoClient {
         return transport.request<EnrollmentResponse>({
           method: "POST",
           path: "/v1/internal/account/enrollment/start",
+          body: input,
+          headers: authHeaders(auth),
+        });
+      },
+      sendPhoneOtp(input, auth) {
+        return transport.request<AccountPhoneOtpResponse>({
+          method: "POST",
+          path: "/v1/internal/account/phone/send",
+          body: input,
+          headers: authHeaders(auth),
+        });
+      },
+      verifyPhoneOtp(input, auth) {
+        return transport.request<AccountPhoneOtpResponse>({
+          method: "POST",
+          path: "/v1/internal/account/phone/verify",
           body: input,
           headers: authHeaders(auth),
         });
