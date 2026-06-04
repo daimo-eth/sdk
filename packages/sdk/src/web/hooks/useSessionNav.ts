@@ -32,7 +32,14 @@ import type { InjectedWallet } from "./useInjectedWallets.js";
 import { isUserRejection, type WalletFlowResult } from "./useWalletFlow.js";
 
 type NodeContext = { nodeId: string | null; nodeType: NavNodeType | null };
-type ExchangeId = "Coinbase" | "Binance" | "Lemon" | "MtPelerin" | "CashApp";
+type ExchangeId =
+  | "Coinbase"
+  | "Binance"
+  | "Lemon"
+  | "BitgetExchange"
+  | "BybitExchange"
+  | "MtPelerin"
+  | "CashApp";
 type ExchangeNode = NavNodeExchange | NavNodeCashApp;
 type AccountAuthChallengeEntryType = Extract<
   NavEntry["type"],
