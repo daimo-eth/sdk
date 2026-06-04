@@ -6,6 +6,8 @@ import { CloseIcon } from "./icons.js";
 const MODAL_LOADING_MIN_HEIGHT = "min(360px, 90dvh)";
 const HEIGHT_MORPH_MS = 180;
 const HEIGHT_MORPH_EASING = "cubic-bezier(0.23, 1, 0.32, 1)";
+export const MODAL_CONTENT_CLASS =
+  "daimo-modal-content daimo-relative daimo-w-full daimo-max-w-[420px] daimo-max-h-[90vh] daimo-overflow-hidden daimo-bg-[var(--daimo-surface)] daimo-rounded-t-[var(--daimo-radius-xl)] sm:daimo-rounded-[var(--daimo-radius-xl)] daimo-shadow-lg daimo-flex daimo-flex-col";
 
 type ContainerProps = {
   children: ReactNode;
@@ -127,9 +129,6 @@ export function ModalContainer({
   const backdropClass =
     "daimo-modal-backdrop daimo-fixed daimo-inset-0 daimo-z-50 daimo-bg-black/50";
 
-  const contentClass =
-    "daimo-modal-content daimo-relative daimo-w-full daimo-max-w-[420px] daimo-max-h-[90vh] daimo-overflow-hidden daimo-bg-[var(--daimo-surface)] daimo-rounded-t-[var(--daimo-radius-xl)] sm:daimo-rounded-[var(--daimo-radius-xl)] daimo-shadow-lg daimo-flex daimo-flex-col";
-
   const contentRef = useRef<HTMLDivElement>(null);
   usePageHeightMorph(contentRef, pageKey);
 
@@ -141,7 +140,7 @@ export function ModalContainer({
       <div className="daimo-fixed daimo-inset-0 daimo-z-50 daimo-flex daimo-justify-center daimo-items-end sm:daimo-items-center daimo-pointer-events-none daimo-px-0 sm:daimo-px-4">
         <div
           ref={contentRef}
-          className={`daimo-pointer-events-auto ${contentClass}`}
+          className={`daimo-pointer-events-auto ${MODAL_CONTENT_CLASS}`}
           style={
             reserveLoadingHeight
               ? { minHeight: MODAL_LOADING_MIN_HEIGHT }

@@ -27,7 +27,7 @@ export type SessionDisplay = {
   title: string;
   /** One-word verb for CTAs, e.g. "Deposit". */
   verb: string;
-  /** Optional custom theme CSS URL. */
+  /** Custom theme CSS URL. */
   themeCssUrl?: string;
 };
 
