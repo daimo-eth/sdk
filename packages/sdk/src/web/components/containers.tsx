@@ -171,20 +171,10 @@ export function ModalContainer({
 export function EmbeddedContainer({
   children,
   showFooterSpacer = true,
-  onClose,
 }: ContainerProps & { onClose?: () => void }) {
   return (
     <div className="daimo-bg-transparent daimo-flex daimo-flex-col daimo-items-center">
       <div className="daimo-relative daimo-w-full daimo-max-w-[512px] daimo-bg-[var(--daimo-surface)] daimo-flex daimo-flex-col">
-        {onClose && (
-          <button
-            onClick={onClose}
-            className="daimo-absolute daimo-right-[17px] daimo-top-[22px] daimo-z-20 daimo-w-8 daimo-h-8 daimo-flex daimo-items-center daimo-justify-center daimo-rounded-full daimo-bg-[var(--daimo-surface)] hover:[@media(hover:hover)]:daimo-bg-[var(--daimo-surface-secondary)] active:daimo-scale-[0.9] daimo-transition-[background-color,transform] daimo-[transition-duration:200ms,100ms] daimo-ease daimo-touch-action-manipulation"
-            aria-label={t.close}
-          >
-            <CloseIcon />
-          </button>
-        )}
         {children}
         {showFooterSpacer && <div className="daimo-h-8" />}
       </div>

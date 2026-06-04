@@ -35,6 +35,10 @@ export type NavEntry =
       amountUsd: number;
       address?: string;
       expiresAt?: number;
+      trustWalletDeeplink?: {
+        url: string;
+        label: "USDT on Tron";
+      };
       error?: string;
       autoNav?: boolean;
     }

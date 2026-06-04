@@ -15,6 +15,7 @@ import type {
   NavNodeExchange,
   NavNodeFiat,
   NavNodeStripe,
+  NavNodeTronDeposit,
   SessionWithNav,
 } from "../api/navTree.js";
 import type { WalletPaymentOption } from "../api/walletTypes.js";
@@ -71,6 +72,10 @@ function isExchangeNode(node: NavNode | null): node is ExchangeNode {
 
 function isStripeNode(node: NavNode | null): node is NavNodeStripe {
   return node?.type === "Stripe";
+}
+
+function isTrustTronNode(node: NavNode | null): node is NavNodeTronDeposit {
+  return node?.type === "TronDeposit" && node.id === "Trust-Tron";
 }
 
 function getExchangeSelection(node: ExchangeNode): {
@@ -177,6 +182,13 @@ export function useSessionNav(
         if (!result.tron) {
           throw new Error("tron address not returned");
         }
+        const node = findNode(nodeId, session.navTree);
+        const trustWalletDeeplink = isTrustTronNode(node)
+          ? result.tron.deeplinks?.trustWallet
+          : undefined;
+        if (isTrustTronNode(node) && !trustWalletDeeplink) {
+          throw new Error("trust wallet deeplink not returned");
+        }
 
         logNavEvent(session.sessionId, session.clientSecret, {
           nodeId,
@@ -185,6 +197,9 @@ export function useSessionNav(
           success: true,
           address: result.tron.receiverAddress,
         });
+        if (trustWalletDeeplink && !isDesktop(effectivePlatform)) {
+          window.open(trustWalletDeeplink.url, "_blank");
+        }
         setStack((prev) => {
           const top = prev[prev.length - 1];
           if (top?.type !== "waiting-tron" || top.nodeId !== nodeId)
@@ -195,6 +210,7 @@ export function useSessionNav(
               ...top,
               address: result.tron!.receiverAddress,
               expiresAt: result.tron!.expiresAt,
+              trustWalletDeeplink,
               error: undefined,
             },
           ];
@@ -218,7 +234,13 @@ export function useSessionNav(
         });
       }
     },
-    [session.sessionId, session.clientSecret, client],
+    [
+      session.sessionId,
+      session.clientSecret,
+      session.navTree,
+      effectivePlatform,
+      client,
+    ],
   );
 
   const fetchExchangeUrl = useCallback(
@@ -738,6 +760,7 @@ export function useSessionNav(
             ...top,
             address: undefined,
             expiresAt: undefined,
+            trustWalletDeeplink: undefined,
             error: undefined,
           },
         ];

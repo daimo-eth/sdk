@@ -3,7 +3,12 @@ import type { NavNodeDeeplink } from "../api/navTree.js";
 import { ExternalLinkIcon, PrimaryButton } from "./buttons.js";
 import { t } from "../hooks/locale.js";
 import { isDesktop, type DaimoPlatform } from "../platform.js";
-import { CenteredContent, PageHeader, PageLogo, resolveIconUrl } from "./shared.js";
+import {
+  CenteredContent,
+  PageHeader,
+  PageLogo,
+  resolveIconUrl,
+} from "./shared.js";
 import { QRCode } from "./QRCode.js";
 
 type DeeplinkPageProps = {
@@ -21,6 +26,7 @@ export function DeeplinkPage({
   baseUrl,
 }: DeeplinkPageProps) {
   const desktop = isDesktop(platform);
+  const pageIcon = node.pageIcon ?? node.icon;
 
   if (desktop) {
     return (
@@ -31,9 +37,9 @@ export function DeeplinkPage({
             <QRCode
               value={node.url}
               image={
-                node.icon ? (
+                pageIcon ? (
                   <img
-                    src={resolveIconUrl(node.icon, baseUrl)}
+                    src={resolveIconUrl(pageIcon, baseUrl)}
                     alt={node.title}
                     className="daimo-w-full daimo-h-full daimo-object-contain daimo-rounded-[25%]"
                   />
@@ -59,7 +65,9 @@ export function DeeplinkPage({
     <div className="daimo-flex daimo-flex-col daimo-flex-1 daimo-min-h-0">
       <PageHeader title={node.title} onBack={onBack ?? undefined} />
       <CenteredContent>
-        {node.icon && <PageLogo icon={node.icon} alt={node.title} baseUrl={baseUrl} />}
+        {pageIcon && (
+          <PageLogo icon={pageIcon} alt={node.title} baseUrl={baseUrl} />
+        )}
         <p className="daimo-text-[var(--daimo-text-secondary)] daimo-text-center daimo-max-w-xs">
           {t.continueIn} {node.title} {t.toCompleteYourPayment}
         </p>
