@@ -87,13 +87,7 @@ export type NavNodeDeeplink = NavNodeCommon & {
 
 export type NavNodeExchange = NavNodeCommon & {
   type: "Exchange";
-  exchangeId:
-    | "Coinbase"
-    | "Binance"
-    | "Lemon"
-    | "BitgetExchange"
-    | "BybitExchange"
-    | "MtPelerin";
+  exchangeId: "Coinbase" | "Binance" | "Lemon" | "MtPelerin";
   icon?: string;
   requiredUsd?: number;
   minimumUsd: number;

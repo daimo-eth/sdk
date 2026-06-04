@@ -29,8 +29,6 @@ export const zCreatePaymentMethodRequest = z.object({
         "Coinbase",
         "Binance",
         "Lemon",
-        "BitgetExchange",
-        "BybitExchange",
         "MtPelerin",
         "CashApp",
       ]),
