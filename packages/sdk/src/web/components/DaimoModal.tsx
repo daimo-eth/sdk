@@ -46,7 +46,7 @@ import {
 } from "../hooks/useInjectedWallets.js";
 import { detectPlatform, isDesktop, type DaimoPlatform } from "../platform.js";
 import { useWalletFlow } from "../hooks/useWalletFlow.js";
-import { PrimaryButton } from "./buttons.js";
+import { ExternalLinkIcon, PrimaryButton } from "./buttons.js";
 import { ChooseChainPage } from "./ChooseChainPage.js";
 import { ChooseOptionPage } from "./ChooseOptionPage.js";
 import { ChooseWalletPage } from "./ChooseWalletPage.js";
@@ -78,9 +78,12 @@ import {
   CenteredContent,
   ContactSupportButton,
   PageHeader,
+  PageLogo,
   ErrorMessage as SharedErrorMessage,
+  resolveIconUrl,
 } from "./shared.js";
 import { Skeleton, SkeletonText } from "./Skeleton.js";
+import { QRCode } from "./QRCode.js";
 import { WaitingDepositAddressPage } from "./WaitingDepositAddressPage.js";
 import { WalletAmountPage } from "./WalletAmountPage.js";
 
@@ -882,6 +885,17 @@ function renderWaitingTron(
         onRetry={ctx.onRetry}
       />
     );
+  if (node.id === "Trust-Tron") {
+    return (
+      <TrustWalletTronPage
+        title={node.title}
+        deeplink={entry.trustWalletDeeplink}
+        onBack={ctx.onBack}
+        baseUrl={ctx.session.baseUrl}
+        isDesktop={ctx.isDesktop}
+      />
+    );
+  }
   return (
     <WaitingDepositAddressPage
       node={{
@@ -905,6 +919,100 @@ function renderWaitingTron(
       onRefresh={ctx.onRetry}
       baseUrl={ctx.session.baseUrl}
     />
+  );
+}
+
+function TrustWalletTronPage({
+  title,
+  deeplink,
+  onBack,
+  baseUrl,
+  isDesktop,
+}: {
+  title: string;
+  deeplink?: { url: string; label: "USDT on Tron" };
+  onBack: () => void;
+  baseUrl: string;
+  isDesktop: boolean;
+}): React.ReactNode {
+  const trustLogo = (
+    <img
+      src={resolveIconUrl("/wallet-logos/trust-wallet-logo.png", baseUrl)}
+      alt="Trust"
+      className="daimo-w-full daimo-h-full daimo-object-contain daimo-rounded-[25%]"
+    />
+  );
+
+  if (isDesktop) {
+    return (
+      <div className="daimo-flex daimo-flex-col daimo-flex-1 daimo-min-h-0">
+        <PageHeader title={title} onBack={onBack} />
+        <CenteredContent>
+          <div className="daimo-w-full daimo-max-w-[200px] sm:daimo-max-w-[260px]">
+            <QRCode
+              value={deeplink?.url}
+              image={trustLogo}
+              placeholderDensity="long"
+            />
+          </div>
+          <p className="daimo-text-[var(--daimo-text-secondary)] daimo-text-center daimo-max-w-xs daimo-text-sm">
+            {t.scanWithPhone}
+          </p>
+        </CenteredContent>
+      </div>
+    );
+  }
+
+  const openDeeplink = () => {
+    if (deeplink) {
+      window.open(deeplink.url, "_blank");
+    }
+  };
+
+  return (
+    <div className="daimo-flex daimo-flex-col daimo-flex-1 daimo-min-h-0">
+      <PageHeader title={title} onBack={onBack} />
+      <CenteredContent>
+        {deeplink == null ? (
+          <TrustWalletTronLoading />
+        ) : (
+          <>
+            <PageLogo
+              icon="/wallet-logos/trust-wallet-logo.png"
+              alt="Trust"
+              baseUrl={baseUrl}
+            />
+            <p className="daimo-text-[var(--daimo-text-secondary)] daimo-text-center daimo-max-w-xs">
+              {t.continueIn} Trust {t.toCompleteYourPayment}
+            </p>
+          </>
+        )}
+        {deeplink != null ? (
+          <PrimaryButton onClick={openDeeplink} icon={<ExternalLinkIcon />}>
+            {t.openIn} Trust
+          </PrimaryButton>
+        ) : (
+          <Skeleton
+            className="daimo-h-[56px] daimo-w-full daimo-max-w-xs"
+            rounded="lg"
+            delayMs={200}
+          />
+        )}
+      </CenteredContent>
+    </div>
+  );
+}
+
+function TrustWalletTronLoading(): React.ReactNode {
+  return (
+    <>
+      <Skeleton className="daimo-h-20 daimo-w-20" rounded="full" />
+      <SkeletonText
+        lines={2}
+        widths={["72%", "48%"]}
+        className="daimo-max-w-xs"
+      />
+    </>
   );
 }
 

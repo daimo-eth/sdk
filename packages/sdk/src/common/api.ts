@@ -91,6 +91,15 @@ export type CreatePaymentMethodResponse = {
     receiverAddress: TronAddress;
     /** When this payment method expires (unix seconds). */
     expiresAt: number;
+    /** Optional wallet-specific deeplinks for this Tron payment. */
+    deeplinks?: {
+      trustWallet?: {
+        /** Trust Wallet Tron USDT send deeplink. */
+        url: string;
+        /** Display label for the Trust Wallet send deeplink. */
+        label: "USDT on Tron";
+      };
+    };
   };
   /** Solana-specific payment details, present when payment method is Solana. */
   solana?: {

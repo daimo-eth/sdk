@@ -82,6 +82,7 @@ export type NavNodeDeeplink = NavNodeCommon & {
   type: "Deeplink";
   url: string;
   icon?: string;
+  pageIcon?: string;
 };
 
 export type NavNodeExchange = NavNodeCommon & {
