@@ -60,7 +60,7 @@ export function setLocale(languageCode: string) {
   }
   t = en;
   currentLocale = DEFAULT_LOCALE;
-  currentNumberLocale = DEFAULT_NUMBER_LOCALE;
+  currentNumberLocale = getLatinNumberLocale(languageCode);
 }
 
 /** Auto-detect locale from browser language if not explicitly set. */
@@ -68,5 +68,17 @@ export function autoDetectLocale() {
   if (localeInitialized) return;
   if (typeof navigator !== "undefined" && navigator.language) {
     setLocale(navigator.language);
+  }
+}
+
+function getLatinNumberLocale(languageCode: string): string {
+  const locale = `${languageCode}-u-nu-latn`;
+  try {
+    if (Intl.NumberFormat.supportedLocalesOf([locale]).length === 0) {
+      return DEFAULT_NUMBER_LOCALE;
+    }
+    return locale;
+  } catch {
+    return DEFAULT_NUMBER_LOCALE;
   }
 }

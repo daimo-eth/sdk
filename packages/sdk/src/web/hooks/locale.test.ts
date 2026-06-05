@@ -35,11 +35,19 @@ describe("locale selection", () => {
     expect(t.selectAmount).toBe("Select Amount");
   });
 
-  test("falls back to English numbers when browser locale uses unsupported digits", () => {
+  test("falls back to English text but preserves local separators", () => {
+    setLocale("de-DE");
+
+    expect(getLocale()).toBe("en");
+    expect(getNumberLocale()).toBe("de-DE-u-nu-latn");
+    expect(t.minimum).toBe("Minimum");
+  });
+
+  test("falls back to English text and Latin digits for unsupported text locale", () => {
     setLocale("mr-IN");
 
     expect(getLocale()).toBe("en");
-    expect(getNumberLocale()).toBe("en-US");
+    expect(getNumberLocale()).toBe("mr-IN-u-nu-latn");
     expect(t.minimum).toBe("Minimum");
   });
 });

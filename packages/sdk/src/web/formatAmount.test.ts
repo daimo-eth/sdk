@@ -38,12 +38,12 @@ describe("amount input formatting", () => {
     expect(formatAmountInput("1.5")).toBe("1,5");
   });
 
-  test("falls back to en-us formatting for unsupported locales", () => {
+  test("uses local separators for unsupported text locales", () => {
     setLocale("de-DE");
 
-    expect(parseDisplayAmount("100,000.00")).toBe("100000.00");
-    expect(formatAmountInput("100000.00")).toBe("100,000.00");
-    expect(formatFixedAmount(5)).toBe("5.00");
+    expect(parseDisplayAmount("100.000,00")).toBe("100000.00");
+    expect(formatAmountInput("100000.00")).toBe("100.000,00");
+    expect(formatFixedAmount(5)).toBe("5,00");
   });
 
   test("falls back to latin digits for unsupported locales", () => {
