@@ -155,6 +155,7 @@ export function AmountInput({
   };
 
   const displayValue = formatAmountInput(inputValue);
+  const placeholder = formatAmountInput("0.00");
   const inputWidth =
     displayValue.length === 0
       ? "3.55ch"
@@ -196,7 +197,7 @@ export function AmountInput({
           disabled={disabled}
           onChange={handleInputChange}
           onKeyDown={handleKeyDown}
-          placeholder="0.00"
+          placeholder={placeholder}
           className="daimo-bg-transparent daimo-font-semibold daimo-text-[var(--daimo-text)] daimo-placeholder-[var(--daimo-placeholder)] daimo-outline-none daimo-border-none daimo-shadow-none daimo-caret-[var(--daimo-text-muted)] daimo-ring-0 focus:daimo-outline-none focus:daimo-ring-0 focus:daimo-border-none focus:daimo-shadow-none"
           style={{
             width: inputWidth,

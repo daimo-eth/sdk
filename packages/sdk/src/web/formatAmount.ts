@@ -1,61 +1,76 @@
-const GROUP_SEPARATOR = ",";
-const DECIMAL_SEPARATOR = ".";
-const VALID_GROUPED_INTEGER_REGEX = /^\d{1,3}(,\d{3})+$/;
+import { getNumberLocale } from "./hooks/locale.js";
 
-export function parseDisplayAmount(value: string): string {
+type AmountSeparators = {
+  decimal: string;
+  group: string;
+};
+
+const CANONICAL_DECIMAL_SEPARATOR = ".";
+
+export function parseDisplayAmount(
+  value: string,
+  locale = getNumberLocale(),
+): string {
   const trimmed = value.trim();
   if (trimmed === "") return "";
 
-  const dotCount = countOccurrences(trimmed, DECIMAL_SEPARATOR);
-  if (dotCount > 1) return trimmed;
+  const separators = getAmountSeparators(locale);
+  const ungrouped =
+    separators.group === ""
+      ? trimmed
+      : trimmed.replaceAll(separators.group, "");
 
-  if (dotCount === 1) {
-    const [integer = "", decimal = ""] = trimmed.split(DECIMAL_SEPARATOR);
-    if (integer.includes(GROUP_SEPARATOR)) {
-      if (!VALID_GROUPED_INTEGER_REGEX.test(integer)) return trimmed;
-      return `${integer.replaceAll(GROUP_SEPARATOR, "")}.${decimal}`;
-    }
-    return trimmed;
-  }
-
-  const commaCount = countOccurrences(trimmed, GROUP_SEPARATOR);
-  if (commaCount === 0) return trimmed;
-
-  if (VALID_GROUPED_INTEGER_REGEX.test(trimmed)) {
-    return trimmed.replaceAll(GROUP_SEPARATOR, "");
-  }
-
-  if (commaCount === 1) {
-    return trimmed.replace(GROUP_SEPARATOR, DECIMAL_SEPARATOR);
-  }
-
-  return trimmed;
+  if (separators.decimal === CANONICAL_DECIMAL_SEPARATOR) return ungrouped;
+  return ungrouped.replaceAll(
+    separators.decimal,
+    CANONICAL_DECIMAL_SEPARATOR,
+  );
 }
 
 export function isValidAmountInput(
   value: string,
   maxDecimals: number,
 ): boolean {
-  const sanitized = parseDisplayAmount(value);
   const regex = new RegExp(`^\\d*\\.?\\d{0,${maxDecimals}}$`);
-  return sanitized === "" || regex.test(sanitized);
+  return value === "" || regex.test(value);
 }
 
-export function formatAmountInput(value: string): string {
-  const sanitized = parseDisplayAmount(value);
-  if (sanitized === "") return "";
+export function formatAmountInput(
+  value: string,
+  locale = getNumberLocale(),
+): string {
+  if (value === "") return "";
+  if (countOccurrences(value, CANONICAL_DECIMAL_SEPARATOR) > 1) return value;
 
-  const [integer = "", decimal] = sanitized.split(".");
-  const groupedInteger = integer.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  const [integer = "", decimal] = value.split(CANONICAL_DECIMAL_SEPARATOR);
+  if (!/^\d*$/.test(integer) || (decimal != null && !/^\d*$/.test(decimal))) {
+    return value;
+  }
+
+  const separators = getAmountSeparators(locale);
+  const groupedInteger =
+    separators.group === ""
+      ? integer
+      : integer.replace(/\B(?=(\d{3})+(?!\d))/g, separators.group);
   if (decimal == null) return groupedInteger;
-  return `${groupedInteger}.${decimal}`;
+  return `${groupedInteger}${separators.decimal}${decimal}`;
 }
 
 export function formatFixedAmount(value: number, fractionDigits = 2): string {
-  return new Intl.NumberFormat(undefined, {
+  return new Intl.NumberFormat(getNumberLocale(), {
     minimumFractionDigits: fractionDigits,
     maximumFractionDigits: fractionDigits,
   }).format(value);
+}
+
+function getAmountSeparators(locale: string): AmountSeparators {
+  const parts = new Intl.NumberFormat(locale).formatToParts(1000.1);
+  return {
+    decimal:
+      parts.find((part) => part.type === "decimal")?.value ??
+      CANONICAL_DECIMAL_SEPARATOR,
+    group: parts.find((part) => part.type === "group")?.value ?? "",
+  };
 }
 
 function countOccurrences(value: string, search: string): number {
