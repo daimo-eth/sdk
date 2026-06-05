@@ -1,0 +1,185 @@
+import type { en } from "./en.js";
+
+/** Brazilian Portuguese translations for DaimoModal UI. */
+export const pt: typeof en = {
+  // ConfirmationPage
+  confirmYourPayment: "Confirme seu pagamento",
+  waitingForYourPayment: "Aguardando seu pagamento",
+  paymentReceived: "Pagamento recebido",
+  processingYourPayment: "Processando seu pagamento...",
+  paymentCompleted: "Pagamento concluído",
+  paymentFailed: "Pagamento falhou",
+  refundingYourPayment: "Reembolsando seu pagamento",
+  paymentRefunded: "Pagamento devolvido",
+  returnToApp: "Voltar ao app",
+  onChain: "em",
+
+  // ExpiredPage
+  expired: "Expirado",
+  paymentSessionExpired: "Esta sessão de pagamento expirou",
+
+  // DeeplinkPage
+  continueIn: "Continuar em",
+  toCompleteYourPayment: "para concluir seu pagamento",
+  openIn: "Abrir em",
+  mobileWallets: "Carteiras móveis",
+  scanWithPhone: "Escaneie com seu telefone para abrir a carteira",
+
+  // ExchangePage
+  continueTo: "Continuar para",
+  toCompleteYourDeposit: "para concluir seu depósito",
+  open: "Abrir",
+  refreshInvoice: "Atualizar",
+
+  // SelectAmountPage
+  selectAmount: "Selecionar valor",
+  loading: "Carregando",
+  continue: "Continuar",
+
+  // SelectTokenPage
+  selectToken: "Selecionar token",
+  noTokensFound: "Nenhum token encontrado",
+  minimum: "Mínimo",
+  maximum: "Máximo",
+
+  // WaitingDepositAddressPage
+  deposit: "Depositar",
+  depositOn: "Depositar em",
+  generateNewAddress: "Gerar novo endereço",
+  showQR: "Mostrar QR",
+  hideQR: "Ocultar QR",
+  oneTimeAddress: "Endereço de uso único",
+  amount: "Valor",
+  expiresIn: "Expira em:",
+
+  // WalletAmountPage
+  enterAmount: "Inserir valor",
+  max: "Máx",
+  balance: "Saldo:",
+
+  // ErrorPage
+  error: "Erro",
+  reload: "Recarregar",
+  unknownError: "erro desconhecido",
+
+  // shared
+  contactSupport: "Contatar suporte",
+  tellUsHowWeCanHelp: "Conte-nos como podemos ajudar",
+  showReceipt: "Mostrar recibo",
+  poweredByDaimo: "Powered by Daimo",
+
+  // containers
+  close: "Fechar",
+
+  // flows
+  flowError: "Erro:",
+  back: "Voltar",
+  tryAgain: "Tentar novamente",
+
+  // hooks/useSessionNav
+  tronUnavailable: "Tron indisponível. Tente novamente mais tarde.",
+
+  // formatUserError
+  networkErrorOffline: "Erro de rede. Está offline?",
+  somethingWentWrong: "Algo deu errado",
+  applePayRegionUnsupported:
+    "Depósitos com Apple Pay não são aceitos na sua região.",
+  applePayUsPhoneRequired:
+    "Depósitos com Apple Pay exigem um número de telefone dos EUA.",
+
+  // embed page
+  missingSessionParam: "parâmetro de sessão ausente",
+  failedToLoadSession: "não foi possível carregar a sessão",
+
+  // account flow
+  accountEmail: "Entrar na Daimo",
+  accountEmailDesc: "Insira seu email para começar",
+  accountEmailPlaceholder: "email@exemplo.com",
+  accountOtp: "Insira o código de verificação",
+  accountOtpSent: "Enviamos um código para",
+  accountCreatingWallet: "Preparando sua conta",
+  accountEnrollment: "Configuração da conta",
+  accountEnrollmentRetry: "Reenviar documentos",
+  accountEnrollmentPending: "Analisando suas informações",
+  accountEnrollmentPendingDesc:
+    "Obrigado por enviar suas informações. Entraremos em contato se precisarmos de mais alguma coisa.",
+  accountProviderPending: "Finalizando conta",
+  accountProviderPendingDesc: "Isso pode levar um momento",
+  accountLegalNameTitle: "Seu nome legal",
+  accountLegalNameDesc:
+    "Insira seu nome exatamente como aparece na sua conta bancária ou documento de identidade.",
+  accountLegalNameFirst: "Nome",
+  accountLegalNameLast: "Sobrenome",
+  accountEnrollmentRejected: "Não foi possível concluir a verificação",
+  accountSuspended: "Conta suspensa",
+  accountEnrollmentError: "Falha na configuração da conta",
+  accountRegionUnavailableTitle: "Região indisponível",
+  accountRegionUnavailableHeading: "Você não está elegível para esta região",
+  accountRegionUnavailableDescription: "Esta conta não pode usar esta região.",
+  accountRegionUnavailableCta: "Voltar",
+  accountPayment: "Inserir valor",
+  accountResendCode: "Reenviar código",
+  accountVerify: "Verificar",
+  accountPhone: "Verifique seu telefone",
+  accountPhoneDesc:
+    "Enviaremos um código de 6 dígitos por SMS para verificar seu número.",
+  accountSubmit: "Enviar",
+  accountSelectBank: "Selecionar banco",
+  accountSearchInstitutions: "Buscar instituições...",
+  accountOtherInstitutions: "Outras instituições",
+  accountBankTransfer: "Transferência bancária",
+  accountBankDetails: "Dados da transferência",
+  accountDirections: "Instruções",
+  accountDirectionsStep: (current: number, total: number) =>
+    `Etapa ${current} de ${total}`,
+  accountDirectionsPrevious: "Etapa anterior",
+  accountDirectionsNext: "Próxima etapa",
+  accountDirectionsGoToStep: (step: number) => `Ir para a etapa ${step}`,
+  accountDirectionsShowInstructions: "Mostrar instruções de depósito",
+  accountBankDetailsCopied: "Copiado",
+  accountBankDetailsMemoWarning: "Inclua este memo na sua transferência",
+  accountBankDetailsAutoDetect: (amount: string) =>
+    `Envie exatamente ${amount} por transferência bancária e volte para esta página.`,
+  accountTosTitle: "Termos de Serviço",
+  accountTosDesc:
+    "Para continuar, aceite os termos de serviço e a política de privacidade.",
+  accountTosTerms: "Termos de Serviço",
+  accountTosPrivacy: "Política de Privacidade",
+  accountTosCta: "Continuar",
+  accountKycIntroTitle: "Verifique sua identidade",
+  accountKycIntroDesc:
+    "Confirme alguns dados para usar este método de depósito. Suas informações permanecem criptografadas e privadas.",
+  accountKycIntroCta: "Continuar",
+  accountKycTrustEncrypted: "Criptografado",
+  accountKycTrustPrivate: "Privado",
+  accountKycTrustQuick: "2 min",
+  accountDepositReceived: "Depósito recebido",
+  accountDepositComplete: "Depósito concluído",
+  accountViewAccount: "Ver na conta",
+
+  // account status
+  depositDetected: "Depósito detectado",
+  depositProcessing: "Depósito em processamento",
+  depositFinalizing: "Finalizando depósito",
+
+  // error states
+  errorGeneric: "Algo deu errado. Tente novamente.",
+  errorDepositFailed:
+    "Não foi possível processar seu depósito. Tente novamente.",
+  errorAccountSetup:
+    "Não foi possível configurar sua conta. Tente novamente.",
+  errorConnectionLost: "Conexão perdida. Verifique sua rede e tente novamente.",
+
+  // session page
+  connect: "Conectar",
+  connectWallet: "Conectar carteira",
+  noWalletsFound: "Nenhuma carteira encontrada",
+  walletUnavailable: "Carteira indisponível",
+  walletDisconnected: "Carteira desconectada",
+  switchToChain: (chain: string) => `Mude para ${chain}`,
+  transactionFailed: "Transação falhou",
+  paymentCancelled: "Pagamento cancelado",
+  confirmInWallet: "Confirme na carteira",
+  retryPayment: "Tentar pagamento novamente",
+  closeAndReturn: "Feche esta página e volte ao app",
+};
