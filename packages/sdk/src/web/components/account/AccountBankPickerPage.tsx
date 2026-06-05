@@ -119,6 +119,9 @@ export function AccountCanadaBankPickerPage({
           rail,
           depositAmount,
         });
+        if (!result.payment) {
+          throw new Error("deposit payment info missing");
+        }
         setDepositState({
           depositAmount,
           kind: "started",

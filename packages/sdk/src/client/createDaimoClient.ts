@@ -3,6 +3,8 @@ import type {
   CreateAccountResponse,
   CreateDepositResponse,
   DepositConstraints,
+  EnrollmentUpdateRequest,
+  AccountEnrollmentUpdate,
   EnrollmentResponse,
   GetAccountResponse,
   GetDepositResponse,
@@ -82,6 +84,13 @@ export type DaimoClient = {
       input: { phoneNumber: string; code: string },
       auth: BearerAuth,
     ): Promise<AccountPhoneOtpResponse>;
+    /** Poll the provider enrollment update status. */
+    getEnrollmentUpdate(auth: BearerAuth): Promise<AccountEnrollmentUpdate>;
+    /** Submit transient provider enrollment update fields. */
+    submitEnrollmentUpdate(
+      input: EnrollmentUpdateRequest,
+      auth: BearerAuth,
+    ): Promise<AccountEnrollmentUpdate>;
     /** Get currency, min/max amount constraints for a deposit. */
     getDepositConstraints(
       params: { sessionId: string } & AccountRailTarget,
@@ -193,6 +202,21 @@ export function createDaimoClient(config: TransportConfig): DaimoClient {
         return transport.request<AccountPhoneOtpResponse>({
           method: "POST",
           path: "/v1/internal/account/phone/verify",
+          body: input,
+          headers: authHeaders(auth),
+        });
+      },
+      getEnrollmentUpdate(auth) {
+        return transport.request<AccountEnrollmentUpdate>({
+          method: "GET",
+          path: "/v1/internal/account/enrollment-update",
+          headers: authHeaders(auth),
+        });
+      },
+      submitEnrollmentUpdate(input, auth) {
+        return transport.request<AccountEnrollmentUpdate>({
+          method: "POST",
+          path: "/v1/internal/account/enrollment-update",
           body: input,
           headers: authHeaders(auth),
         });

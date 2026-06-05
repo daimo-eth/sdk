@@ -443,6 +443,16 @@ export function useSessionNav(
             });
             return;
           }
+          if (result.nextAction === "enrollment_update") {
+            replaceLoading({
+              type: "account-enrollment-update",
+              nodeId,
+              rail,
+              autoNav,
+              update: result.enrollmentUpdate,
+            });
+            return;
+          }
         }
       }
 
@@ -625,7 +635,8 @@ export function useSessionNav(
         // jump forward when revisited, creating a loop.
         if (
           top.type === "account-creating-wallet" ||
-          top.type === "account-enrollment"
+          top.type === "account-enrollment" ||
+          top.type === "account-enrollment-update"
         ) {
           next.pop();
           continue;

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 
 import type { DaimoClient } from "../../client/createDaimoClient.js";
 import type {
+  AccountEnrollmentUpdate,
   AccountRail,
   CreateDepositResponse,
   DepositPaymentInfo,
@@ -24,6 +25,7 @@ type UseDraftDepositArgs = {
 
 type UseDraftDepositResult = {
   payment: DepositPaymentInfo | null;
+  enrollmentUpdate: AccountEnrollmentUpdate | null;
   isCreating: boolean;
   error: string | null;
   retry: () => void;
@@ -55,6 +57,10 @@ export function useDraftDeposit({
   const payment =
     matchesAmount && depositState?.kind === "drafted"
       ? depositState.payment
+      : null;
+  const enrollmentUpdate =
+    matchesAmount && depositState?.kind === "drafted"
+      ? (depositState.enrollmentUpdate ?? null)
       : null;
 
   useEffect(() => {
@@ -93,6 +99,16 @@ export function useDraftDeposit({
                   depositAmount,
                 });
           if (seq !== requestSeqRef.current) return;
+          if (result.payment === null) {
+            setDepositState({
+              depositAmount,
+              kind: "drafted",
+              depositId: result.deposit.id,
+              payment: null,
+              enrollmentUpdate: result.enrollmentUpdate,
+            });
+            return;
+          }
           setDepositState({
             depositAmount,
             kind: "drafted",
@@ -132,6 +148,7 @@ export function useDraftDeposit({
 
   return {
     payment,
+    enrollmentUpdate,
     isCreating,
     error,
     retry: () => {
@@ -220,6 +237,7 @@ async function createSignedDraftDeposit({
     rail,
     depositAmount,
   });
+  if (preview.payment === null) return preview;
   const signedAmount =
     preview.payment.flow === "wallet-pay-widget"
       ? preview.payment.purchaseAmount
