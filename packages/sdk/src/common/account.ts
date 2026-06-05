@@ -29,8 +29,48 @@ export type StartEnrollmentRequest = {
   legalName?: AccountLegalName;
 };
 
+export type ApplePayEnhancedVerificationDateOfBirth = {
+  day: string;
+  month: string;
+  year: string;
+};
+
+export type ApplePayEnhancedVerificationStatus =
+  | "required"
+  | "retry"
+  | "pending"
+  | "complete"
+  | "unavailable";
+
+export type ApplePayEnhancedVerificationField = "ssn_last4" | "date_of_birth";
+
+export type EnrollmentUpdateRequest =
+  EnrollmentUpdateRequestApplePayEnhancedVerification;
+
+export type EnrollmentUpdateRequestApplePayEnhancedVerification = {
+  type: "apple_pay_enhanced_verification";
+  rail: "apple_pay";
+  ssnLast4: string;
+  dateOfBirth: ApplePayEnhancedVerificationDateOfBirth;
+};
+
+export type AccountEnrollmentUpdate =
+  AccountEnrollmentUpdateApplePayEnhancedVerification;
+
+export type AccountEnrollmentUpdateApplePayEnhancedVerification = {
+  type: "apple_pay_enhanced_verification";
+  rail: "apple_pay";
+  status: ApplePayEnhancedVerificationStatus;
+  fields: ApplePayEnhancedVerificationField[];
+};
+
 /** What the user needs to do next in the account onboarding flow. */
-export type NextAction = "create_account" | "enrollment" | "ready_for_payment";
+export type NextAction =
+  | "create_account"
+  | "enrollment"
+  | "enrollment_update"
+  | "ready_for_payment"
+  | "suspended";
 export type ExistingAccountNextAction = Exclude<NextAction, "create_account">;
 
 /** Enrollment state machine response from startEnrollment. */
@@ -75,7 +115,13 @@ export type GetAccountResponse =
     }
   | {
       account: AccountInfo;
-      nextAction: ExistingAccountNextAction;
+      nextAction: "enrollment_update";
+      enrollmentUpdate: AccountEnrollmentUpdate;
+    }
+  | {
+      account: AccountInfo;
+      nextAction: Exclude<ExistingAccountNextAction, "enrollment_update">;
+      enrollmentUpdate?: never;
     };
 
 /** POST /v1/internal/account response. */
@@ -266,10 +312,17 @@ export type DepositPaymentInfo =
     });
 
 /** POST /v1/internal/account/deposit response. */
-export type CreateDepositResponse = {
-  deposit: AccountDeposit;
-  payment: DepositPaymentInfo;
-};
+export type CreateDepositResponse =
+  | {
+      deposit: AccountDeposit;
+      payment: DepositPaymentInfo;
+      enrollmentUpdate?: never;
+    }
+  | {
+      deposit: AccountDeposit;
+      payment: null;
+      enrollmentUpdate: AccountEnrollmentUpdate;
+    };
 
 /** GET /v1/internal/account/deposit response. */
 export type GetDepositResponse = {

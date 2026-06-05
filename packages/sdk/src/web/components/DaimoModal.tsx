@@ -58,6 +58,7 @@ import { ExchangePage } from "./ExchangePage.js";
 import { ExpiredPage } from "./ExpiredPage.js";
 import { AccountBankDetailsPage } from "./account/AccountBankDetailsPage.js";
 import { AccountCanadaBankPickerPage } from "./account/AccountBankPickerPage.js";
+import { AccountEnrollmentUpdatePage } from "./account/AccountEnrollmentUpdatePage.js";
 import { AccountCreatingWalletPage } from "./account/AccountCreatingWalletPage.js";
 import { AccountDeeplinkPage } from "./account/AccountDeeplinkPage.js";
 import { AccountApplePayPage } from "./account/AccountApplePayPage.js";
@@ -679,6 +680,16 @@ function renderEntry(
           rail={entry.rail}
           onBack={ctx.onBack}
           onVerified={() => ctx.onAccountAdvance("account-enrollment")}
+        />
+      );
+    case "account-enrollment-update":
+      return (
+        <AccountEnrollmentUpdatePage
+          update={entry.update}
+          onBack={ctx.canGoBack ? ctx.onBack : null}
+          onReady={() =>
+            ctx.onAccountAdvance(getAccountPaymentEntryTarget(entry.rail))
+          }
         />
       );
     case "account-payment":

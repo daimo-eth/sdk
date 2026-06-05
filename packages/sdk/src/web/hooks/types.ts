@@ -1,4 +1,7 @@
-import type { AccountRail } from "../../common/account.js";
+import type {
+  AccountEnrollmentUpdateApplePayEnhancedVerification,
+  AccountRail,
+} from "../../common/account.js";
 import type { NavNode, SessionWithNav } from "../api/navTree.js";
 import type { WalletPaymentOption } from "../api/walletTypes.js";
 
@@ -101,6 +104,10 @@ export type NavEntry =
   | ({ type: "account-phone-otp" } & AccountNavBase)
   | ({ type: "account-creating-wallet" } & AccountNavBase)
   | ({ type: "account-enrollment" } & AccountNavBase)
+  | ({
+      type: "account-enrollment-update";
+      update: AccountEnrollmentUpdateApplePayEnhancedVerification;
+    } & AccountNavBase)
   | ({ type: "account-payment" } & AccountNavBase)
   | ({ type: "account-canada-bank-picker" } & AccountNavBase)
   | ({ type: "account-bank-details" } & AccountNavBase)

@@ -14,6 +14,7 @@ import { useDepositPoller } from "../../hooks/useDepositPoller.js";
 import { ErrorPage } from "../ErrorPage.js";
 import { SecondaryButton } from "../buttons.js";
 import { AmountInput, PageHeader, useAmountInput } from "../shared.js";
+import { AccountEnrollmentUpdatePage } from "./AccountEnrollmentUpdatePage.js";
 import { useCoinbaseApplePayWidget } from "./useCoinbaseApplePayWidget.js";
 
 type AccountApplePayPageProps = {
@@ -105,6 +106,7 @@ export function AccountApplePayPage({
   const hasStartedDeposit = depositState?.kind === "started";
   const {
     payment: draftPayment,
+    enrollmentUpdate: draftEnrollmentUpdate,
     isCreating: isCreatingDraft,
     error: draftError,
     retry: retryDraft,
@@ -120,6 +122,10 @@ export function AccountApplePayPage({
   const startedPayment =
     hasStartedDeposit && matchesAmount ? depositState.payment : null;
   const payment: DepositPaymentInfo | null = startedPayment ?? draftPayment;
+  const enrollmentUpdate =
+    !startedPayment && draftEnrollmentUpdate?.type === "apple_pay_enhanced_verification"
+      ? draftEnrollmentUpdate
+      : null;
   const error = draftError;
   const isCreating = isCreatingDraft;
   const paymentLinkUrl =
@@ -205,6 +211,16 @@ export function AccountApplePayPage({
         message={widgetError}
         retryText={t.tryAgain}
         onRetry={() => window.location.reload()}
+      />
+    );
+  }
+
+  if (enrollmentUpdate) {
+    return (
+      <AccountEnrollmentUpdatePage
+        update={enrollmentUpdate}
+        onBack={onBack}
+        onReady={retryDraft}
       />
     );
   }

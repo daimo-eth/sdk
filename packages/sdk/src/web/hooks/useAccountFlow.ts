@@ -7,6 +7,7 @@ import {
 } from "react";
 
 import type {
+  AccountEnrollmentUpdate,
   AccountRail,
   DepositPaymentInfo,
   EnrollmentResponse,
@@ -43,6 +44,14 @@ export type DepositStateInput =
       kind: "drafted";
       depositId: string;
       payment: DepositPaymentInfo;
+      enrollmentUpdate?: never;
+    }
+  | {
+      depositAmount: string;
+      kind: "drafted";
+      depositId: string;
+      payment: null;
+      enrollmentUpdate: AccountEnrollmentUpdate;
     }
   | {
       depositAmount: string;
