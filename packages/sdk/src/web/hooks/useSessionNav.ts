@@ -71,8 +71,8 @@ type SessionNavResult = {
 
   /** Advance account flow to the next screen. */
   handleAccountAdvance: (nextType: AccountNavEntry["type"]) => void;
-  /** Reset the current account rail after logout. */
-  handleAccountLogout: () => void;
+  /** Recreate the session and reset the current account rail after logout. */
+  handleAccountLogout: () => Promise<void>;
 };
 
 function isExchangeNode(node: NavNode | null): node is ExchangeNode {
@@ -146,14 +146,6 @@ function replacePendingAccountEntry(
     }
   }
   return stack;
-}
-
-function isSameAccountRailEntry(
-  entry: NavEntry,
-  nodeId: string,
-  rail: AccountRail,
-) {
-  return "rail" in entry && entry.nodeId === nodeId && entry.rail === rail;
 }
 
 function accountEntry(entry: NavEntry | null): AccountNavEntry {
@@ -1069,13 +1061,33 @@ export function useSessionNav(
     [accountAuth, accountFlow, topEntry],
   );
 
-  const handleAccountLogout = useCallback(() => {
+  const handleAccountLogout = useCallback(async () => {
     const { nodeId, rail, autoNav } = accountEntry(topEntry);
-    setStack((prev) => [
-      ...prev.filter((entry) => !isSameAccountRailEntry(entry, nodeId, rail)),
-      { type: "account-email", nodeId, rail, autoNav },
-    ]);
-  }, [topEntry]);
+    const oldSessionId = session.sessionId;
+    const { session: newSession } = await client.internal.sessions.recreate(
+      session.sessionId,
+      session.clientSecret,
+    );
+    await client.sessions.paymentMethods.create(newSession.sessionId, {
+      clientSecret: newSession.clientSecret,
+      paymentMethod: { type: "fiat", fiatMethod: rail },
+    });
+    const { session: pinnedSession } =
+      await client.internal.sessions.retrieveWithNav(
+        newSession.sessionId,
+        newSession.clientSecret,
+      );
+    accountFlow?.clearDepositState(oldSessionId);
+    setSession({ ...pinnedSession, clientSecret: newSession.clientSecret });
+    setStack([{ type: "account-email", nodeId, rail, autoNav }]);
+  }, [
+    accountFlow,
+    client,
+    session.clientSecret,
+    session.sessionId,
+    setSession,
+    topEntry,
+  ]);
 
   return useMemo(
     () => ({

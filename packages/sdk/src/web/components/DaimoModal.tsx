@@ -451,7 +451,7 @@ function DaimoModalInner({
           email: accountFlow.email,
           onLogout: async () => {
             await accountFlow.logout();
-            if (isAccountFlow) nav.handleAccountLogout();
+            if (isAccountFlow) await nav.handleAccountLogout();
           },
         }
       : null;

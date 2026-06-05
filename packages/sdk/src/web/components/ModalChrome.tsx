@@ -119,13 +119,22 @@ function AccountBanner({
   onDismiss: () => void;
 }) {
   const { copy, copied } = useCopyToClipboard(1200);
+  const [emailOpen, setEmailOpen] = useState(false);
+
+  useEffect(() => {
+    if (!open) setEmailOpen(false);
+  }, [open]);
 
   const handleCopy = useCallback(
     (event: MouseEvent<HTMLButtonElement>) => {
       event.stopPropagation();
+      if (!emailOpen) {
+        setEmailOpen(true);
+        return;
+      }
       void copy(account.email);
     },
-    [account.email, copy],
+    [account.email, copy, emailOpen],
   );
 
   const handleLogout = useCallback(
@@ -149,8 +158,11 @@ function AccountBanner({
       <button
         type="button"
         onClick={handleCopy}
-        className="daimo-account-email-chip daimo-absolute daimo-left-[17px] daimo-top-[22px] daimo-flex daimo-h-8 daimo-items-center daimo-overflow-hidden daimo-rounded-full daimo-bg-transparent daimo-text-[var(--daimo-text)] hover:[@media(hover:hover)]:daimo-bg-[var(--daimo-surface-secondary)] daimo-touch-action-manipulation daimo-outline-none focus-visible:daimo-bg-[var(--daimo-surface-secondary)] focus-visible:daimo-ring-2 focus-visible:daimo-ring-[var(--daimo-accent)] focus-visible:daimo-ring-offset-2 focus-visible:daimo-ring-offset-[var(--daimo-surface)]"
+        className={`daimo-account-email-chip daimo-absolute daimo-left-[17px] daimo-top-[22px] daimo-flex daimo-h-8 daimo-items-center daimo-overflow-hidden daimo-rounded-full daimo-bg-transparent daimo-text-[var(--daimo-text)] hover:[@media(hover:hover)]:daimo-bg-[var(--daimo-surface-secondary)] daimo-touch-action-manipulation daimo-outline-none focus-visible:daimo-bg-[var(--daimo-surface-secondary)] focus-visible:daimo-ring-2 focus-visible:daimo-ring-[var(--daimo-accent)] focus-visible:daimo-ring-offset-2 focus-visible:daimo-ring-offset-[var(--daimo-surface)] ${
+          emailOpen ? "daimo-account-email-chip-open" : ""
+        }`}
         aria-label={copied ? "Copied email" : "Copy account email"}
+        aria-expanded={emailOpen}
         title={account.email}
       >
         <span className="daimo-flex daimo-h-8 daimo-w-8 daimo-shrink-0 daimo-items-center daimo-justify-center">

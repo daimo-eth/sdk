@@ -177,8 +177,14 @@
   max-width: min(260px, calc(100vw - 124px));
 }
 
+.daimo-account-email-chip-open {
+  max-width: min(260px, calc(100vw - 124px));
+}
+
 .daimo-account-email-chip:focus-visible .daimo-account-email-chip-text,
-.daimo-account-email-chip:focus-visible .daimo-account-email-chip-copy {
+.daimo-account-email-chip:focus-visible .daimo-account-email-chip-copy,
+.daimo-account-email-chip-open .daimo-account-email-chip-text,
+.daimo-account-email-chip-open .daimo-account-email-chip-copy {
   opacity: 1;
   transform: translateX(0);
 }
