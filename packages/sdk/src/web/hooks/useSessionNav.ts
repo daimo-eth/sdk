@@ -26,7 +26,7 @@ import { useDaimoClient } from "./DaimoClientContext.js";
 import { formatUserError } from "./formatUserError.js";
 import { t } from "./locale.js";
 import { createNavLogger, type NavNodeType } from "./navEvent.js";
-import { findNode, type NavEntry } from "./types.js";
+import { findNode, type AccountNavEntry, type NavEntry } from "./types.js";
 import type { AccountFlowState } from "./useAccountFlow.js";
 import type { InjectedWallet } from "./useInjectedWallets.js";
 import { isUserRejection, type WalletFlowResult } from "./useWalletFlow.js";
@@ -70,7 +70,9 @@ type SessionNavResult = {
   handleShowMobileWallets: (nodeId: string) => void;
 
   /** Advance account flow to the next screen. */
-  handleAccountAdvance: (nextType: NavEntry["type"]) => void;
+  handleAccountAdvance: (nextType: AccountNavEntry["type"]) => void;
+  /** Reset the current account rail after logout. */
+  handleAccountLogout: () => void;
 };
 
 function isExchangeNode(node: NavNode | null): node is ExchangeNode {
@@ -144,6 +146,21 @@ function replacePendingAccountEntry(
     }
   }
   return stack;
+}
+
+function isSameAccountRailEntry(
+  entry: NavEntry,
+  nodeId: string,
+  rail: AccountRail,
+) {
+  return "rail" in entry && entry.nodeId === nodeId && entry.rail === rail;
+}
+
+function accountEntry(entry: NavEntry | null): AccountNavEntry {
+  if (entry == null || !("rail" in entry)) {
+    throw new Error("account nav entry required");
+  }
+  return entry;
 }
 
 export function useSessionNav(
@@ -1016,9 +1033,8 @@ export function useSessionNav(
 
   /** Advance account flow to the next screen, preserving nodeId + rail. */
   const handleAccountAdvance = useCallback(
-    (nextType: NavEntry["type"]) => {
-      if (!topEntry || !("rail" in topEntry)) return;
-      const { nodeId, rail } = topEntry as NavEntry & { rail: AccountRail };
+    (nextType: AccountNavEntry["type"]) => {
+      const { nodeId, rail } = accountEntry(topEntry);
 
       const pushPhoneEntry = (
         type: "account-loading" | "account-phone" | "account-phone-otp",
@@ -1053,6 +1069,14 @@ export function useSessionNav(
     [accountAuth, accountFlow, topEntry],
   );
 
+  const handleAccountLogout = useCallback(() => {
+    const { nodeId, rail, autoNav } = accountEntry(topEntry);
+    setStack((prev) => [
+      ...prev.filter((entry) => !isSameAccountRailEntry(entry, nodeId, rail)),
+      { type: "account-email", nodeId, rail, autoNav },
+    ]);
+  }, [topEntry]);
+
   return useMemo(
     () => ({
       stack,
@@ -1070,6 +1094,7 @@ export function useSessionNav(
       handleWalletSelectToken,
       handleWalletSending,
       handleAccountAdvance,
+      handleAccountLogout,
     }),
     [
       stack,
@@ -1087,6 +1112,7 @@ export function useSessionNav(
       handleWalletSelectToken,
       handleWalletSending,
       handleAccountAdvance,
+      handleAccountLogout,
     ],
   );
 }

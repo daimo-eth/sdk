@@ -176,6 +176,85 @@ export function CloseIcon({ className, size = 14 }: IconProps) {
   );
 }
 
+/** Horizontal ellipsis for compact account actions */
+export function EllipsisIcon({ className, size = 18 }: IconProps) {
+  return (
+    <svg
+      aria-hidden="true"
+      width={size}
+      height={size}
+      viewBox="0 0 18 18"
+      fill="none"
+      className={className ?? "daimo-text-[var(--daimo-text-muted)]"}
+    >
+      <path
+        d="M4 14h.01M9 14h.01M14 14h.01"
+        stroke="currentColor"
+        strokeWidth="2.6"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+/** Envelope for account email */
+export function EmailIcon({ className, size = 16 }: IconProps) {
+  return (
+    <svg
+      aria-hidden="true"
+      width={size}
+      height={size}
+      viewBox="0 0 18 18"
+      fill="none"
+      className={className ?? "daimo-text-[var(--daimo-text-muted)]"}
+    >
+      <path
+        d="M2.5 5c0-.97.78-1.75 1.75-1.75h9.5c.97 0 1.75.78 1.75 1.75v8c0 .97-.78 1.75-1.75 1.75h-9.5c-.97 0-1.75-.78-1.75-1.75V5Z"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="m3.35 4.8 4.9 4.1c.44.37 1.06.37 1.5 0l4.9-4.1"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+/** Door arrow for signing out */
+export function LogoutIcon({ className, size = 18 }: IconProps) {
+  return (
+    <svg
+      aria-hidden="true"
+      width={size}
+      height={size}
+      viewBox="0 0 18 18"
+      fill="none"
+      className={className ?? "daimo-text-[var(--daimo-text-muted)]"}
+    >
+      <path
+        d="M7.5 3.25H4.75c-.83 0-1.5.67-1.5 1.5v8.5c0 .83.67 1.5 1.5 1.5H7.5"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M11 5.25 14.75 9 11 12.75M14.25 9H7.5"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 /** Copy icon with checkmark state */
 export function CopyIcon({
   className,

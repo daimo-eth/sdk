@@ -81,6 +81,7 @@ function PrivyConsumer({
     linkedAccounts: user?.linkedAccounts ?? [],
     connectedWallets: wallets,
   });
+  const email = user?.email?.address ?? null;
   const phoneNumber = user?.phone?.number ?? null;
   const hasEmbeddedWallet = hasPrivyEmbeddedWallet([
     ...(user?.linkedAccounts ?? []),
@@ -113,6 +114,7 @@ function PrivyConsumer({
       logout,
       ready,
       authenticated,
+      email,
       walletAddress,
       walletsReady,
       hasEmbeddedWallet,
@@ -121,6 +123,7 @@ function PrivyConsumer({
     [
       ready,
       authenticated,
+      email,
       walletAddress,
       walletsReady,
       hasEmbeddedWallet,
