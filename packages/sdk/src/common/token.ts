@@ -530,7 +530,7 @@ export const megaEthUSDT0: Token = token({
 
 export const megaEthUSDm: Token = token({
   chainId: megaEth.chainId,
-  token: getAddress("0xfafDdbB3Fc7688494971A79cc65Dca3EF82079E7"),
+  token: getAddress("0xFAfDdbb3FC7688494971a79cc65DCa3EF82079E7"),
   decimals: 18,
   fiatISO: "USD",
   name: "MegaUSD",
