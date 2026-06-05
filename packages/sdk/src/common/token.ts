@@ -70,6 +70,7 @@ export enum TokenLogo {
   SOL = "https://daimo.com/coin-logos/sol.png",
   USDBc = "https://daimo.com/coin-logos/usdbc.png",
   USDC = "https://daimo.com/coin-logos/usdc.png",
+  USDM = "https://daimo.com/coin-logos/usdm.png",
   USDT = "https://daimo.com/coin-logos/usdt.png",
   USDT0 = "https://daimo.com/coin-logos/usdt0.png",
   WBTC = "https://daimo.com/coin-logos/wbtc.png",
@@ -527,7 +528,22 @@ export const megaEthUSDT0: Token = token({
   logoURI: TokenLogo.USDT0,
 });
 
-const megaEthTokens: Token[] = [megaEthETH, megaEthWETH, megaEthUSDT0];
+export const megaEthUSDm: Token = token({
+  chainId: megaEth.chainId,
+  token: getAddress("0xFAfDdbb3FC7688494971a79cc65DCa3EF82079E7"),
+  decimals: 18,
+  fiatISO: "USD",
+  name: "MegaUSD",
+  symbol: "USDm",
+  logoURI: TokenLogo.USDM,
+});
+
+const megaEthTokens: Token[] = [
+  megaEthETH,
+  megaEthWETH,
+  megaEthUSDT0,
+  megaEthUSDm,
+];
 
 //
 // Monad
