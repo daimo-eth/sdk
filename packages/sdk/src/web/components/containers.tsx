@@ -1,8 +1,5 @@
 import { ReactNode, useLayoutEffect, useRef } from "react";
 
-import { t } from "../hooks/locale.js";
-import { CloseIcon } from "./icons.js";
-
 const MODAL_LOADING_MIN_HEIGHT = "min(360px, 90dvh)";
 const HEIGHT_MORPH_MS = 180;
 const HEIGHT_MORPH_EASING = "cubic-bezier(0.23, 1, 0.32, 1)";
@@ -148,15 +145,6 @@ export function ModalContainer({
           }
           onClick={(e) => e.stopPropagation()}
         >
-          {onClose && (
-            <button
-              onClick={onClose}
-              className="daimo-absolute daimo-right-[17px] daimo-top-[22px] daimo-z-20 daimo-w-8 daimo-h-8 daimo-flex daimo-items-center daimo-justify-center daimo-rounded-full daimo-bg-[var(--daimo-surface)] hover:[@media(hover:hover)]:daimo-bg-[var(--daimo-surface-secondary)] active:daimo-scale-[0.9] daimo-transition-[background-color,transform] daimo-[transition-duration:200ms,100ms] daimo-ease daimo-touch-action-manipulation"
-              aria-label={t.close}
-            >
-              <CloseIcon />
-            </button>
-          )}
           <div className="daimo-flex-1 daimo-min-h-0 daimo-flex daimo-flex-col">
             {children}
           </div>

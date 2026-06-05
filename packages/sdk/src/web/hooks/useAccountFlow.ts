@@ -26,6 +26,7 @@ export type PrivyHooks = {
   logout: () => Promise<void>;
   ready: boolean;
   authenticated: boolean;
+  email: string | null;
   walletAddress: string | null;
   walletsReady: boolean;
   hasEmbeddedWallet: boolean;
@@ -172,6 +173,10 @@ export function useAccountFlowState(): AccountFlowState {
     setIsReady(hooks.ready);
     setIsAuthenticated(hooks.authenticated);
     setWalletAddress(hooks.walletAddress);
+    const email = hooks.email;
+    if (email) {
+      setEmail((current) => (current === email ? current : email));
+    }
     if (hooks.phoneNumber) {
       setPhoneNumber((current) =>
         current === hooks.phoneNumber

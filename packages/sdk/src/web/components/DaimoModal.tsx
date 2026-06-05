@@ -30,6 +30,7 @@ import { createNavLogger, type NavNodeType } from "../hooks/navEvent.js";
 import {
   findNode,
   findNodeByType,
+  type AccountNavEntry,
   type DaimoModalEventHandlers,
   type NavEntry,
 } from "../hooks/types.js";
@@ -85,6 +86,7 @@ import {
   resolveIconUrl,
 } from "./shared.js";
 import { Skeleton, SkeletonText } from "./Skeleton.js";
+import { ModalChrome, type ModalChromeControls } from "./ModalChrome.js";
 import { QRCode } from "./QRCode.js";
 import { WaitingDepositAddressPage } from "./WaitingDepositAddressPage.js";
 import { WalletAmountPage } from "./WalletAmountPage.js";
@@ -299,6 +301,7 @@ function DaimoModalInner({
   setPageKey,
   setShowFooterSpacer,
   setShowCloseButton,
+  embedded = false,
   connectToInjectedWallets = false,
   connectToAddress,
   platform,
@@ -441,6 +444,26 @@ function DaimoModalInner({
     });
   }
 
+  const closeVisible = !embedded && showClose && pageCloseVisible;
+  const account =
+    accountFlow?.isAuthenticated && accountFlow.email && pageCloseVisible
+      ? {
+          email: accountFlow.email,
+          onLogout: async () => {
+            await accountFlow.logout();
+            if (isAccountFlow) nav.handleAccountLogout();
+          },
+        }
+      : null;
+  const close = closeVisible ? { onClose: handleClose } : null;
+  let chrome: ModalChromeControls = { type: "none" };
+  if (account && close) {
+    chrome = { type: "account-close", account, close };
+  } else if (account) {
+    chrome = { type: "account", account };
+  } else if (close) {
+    chrome = { type: "close", close };
+  }
   const isFirstPage = useRef(true);
   useLayoutEffect(() => setPageKey(pageKey), [pageKey, setPageKey]);
   useLayoutEffect(
@@ -448,8 +471,8 @@ function DaimoModalInner({
     [showFooterSpacer, setShowFooterSpacer],
   );
   useLayoutEffect(
-    () => setShowCloseButton(showClose && pageCloseVisible),
-    [pageCloseVisible, showClose, setShowCloseButton],
+    () => setShowCloseButton(closeVisible),
+    [closeVisible, setShowCloseButton],
   );
 
   // Skip page-enter animation on first render — container animation handles it
@@ -459,14 +482,17 @@ function DaimoModalInner({
   }, []);
 
   return (
-    <>
-      <div
-        key={pageKey}
-        className={`${animate ? "daimo-page-enter " : ""}daimo-flex-1 daimo-min-h-0 daimo-flex daimo-flex-col`}
-      >
-        {content}
-      </div>
-    </>
+    <ModalChrome controls={chrome}>
+      {(dismissAccount) => (
+        <div
+          key={pageKey}
+          onClick={dismissAccount ?? undefined}
+          className={`${animate ? "daimo-page-enter " : ""}daimo-flex-1 daimo-min-h-0 daimo-flex daimo-flex-col`}
+        >
+          {content}
+        </div>
+      )}
+    </ModalChrome>
   );
 }
 
@@ -506,7 +532,7 @@ type RenderContext = {
   };
   onWalletSelectToken: (token: WalletPaymentOption) => void;
   onWalletSending: (token: WalletPaymentOption, amountUsd: number) => void;
-  onAccountAdvance: (nextType: NavEntry["type"]) => void;
+  onAccountAdvance: (nextType: AccountNavEntry["type"]) => void;
   setModalCloseVisible: (show: boolean) => void;
 };
 

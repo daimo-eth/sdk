@@ -117,6 +117,8 @@ export type NavEntry =
   | ({ type: "account-status" } & AccountNavBase)
   | ({ type: "account-error"; message: string } & AccountNavBase);
 
+export type AccountNavEntry = Extract<NavEntry, { rail: AccountRail }>;
+
 export type DaimoModalEventHandlers = {
   onPaymentStarted?: () => void;
   onPaymentCompleted?: () => void;
