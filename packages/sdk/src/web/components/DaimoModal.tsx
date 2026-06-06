@@ -121,6 +121,8 @@ type LoadedSession = {
   accountAuth: AccountAuthConfig | null;
 };
 
+const ACCOUNT_CHROME_ENABLED = false;
+
 function useModalCloseHandler(
   sessionId: string,
   clientSecret: string,
@@ -446,7 +448,10 @@ function DaimoModalInner({
 
   const closeVisible = !embedded && showClose && pageCloseVisible;
   const account =
-    accountFlow?.isAuthenticated && accountFlow.email && pageCloseVisible
+    ACCOUNT_CHROME_ENABLED &&
+    accountFlow?.isAuthenticated &&
+    accountFlow.email &&
+    pageCloseVisible
       ? {
           email: accountFlow.email,
           onLogout: async () => {
