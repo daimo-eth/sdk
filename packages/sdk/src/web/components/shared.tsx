@@ -1,4 +1,11 @@
-import { ReactNode, useCallback, useEffect, useRef, useState } from "react";
+import {
+  forwardRef,
+  ReactNode,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import {
   arbitrum,
   base,
@@ -248,15 +255,19 @@ export function useAmountInput(
 }
 
 /** Standard text input with consistent styling. */
-export function TextInput(props: React.InputHTMLAttributes<HTMLInputElement>) {
+export const TextInput = forwardRef<
+  HTMLInputElement,
+  React.InputHTMLAttributes<HTMLInputElement>
+>(function TextInput(props, ref) {
   const { className, ...rest } = props;
   return (
     <input
       {...rest}
+      ref={ref}
       className={`daimo-box-border daimo-w-full daimo-min-w-0 daimo-max-w-full daimo-px-3 daimo-py-2 daimo-text-base daimo-bg-[var(--daimo-surface-secondary)] daimo-text-[var(--daimo-text)] daimo-placeholder-[var(--daimo-placeholder)] daimo-rounded-[var(--daimo-radius-md)] daimo-border-none daimo-outline-none focus:daimo-ring-2 focus:daimo-ring-[var(--daimo-accent)] daimo-transition-shadow ${className ?? ""}`}
     />
   );
-}
+});
 
 /** Resolve relative icon paths to absolute URLs */
 export function resolveIconUrl(icon: string, baseUrl: string): string {
