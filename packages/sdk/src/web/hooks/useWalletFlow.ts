@@ -9,6 +9,7 @@ import type { DaimoClient } from "../../client/createDaimoClient.js";
 import { useDaimoClient } from "./DaimoClientContext.js";
 import { t } from "./locale.js";
 import type { InjectedWallet } from "./useInjectedWallets.js";
+import { prefixWalletError, WalletError } from "./walletError.js";
 import type { EthereumProvider, SolanaProvider } from "./walletProvider.js";
 
 const erc20TransferAbi = [
@@ -81,6 +82,8 @@ export function useWalletFlow(
   const currentFetchRef = useRef<string | null>(null);
   const evmProviderRef = useRef<EthereumProvider | null>(null);
   const solanaProviderRef = useRef<SolanaProvider | null>(null);
+  // Display name of the active wallet, used to prefix provider errors.
+  const walletNameRef = useRef<string | null>(null);
 
   const [connectedAddress, setConnectedAddress] = useState<string | null>(null);
 
@@ -156,6 +159,10 @@ export function useWalletFlow(
 
       if (evmProvider) evmProviderRef.current = evmProvider;
       if (solProvider) solanaProviderRef.current = solProvider;
+      walletNameRef.current = resolveWalletName(
+        injectedWallets,
+        evmProvider ?? solProvider,
+      );
 
       const [evmAddress, solAddress] = await Promise.all([
         evmProvider ? requestEvmAccounts(evmProvider) : null,
@@ -174,7 +181,11 @@ export function useWalletFlow(
       fetchBalances(walletData, true);
     } catch (err) {
       console.error("failed to connect wallet:", err);
-      setConnectError(err instanceof Error ? err.message : unavailableMsg);
+      setConnectError(
+        err instanceof Error
+          ? prefixWalletError(walletNameRef.current, err.message)
+          : unavailableMsg,
+      );
       setIsConnecting(false);
     }
   }, [fetchBalances, injectedWallets, unavailableMsg]);
@@ -184,6 +195,7 @@ export function useWalletFlow(
       setConnectError(null);
       setIsConnecting(true);
       evmProviderRef.current = provider;
+      walletNameRef.current = resolveWalletName(injectedWallets, provider);
 
       try {
         const accounts = (await provider.request({
@@ -203,11 +215,15 @@ export function useWalletFlow(
         fetchBalances(walletData, true);
       } catch (err) {
         console.error("failed to connect wallet:", err);
-        setConnectError(err instanceof Error ? err.message : unavailableMsg);
+        setConnectError(
+          err instanceof Error
+            ? prefixWalletError(walletNameRef.current, err.message)
+            : unavailableMsg,
+        );
         setIsConnecting(false);
       }
     },
-    [fetchBalances, unavailableMsg],
+    [fetchBalances, injectedWallets, unavailableMsg],
   );
 
   const connectWithSolanaProvider = useCallback(
@@ -215,6 +231,7 @@ export function useWalletFlow(
       setConnectError(null);
       setIsConnecting(true);
       solanaProviderRef.current = provider;
+      walletNameRef.current = resolveWalletName(injectedWallets, provider);
 
       try {
         const pk = provider.publicKey ?? (await provider.connect()).publicKey;
@@ -226,11 +243,15 @@ export function useWalletFlow(
         fetchBalances(walletData, true);
       } catch (err) {
         console.error("failed to connect solana wallet:", err);
-        setConnectError(err instanceof Error ? err.message : unavailableMsg);
+        setConnectError(
+          err instanceof Error
+            ? prefixWalletError(walletNameRef.current, err.message)
+            : unavailableMsg,
+        );
         setIsConnecting(false);
       }
     },
-    [fetchBalances, unavailableMsg],
+    [fetchBalances, injectedWallets, unavailableMsg],
   );
 
   const connectPassive = useCallback(
@@ -268,7 +289,10 @@ export function useWalletFlow(
               break;
             }
           } else if (r.accounts.length > 0) {
-            match = { provider: r.provider, address: getAddress(r.accounts[0]) };
+            match = {
+              provider: r.provider,
+              address: getAddress(r.accounts[0]),
+            };
             break;
           }
         }
@@ -280,6 +304,10 @@ export function useWalletFlow(
         }
 
         evmProviderRef.current = match.provider;
+        walletNameRef.current = resolveWalletName(
+          injectedWallets,
+          match.provider,
+        );
         const walletData = { evmAddress: match.address, solAddress: null };
         setWallet(walletData);
         setIsConnecting(false);
@@ -499,6 +527,7 @@ export function useWalletFlow(
           amountUsd,
           client,
           solanaProviderRef.current,
+          walletNameRef.current,
         );
         return { txHash };
       }
@@ -509,6 +538,7 @@ export function useWalletFlow(
         token,
         amountUsd,
         evmProviderRef.current,
+        walletNameRef.current,
       );
       return { txHash };
     },
@@ -531,6 +561,19 @@ export function useWalletFlow(
 }
 
 // ─── Connection helpers ─────────────────────────────────────────────────────
+
+/** Display name of the wallet owning a provider, or null for unidentified/standalone wallets. */
+function resolveWalletName(
+  wallets: InjectedWallet[],
+  provider: EthereumProvider | SolanaProvider | null | undefined,
+): string | null {
+  if (!provider) return null;
+  const wallet = wallets.find(
+    (w) => w.evmProvider === provider || w.solanaProvider === provider,
+  );
+  if (!wallet || wallet.info.rdns.startsWith("standalone.")) return null;
+  return wallet.info.name;
+}
 
 async function requestEvmAccounts(
   provider: EthereumProvider,
@@ -567,9 +610,22 @@ async function sendEvmTransaction(
   token: WalletPaymentOption,
   amountUsd: number,
   ethereum: EthereumProvider | null | undefined,
+  walletName: string | null,
 ): Promise<string> {
   if (!ethereum) throw new Error(t.walletUnavailable);
   if (!wallet.evmAddress) throw new Error(t.walletDisconnected);
+
+  // Wrap the final provider call so its errors are tagged with the wallet name.
+  const send = async (params: unknown[]): Promise<string> => {
+    try {
+      return (await ethereum.request({
+        method: "eth_sendTransaction",
+        params,
+      })) as string;
+    } catch (err) {
+      throw new WalletError(walletName, err);
+    }
+  };
 
   const tokenInfo = token.balance.token;
   const chainId = tokenInfo.chainId;
@@ -603,16 +659,13 @@ async function sendEvmTransaction(
   const tokenAddress = getAddress(tokenInfo.token);
 
   if (isNativeToken(chainId, tokenAddress)) {
-    return (await ethereum.request({
-      method: "eth_sendTransaction",
-      params: [
-        {
-          from: wallet.evmAddress,
-          to: destAddr,
-          value: `0x${tokenAmount.toString(16)}`,
-        },
-      ],
-    })) as string;
+    return send([
+      {
+        from: wallet.evmAddress,
+        to: destAddr,
+        value: `0x${tokenAmount.toString(16)}`,
+      },
+    ]);
   }
 
   const data = encodeFunctionData({
@@ -621,10 +674,7 @@ async function sendEvmTransaction(
     args: [destAddr as `0x${string}`, tokenAmount],
   });
 
-  return (await ethereum.request({
-    method: "eth_sendTransaction",
-    params: [{ from: wallet.evmAddress, to: tokenAddress, data }],
-  })) as string;
+  return send([{ from: wallet.evmAddress, to: tokenAddress, data }]);
 }
 
 async function sendSolanaTransaction(
@@ -635,6 +685,7 @@ async function sendSolanaTransaction(
   amountUsd: number,
   client: DaimoClient,
   solanaWallet: SolanaProvider | null | undefined,
+  walletName: string | null,
 ): Promise<string> {
   if (!solanaWallet) throw new Error(t.walletUnavailable);
   if (!wallet.solAddress) throw new Error(t.walletDisconnected);
@@ -656,12 +707,17 @@ async function sendSolanaTransaction(
   const tx = VersionedTransaction.deserialize(
     hexToBytes(result.solana.serializedTx as `0x${string}`),
   );
-  const txResult = await solanaWallet.signAndSendTransaction(tx);
-  return txResult.signature;
+  try {
+    const txResult = await solanaWallet.signAndSendTransaction(tx);
+    return txResult.signature;
+  } catch (err) {
+    throw new WalletError(walletName, err);
+  }
 }
 
 /** Check if error is a user rejection/cancellation */
 export function isUserRejection(err: unknown): boolean {
+  if (err instanceof WalletError) return isUserRejection(err.walletCause);
   if (!err || typeof err !== "object") return false;
   if ("code" in err && err.code === 4001) return true;
   const message =

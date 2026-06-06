@@ -1,4 +1,5 @@
 import { t } from "./locale.js";
+import { prefixWalletError, WalletError } from "./walletError.js";
 
 /** Known error patterns mapped to user-friendly messages */
 function getErrorMappings(): [pattern: string | RegExp, message: string][] {
@@ -20,6 +21,9 @@ export function formatUserError(
   err: unknown,
   fallback = t.somethingWentWrong,
 ): string {
+  // Wallet provider errors carry the wallet name; prefix the resolved message.
+  const walletName = err instanceof WalletError ? err.walletName : null;
+
   let raw: string;
   if (err instanceof Error) {
     raw = err.message;
@@ -33,9 +37,9 @@ export function formatUserError(
 
   for (const [pattern, message] of getErrorMappings()) {
     if (typeof pattern === "string" ? raw === pattern : pattern.test(raw)) {
-      return message;
+      return prefixWalletError(walletName, message);
     }
   }
 
-  return raw || fallback;
+  return prefixWalletError(walletName, raw || fallback);
 }

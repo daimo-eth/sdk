@@ -1303,6 +1303,7 @@ function LoadingMessage() {
   return <SkeletonContent rowCount={3} />;
 }
 
+/** Full-page error with retry + contact support. Use for failed transport flows (wallet send, exchange, Tron). */
 function FlowErrorMessage({
   error,
   sessionId,
@@ -1317,8 +1318,8 @@ function FlowErrorMessage({
   return (
     <div className="daimo-flex daimo-flex-col daimo-flex-1 daimo-min-h-0">
       <PageHeader title={t.error} onBack={onBack} />
-      <div className="daimo-flex daimo-flex-col daimo-items-center daimo-justify-center daimo-flex-1 daimo-gap-8 daimo-text-[var(--daimo-text-muted)]">
-        <p>{formatUserError(error)}</p>
+      <CenteredContent>
+        <SharedErrorMessage message={formatUserError(error)} />
         <PrimaryButton onClick={onRetry}>{t.tryAgain}</PrimaryButton>
         <ContactSupportButton
           subject={t.error}
@@ -1327,7 +1328,7 @@ function FlowErrorMessage({
             error,
           }}
         />
-      </div>
+      </CenteredContent>
     </div>
   );
 }
