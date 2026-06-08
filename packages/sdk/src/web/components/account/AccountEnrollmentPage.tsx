@@ -1,4 +1,3 @@
-import SumsubWebSdk from "@sumsub/websdk-react";
 import {
   type ReactNode,
   useCallback,
@@ -57,22 +56,6 @@ const POLLING_ACTIONS = new Set([
   "provider_pending",
 ]);
 
-/** After KYC submission, only these actions represent forward progress.
- *  Anything else (e.g. stale kyc_required) is suppressed until the
- *  webhook arrives and the server catches up. */
-const FORWARD_FROM_KYC = new Set([
-  "kyc_pending_review",
-  "kyc_retry",
-  "kyc_rejected_final",
-  "not_eligible",
-  "hosted_agreement_required",
-  "hosted_kyc_required",
-  "provider_pending",
-  "phone_required",
-  "active",
-  "suspended",
-  "error",
-]);
 export function AccountEnrollmentPage({
   node,
   sessionId,
@@ -93,8 +76,6 @@ export function AccountEnrollmentPage({
   const started = useRef(false);
   const responseRef = useRef<EnrollmentResponse | null>(null);
   const readyTimeoutRef = useRef<number | null>(null);
-  // After KYC submit, suppress stale responses until webhook arrives
-  const awaitingWebhook = useRef(false);
 
   const fetchEnrollment = useCallback(async () => {
     if (!account) return;
@@ -110,21 +91,11 @@ export function AccountEnrollmentPage({
       });
     } catch (err) {
       console.error("[enrollment] fetch failed:", err);
-      if (awaitingWebhook.current) return;
       result = { action: "error", message: t.errorGeneric, retryable: true };
     }
 
     if (isInitial) setIsLoading(false);
     if (!result) return;
-
-    // While awaiting webhook, only accept forward progress
-    if (awaitingWebhook.current) {
-      if (FORWARD_FROM_KYC.has(result.action)) {
-        awaitingWebhook.current = false;
-      } else {
-        return;
-      }
-    }
 
     if (
       previousAction === "hosted_agreement_required" &&
@@ -160,13 +131,6 @@ export function AccountEnrollmentPage({
       setResponse(result);
     }
   }, [account, client, legalName, rail, onReady, onPhoneRequired]);
-
-  /** Called when SumSub reports docs submitted. Optimistically show review. */
-  const handleKycSubmitted = useCallback(() => {
-    awaitingWebhook.current = true;
-    responseRef.current = { action: "kyc_pending_review" };
-    setResponse({ action: "kyc_pending_review" });
-  }, []);
 
   // Initial fetch
   useEffect(() => {
@@ -236,22 +200,22 @@ export function AccountEnrollmentPage({
         );
       }
       return (
-        <div className="daimo-flex daimo-flex-col daimo-flex-1 daimo-min-h-0 daimo-pt-14">
-          <SumSubWidget
-            kycToken={response.kycToken}
-            onComplete={handleKycSubmitted}
-          />
-        </div>
+        <HostedEnrollmentPage
+          node={node}
+          step={response}
+          platform={platform}
+          onBack={() => setKycAccepted(false)}
+        />
       );
 
     case "kyc_retry":
       return (
-        <div className="daimo-flex daimo-flex-col daimo-flex-1 daimo-min-h-0 daimo-pt-14">
-          <SumSubWidget
-            kycToken={response.kycToken}
-            onComplete={handleKycSubmitted}
-          />
-        </div>
+        <HostedEnrollmentPage
+          node={node}
+          step={response}
+          platform={platform}
+          onBack={onBack}
+        />
       );
 
     case "kyc_pending_review":
@@ -623,6 +587,17 @@ function EnrollmentWaiting({
   );
 }
 
+type ExternalEnrollmentStep = Extract<
+  EnrollmentResponse,
+  {
+    action:
+      | "kyc_required"
+      | "kyc_retry"
+      | "hosted_agreement_required"
+      | "hosted_kyc_required";
+  }
+>;
+
 /** Hosted enrollment step. Polling drives completion. */
 function HostedEnrollmentPage({
   node,
@@ -631,14 +606,11 @@ function HostedEnrollmentPage({
   onBack,
 }: {
   node: NavNodeFiat;
-  step: Extract<
-    EnrollmentResponse,
-    { action: "hosted_agreement_required" | "hosted_kyc_required" }
-  >;
+  step: ExternalEnrollmentStep;
   platform: DaimoPlatform;
   onBack: () => void;
 }) {
-  const isKyc = step.action === "hosted_kyc_required";
+  const isKyc = step.action !== "hosted_agreement_required";
   const openHostedStep = useCallback(() => {
     openExternalUrl(
       step.url,
@@ -652,7 +624,7 @@ function HostedEnrollmentPage({
     <EnrollmentExternalActionPage
       title={isKyc ? "Verification" : step.title}
       description={externalActionDescription(step, platform)}
-      actionLabel={step.openExternalLabel}
+      actionLabel={externalActionLabel(step)}
       icon={
         isKyc ? (
           <KycIndicator
@@ -703,12 +675,19 @@ function EnrollmentExternalActionPage({
 }
 
 function externalActionDescription(
-  step: Extract<
-    EnrollmentResponse,
-    { action: "hosted_agreement_required" | "hosted_kyc_required" }
-  >,
+  step: ExternalEnrollmentStep,
   platform: DaimoPlatform,
 ): string {
+  const kycDescription = "Complete identity verification and return to this page.";
+
+  if (step.action === "kyc_required") {
+    return kycDescription;
+  }
+
+  if (step.action === "kyc_retry") {
+    return `${step.reason}\n\n${kycDescription}`;
+  }
+
   if (step.action === "hosted_kyc_required") {
     return isDesktop(platform)
       ? t.accountHostedKycDesktopDesc
@@ -722,15 +701,16 @@ function externalActionDescription(
   return `${step.description} ${handoff}`;
 }
 
-function externalWindowName(
-  step: Extract<
-    EnrollmentResponse,
-    { action: "hosted_agreement_required" | "hosted_kyc_required" }
-  >,
-): string {
-  return step.action === "hosted_kyc_required"
-    ? "daimo-verification"
-    : "daimo-terms";
+function externalActionLabel(step: ExternalEnrollmentStep): string {
+  return step.action === "kyc_required" || step.action === "kyc_retry"
+    ? "Open verification"
+    : step.openExternalLabel;
+}
+
+function externalWindowName(step: ExternalEnrollmentStep): string {
+  return step.action === "hosted_agreement_required"
+    ? "daimo-terms"
+    : "daimo-verification";
 }
 
 function openExternalUrl(
@@ -747,33 +727,4 @@ function openExternalUrl(
 
 function assertUnreachable(value: never): never {
   throw new Error(`unhandled enrollment response: ${JSON.stringify(value)}`);
-}
-
-/** SumSub identity verification widget. */
-function SumSubWidget({
-  kycToken,
-  onComplete,
-}: {
-  kycToken: string;
-  onComplete: () => void;
-}) {
-  const handleMessage = useCallback(
-    (type: string) => {
-      console.log("[sumsub] event:", type);
-      if (type === "idCheck.onApplicantSubmitted") {
-        onComplete();
-      }
-    },
-    [onComplete],
-  );
-
-  return (
-    <div className="daimo-flex-1 daimo-min-h-0 daimo-overflow-y-auto">
-      <SumsubWebSdk
-        accessToken={kycToken}
-        expirationHandler={async () => kycToken}
-        onMessage={handleMessage}
-      />
-    </div>
-  );
 }
