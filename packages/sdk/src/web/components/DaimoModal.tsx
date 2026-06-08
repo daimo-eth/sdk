@@ -689,12 +689,12 @@ function renderEntry(
         <AccountEnrollmentPage
           node={node}
           sessionId={ctx.session.sessionId}
+          platform={ctx.platform}
           onBack={ctx.onBack}
           onReady={() =>
             ctx.onAccountAdvance(getAccountPaymentEntryTarget(entry.rail))
           }
           onPhoneRequired={() => ctx.onAccountAdvance("account-phone")}
-          setModalCloseVisible={ctx.setModalCloseVisible}
         />
       );
     }

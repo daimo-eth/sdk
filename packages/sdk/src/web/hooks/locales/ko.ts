@@ -148,6 +148,13 @@ export const ko: typeof en = {
   accountKycIntroDesc:
     "이 입금 방법을 사용하려면 몇 가지 정보를 확인해야 합니다. 정보는 암호화되어 비공개로 처리됩니다.",
   accountKycIntroCta: "계속",
+  accountHostedKycDesktopDesc:
+    "별도 창에서 본인 인증을 완료한 후 이 페이지로 돌아오세요.",
+  accountHostedKycMobileDesc:
+    "이 모달 밖에서 본인 인증을 완료한 후 이 페이지로 돌아오세요.",
+  accountHostedActionDesktopSuffix: "별도 창에서 열고 이 페이지로 돌아오세요.",
+  accountHostedActionMobileSuffix:
+    "이 모달 밖에서 열고 이 페이지로 돌아오세요.",
   accountKycTrustEncrypted: "암호화",
   accountKycTrustPrivate: "비공개",
   accountKycTrustQuick: "2분",

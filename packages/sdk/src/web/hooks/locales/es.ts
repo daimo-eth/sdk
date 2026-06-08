@@ -119,6 +119,14 @@ export const es: typeof en = {
   accountKycIntroDesc:
     "Confirma algunos datos para usar este método de depósito. Tu información permanece cifrada y privada.",
   accountKycIntroCta: "Continuar",
+  accountHostedKycDesktopDesc:
+    "Completa la verificación de identidad en una ventana separada y vuelve a esta página.",
+  accountHostedKycMobileDesc:
+    "Completa la verificación de identidad fuera de este modal y vuelve a esta página.",
+  accountHostedActionDesktopSuffix:
+    "Ábrelo en una ventana separada y vuelve a esta página.",
+  accountHostedActionMobileSuffix:
+    "Ábrelo fuera de este modal y vuelve a esta página.",
   accountKycTrustEncrypted: "Cifrado",
   accountKycTrustPrivate: "Privado",
   accountKycTrustQuick: "2 min",

@@ -149,6 +149,14 @@ export const ja: typeof en = {
   accountKycIntroDesc:
     "この入金方法を利用するために、いくつかの情報を確認します。情報は暗号化され、非公開で扱われます。",
   accountKycIntroCta: "続ける",
+  accountHostedKycDesktopDesc:
+    "別ウィンドウで本人確認を完了し、このページに戻ってください。",
+  accountHostedKycMobileDesc:
+    "このモーダルの外で本人確認を完了し、このページに戻ってください。",
+  accountHostedActionDesktopSuffix:
+    "別ウィンドウで開き、このページに戻ってください。",
+  accountHostedActionMobileSuffix:
+    "このモーダルの外で開き、このページに戻ってください。",
   accountKycTrustEncrypted: "暗号化",
   accountKycTrustPrivate: "非公開",
   accountKycTrustQuick: "2分",

@@ -28,20 +28,23 @@ export function KycIndicator({
   variant = "plain",
 }: {
   requirement: KycRequirement;
-  size?: "sm" | "lg";
+  size?: "sm" | "lg" | "xl";
   className?: string;
   variant?: "plain" | "badge";
 }) {
   const indicatorSize =
-    size === "lg"
-      ? "daimo-h-16 daimo-w-16 daimo-rounded-full"
-      : variant === "badge"
-        ? "daimo-h-5 daimo-w-5 daimo-rounded-full"
-        : "daimo-h-4 daimo-w-4";
-  const iconSize = size === "lg" ? 30 : variant === "badge" ? 13 : 15;
+    size === "xl"
+      ? "daimo-h-20 daimo-w-20 daimo-rounded-full"
+      : size === "lg"
+        ? "daimo-h-16 daimo-w-16 daimo-rounded-full"
+        : variant === "badge"
+          ? "daimo-h-5 daimo-w-5 daimo-rounded-full"
+          : "daimo-h-4 daimo-w-4";
+  const iconSize =
+    size === "xl" ? 36 : size === "lg" ? 30 : variant === "badge" ? 13 : 15;
   const backgroundColor =
     variant === "badge"
-      ? size === "lg"
+      ? size === "lg" || size === "xl"
         ? "rgba(156, 163, 175, 0.12)"
         : "var(--daimo-surface)"
       : "transparent";

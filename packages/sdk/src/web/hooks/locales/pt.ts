@@ -150,6 +150,14 @@ export const pt: typeof en = {
   accountKycIntroDesc:
     "Confirme alguns dados para usar este método de depósito. Suas informações permanecem criptografadas e privadas.",
   accountKycIntroCta: "Continuar",
+  accountHostedKycDesktopDesc:
+    "Conclua a verificação de identidade em uma janela separada e retorne a esta página.",
+  accountHostedKycMobileDesc:
+    "Conclua a verificação de identidade fora deste modal e retorne a esta página.",
+  accountHostedActionDesktopSuffix:
+    "Abra em uma janela separada e retorne a esta página.",
+  accountHostedActionMobileSuffix:
+    "Abra fora deste modal e retorne a esta página.",
   accountKycTrustEncrypted: "Criptografado",
   accountKycTrustPrivate: "Privado",
   accountKycTrustQuick: "2 min",
@@ -166,8 +174,7 @@ export const pt: typeof en = {
   errorGeneric: "Algo deu errado. Tente novamente.",
   errorDepositFailed:
     "Não foi possível processar seu depósito. Tente novamente.",
-  errorAccountSetup:
-    "Não foi possível configurar sua conta. Tente novamente.",
+  errorAccountSetup: "Não foi possível configurar sua conta. Tente novamente.",
   errorConnectionLost: "Conexão perdida. Verifique sua rede e tente novamente.",
 
   // session page

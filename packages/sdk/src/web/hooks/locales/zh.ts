@@ -145,6 +145,10 @@ export const zh: typeof en = {
   accountKycIntroDesc:
     "请确认一些信息以使用此充值方式。您的信息会保持加密和私密。",
   accountKycIntroCta: "继续",
+  accountHostedKycDesktopDesc: "请在单独窗口完成身份验证，然后返回此页面。",
+  accountHostedKycMobileDesc: "请在此弹窗外完成身份验证，然后返回此页面。",
+  accountHostedActionDesktopSuffix: "请在单独窗口打开，然后返回此页面。",
+  accountHostedActionMobileSuffix: "请在此弹窗外打开，然后返回此页面。",
   accountKycTrustEncrypted: "已加密",
   accountKycTrustPrivate: "私密",
   accountKycTrustQuick: "2分钟",

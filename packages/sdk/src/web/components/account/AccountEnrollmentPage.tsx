@@ -1,8 +1,8 @@
 import SumsubWebSdk from "@sumsub/websdk-react";
 import {
+  type ReactNode,
   useCallback,
   useEffect,
-  useLayoutEffect,
   useRef,
   useState,
 } from "react";
@@ -15,10 +15,12 @@ import type { NavNodeFiat } from "../../api/navTree.js";
 import { useDaimoClient } from "../../hooks/DaimoClientContext.js";
 import { t } from "../../hooks/locale.js";
 import { useAccountFlow } from "../../hooks/useAccountFlow.js";
+import type { DaimoPlatform } from "../../platform.js";
+import { isDesktop } from "../../platform.js";
 import {
+  ExternalLinkIcon,
   PrimaryButton,
   SecondaryButton,
-  SecondaryLinkButton,
 } from "../buttons.js";
 import { ErrorPage } from "../ErrorPage.js";
 import { CheckIcon, ErrorIcon } from "../icons.js";
@@ -33,16 +35,16 @@ import {
   AccountKycInfoPage,
   AccountKycInfoSkeleton,
 } from "./AccountKycInfoPage.js";
+import { getKycRequirement, KycIndicator } from "./kycRequirement.js";
 
 type AccountEnrollmentPageProps = {
   node: NavNodeFiat;
   sessionId: string;
+  platform: DaimoPlatform;
   onBack: () => void;
   onReady: () => void;
   /** Called when enrollment requires a phone OTP (e.g. Coinbase Headless). */
   onPhoneRequired: () => void;
-  /** Controls modal chrome when embedded provider UI has its own controls. */
-  setModalCloseVisible?: (show: boolean) => void;
 };
 
 /** Actions that should trigger polling — the state is still advancing. */
@@ -74,10 +76,10 @@ const FORWARD_FROM_KYC = new Set([
 export function AccountEnrollmentPage({
   node,
   sessionId,
+  platform,
   onBack,
   onReady,
   onPhoneRequired,
-  setModalCloseVisible,
 }: AccountEnrollmentPageProps) {
   const rail = node.fiatMethod;
   const requiresLegalNameBeforeEnrollment = rail === "ach" || rail === "sepa";
@@ -189,14 +191,6 @@ export function AccountEnrollmentPage({
     };
   }, []);
 
-  useLayoutEffect(() => {
-    if (!setModalCloseVisible) return;
-    const isHostedKycOpen =
-      response?.action === "hosted_kyc_required" && hostedKycAccepted;
-    setModalCloseVisible(!isHostedKycOpen);
-    return () => setModalCloseVisible(true);
-  }, [hostedKycAccepted, response?.action, setModalCloseVisible]);
-
   // --- Render ---
 
   if (requiresLegalNameBeforeEnrollment && legalName == null) {
@@ -284,7 +278,9 @@ export function AccountEnrollmentPage({
       }
       return (
         <HostedEnrollmentPage
+          node={node}
           step={response}
+          platform={platform}
           onBack={
             requiresLegalNameBeforeEnrollment && legalName
               ? onBack
@@ -294,7 +290,14 @@ export function AccountEnrollmentPage({
       );
 
     case "hosted_agreement_required":
-      return <HostedEnrollmentPage step={response} onBack={onBack} />;
+      return (
+        <HostedEnrollmentPage
+          node={node}
+          step={response}
+          platform={platform}
+          onBack={onBack}
+        />
+      );
 
     case "provider_pending":
       return (
@@ -622,141 +625,124 @@ function EnrollmentWaiting({
 
 /** Hosted enrollment step. Polling drives completion. */
 function HostedEnrollmentPage({
+  node,
   step,
+  platform,
   onBack,
 }: {
+  node: NavNodeFiat;
   step: Extract<
     EnrollmentResponse,
     { action: "hosted_agreement_required" | "hosted_kyc_required" }
   >;
+  platform: DaimoPlatform;
   onBack: () => void;
 }) {
   const isKyc = step.action === "hosted_kyc_required";
-  const iframeSrc = isKyc ? toPersonaWidgetUrl(step.url) : step.url;
   const openHostedStep = useCallback(() => {
-    if (postNativeOpenUrl(step.url)) return;
-    window.open(step.url, "_blank", "noopener,noreferrer");
-  }, [step.url]);
-
-  if (isKyc) {
-    return (
-      <HostedKycPage
-        step={step}
-        iframeSrc={iframeSrc}
-        onBack={onBack}
-        onOpenExternal={openHostedStep}
-      />
+    openExternalUrl(
+      step.url,
+      platform,
+      externalWindowName(step),
+      "width=500,height=760",
     );
-  }
+  }, [platform, step]);
 
   return (
-    <HostedAgreementPage
-      step={step}
-      iframeSrc={iframeSrc}
+    <EnrollmentExternalActionPage
+      title={isKyc ? "Verification" : step.title}
+      description={externalActionDescription(step, platform)}
+      actionLabel={step.openExternalLabel}
+      icon={
+        isKyc ? (
+          <KycIndicator
+            requirement={getKycRequirement(node.kycRequirement)}
+            size="xl"
+            variant="badge"
+          />
+        ) : null
+      }
       onBack={onBack}
-      onOpenExternal={openHostedStep}
+      onOpen={openHostedStep}
     />
   );
 }
 
-function HostedAgreementPage({
-  step,
-  iframeSrc,
+function EnrollmentExternalActionPage({
+  title,
+  description,
+  actionLabel,
+  icon,
   onBack,
-  onOpenExternal,
+  onOpen,
 }: {
-  step: Extract<EnrollmentResponse, { action: "hosted_agreement_required" }>;
-  iframeSrc: string;
+  title: string;
+  description: string;
+  actionLabel: string;
+  icon: ReactNode;
   onBack: () => void;
-  onOpenExternal: () => void;
+  onOpen: () => void;
 }) {
   return (
-    <div
-      className="daimo-flex daimo-flex-col daimo-min-h-0"
-      style={{ height: "min(720px, calc(90dvh - 32px))" }}
-    >
-      <PageHeader title={step.title} onBack={onBack} />
+    <div className="daimo-flex daimo-flex-col daimo-flex-1 daimo-min-h-0">
+      <PageHeader title={title} onBack={onBack} />
 
-      <div className="daimo-flex daimo-flex-1 daimo-min-h-0 daimo-flex-col daimo-gap-2 daimo-px-3 daimo-pb-3">
-        <div className="daimo-min-h-0 daimo-flex-1 daimo-overflow-hidden daimo-bg-white">
-          <iframe
-            src={iframeSrc}
-            title={step.title}
-            className="daimo-block daimo-h-full daimo-w-full daimo-border-0"
-            allow="clipboard-read; clipboard-write"
-          />
-        </div>
+      <CenteredContent>
+        {icon}
 
-        <SecondaryLinkButton
-          onClick={onOpenExternal}
-          className="daimo-mx-auto daimo-inline-flex daimo-min-h-[40px] daimo-items-center daimo-justify-center daimo-px-2"
-          style={{ touchAction: "manipulation" }}
-        >
-          Open in browser
-        </SecondaryLinkButton>
-      </div>
+        <p className="daimo-text-[var(--daimo-text-secondary)] daimo-text-center daimo-max-w-xs daimo-text-sm daimo-whitespace-pre-line">
+          {description}
+        </p>
+
+        <PrimaryButton onClick={onOpen} icon={<ExternalLinkIcon size={16} />}>
+          {actionLabel}
+        </PrimaryButton>
+      </CenteredContent>
     </div>
   );
 }
 
-function HostedKycPage({
-  step,
-  iframeSrc,
-  onBack,
-  onOpenExternal,
-}: {
-  step: Extract<EnrollmentResponse, { action: "hosted_kyc_required" }>;
-  iframeSrc: string;
-  onBack: () => void;
-  onOpenExternal: () => void;
-}) {
-  return (
-    <div
-      className="daimo-flex daimo-flex-col daimo-min-h-0"
-      style={{ height: "min(720px, calc(90dvh - 32px))" }}
-    >
-      <PageHeader title="Verification" onBack={onBack} />
+function externalActionDescription(
+  step: Extract<
+    EnrollmentResponse,
+    { action: "hosted_agreement_required" | "hosted_kyc_required" }
+  >,
+  platform: DaimoPlatform,
+): string {
+  if (step.action === "hosted_kyc_required") {
+    return isDesktop(platform)
+      ? t.accountHostedKycDesktopDesc
+      : t.accountHostedKycMobileDesc;
+  }
 
-      <div className="daimo-flex daimo-flex-1 daimo-min-h-0 daimo-flex-col daimo-gap-2 daimo-px-3 daimo-pb-3">
-        <div className="daimo-min-h-0 daimo-flex-1 daimo-overflow-hidden daimo-bg-white">
-          <iframe
-            src={iframeSrc}
-            title={step.title}
-            className="daimo-block daimo-h-full daimo-w-full daimo-border-0"
-            allow="camera; clipboard-read; clipboard-write"
-            sandbox="allow-forms allow-modals allow-popups allow-popups-to-escape-sandbox allow-same-origin allow-scripts allow-top-navigation-by-user-activation"
-          />
-        </div>
+  const handoff = isDesktop(platform)
+    ? t.accountHostedActionDesktopSuffix
+    : t.accountHostedActionMobileSuffix;
 
-        <SecondaryLinkButton
-          onClick={onOpenExternal}
-          className="daimo-mx-auto daimo-inline-flex daimo-min-h-[40px] daimo-items-center daimo-justify-center daimo-px-2"
-          style={{ touchAction: "manipulation" }}
-        >
-          Open verification in browser
-        </SecondaryLinkButton>
-      </div>
-    </div>
-  );
+  return `${step.description} ${handoff}`;
 }
 
-function toPersonaWidgetUrl(url: string): string {
-  const parsed = new URL(url);
-  parsed.pathname = parsed.pathname.replace("/verify", "/widget");
-  parsed.searchParams.set("iframe-origin", window.location.origin);
-  return parsed.toString();
+function externalWindowName(
+  step: Extract<
+    EnrollmentResponse,
+    { action: "hosted_agreement_required" | "hosted_kyc_required" }
+  >,
+): string {
+  return step.action === "hosted_kyc_required"
+    ? "daimo-verification"
+    : "daimo-terms";
 }
 
-function postNativeOpenUrl(url: string): boolean {
-  const w = window as {
-    webkit?: {
-      messageHandlers?: { daimoPay?: { postMessage(m: unknown): void } };
-    };
-  };
-  const handler = w.webkit?.messageHandlers?.daimoPay;
-  if (!handler) return false;
-  handler.postMessage({ type: "openUrl", url });
-  return true;
+function openExternalUrl(
+  url: string,
+  platform: DaimoPlatform,
+  target: string,
+  features: string,
+): Window | null {
+  if (isDesktop(platform)) {
+    return window.open(url, target, features);
+  }
+  return window.open(url, "_blank");
 }
 
 function assertUnreachable(value: never): never {

@@ -146,6 +146,14 @@ export const en = {
   accountKycIntroDesc:
     "Confirm a few details so you can use this deposit method. Your information stays encrypted and private.",
   accountKycIntroCta: "Continue",
+  accountHostedKycDesktopDesc:
+    "Complete identity verification in a separate window, then return to this page.",
+  accountHostedKycMobileDesc:
+    "Complete identity verification outside this modal, then return to this page.",
+  accountHostedActionDesktopSuffix:
+    "Open it in a separate window and return to this page.",
+  accountHostedActionMobileSuffix:
+    "Open it outside this modal and return to this page.",
   accountKycTrustEncrypted: "Encrypted",
   accountKycTrustPrivate: "Private",
   accountKycTrustQuick: "2 min",
