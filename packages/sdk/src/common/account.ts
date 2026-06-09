@@ -74,6 +74,10 @@ export type NextAction =
 export type ExistingAccountNextAction = Exclude<NextAction, "create_account">;
 
 /** Enrollment state machine response from startEnrollment. */
+type LinkOutEnrollmentResponse = {
+  url: string;
+};
+
 type HostedEnrollmentResponse = {
   title: string;
   description: string;
@@ -86,8 +90,8 @@ type HostedEnrollmentResponse = {
 };
 
 export type EnrollmentResponse =
-  | { action: "kyc_required"; kycToken: string }
-  | { action: "kyc_retry"; kycToken: string; reason: string }
+  | ({ action: "kyc_required" } & LinkOutEnrollmentResponse)
+  | ({ action: "kyc_retry"; reason: string } & LinkOutEnrollmentResponse)
   | { action: "kyc_pending_review" }
   | { action: "kyc_rejected_final"; reason: string }
   | { action: "not_eligible"; reason: string }
