@@ -96,7 +96,7 @@ export type EnrollmentResponse =
   | { action: "kyc_rejected_final"; reason: string }
   | { action: "not_eligible"; reason: string }
   | ({ action: "hosted_agreement_required" } & HostedEnrollmentResponse)
-  | ({ action: "hosted_kyc_required" } & HostedEnrollmentResponse)
+  | ({ action: "hosted_kyc_required" } & LinkOutEnrollmentResponse)
   | { action: "provider_pending" }
   /** User must verify a phone number before continuing. */
   | { action: "phone_required"; reason?: string }

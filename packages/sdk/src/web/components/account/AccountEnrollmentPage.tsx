@@ -71,7 +71,6 @@ export function AccountEnrollmentPage({
   const [response, setResponse] = useState<EnrollmentResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [kycAccepted, setKycAccepted] = useState(false);
-  const [hostedKycAccepted, setHostedKycAccepted] = useState(false);
   const [legalName, setLegalName] = useState<AccountLegalName | null>(null);
   const started = useRef(false);
   const responseRef = useRef<EnrollmentResponse | null>(null);
@@ -172,7 +171,6 @@ export function AccountEnrollmentPage({
         onBack={() => setKycAccepted(false)}
         onSubmit={(name) => {
           setLegalName(name);
-          setHostedKycAccepted(true);
         }}
       />
     );
@@ -228,28 +226,12 @@ export function AccountEnrollmentPage({
       );
 
     case "hosted_kyc_required":
-      if (
-        !hostedKycAccepted &&
-        !(requiresLegalNameBeforeEnrollment && legalName)
-      ) {
-        return (
-          <AccountKycInfoPage
-            node={node}
-            onContinue={() => setHostedKycAccepted(true)}
-            onBack={onBack}
-          />
-        );
-      }
       return (
         <HostedEnrollmentPage
           node={node}
           step={response}
           platform={platform}
-          onBack={
-            requiresLegalNameBeforeEnrollment && legalName
-              ? onBack
-              : () => setHostedKycAccepted(false)
-          }
+          onBack={onBack}
         />
       );
 
@@ -622,7 +604,11 @@ function HostedEnrollmentPage({
 
   return (
     <EnrollmentExternalActionPage
-      title={isKyc ? "Verification" : step.title}
+      title={
+        step.action === "hosted_agreement_required"
+          ? step.title
+          : "Verification"
+      }
       description={externalActionDescription(step, platform)}
       actionLabel={externalActionLabel(step)}
       icon={
@@ -680,18 +666,12 @@ function externalActionDescription(
 ): string {
   const kycDescription = "Complete identity verification and return to this page.";
 
-  if (step.action === "kyc_required") {
+  if (step.action === "kyc_required" || step.action === "hosted_kyc_required") {
     return kycDescription;
   }
 
   if (step.action === "kyc_retry") {
     return `${step.reason}\n\n${kycDescription}`;
-  }
-
-  if (step.action === "hosted_kyc_required") {
-    return isDesktop(platform)
-      ? t.accountHostedKycDesktopDesc
-      : t.accountHostedKycMobileDesc;
   }
 
   const handoff = isDesktop(platform)
@@ -702,9 +682,9 @@ function externalActionDescription(
 }
 
 function externalActionLabel(step: ExternalEnrollmentStep): string {
-  return step.action === "kyc_required" || step.action === "kyc_retry"
-    ? "Open verification"
-    : step.openExternalLabel;
+  return step.action === "hosted_agreement_required"
+    ? step.openExternalLabel
+    : "Open verification";
 }
 
 function externalWindowName(step: ExternalEnrollmentStep): string {
