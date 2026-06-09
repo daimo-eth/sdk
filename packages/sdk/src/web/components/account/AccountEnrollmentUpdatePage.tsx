@@ -9,7 +9,7 @@ import { useDaimoClient } from "../../hooks/DaimoClientContext.js";
 import { formatUserError } from "../../hooks/formatUserError.js";
 import { t } from "../../hooks/locale.js";
 import { useAccountFlow } from "../../hooks/useAccountFlow.js";
-import { PrimaryButton, SecondaryButton } from "../buttons.js";
+import { PrimaryButton, SecondaryLinkButton } from "../buttons.js";
 import { CenteredContent, PageHeader, TextInput } from "../shared.js";
 
 type AccountEnrollmentUpdatePageProps = {
@@ -102,7 +102,6 @@ export function AccountEnrollmentUpdatePage({
         error={error}
         isSubmitting={isSubmitting}
         onSubmit={submit}
-        onRetry={refresh}
       />
     </div>
   );
@@ -113,13 +112,11 @@ function EnrollmentUpdateContent({
   error,
   isSubmitting,
   onSubmit,
-  onRetry,
 }: {
   update: AccountEnrollmentUpdateApplePayEnhancedVerification;
   error: string | null;
   isSubmitting: boolean;
   onSubmit: (input: UpgradeInput) => Promise<void>;
-  onRetry: () => Promise<void>;
 }) {
   switch (update.status) {
     case "pending":
@@ -139,11 +136,11 @@ function EnrollmentUpdateContent({
         />
       );
     case "unavailable":
-      return <EnrollmentUpdateUnavailable error={error} onRetry={onRetry} />;
+      return <EnrollmentUpdateUnavailable error={error} />;
     case "required":
     case "retry":
       if (update.fields.length === 0) {
-        return <EnrollmentUpdateUnavailable error={error} onRetry={onRetry} />;
+        return <EnrollmentUpdateUnavailable error={error} />;
       }
       return (
         <EnrollmentUpdateForm
@@ -385,26 +382,18 @@ function EnrollmentUpdateForm({
   );
 }
 
-function EnrollmentUpdateUnavailable({
-  error,
-  onRetry,
-}: {
-  error: string | null;
-  onRetry: () => Promise<void>;
-}) {
+function EnrollmentUpdateUnavailable({ error }: { error: string | null }) {
+  const subject = "Apple Pay limit increase";
+  const href = `mailto:support@daimo.com?subject=${encodeURIComponent(subject)}`;
+
   return (
     <EnrollmentUpdateMessage
-      title="Limit increase unavailable"
       description="This Apple Pay account is not eligible for a limit increase right now."
       error={error}
       action={
-        <SecondaryButton
-          onClick={() => {
-            void onRetry();
-          }}
-        >
-          {t.tryAgain}
-        </SecondaryButton>
+        <SecondaryLinkButton href={href}>
+          {t.contactSupport}
+        </SecondaryLinkButton>
       }
     />
   );
@@ -417,7 +406,7 @@ function EnrollmentUpdateMessage({
   icon,
   action,
 }: {
-  title: string;
+  title?: string;
   description: string;
   error?: string | null;
   icon?: React.ReactNode;
@@ -427,9 +416,11 @@ function EnrollmentUpdateMessage({
     <CenteredContent>
       {icon}
       <div className="daimo-flex daimo-max-w-[320px] daimo-flex-col daimo-gap-2 daimo-text-center">
-        <h2 className="daimo-text-lg daimo-font-semibold daimo-text-[var(--daimo-text)]">
-          {title}
-        </h2>
+        {title && (
+          <h2 className="daimo-text-lg daimo-font-semibold daimo-text-[var(--daimo-text)]">
+            {title}
+          </h2>
+        )}
         <p className="daimo-text-sm daimo-leading-relaxed daimo-text-[var(--daimo-text-secondary)]">
           {description}
         </p>
