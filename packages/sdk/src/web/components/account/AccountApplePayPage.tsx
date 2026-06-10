@@ -219,6 +219,7 @@ export function AccountApplePayPage({
     return (
       <AccountEnrollmentUpdatePage
         update={enrollmentUpdate}
+        sessionId={sessionId}
         onBack={onBack}
         onReady={retryDraft}
       />

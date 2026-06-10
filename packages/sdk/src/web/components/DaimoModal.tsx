@@ -717,6 +717,7 @@ function renderEntry(
       return (
         <AccountEnrollmentUpdatePage
           update={entry.update}
+          sessionId={ctx.session.sessionId}
           onBack={ctx.canGoBack ? ctx.onBack : null}
           onReady={() =>
             ctx.onAccountAdvance(getAccountPaymentEntryTarget(entry.rail))

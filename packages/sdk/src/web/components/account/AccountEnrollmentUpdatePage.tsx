@@ -14,6 +14,7 @@ import { CenteredContent, PageHeader, TextInput } from "../shared.js";
 
 type AccountEnrollmentUpdatePageProps = {
   update: AccountEnrollmentUpdateApplePayEnhancedVerification;
+  sessionId: string;
   onBack?: (() => void) | null;
   onReady: () => void;
 };
@@ -25,6 +26,7 @@ type UpgradeInput = {
 
 export function AccountEnrollmentUpdatePage({
   update: initialUpdate,
+  sessionId,
   onBack,
   onReady,
 }: AccountEnrollmentUpdatePageProps) {
@@ -99,6 +101,8 @@ export function AccountEnrollmentUpdatePage({
 
       <EnrollmentUpdateContent
         update={update}
+        sessionId={sessionId}
+        email={account?.email}
         error={error}
         isSubmitting={isSubmitting}
         onSubmit={submit}
@@ -109,11 +113,15 @@ export function AccountEnrollmentUpdatePage({
 
 function EnrollmentUpdateContent({
   update,
+  sessionId,
+  email,
   error,
   isSubmitting,
   onSubmit,
 }: {
   update: AccountEnrollmentUpdateApplePayEnhancedVerification;
+  sessionId: string;
+  email?: string;
   error: string | null;
   isSubmitting: boolean;
   onSubmit: (input: UpgradeInput) => Promise<void>;
@@ -136,11 +144,23 @@ function EnrollmentUpdateContent({
         />
       );
     case "unavailable":
-      return <EnrollmentUpdateUnavailable error={error} />;
+      return (
+        <EnrollmentUpdateUnavailable
+          sessionId={sessionId}
+          email={email}
+          error={error}
+        />
+      );
     case "required":
     case "retry":
       if (update.fields.length === 0) {
-        return <EnrollmentUpdateUnavailable error={error} />;
+        return (
+          <EnrollmentUpdateUnavailable
+            sessionId={sessionId}
+            email={email}
+            error={error}
+          />
+        );
       }
       return (
         <EnrollmentUpdateForm
@@ -382,9 +402,23 @@ function EnrollmentUpdateForm({
   );
 }
 
-function EnrollmentUpdateUnavailable({ error }: { error: string | null }) {
+function EnrollmentUpdateUnavailable({
+  sessionId,
+  email,
+  error,
+}: {
+  sessionId: string;
+  email?: string;
+  error: string | null;
+}) {
   const subject = "Apple Pay limit increase";
-  const href = `mailto:support@daimo.com?subject=${encodeURIComponent(subject)}`;
+  const href = buildSupportHref({
+    subject,
+    info: {
+      "Session ID": sessionId,
+      Email: email,
+    },
+  });
 
   return (
     <EnrollmentUpdateMessage
@@ -397,6 +431,24 @@ function EnrollmentUpdateUnavailable({ error }: { error: string | null }) {
       }
     />
   );
+}
+
+function buildSupportHref({
+  subject,
+  info,
+}: {
+  subject: string;
+  info: Record<string, string | undefined>;
+}) {
+  const bodyLines = [
+    ...Object.entries(info)
+      .filter((entry): entry is [string, string] => entry[1] != null)
+      .map(([key, value]) => `${key}: ${value}`),
+    "",
+    t.tellUsHowWeCanHelp,
+  ];
+  const body = bodyLines.join("\n");
+  return `mailto:support@daimo.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 }
 
 function EnrollmentUpdateMessage({
