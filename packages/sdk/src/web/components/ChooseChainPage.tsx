@@ -33,6 +33,7 @@ export function ChooseChainPage({
         <div className="daimo-flex daimo-flex-col daimo-gap-3 daimo-w-full">
           <ChainRow
             label="Ethereum"
+            subtitle="Ethereum, Base, Polygon, BNB + more"
             icon={getChainLogoUrl(ethereum.chainId, baseUrl)}
             onClick={() => onSelectChain("evm")}
           />
@@ -49,16 +50,19 @@ export function ChooseChainPage({
 
 function ChainRow({
   label,
+  subtitle,
   icon,
   onClick,
 }: {
   label: string;
+  subtitle?: string;
   icon: string;
   onClick: () => void;
 }) {
   return (
     <ListRow
       label={label}
+      subtitle={subtitle}
       right={
         <img
           src={icon}
