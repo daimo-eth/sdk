@@ -60,8 +60,7 @@ export function AccountApplePayPage({
   const { accountFlow, depositState } = useSessionDepositState(sessionId);
   const didAdvanceRef = useRef(false);
 
-  const initialAmountValue =
-    depositState?.depositAmount ?? initialAmount;
+  const initialAmountValue = depositState?.depositAmount ?? initialAmount;
 
   // --- Static constraints ---
   const [constraints, setConstraints] = useState<DepositConstraints | null>(
@@ -123,7 +122,8 @@ export function AccountApplePayPage({
     hasStartedDeposit && matchesAmount ? depositState.payment : null;
   const payment: DepositPaymentInfo | null = startedPayment ?? draftPayment;
   const enrollmentUpdate =
-    !startedPayment && draftEnrollmentUpdate?.type === "apple_pay_enhanced_verification"
+    !startedPayment &&
+    draftEnrollmentUpdate?.type === "apple_pay_enhanced_verification"
       ? draftEnrollmentUpdate
       : null;
   const error = draftError;
@@ -137,7 +137,11 @@ export function AccountApplePayPage({
   );
   const refreshFromServer = useCallback(async () => {
     try {
-      await client.account.getDeposit({ sessionId, clientSecret, refresh: true });
+      await client.account.getDeposit({
+        sessionId,
+        clientSecret,
+        refresh: true,
+      });
     } catch (err) {
       console.error("[apple-pay] refreshDeposit failed:", err);
     }
@@ -164,12 +168,7 @@ export function AccountApplePayPage({
       didAdvanceRef.current = false;
       resetWidget();
     }
-  }, [
-    normalizedAmount,
-    hasStartedDeposit,
-    isValid,
-    resetWidget,
-  ]);
+  }, [normalizedAmount, hasStartedDeposit, isValid, resetWidget]);
 
   useEffect(() => {
     const el = buttonShellRef.current;
@@ -228,8 +227,12 @@ export function AccountApplePayPage({
 
   const feeUnits =
     payment?.flow === "wallet-pay-widget" ? payment.totalFeeUnits : null;
+  // receiveUnits is the destination amount (full fiat amount for 1:1 orgs,
+  // tipped up from the on-chain purchaseAmount). Defaults to purchaseAmount.
   const totalUnits =
-    payment?.flow === "wallet-pay-widget" ? payment.purchaseAmount : null;
+    payment?.flow === "wallet-pay-widget"
+      ? (payment.receiveUnits ?? payment.purchaseAmount)
+      : null;
   const isExpanded = allowExpandedView && iframeExpanded;
   const scaledButtonRatio = buttonShellWidth / APPLE_PAY_BUTTON_WIDTH;
   const buttonScale =

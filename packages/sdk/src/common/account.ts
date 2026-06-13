@@ -311,8 +311,16 @@ export type DepositPaymentInfo =
       totalFeeUnits: string;
       /** Amount charged to card, inclusive of fees. */
       paymentTotal: string;
-      /** Amount of crypto delivered to the destination. */
+      /**
+       * Amount of crypto that lands on-chain. Routing signatures must
+       * authorize exactly this amount.
+       */
       purchaseAmount: string;
+      /**
+       * Display-only receive amount. For 1:1 orgs this is the full fiat
+       * amount. Defaults to purchaseAmount.
+       */
+      receiveUnits?: string;
     });
 
 /** POST /v1/internal/account/deposit response. */
