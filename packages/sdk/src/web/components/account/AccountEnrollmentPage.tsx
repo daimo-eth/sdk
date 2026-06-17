@@ -469,7 +469,7 @@ function EnrollmentIneligible({
               {t.accountRegionUnavailableHeading}
             </h2>
             <p className="daimo-text-sm daimo-leading-relaxed daimo-text-[var(--daimo-text-secondary)]">
-              {t.accountRegionUnavailableDescription}
+              {message || t.accountRegionUnavailableDescription}
             </p>
           </div>
         </div>
@@ -533,7 +533,7 @@ function EnrollmentReviewSubmitted({
 }) {
   return (
     <div className="daimo-flex daimo-flex-col daimo-flex-1 daimo-min-h-0">
-      <PageHeader title="Verification" onBack={onBack} />
+      <PageHeader title={t.accountHostedKycTitle} onBack={onBack} />
       <CenteredContent>
         <div className="daimo-flex daimo-w-full daimo-max-w-[320px] daimo-flex-col daimo-items-center daimo-gap-5 daimo-px-6 daimo-text-center">
           <div
@@ -622,11 +622,7 @@ function HostedEnrollmentPage({
 
   return (
     <EnrollmentExternalActionPage
-      title={
-        step.action === "hosted_agreement_required"
-          ? step.title
-          : "Verification"
-      }
+      title={externalActionTitle(step)}
       description={externalActionDescription(step, platform)}
       actionLabel={externalActionLabel(step)}
       icon={
@@ -678,32 +674,48 @@ function EnrollmentExternalActionPage({
   );
 }
 
+/** Whether this hosted step is the partner liveness check (vs general KYC). */
+function isLivenessStep(step: ExternalEnrollmentStep): boolean {
+  return step.action === "hosted_kyc_required";
+}
+
+function externalActionTitle(step: ExternalEnrollmentStep): string {
+  if (step.title) return step.title;
+  return isLivenessStep(step)
+    ? t.accountHostedLivenessTitle
+    : t.accountHostedKycTitle;
+}
+
 function externalActionDescription(
   step: ExternalEnrollmentStep,
   platform: DaimoPlatform,
 ): string {
-  const kycDescription =
-    "Complete identity verification and return to this page.";
-
-  if (step.action === "kyc_required" || step.action === "hosted_kyc_required") {
-    return kycDescription;
+  if (step.action === "hosted_agreement_required") {
+    const handoff = isDesktop(platform)
+      ? t.accountHostedActionDesktopSuffix
+      : t.accountHostedActionMobileSuffix;
+    return `${step.description} ${handoff}`;
   }
+
+  if (step.description) return step.description;
+
+  const base = isLivenessStep(step)
+    ? t.accountHostedLivenessDesc
+    : isDesktop(platform)
+      ? t.accountHostedKycDesktopDesc
+      : t.accountHostedKycMobileDesc;
 
   if (step.action === "kyc_retry") {
-    return `${step.reason}\n\n${kycDescription}`;
+    return `${step.reason}\n\n${base}`;
   }
-
-  const handoff = isDesktop(platform)
-    ? t.accountHostedActionDesktopSuffix
-    : t.accountHostedActionMobileSuffix;
-
-  return `${step.description} ${handoff}`;
+  return base;
 }
 
 function externalActionLabel(step: ExternalEnrollmentStep): string {
-  return step.action === "hosted_agreement_required"
-    ? step.openExternalLabel
-    : "Open verification";
+  if (step.openExternalLabel) return step.openExternalLabel;
+  return isLivenessStep(step)
+    ? t.accountHostedLivenessCta
+    : t.accountHostedKycCta;
 }
 
 function externalWindowName(step: ExternalEnrollmentStep): string {

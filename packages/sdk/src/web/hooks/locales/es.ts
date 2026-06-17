@@ -123,6 +123,12 @@ export const es: typeof en = {
     "Completa la verificación de identidad en una ventana separada y vuelve a esta página.",
   accountHostedKycMobileDesc:
     "Completa la verificación de identidad fuera de este modal y vuelve a esta página.",
+  accountHostedKycTitle: "Verificación",
+  accountHostedKycCta: "Abrir verificación",
+  accountHostedLivenessTitle: "Prueba de vida",
+  accountHostedLivenessDesc:
+    "Tómate una selfie rápida para terminar de verificar tu identidad y vuelve a esta página.",
+  accountHostedLivenessCta: "Iniciar prueba de vida",
   accountHostedActionDesktopSuffix:
     "Ábrelo en una ventana separada y vuelve a esta página.",
   accountHostedActionMobileSuffix:
