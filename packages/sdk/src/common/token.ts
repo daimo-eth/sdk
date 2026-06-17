@@ -222,6 +222,17 @@ export const baseUSDT: Token = token({
   logoURI: TokenLogo.USDT,
 });
 
+export const baseWARS: Token = token({
+  chainId: base.chainId,
+  token: getAddress("0x0DC4F92879B7670e5f4e4e6e3c801D229129D90D"),
+  decimals: 18,
+  fiatISO: "ARS",
+  name: "Peso Argentino",
+  symbol: "wARS",
+  logoURI:
+    "https://assets.coingecko.com/coins/images/70846/large/world_logos_wars_logo_3.png?1764176749",
+});
+
 const baseTokens: Token[] = [
   baseETH,
   baseWETH,
@@ -231,6 +242,7 @@ const baseTokens: Token[] = [
   baseUSDbC,
   baseDAI,
   baseUSDT,
+  baseWARS,
 ];
 
 //
