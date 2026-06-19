@@ -61,6 +61,7 @@ export function AccountPhoneOtpPage({
         case "kyc_rejected_final":
         case "hosted_agreement_required":
         case "hosted_kyc_required":
+        case "provider_otp_required":
         case "provider_pending":
           return { ok: true };
         default:

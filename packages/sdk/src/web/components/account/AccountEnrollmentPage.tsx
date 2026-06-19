@@ -44,6 +44,8 @@ type AccountEnrollmentPageProps = {
   onReady: () => void;
   /** Called when enrollment requires a phone OTP (e.g. Coinbase Headless). */
   onPhoneRequired: () => void;
+  /** Called when enrollment requires a provider-owned OTP. */
+  onProviderOtpRequired: () => void;
 };
 
 /** Actions that should trigger polling — the state is still advancing. */
@@ -63,6 +65,7 @@ export function AccountEnrollmentPage({
   onBack,
   onReady,
   onPhoneRequired,
+  onProviderOtpRequired,
 }: AccountEnrollmentPageProps) {
   const rail = node.fiatMethod;
   const requiresLegalNameBeforeEnrollment = rail === "ach" || rail === "sepa";
@@ -125,11 +128,23 @@ export function AccountEnrollmentPage({
       responseRef.current = result;
       setResponse(result);
       onPhoneRequired();
+    } else if (result.action === "provider_otp_required") {
+      responseRef.current = result;
+      setResponse(result);
+      onProviderOtpRequired();
     } else {
       responseRef.current = result;
       setResponse(result);
     }
-  }, [account, client, legalName, rail, onReady, onPhoneRequired]);
+  }, [
+    account,
+    client,
+    legalName,
+    rail,
+    onReady,
+    onPhoneRequired,
+    onProviderOtpRequired,
+  ]);
 
   // Initial fetch
   useEffect(() => {
@@ -294,6 +309,9 @@ export function AccountEnrollmentPage({
     case "phone_required":
       // Navigation is triggered in fetchEnrollment; render a waiting state
       // here to avoid flicker until the modal pushes the phone screen.
+      return <PhoneEntrySkeleton onBack={onBack} />;
+
+    case "provider_otp_required":
       return <PhoneEntrySkeleton onBack={onBack} />;
 
     case "active":
@@ -664,7 +682,8 @@ function externalActionDescription(
   step: ExternalEnrollmentStep,
   platform: DaimoPlatform,
 ): string {
-  const kycDescription = "Complete identity verification and return to this page.";
+  const kycDescription =
+    "Complete identity verification and return to this page.";
 
   if (step.action === "kyc_required" || step.action === "hosted_kyc_required") {
     return kycDescription;

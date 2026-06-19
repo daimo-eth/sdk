@@ -3,6 +3,8 @@ import type {
   CreateAccountResponse,
   CreateDepositResponse,
   DepositConstraints,
+  EnrollmentOtpRequest,
+  EnrollmentOtpResendRequest,
   EnrollmentUpdateRequest,
   AccountEnrollmentUpdate,
   EnrollmentResponse,
@@ -72,6 +74,16 @@ export type DaimoClient = {
      */
     startEnrollment(
       input: StartEnrollmentRequest,
+      auth: BearerAuth,
+    ): Promise<EnrollmentResponse>;
+    /** Submit a provider-owned OTP for account enrollment. */
+    submitEnrollmentOtp(
+      input: EnrollmentOtpRequest,
+      auth: BearerAuth,
+    ): Promise<EnrollmentResponse>;
+    /** Resend a provider-owned OTP for account enrollment. */
+    resendEnrollmentOtp(
+      input: EnrollmentOtpResendRequest,
       auth: BearerAuth,
     ): Promise<EnrollmentResponse>;
     /** Send a Daimo-owned phone OTP for account enrollment. */
@@ -186,6 +198,22 @@ export function createDaimoClient(config: TransportConfig): DaimoClient {
         return transport.request<EnrollmentResponse>({
           method: "POST",
           path: "/v1/internal/account/enrollment/start",
+          body: input,
+          headers: authHeaders(auth),
+        });
+      },
+      submitEnrollmentOtp(input, auth) {
+        return transport.request<EnrollmentResponse>({
+          method: "POST",
+          path: "/v1/internal/account/enrollment/otp",
+          body: input,
+          headers: authHeaders(auth),
+        });
+      },
+      resendEnrollmentOtp(input, auth) {
+        return transport.request<EnrollmentResponse>({
+          method: "POST",
+          path: "/v1/internal/account/enrollment/otp/resend",
           body: input,
           headers: authHeaders(auth),
         });
