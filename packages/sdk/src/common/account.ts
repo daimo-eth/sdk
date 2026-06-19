@@ -29,6 +29,15 @@ export type StartEnrollmentRequest = {
   legalName?: AccountLegalName;
 };
 
+export type EnrollmentOtpRequest = {
+  rail: Extract<AccountRail, "ars">;
+  code: string;
+};
+
+export type EnrollmentOtpResendRequest = {
+  rail: Extract<AccountRail, "ars">;
+};
+
 export type ApplePayEnhancedVerificationDateOfBirth = {
   day: string;
   month: string;
@@ -97,6 +106,11 @@ export type EnrollmentResponse =
   | { action: "not_eligible"; reason: string }
   | ({ action: "hosted_agreement_required" } & HostedEnrollmentResponse)
   | ({ action: "hosted_kyc_required" } & LinkOutEnrollmentResponse)
+  | {
+      action: "provider_otp_required";
+      provider: "ripio";
+      destination: "email";
+    }
   | { action: "provider_pending" }
   /** User must verify a phone number before continuing. */
   | { action: "phone_required"; reason?: string }

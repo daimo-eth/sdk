@@ -9,6 +9,9 @@ export type OtpVerifyOutcome = { ok: true } | { ok: false; msg?: string };
 
 type AccountOtpCodeEntryProps = {
   destination: string;
+  title?: string;
+  message?: React.ReactNode;
+  invalidMessage?: string;
   onBack: () => void;
   onVerified: () => void;
   onVerify: (code: string) => Promise<OtpVerifyOutcome>;
@@ -23,6 +26,9 @@ const ERROR_DELAY_MS = 700;
 
 export function AccountOtpCodeEntry({
   destination,
+  title,
+  message,
+  invalidMessage,
   onBack,
   onVerified,
   onVerify,
@@ -43,13 +49,18 @@ export function AccountOtpCodeEntry({
       const submitCode = codeToVerify ?? code;
       if (submitCode.length !== OTP_LENGTH || busy) return;
       setIsSubmitting(true);
-      const outcome = await onVerify(submitCode);
+      const outcome = await onVerify(submitCode).catch((err) => ({
+        ok: false as const,
+        msg: err instanceof Error ? err.message : undefined,
+      }));
       setIsSubmitting(false);
       if (outcome.ok) {
         setStatus("success");
         window.setTimeout(() => onVerified(), SUCCESS_DELAY_MS);
       } else {
-        if (outcome.msg) account?.setAuthError(outcome.msg);
+        if (outcome.msg || invalidMessage) {
+          account?.setAuthError(outcome.msg ?? invalidMessage ?? null);
+        }
         setStatus("error");
         window.setTimeout(() => {
           setDigits(Array(OTP_LENGTH).fill(""));
@@ -58,7 +69,7 @@ export function AccountOtpCodeEntry({
         }, ERROR_DELAY_MS);
       }
     },
-    [code, busy, onVerify, onVerified, account],
+    [code, busy, onVerify, onVerified, invalidMessage, account],
   );
 
   const handleCodeValue = useCallback(
@@ -107,11 +118,15 @@ export function AccountOtpCodeEntry({
 
   return (
     <div className="daimo-flex daimo-flex-col daimo-flex-1 daimo-min-h-0">
-      <PageHeader title={t.accountOtp} onBack={onBack} />
+      <PageHeader title={title ?? t.accountOtp} onBack={onBack} />
 
       <CenteredContent>
         <p className="daimo-text-sm daimo-text-[var(--daimo-text-secondary)] daimo-text-center">
-          {t.accountOtpSent} <strong>{destination}</strong>
+          {message ?? (
+            <>
+              {t.accountOtpSent} <strong>{destination}</strong>
+            </>
+          )}
         </p>
 
         <div className="daimo-relative daimo-flex daimo-justify-center daimo-rounded-[var(--daimo-radius-sm)] focus-within:daimo-ring-2 focus-within:daimo-ring-[var(--daimo-accent)] daimo-transition-shadow">

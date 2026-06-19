@@ -69,6 +69,7 @@ import { AccountOtpPage } from "./account/AccountOtpPage.js";
 import { AccountPhonePage } from "./account/AccountPhonePage.js";
 import { AccountPhoneOtpPage } from "./account/AccountPhoneOtpPage.js";
 import { AccountPaymentPage } from "./account/AccountPaymentPage.js";
+import { AccountRipioOtpPage } from "./account/AccountRipioOtpPage.js";
 import { AccountStatusPage } from "./account/AccountStatusPage.js";
 import {
   getAccountPaymentAdvanceTarget,
@@ -695,6 +696,9 @@ function renderEntry(
             ctx.onAccountAdvance(getAccountPaymentEntryTarget(entry.rail))
           }
           onPhoneRequired={() => ctx.onAccountAdvance("account-phone")}
+          onProviderOtpRequired={() =>
+            ctx.onAccountAdvance("account-ripio-otp")
+          }
         />
       );
     }
@@ -709,6 +713,13 @@ function renderEntry(
       return (
         <AccountPhoneOtpPage
           rail={entry.rail}
+          onBack={ctx.onBack}
+          onVerified={() => ctx.onAccountAdvance("account-enrollment")}
+        />
+      );
+    case "account-ripio-otp":
+      return (
+        <AccountRipioOtpPage
           onBack={ctx.onBack}
           onVerified={() => ctx.onAccountAdvance("account-enrollment")}
         />
