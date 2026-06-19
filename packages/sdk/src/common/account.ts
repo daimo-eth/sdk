@@ -27,6 +27,8 @@ export type AccountLegalName = z.infer<typeof zAccountLegalName>;
 export type StartEnrollmentRequest = {
   rail: AccountRail;
   legalName?: AccountLegalName;
+  /** Client UI locale (short code, e.g. "es"). Server localizes step copy. */
+  locale?: string;
 };
 
 export type EnrollmentOtpRequest = {

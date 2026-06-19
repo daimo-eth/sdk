@@ -15,6 +15,7 @@ import type {
   StartEnrollmentRequest,
 } from "../../common/account.js";
 import type { DaimoClient } from "../../client/createDaimoClient.js";
+import { getLocale } from "./locale.js";
 
 /** Auth-provider hooks registered by AccountFlowProvider. */
 export type PrivyHooks = {
@@ -421,7 +422,10 @@ export function useAccountFlowState(): AccountFlowState {
     ): Promise<EnrollmentResponse | null> => {
       const token = await getAccessToken();
       if (!token) return null;
-      return client.account.startEnrollment(target, { bearerToken: token });
+      return client.account.startEnrollment(
+        { ...target, locale: target.locale ?? getLocale() },
+        { bearerToken: token },
+      );
     },
     [getAccessToken],
   );
