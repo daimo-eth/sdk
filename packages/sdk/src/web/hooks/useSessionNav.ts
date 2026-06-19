@@ -22,6 +22,7 @@ import type { WalletPaymentOption } from "../api/walletTypes.js";
 
 import { getAccountPaymentEntryTarget } from "../components/account/accountNav.js";
 import { detectPlatform, isDesktop, type DaimoPlatform } from "../platform.js";
+import { pruneCompletedAccountAuth } from "./accountAuthNav.js";
 import { useDaimoClient } from "./DaimoClientContext.js";
 import { formatUserError } from "./formatUserError.js";
 import { t } from "./locale.js";
@@ -41,14 +42,6 @@ type ExchangeId =
   | "MtPelerin"
   | "CashApp";
 type ExchangeNode = NavNodeExchange | NavNodeCashApp;
-type AccountAuthChallengeEntryType = Extract<
-  NavEntry["type"],
-  "account-otp" | "account-phone-otp"
->;
-type AccountAuthEntryType = Extract<
-  NavEntry["type"],
-  "account-email" | "account-otp" | "account-phone" | "account-phone-otp"
->;
 
 type SessionNavResult = {
   stack: NavEntry[];
@@ -95,38 +88,6 @@ function getExchangeSelection(node: ExchangeNode): {
     return { exchangeId: "CashApp", nodeType: "CashApp" };
   }
   return { exchangeId: node.exchangeId, nodeType: "Exchange" };
-}
-
-const ACCOUNT_AUTH_CHALLENGE_ENTRY_TYPES =
-  new Set<AccountAuthChallengeEntryType>(["account-otp", "account-phone-otp"]);
-
-const ACCOUNT_AUTH_ENTRY_TYPES = new Set<AccountAuthEntryType>([
-  "account-email",
-  "account-otp",
-  "account-phone",
-  "account-phone-otp",
-]);
-
-function isAccountAuthChallengeEntryType(
-  type: NavEntry["type"],
-): type is AccountAuthChallengeEntryType {
-  return ACCOUNT_AUTH_CHALLENGE_ENTRY_TYPES.has(
-    type as AccountAuthChallengeEntryType,
-  );
-}
-
-function isAccountAuthEntryType(
-  type: NavEntry["type"],
-): type is AccountAuthEntryType {
-  return ACCOUNT_AUTH_ENTRY_TYPES.has(type as AccountAuthEntryType);
-}
-
-function pruneCompletedAccountAuth(
-  stack: NavEntry[],
-  nextType: NavEntry["type"],
-) {
-  if (isAccountAuthChallengeEntryType(nextType)) return stack;
-  return stack.filter((entry) => !isAccountAuthEntryType(entry.type));
 }
 
 function replacePendingAccountEntry(

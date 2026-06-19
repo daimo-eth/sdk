@@ -69,7 +69,7 @@ export function AccountOtpCodeEntry({
         }, ERROR_DELAY_MS);
       }
     },
-    [code, busy, onVerify, onVerified, account],
+    [code, busy, onVerify, onVerified, invalidMessage, account],
   );
 
   const handleCodeValue = useCallback(
