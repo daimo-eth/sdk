@@ -3,12 +3,22 @@ pragma solidity ^0.8.20;
 
 import "forge-std/Test.sol";
 
+import {IERC20Permit} from
+    "openzeppelin-contracts/contracts/token/ERC20/extensions/IERC20Permit.sol";
+
 import {DAParams, DepositAddress} from "../src/DepositAddress.sol";
 import {DepositAddressFactory} from "../src/DepositAddressFactory.sol";
 import {DestinationType} from "../src/DestinationUtils.sol";
 import {IDepositAddressBridger} from "../src/interfaces/IDepositAddressBridger.sol";
 import {IDaimoPayPricer} from "../src/interfaces/IDaimoPayPricer.sol";
 import {DummyPermitToken} from "./utils/DummyPermitToken.sol";
+import {TestUSDC} from "./utils/DummyUSDC.sol";
+
+// A signature that is well-formed but recovers to the wrong signer, so
+// permit() reverts and the pull falls through to the existing allowance.
+uint8 constant BAD_V = 27;
+bytes32 constant BAD_R = bytes32(uint256(1));
+bytes32 constant BAD_S = bytes32(uint256(2));
 
 contract DepositAddressPullFromPermitTest is Test {
     bytes32 private constant PERMIT_TYPEHASH = keccak256(
@@ -100,6 +110,59 @@ contract DepositAddressPullFromPermitTest is Test {
             vault.pullFromPermit(token, owner, 100e18, deadline, v, r, s);
 
         assertEq(pulled, 0);
+    }
+
+    // An expired permit reverts inside permit() and is swallowed; with no
+    // allowance set, the pull is a safe no-op rather than a revert.
+    function test_pullFromPermit_expiredPermitNoOp() public {
+        token.mint(owner, 100e18);
+        uint256 deadline = block.timestamp;
+        (uint8 v, bytes32 r, bytes32 s) = _sign(100e18, deadline);
+        vm.warp(block.timestamp + 1); // now past the deadline
+
+        uint256 pulled =
+            vault.pullFromPermit(token, owner, 100e18, deadline, v, r, s);
+
+        assertEq(pulled, 0);
+        assertEq(token.balanceOf(owner), 100e18);
+    }
+
+    // A garbage signature reverts inside permit() and is swallowed; the pull
+    // falls through to an allowance the owner set with a normal approve.
+    function test_pullFromPermit_fallsThroughToExistingAllowance() public {
+        token.mint(owner, 100e18);
+        vm.prank(owner);
+        token.approve(address(vault), 40e18);
+
+        uint256 pulled = vault.pullFromPermit(
+            token, owner, 100e18, block.timestamp + 1 hours, BAD_V, BAD_R, BAD_S
+        );
+
+        assertEq(pulled, 40e18);
+        assertEq(token.balanceOf(address(vault)), 40e18);
+        assertEq(token.balanceOf(owner), 60e18);
+    }
+
+    // A token that doesn't implement permit() (the call reverts and is
+    // swallowed) still pulls against a pre-existing allowance.
+    function test_pullFromPermit_nonPermitTokenViaAllowance() public {
+        TestUSDC usdc = new TestUSDC();
+        usdc.transfer(owner, 1000e6);
+        vm.prank(owner);
+        usdc.approve(address(vault), 1000e6);
+
+        uint256 pulled = vault.pullFromPermit(
+            IERC20Permit(address(usdc)),
+            owner,
+            1000e6,
+            block.timestamp + 1 hours,
+            BAD_V,
+            BAD_R,
+            BAD_S
+        );
+
+        assertEq(pulled, 1000e6);
+        assertEq(usdc.balanceOf(address(vault)), 1000e6);
     }
 
     // --- helpers ---

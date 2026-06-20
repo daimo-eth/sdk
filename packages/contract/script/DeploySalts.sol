@@ -11,12 +11,19 @@ bytes32 constant DEPLOY_SALT_PAY_INTENT_FACTORY = keccak256(
 );
 
 // Deposit address contracts
+// Salts use the deploy date (YYYY-MM-DD) so each cut is unambiguously unique
+// without tracking an incrementing counter. Bumped 2026-06-22 to ship the
+// DepositAddress.pullFromPermit implementation (EIP-2612 permit routing); the
+// factory bakes in the new DepositAddress code, cascading new addresses to the
+// manager and executor.
 bytes32 constant DEPLOY_SALT_DA_FACTORY = keccak256(
-    "DepositAddressFactory-sol1"
+    "DepositAddressFactory-2026-06-22"
 );
-bytes32 constant DEPLOY_SALT_DA_EXECUTOR = keccak256("DaimoPayExecutor-sol3");
+bytes32 constant DEPLOY_SALT_DA_EXECUTOR = keccak256(
+    "DaimoPayExecutor-2026-06-22"
+);
 bytes32 constant DEPLOY_SALT_DA_MANAGER = keccak256(
-    "DepositAddressManager-sol3"
+    "DepositAddressManager-2026-06-22"
 );
 
 bytes32 constant DEPLOY_SALT_DAIMO_PAY_PRICER = keccak256(
