@@ -3,8 +3,10 @@ pragma solidity ^0.8.12;
 
 import "openzeppelin-contracts-upgradeable/contracts/proxy/utils/Initializable.sol";
 import "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
+import "openzeppelin-contracts/contracts/token/ERC20/extensions/IERC20Permit.sol";
 import "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 import "openzeppelin-contracts/contracts/utils/ReentrancyGuard.sol";
+import "openzeppelin-contracts/contracts/utils/math/Math.sol";
 
 import "./TokenUtils.sol";
 import "./DestinationUtils.sol";
@@ -129,5 +131,51 @@ contract DepositAddress is Initializable, ReentrancyGuard {
         require(msg.sender == params.escrow, "DA: only escrow");
 
         return TokenUtils.transferBalance({token: token, recipient: recipient});
+    }
+
+    // ---------------------------------------------------------------------
+    // Permit pull – move funds the owner authorized into this deposit address
+    // ---------------------------------------------------------------------
+
+    /// @notice Pull a token balance from `owner` into this deposit address
+    ///         using an EIP-2612 permit, leaving it for the normal
+    ///         escrow-controlled flow. Transfers the lesser of the owner's
+    ///         balance and the permitted allowance, so a deposit that arrived
+    ///         short of the signed amount still gets forwarded.
+    /// @dev Permissionless by design: the permit names this contract as the
+    ///      spender, so funds can only ever land here — the exact address the
+    ///      owner authorized. The permit call is wrapped so an already-consumed
+    ///      permit (a retry, or someone front-running the permit) falls through
+    ///      to the existing allowance instead of reverting. Idempotent.
+    /// @param token    EIP-2612 token to pull.
+    /// @param owner    Account that signed the permit and holds the funds.
+    /// @param value    Allowance ceiling signed in the permit.
+    /// @param deadline Permit expiry.
+    /// @param v        Permit signature component.
+    /// @param r        Permit signature component.
+    /// @param s        Permit signature component.
+    /// @return pulled  Amount transferred into this deposit address.
+    function pullFromPermit(
+        IERC20Permit token,
+        address owner,
+        uint256 value,
+        uint256 deadline,
+        uint8 v,
+        bytes32 r,
+        bytes32 s
+    ) public nonReentrant returns (uint256 pulled) {
+        // Tolerate an already-applied permit (a retry, or a front-run of the
+        // permit call): fall through to whatever allowance is already set.
+        try token.permit(owner, address(this), value, deadline, v, r, s) {}
+        catch {}
+
+        IERC20 erc20 = IERC20(address(token));
+        pulled = Math.min(
+            erc20.balanceOf(owner),
+            erc20.allowance(owner, address(this))
+        );
+        if (pulled == 0) return 0;
+
+        erc20.safeTransferFrom(owner, address(this), pulled);
     }
 }
