@@ -207,6 +207,8 @@ export type Session = SessionPublicInfo & {
   metadata: UserMetadata;
   /** Session-scoped secret for client lifecycle management. */
   clientSecret: string;
+  /** Hosted Daimo Pay URL. Treat like the client secret. */
+  payUrl: string;
 };
 
 export function isSessionTerminal(status: SessionStatus): boolean {

@@ -14,6 +14,10 @@
       "import": "./dist/client/index.js",
       "types": "./dist/client/index.d.ts"
     },
+    "./embed": {
+      "import": "./dist/embed/index.js",
+      "types": "./dist/embed/index.d.ts"
+    },
     "./web": {
       "import": "./dist/web/index.js",
       "types": "./dist/web/index.d.ts"

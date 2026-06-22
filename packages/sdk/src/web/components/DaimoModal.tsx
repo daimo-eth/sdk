@@ -312,6 +312,9 @@ function DaimoModalInner({
   returnLabel,
   onPaymentStarted,
   onPaymentCompleted,
+  onPaymentBounced,
+  onPaymentExpired,
+  onSessionUpdated,
   onOpen,
   onClose,
 }: DaimoModalInnerProps) {
@@ -384,8 +387,11 @@ function DaimoModalInner({
 
   usePaymentCallbacks(session, isOpen, {
     onOpen,
+    onSessionUpdated,
     onPaymentStarted,
     onPaymentCompleted,
+    onPaymentBounced,
+    onPaymentExpired,
   });
 
   const isTerminal = isSessionTerminal(session.status);

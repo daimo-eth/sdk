@@ -2,6 +2,7 @@ import type {
   AccountEnrollmentUpdateApplePayEnhancedVerification,
   AccountRail,
 } from "../../common/account.js";
+import type { SessionPublicInfo } from "../../common/session.js";
 import type { NavNode, SessionWithNav } from "../api/navTree.js";
 import type { WalletPaymentOption } from "../api/walletTypes.js";
 
@@ -121,8 +122,11 @@ export type NavEntry =
 export type AccountNavEntry = Extract<NavEntry, { rail: AccountRail }>;
 
 export type DaimoModalEventHandlers = {
-  onPaymentStarted?: () => void;
-  onPaymentCompleted?: () => void;
+  onSessionUpdated?: (session: SessionPublicInfo) => void;
+  onPaymentStarted?: (session: SessionPublicInfo) => void;
+  onPaymentCompleted?: (session: SessionPublicInfo) => void;
+  onPaymentBounced?: (session: SessionPublicInfo) => void;
+  onPaymentExpired?: (session: SessionPublicInfo) => void;
   onOpen?: () => void;
   onClose?: () => void;
 };

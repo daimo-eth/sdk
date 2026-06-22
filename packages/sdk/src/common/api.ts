@@ -3,13 +3,11 @@ import { z } from "zod";
 import { zAccountRail } from "./account.js";
 import type { TronAddress, UUID } from "./primitives.js";
 import { zAddress, zSolanaAddress } from "./primitives.js";
-import type { SessionPublicInfo } from "./session.js";
+import type { Session, SessionPublicInfo } from "./session.js";
 
 const zPlatform = z.enum(["ios", "android", "other", "desktop", "mobile"]);
 
-export const zSessionId = z
-  .string()
-  .describe("Session ID");
+export const zSessionId = z.string().describe("Session ID");
 
 export const zCreatePaymentMethodRequest = z.object({
   clientSecret: z.string(),
@@ -81,7 +79,12 @@ export type LogNavEventRequest = z.output<typeof zLogNavEventRequest>;
 
 export type RetrieveSessionResponse = {
   /** Current session state. */
-  session: SessionPublicInfo;
+  session: Session | SessionPublicInfo;
+};
+
+export type CreateSessionResponse = {
+  /** Created session, including clientSecret and payUrl. */
+  session: Session;
 };
 
 export type CreatePaymentMethodResponse = {
