@@ -27,6 +27,8 @@ export type AccountLegalName = z.infer<typeof zAccountLegalName>;
 export type StartEnrollmentRequest = {
   rail: AccountRail;
   legalName?: AccountLegalName;
+  /** Client UI locale (short code, e.g. "es"). Server localizes step copy. */
+  locale?: string;
 };
 
 export type EnrollmentOtpRequest = {
@@ -82,9 +84,19 @@ export type NextAction =
   | "suspended";
 export type ExistingAccountNextAction = Exclude<NextAction, "create_account">;
 
-/** Enrollment state machine response from startEnrollment. */
+/**
+ * Enrollment state machine response from startEnrollment.
+ *
+ * The SDK renders localized copy per action by default. The server may
+ * optionally override the title, description, or button label for a specific
+ * hosted step (e.g. partner-specific wording). Overrides are not localized, so
+ * prefer leaving them unset and adding copy to the SDK locale files.
+ */
 type LinkOutEnrollmentResponse = {
   url: string;
+  title?: string;
+  description?: string;
+  openExternalLabel?: string;
 };
 
 type HostedEnrollmentResponse = {

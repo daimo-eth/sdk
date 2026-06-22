@@ -150,6 +150,12 @@ export const en = {
     "Complete identity verification in a separate window, then return to this page.",
   accountHostedKycMobileDesc:
     "Complete identity verification outside this modal, then return to this page.",
+  accountHostedKycTitle: "Verification",
+  accountHostedKycCta: "Open verification",
+  accountHostedLivenessTitle: "Liveness check",
+  accountHostedLivenessDesc:
+    "Take a quick selfie to finish verifying your identity, then return to this page.",
+  accountHostedLivenessCta: "Start liveness check",
   accountHostedActionDesktopSuffix:
     "Open it in a separate window and return to this page.",
   accountHostedActionMobileSuffix:
