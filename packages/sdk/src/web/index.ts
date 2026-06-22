@@ -1,6 +1,7 @@
 // Components
 export { DaimoModal } from "./components/DaimoModal.js";
 export type { DaimoModalProps } from "./components/DaimoModal.js";
+export type { DaimoModalPaymentEvent } from "./hooks/types.js";
 export { DaimoModalPreview } from "./components/DaimoModalPreview.js";
 export type {
   DaimoModalPreviewProps,

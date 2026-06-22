@@ -120,9 +120,26 @@ export type NavEntry =
 
 export type AccountNavEntry = Extract<NavEntry, { rail: AccountRail }>;
 
+export type DaimoModalPaymentEventType =
+  | "paymentStarted"
+  | "paymentCompleted"
+  | "paymentBounced";
+
+export type DaimoModalPaymentEvent = {
+  type: DaimoModalPaymentEventType;
+  /** Session ID. Also used as the DepositAddress payment ID. */
+  paymentId: string;
+  sessionId: string;
+  chainId?: number;
+  txHash?: string;
+  transactionUrl?: string;
+  payment: SessionWithNav;
+};
+
 export type DaimoModalEventHandlers = {
-  onPaymentStarted?: () => void;
-  onPaymentCompleted?: () => void;
+  onPaymentStarted?: (event: DaimoModalPaymentEvent) => void;
+  onPaymentCompleted?: (event: DaimoModalPaymentEvent) => void;
+  onPaymentBounced?: (event: DaimoModalPaymentEvent) => void;
   onOpen?: () => void;
   onClose?: () => void;
 };
