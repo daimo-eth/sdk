@@ -152,6 +152,12 @@ export const ko: typeof en = {
     "별도 창에서 본인 인증을 완료한 후 이 페이지로 돌아오세요.",
   accountHostedKycMobileDesc:
     "이 모달 밖에서 본인 인증을 완료한 후 이 페이지로 돌아오세요.",
+  accountHostedKycTitle: "본인 인증",
+  accountHostedKycCta: "본인 인증 열기",
+  accountHostedLivenessTitle: "라이브니스 확인",
+  accountHostedLivenessDesc:
+    "셀카를 찍어 본인 인증을 완료한 후 이 페이지로 돌아오세요.",
+  accountHostedLivenessCta: "라이브니스 확인 시작",
   accountHostedActionDesktopSuffix: "별도 창에서 열고 이 페이지로 돌아오세요.",
   accountHostedActionMobileSuffix:
     "이 모달 밖에서 열고 이 페이지로 돌아오세요.",

@@ -153,6 +153,12 @@ export const ja: typeof en = {
     "別ウィンドウで本人確認を完了し、このページに戻ってください。",
   accountHostedKycMobileDesc:
     "このモーダルの外で本人確認を完了し、このページに戻ってください。",
+  accountHostedKycTitle: "本人確認",
+  accountHostedKycCta: "本人確認を開く",
+  accountHostedLivenessTitle: "ライブネスチェック",
+  accountHostedLivenessDesc:
+    "セルフィーを撮影して本人確認を完了し、このページに戻ってください。",
+  accountHostedLivenessCta: "ライブネスチェックを開始",
   accountHostedActionDesktopSuffix:
     "別ウィンドウで開き、このページに戻ってください。",
   accountHostedActionMobileSuffix:
