@@ -5,6 +5,8 @@ import {
   useRef,
   useState,
 } from "react";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
 
 import type {
   AccountLegalName,
@@ -28,12 +30,13 @@ import {
   CenteredContent,
   ContactSupportButton,
   PageHeader,
-  TextInput,
 } from "../shared.js";
+import { DaimoFormField, DaimoTextField } from "../formFields.js";
 import {
   AccountKycInfoPage,
   AccountKycInfoSkeleton,
 } from "./AccountKycInfoPage.js";
+import { type LegalNameFormValues, zLegalNameForm } from "./formSchemas.js";
 import { getKycRequirement, KycIndicator } from "./kycRequirement.js";
 
 type AccountEnrollmentPageProps = {
@@ -330,74 +333,77 @@ function AccountLegalNamePage({
   onBack: () => void;
   onSubmit: (name: AccountLegalName) => void;
 }) {
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
-  const normalizedFirst = firstName.trim();
-  const normalizedLast = lastName.trim();
-  const canSubmit = normalizedFirst.length > 0 && normalizedLast.length > 0;
-
-  const submit = useCallback(() => {
-    if (!canSubmit) return;
-    onSubmit({ firstName: normalizedFirst, lastName: normalizedLast });
-  }, [canSubmit, normalizedFirst, normalizedLast, onSubmit]);
-
-  const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent<HTMLInputElement>) => {
-      if (e.key === "Enter") submit();
-    },
-    [submit],
-  );
+  const {
+    formState: { errors, isValid },
+    handleSubmit,
+    register,
+  } = useForm<LegalNameFormValues>({
+    resolver: zodResolver(zLegalNameForm),
+    mode: "onChange",
+    defaultValues: { firstName: "", lastName: "" },
+  });
 
   return (
     <div className="daimo-flex daimo-flex-col daimo-flex-1 daimo-min-h-0">
       <PageHeader title={t.accountLegalNameTitle} onBack={onBack} />
 
-      <CenteredContent>
+      <form
+        className="daimo-flex daimo-flex-col daimo-flex-1 daimo-min-h-0"
+        onSubmit={handleSubmit(onSubmit)}
+      >
+        <CenteredContent>
         <div className="daimo-flex daimo-w-full daimo-max-w-xs daimo-flex-col daimo-gap-4">
           <p className="daimo-text-center daimo-text-sm daimo-leading-relaxed daimo-text-[var(--daimo-text-secondary)]">
             {t.accountLegalNameDesc}
           </p>
 
           <div className="daimo-flex daimo-flex-col daimo-gap-3">
-            <label className="daimo-flex daimo-flex-col daimo-gap-1.5">
-              <span className="daimo-text-xs daimo-font-medium daimo-text-[var(--daimo-text-secondary)]">
-                {t.accountLegalNameFirst}
-              </span>
-              <TextInput
-                type="text"
-                value={firstName}
-                onChange={(e) => setFirstName(e.target.value)}
-                onKeyDown={handleKeyDown}
-                placeholder="Daimo"
-                autoComplete="given-name"
-                autoFocus
-                className="daimo-px-4 daimo-py-3"
-              />
-            </label>
+            <DaimoFormField
+              label={t.accountLegalNameFirst}
+              error={errors.firstName?.message}
+            >
+              {({ id, describedBy, invalid }) => (
+                <DaimoTextField
+                  {...register("firstName")}
+                  id={id}
+                  type="text"
+                  aria-describedby={describedBy}
+                  invalid={invalid}
+                  placeholder="Daimo"
+                  autoComplete="given-name"
+                  autoFocus
+                  className="daimo-px-4 daimo-py-3"
+                />
+              )}
+            </DaimoFormField>
 
-            <label className="daimo-flex daimo-flex-col daimo-gap-1.5">
-              <span className="daimo-text-xs daimo-font-medium daimo-text-[var(--daimo-text-secondary)]">
-                {t.accountLegalNameLast}
-              </span>
-              <TextInput
-                type="text"
-                value={lastName}
-                onChange={(e) => setLastName(e.target.value)}
-                onKeyDown={handleKeyDown}
-                placeholder="Account"
-                autoComplete="family-name"
-                className="daimo-px-4 daimo-py-3"
-              />
-            </label>
+            <DaimoFormField
+              label={t.accountLegalNameLast}
+              error={errors.lastName?.message}
+            >
+              {({ id, describedBy, invalid }) => (
+                <DaimoTextField
+                  {...register("lastName")}
+                  id={id}
+                  type="text"
+                  aria-describedby={describedBy}
+                  invalid={invalid}
+                  placeholder="Account"
+                  autoComplete="family-name"
+                  className="daimo-px-4 daimo-py-3"
+                />
+              )}
+            </DaimoFormField>
           </div>
         </div>
-      </CenteredContent>
+        </CenteredContent>
 
-      <div className="daimo-px-6 daimo-pb-6 daimo-flex daimo-flex-col daimo-items-center">
-        <PrimaryButton onClick={submit} disabled={!canSubmit}>
-          {t.continue}
-        </PrimaryButton>
-      </div>
+        <div className="daimo-px-6 daimo-pb-6 daimo-flex daimo-flex-col daimo-items-center">
+          <PrimaryButton type="submit" disabled={!isValid}>
+            {t.continue}
+          </PrimaryButton>
+        </div>
+      </form>
     </div>
   );
 }

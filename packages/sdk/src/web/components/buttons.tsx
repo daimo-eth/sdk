@@ -10,6 +10,7 @@ type ButtonProps = {
   disabled?: boolean;
   icon?: ReactNode;
   className?: string;
+  type?: "button" | "submit";
 };
 
 /** Primary action button - full width, prominent styling */
@@ -19,6 +20,7 @@ export function PrimaryButton({
   disabled = false,
   icon,
   className = "",
+  type = "button",
 }: ButtonProps) {
   // Base: min 44px tap target, prevent double-tap zoom
   const baseStyles =
@@ -30,7 +32,7 @@ export function PrimaryButton({
 
   return (
     <button
-      type="button"
+      type={type}
       onClick={onClick}
       disabled={disabled}
       className={`${baseStyles} ${disabled ? disabledStyles : enabledStyles} ${className}`}
@@ -48,6 +50,7 @@ export function SecondaryButton({
   disabled = false,
   icon,
   className = "",
+  type = "button",
 }: ButtonProps) {
   // Base: min 44px tap target, prevent double-tap zoom
   const baseStyles =
@@ -59,7 +62,7 @@ export function SecondaryButton({
 
   return (
     <button
-      type="button"
+      type={type}
       onClick={onClick}
       disabled={disabled}
       className={`${baseStyles} ${disabled ? disabledStyles : enabledStyles} ${className}`}

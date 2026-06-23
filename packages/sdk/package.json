@@ -37,12 +37,14 @@
     "verify:styles": "node ./scripts/verifyStyles.mjs"
   },
   "dependencies": {
+    "@hookform/resolvers": "^5.4.0",
     "@privy-io/react-auth": "^3.17.0",
     "@scure/base": "^2.0.0",
     "@solana/wallet-standard-features": "^1.3.0",
     "@wallet-standard/app": "^1.1.0",
     "@wallet-standard/features": "^1.1.0",
     "libphonenumber-js": "1.12.40",
+    "react-hook-form": "^7.80.0",
     "viem": "^2.47.5",
     "zod": "^3.24.2"
   },
