@@ -1,4 +1,15 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  type ClipboardEvent,
+  type KeyboardEvent,
+  type ReactNode,
+  type RefObject,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
 
 import type {
   AccountEnrollmentUpdate,
@@ -10,7 +21,15 @@ import { formatUserError } from "../../hooks/formatUserError.js";
 import { t } from "../../hooks/locale.js";
 import { useAccountFlow } from "../../hooks/useAccountFlow.js";
 import { PrimaryButton, SecondaryLinkButton } from "../buttons.js";
-import { CenteredContent, PageHeader, TextInput } from "../shared.js";
+import { DaimoFormField, DaimoTextField } from "../formFields.js";
+import { CenteredContent, PageHeader } from "../shared.js";
+import {
+  type ApplePayVerificationFormValues,
+  type ApplePayVerificationSubmitValues,
+  digitsOnly,
+  isDatePartInRange,
+  zApplePayVerificationForm,
+} from "./formSchemas.js";
 
 type AccountEnrollmentUpdatePageProps = {
   update: AccountEnrollmentUpdateApplePayEnhancedVerification;
@@ -19,9 +38,11 @@ type AccountEnrollmentUpdatePageProps = {
   onReady: () => void;
 };
 
-type UpgradeInput = {
-  ssnLast4: string;
-  dateOfBirth: { day: string; month: string; year: string };
+type UpgradeInput = ApplePayVerificationSubmitValues;
+
+const applePayVerificationDefaults: ApplePayVerificationFormValues = {
+  ssnLast4: "",
+  dateOfBirth: { month: "", day: "", year: "" },
 };
 
 export function AccountEnrollmentUpdatePage({
@@ -186,52 +207,54 @@ function EnrollmentUpdateForm({
   isSubmitting: boolean;
   onSubmit: (input: UpgradeInput) => Promise<void>;
 }) {
-  const [ssnLast4, setSsnLast4] = useState("");
-  const [dateOfBirth, setDateOfBirth] = useState({
-    month: "",
-    day: "",
-    year: "",
+  const {
+    formState: { errors, isValid },
+    handleSubmit,
+    register,
+    reset,
+    setValue,
+    watch,
+  } = useForm<
+    ApplePayVerificationFormValues,
+    unknown,
+    ApplePayVerificationSubmitValues
+  >({
+    resolver: zodResolver(zApplePayVerificationForm),
+    mode: "onChange",
+    defaultValues: applePayVerificationDefaults,
   });
   const monthRef = useRef<HTMLInputElement | null>(null);
   const dayRef = useRef<HTMLInputElement | null>(null);
   const yearRef = useRef<HTMLInputElement | null>(null);
-  const [localError, setLocalError] = useState<string | null>(null);
+  const ssnLast4 = watch("ssnLast4");
+  const month = watch("dateOfBirth.month");
+  const day = watch("dateOfBirth.day");
+  const year = watch("dateOfBirth.year");
+  const ssnField = register("ssnLast4");
+  const monthField = register("dateOfBirth.month");
+  const dayField = register("dateOfBirth.day");
+  const yearField = register("dateOfBirth.year");
   const monthInvalid =
-    dateOfBirth.month.length === 2 &&
-    !isDatePartInRange(dateOfBirth.month, 1, 12);
-  const dayInvalid =
-    dateOfBirth.day.length === 2 && !isDatePartInRange(dateOfBirth.day, 1, 31);
-  const canSubmit =
-    /^\d{4}$/.test(ssnLast4) && parseDateInput(dateOfBirth) != null;
+    month.length === 2 && !isDatePartInRange(month, 1, 12);
+  const dayInvalid = day.length === 2 && !isDatePartInRange(day, 1, 31);
+  const dateError = errors.dateOfBirth?.month?.message;
   const description =
     status === "retry"
       ? "We couldn't verify those details. Check them and try again."
       : "We need a few more details before Apple Pay can continue.";
 
-  const submit = useCallback(() => {
-    const parsedDate = parseDateInput(dateOfBirth);
-    if (!/^\d{4}$/.test(ssnLast4) || !parsedDate) {
-      setLocalError(
-        "enter the last 4 digits of your SSN and a valid date of birth",
-      );
-      return;
-    }
-
-    const request = { ssnLast4, dateOfBirth: parsedDate };
-    setSsnLast4("");
-    setDateOfBirth({ month: "", day: "", year: "" });
-    setLocalError(null);
-    void onSubmit(request);
-  }, [dateOfBirth, onSubmit, ssnLast4]);
-
-  const handleKeyDown = useCallback(
-    (event: React.KeyboardEvent<HTMLInputElement>) => {
-      if (event.key === "Enter") submit();
-    },
-    [submit],
+  const submit = handleSubmit(
+    useCallback(
+      async (input) => {
+        await onSubmit(input);
+        reset(applePayVerificationDefaults);
+      },
+      [onSubmit, reset],
+    ),
   );
+
   const focusNextWhenFilled = (
-    nextRef: React.RefObject<HTMLInputElement | null>,
+    nextRef: RefObject<HTMLInputElement | null>,
     value: string,
     length: number,
     isValid = true,
@@ -239,16 +262,48 @@ function EnrollmentUpdateForm({
     if (value.length === length && isValid) nextRef.current?.focus();
   };
   const focusPreviousOnEmptyBackspace = (
-    event: React.KeyboardEvent<HTMLInputElement>,
-    previousRef: React.RefObject<HTMLInputElement | null>,
+    event: KeyboardEvent<HTMLInputElement>,
+    previousRef: RefObject<HTMLInputElement | null>,
   ) => {
     if (event.key === "Backspace" && event.currentTarget.value === "") {
       previousRef.current?.focus();
     }
   };
+  const setDatePart = (
+    name:
+      | "dateOfBirth.month"
+      | "dateOfBirth.day"
+      | "dateOfBirth.year"
+      | "ssnLast4",
+    value: string,
+  ) => {
+    setValue(name, value, {
+      shouldDirty: true,
+      shouldTouch: true,
+      shouldValidate: true,
+    });
+  };
+  const handleDatePaste = (event: ClipboardEvent<HTMLInputElement>) => {
+    const pasted = digitsOnly(event.clipboardData.getData("text"), 8);
+    if (pasted.length < 3) return;
+    event.preventDefault();
+    setDatePart("dateOfBirth.month", pasted.slice(0, 2));
+    setDatePart("dateOfBirth.day", pasted.slice(2, 4));
+    setDatePart("dateOfBirth.year", pasted.slice(4, 8));
+    if (pasted.length >= 5) {
+      yearRef.current?.focus();
+    } else {
+      dayRef.current?.focus();
+    }
+  };
 
   return (
-    <>
+    <form
+      className="daimo-flex daimo-flex-col daimo-flex-1 daimo-min-h-0"
+      onSubmit={(event) => {
+        void submit(event);
+      }}
+    >
       <CenteredContent>
         <div className="daimo-flex daimo-w-full daimo-max-w-xs daimo-flex-col daimo-gap-4">
           <p className="daimo-text-center daimo-text-sm daimo-leading-relaxed daimo-text-[var(--daimo-text-secondary)]">
@@ -256,51 +311,57 @@ function EnrollmentUpdateForm({
           </p>
 
           <div className="daimo-flex daimo-flex-col daimo-gap-3">
-            <label className="daimo-flex daimo-flex-col daimo-gap-1.5">
-              <span className="daimo-text-xs daimo-font-medium daimo-text-[var(--daimo-text-secondary)]">
-                SSN last 4
-              </span>
-              <TextInput
-                type="password"
-                inputMode="numeric"
-                autoComplete="off"
-                pattern="[0-9]*"
-                maxLength={4}
-                value={ssnLast4}
-                onChange={(event) => {
-                  const value = event.target.value
-                    .replace(/\D/g, "")
-                    .slice(0, 4);
-                  setSsnLast4(value);
-                  focusNextWhenFilled(monthRef, value, 4);
-                }}
-                onKeyDown={handleKeyDown}
-                placeholder="1234"
-                className="daimo-px-4 daimo-py-3"
-              />
-            </label>
+            <DaimoFormField
+              label="SSN last 4"
+              error={errors.ssnLast4?.message}
+            >
+              {({ id, describedBy, invalid }) => (
+                <DaimoTextField
+                  ref={ssnField.ref}
+                  id={id}
+                  name={ssnField.name}
+                  onBlur={ssnField.onBlur}
+                  type="password"
+                  inputMode="numeric"
+                  autoComplete="off"
+                  data-lpignore="true"
+                  data-1p-ignore
+                  pattern="[0-9]*"
+                  maxLength={4}
+                  value={ssnLast4}
+                  onChange={(event) => {
+                    const value = digitsOnly(event.target.value, 4);
+                    setDatePart("ssnLast4", value);
+                    focusNextWhenFilled(monthRef, value, 4);
+                  }}
+                  aria-describedby={describedBy}
+                  invalid={invalid}
+                  placeholder="1234"
+                  className="daimo-px-4 daimo-py-3"
+                />
+              )}
+            </DaimoFormField>
 
-            <label className="daimo-flex daimo-flex-col daimo-gap-1.5">
-              <span className="daimo-text-xs daimo-font-medium daimo-text-[var(--daimo-text-secondary)]">
-                Date of birth
-              </span>
+            <DaimoFormField label="Date of birth" error={dateError}>
+              {({ id, describedBy }) => (
               <div className="daimo-grid daimo-w-full daimo-min-w-0 daimo-grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.35fr)] daimo-gap-2">
-                <TextInput
-                  ref={monthRef}
+                <DaimoTextField
+                  ref={(input) => {
+                    monthField.ref(input);
+                    monthRef.current = input;
+                  }}
+                  id={id}
+                  name={monthField.name}
+                  onBlur={monthField.onBlur}
                   type="text"
                   inputMode="numeric"
                   autoComplete="bday-month"
                   pattern="[0-9]*"
                   maxLength={2}
-                  value={dateOfBirth.month}
+                  value={month}
                   onChange={(event) => {
-                    const value = event.target.value
-                      .replace(/\D/g, "")
-                      .slice(0, 2);
-                    setDateOfBirth((current) => ({
-                      ...current,
-                      month: value,
-                    }));
+                    const value = digitsOnly(event.target.value, 2);
+                    setDatePart("dateOfBirth.month", value);
                     focusNextWhenFilled(
                       dayRef,
                       value,
@@ -308,34 +369,30 @@ function EnrollmentUpdateForm({
                       isDatePartInRange(value, 1, 12),
                     );
                   }}
-                  onKeyDown={(event) => {
-                    handleKeyDown(event);
-                  }}
+                  onPaste={handleDatePaste}
                   placeholder="MM"
                   aria-label="birth month"
+                  aria-describedby={describedBy}
                   aria-invalid={monthInvalid}
-                  className={`daimo-h-12 daimo-px-2 daimo-py-3 daimo-text-center ${
-                    monthInvalid
-                      ? "daimo-ring-1 daimo-ring-[var(--daimo-error)]"
-                      : ""
-                  }`}
+                  invalid={monthInvalid}
+                  className="daimo-h-12 daimo-px-2 daimo-py-3 daimo-text-center"
                 />
-                <TextInput
-                  ref={dayRef}
+                <DaimoTextField
+                  ref={(input) => {
+                    dayField.ref(input);
+                    dayRef.current = input;
+                  }}
+                  name={dayField.name}
+                  onBlur={dayField.onBlur}
                   type="text"
                   inputMode="numeric"
                   autoComplete="bday-day"
                   pattern="[0-9]*"
                   maxLength={2}
-                  value={dateOfBirth.day}
+                  value={day}
                   onChange={(event) => {
-                    const value = event.target.value
-                      .replace(/\D/g, "")
-                      .slice(0, 2);
-                    setDateOfBirth((current) => ({
-                      ...current,
-                      day: value,
-                    }));
+                    const value = digitsOnly(event.target.value, 2);
+                    setDatePart("dateOfBirth.day", value);
                     focusNextWhenFilled(
                       yearRef,
                       value,
@@ -345,60 +402,62 @@ function EnrollmentUpdateForm({
                   }}
                   onKeyDown={(event) => {
                     focusPreviousOnEmptyBackspace(event, monthRef);
-                    handleKeyDown(event);
                   }}
+                  onPaste={handleDatePaste}
                   placeholder="DD"
                   aria-label="birth day"
+                  aria-describedby={describedBy}
                   aria-invalid={dayInvalid}
-                  className={`daimo-h-12 daimo-px-2 daimo-py-3 daimo-text-center ${
-                    dayInvalid
-                      ? "daimo-ring-1 daimo-ring-[var(--daimo-error)]"
-                      : ""
-                  }`}
+                  invalid={dayInvalid}
+                  className="daimo-h-12 daimo-px-2 daimo-py-3 daimo-text-center"
                 />
-                <TextInput
-                  ref={yearRef}
+                <DaimoTextField
+                  ref={(input) => {
+                    yearField.ref(input);
+                    yearRef.current = input;
+                  }}
+                  name={yearField.name}
+                  onBlur={yearField.onBlur}
                   type="text"
                   inputMode="numeric"
                   autoComplete="bday-year"
                   pattern="[0-9]*"
                   maxLength={4}
-                  value={dateOfBirth.year}
+                  value={year}
                   onChange={(event) => {
-                    const value = event.target.value
-                      .replace(/\D/g, "")
-                      .slice(0, 4);
-                    setDateOfBirth((current) => ({
-                      ...current,
-                      year: value,
-                    }));
+                    setDatePart(
+                      "dateOfBirth.year",
+                      digitsOnly(event.target.value, 4),
+                    );
                   }}
                   onKeyDown={(event) => {
                     focusPreviousOnEmptyBackspace(event, dayRef);
-                    handleKeyDown(event);
                   }}
+                  onPaste={handleDatePaste}
                   placeholder="YYYY"
                   aria-label="birth year"
+                  aria-describedby={describedBy}
                   className="daimo-h-12 daimo-px-2 daimo-py-3 daimo-text-center"
                 />
               </div>
-            </label>
+              )}
+            </DaimoFormField>
           </div>
 
-          {(localError || error) && (
+          {error && (
             <p className="daimo-text-center daimo-text-xs daimo-text-[var(--daimo-error)]">
-              {localError ?? error}
+              {error}
             </p>
           )}
         </div>
       </CenteredContent>
 
       <div className="daimo-px-6 daimo-pb-6 daimo-flex daimo-flex-col daimo-items-center">
-        <PrimaryButton onClick={submit} disabled={!canSubmit || isSubmitting}>
+        <PrimaryButton type="submit" disabled={!isValid || isSubmitting}>
           {isSubmitting ? "Checking" : "Submit"}
         </PrimaryButton>
       </div>
-    </>
+    </form>
   );
 }
 
@@ -461,8 +520,8 @@ function EnrollmentUpdateMessage({
   title?: string;
   description: string;
   error?: string | null;
-  icon?: React.ReactNode;
-  action?: React.ReactNode;
+  icon?: ReactNode;
+  action?: ReactNode;
 }) {
   return (
     <CenteredContent>
@@ -485,36 +544,6 @@ function EnrollmentUpdateMessage({
       {action}
     </CenteredContent>
   );
-}
-
-function parseDateInput(value: {
-  day: string;
-  month: string;
-  year: string;
-}): { day: string; month: string; year: string } | null {
-  if (!/^\d{1,2}$/.test(value.month)) return null;
-  if (!/^\d{1,2}$/.test(value.day)) return null;
-  if (!/^\d{4}$/.test(value.year)) return null;
-  if (!isDatePartInRange(value.month, 1, 12)) return null;
-  if (!isDatePartInRange(value.day, 1, 31)) return null;
-  const month = value.month.padStart(2, "0");
-  const day = value.day.padStart(2, "0");
-  const year = value.year;
-  const date = new Date(Date.UTC(Number(year), Number(month) - 1, Number(day)));
-  if (
-    date.getUTCFullYear() !== Number(year) ||
-    date.getUTCMonth() !== Number(month) - 1 ||
-    date.getUTCDate() !== Number(day)
-  ) {
-    return null;
-  }
-  return { day, month, year };
-}
-
-function isDatePartInRange(value: string, min: number, max: number): boolean {
-  if (!/^\d+$/.test(value)) return false;
-  const num = Number(value);
-  return num >= min && num <= max;
 }
 
 function requireApplePayEnhancedVerification(
