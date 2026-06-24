@@ -13,6 +13,14 @@ export const zLegalNameForm = z.object({
     .max(80, "last name is too long"),
 });
 
+export const zEmailForm = z.object({
+  email: z
+    .string()
+    .trim()
+    .min(1, "enter your email")
+    .email("enter a valid email"),
+});
+
 const zDigits = (length: number, message: string) =>
   z.string().regex(new RegExp(`^\\d{${length}}$`), message);
 
@@ -45,6 +53,8 @@ export const zApplePayVerificationForm = z.object({
 });
 
 export type LegalNameFormValues = z.input<typeof zLegalNameForm>;
+export type EmailFormValues = z.input<typeof zEmailForm>;
+export type EmailSubmitValues = z.output<typeof zEmailForm>;
 export type ApplePayVerificationFormValues = z.input<
   typeof zApplePayVerificationForm
 >;

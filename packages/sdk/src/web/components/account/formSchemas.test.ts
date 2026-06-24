@@ -4,6 +4,7 @@ import {
   digitsOnly,
   parseDateOfBirth,
   zApplePayVerificationForm,
+  zEmailForm,
   zLegalNameForm,
 } from "./formSchemas.js";
 
@@ -22,6 +23,22 @@ describe("account form schemas", () => {
     expect(result.error.flatten().fieldErrors).toEqual({
       firstName: ["enter your first name"],
       lastName: ["enter your last name"],
+    });
+  });
+
+  test("normalizes email input", () => {
+    expect(zEmailForm.parse({ email: " Ada@Example.com " })).toEqual({
+      email: "Ada@Example.com",
+    });
+  });
+
+  test("rejects invalid email input", () => {
+    const result = zEmailForm.safeParse({ email: "not-an-email" });
+
+    expect(result.success).toBe(false);
+    if (result.success) return;
+    expect(result.error.flatten().fieldErrors).toEqual({
+      email: ["enter a valid email"],
     });
   });
 
@@ -61,4 +78,3 @@ describe("account form schemas", () => {
     expect(digitsOnly("12a-34 56", 4)).toBe("1234");
   });
 });
-

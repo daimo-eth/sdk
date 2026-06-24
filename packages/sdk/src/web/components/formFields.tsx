@@ -20,6 +20,8 @@ export type DaimoFormFieldProps = {
   }) => ReactNode;
   description?: string;
   error?: string;
+  hideError?: boolean;
+  labelVisibility?: "visible" | "sr-only";
 };
 
 export function DaimoFormField({
@@ -27,6 +29,8 @@ export function DaimoFormField({
   children,
   description,
   error,
+  hideError,
+  labelVisibility = "visible",
 }: DaimoFormFieldProps) {
   const id = useId();
   const descriptionId = description ? `${id}-description` : undefined;
@@ -35,7 +39,13 @@ export function DaimoFormField({
 
   return (
     <label className="daimo-flex daimo-flex-col daimo-gap-1.5" htmlFor={id}>
-      <span className="daimo-text-xs daimo-font-medium daimo-text-[var(--daimo-text-secondary)]">
+      <span
+        className={
+          labelVisibility === "sr-only"
+            ? "daimo-sr-only"
+            : "daimo-text-xs daimo-font-medium daimo-text-[var(--daimo-text-secondary)]"
+        }
+      >
         {label}
       </span>
       {children({
@@ -51,7 +61,7 @@ export function DaimoFormField({
           {description}
         </span>
       )}
-      {error && (
+      {error && !hideError && (
         <span
           id={errorId}
           className="daimo-text-xs daimo-leading-relaxed daimo-text-[var(--daimo-error)]"
