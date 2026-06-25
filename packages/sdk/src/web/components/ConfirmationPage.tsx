@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { getChainName } from "../../common/chain.js";
 import type { SessionStatus } from "../../common/session.js";
 
+import { formatFixedAmount } from "../formatAmount.js";
 import { t } from "../hooks/locale.js";
 import { PrimaryButton, SecondaryLinkButton } from "./buttons.js";
 import { ConfirmationSpinner } from "./ConfirmationSpinner.js";
@@ -131,7 +132,7 @@ export function ConfirmationPage({
             {/* Use tabular-nums for stable number widths */}
             <p className="daimo-text-3xl daimo-font-semibold daimo-text-[var(--daimo-text)] daimo-tabular-nums">
               {sourceAmountUsd != null
-                ? `$${sourceAmountUsd.toFixed(2)} ${sourceTokenSymbol}`
+                ? `$${formatFixedAmount(sourceAmountUsd)} ${sourceTokenSymbol}`
                 : sourceTokenSymbol}
             </p>
             <p className="daimo-text-base daimo-text-[var(--daimo-text-secondary)]">

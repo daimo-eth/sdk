@@ -1,4 +1,5 @@
 import type { NavNodeStripe } from "../api/navTree.js";
+import { formatFixedAmount } from "../formatAmount.js";
 import { t } from "../hooks/locale.js";
 import type { DaimoPlatform } from "../platform.js";
 import { ErrorPage } from "./ErrorPage.js";
@@ -43,7 +44,7 @@ export function StripeOnrampPage({
       platform={platform}
       url={redirectUrl}
       icon={node.icon}
-      message={`Deposit exactly $${amountUsd.toFixed(2)} with Stripe, then return to this page.`}
+      message={`Deposit exactly $${formatFixedAmount(amountUsd)} with Stripe, then return to this page.`}
       isLoading={isLoading}
       onBack={onBack}
       baseUrl={baseUrl}

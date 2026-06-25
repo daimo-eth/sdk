@@ -1,7 +1,8 @@
 import { getChainName } from "../../common/chain.js";
 import type { DaimoPayToken, WalletPaymentOption } from "../api/walletTypes.js";
 
-import { t } from "../hooks/locale.js";
+import { formatFixedAmount } from "../formatAmount.js";
+import { getNumberLocale, t } from "../hooks/locale.js";
 import {
   ContactSupportButton,
   LIST_ROW_CLASS,
@@ -172,7 +173,7 @@ function TokenRow({
   const disabledReason =
     option.disabledReason ??
     (option.balance.usd < option.minimumRequired.usd
-      ? `$${option.minimumRequired.usd.toFixed(2)} ${t.minimum.toLowerCase()}`
+      ? `$${formatFixedAmount(option.minimumRequired.usd)} ${t.minimum.toLowerCase()}`
       : null);
 
   const title = `$${usdAmount} ${display.token.symbol} ${t.onChain} ${chainName}`;
@@ -211,7 +212,7 @@ function formatTokenAmount(amount: string, token: DaimoPayToken): string {
   if (num === 0) return "0";
   // Use displayDecimals from token, fallback to sensible defaults
   const decimals = token.displayDecimals ?? (num < 1 ? 6 : 2);
-  return num.toLocaleString("en-US", {
+  return num.toLocaleString(getNumberLocale(), {
     minimumFractionDigits: 0,
     maximumFractionDigits: decimals,
   });
@@ -219,5 +220,5 @@ function formatTokenAmount(amount: string, token: DaimoPayToken): string {
 
 /** Format USD amount for display */
 function formatUsdAmount(usd: number): string {
-  return usd.toFixed(2);
+  return formatFixedAmount(usd);
 }

@@ -13,6 +13,7 @@ import { useDraftDeposit } from "../../hooks/useDraftDeposit.js";
 import { useDepositPoller } from "../../hooks/useDepositPoller.js";
 import { ErrorPage } from "../ErrorPage.js";
 import { SecondaryButton } from "../buttons.js";
+import { formatFixedAmount } from "../../formatAmount.js";
 import { AmountInput, PageHeader, useAmountInput } from "../shared.js";
 import { AccountEnrollmentUpdatePage } from "./AccountEnrollmentUpdatePage.js";
 import { useCoinbaseApplePayWidget } from "./useCoinbaseApplePayWidget.js";
@@ -300,7 +301,12 @@ export function AccountApplePayPage({
     <div className="daimo-relative daimo-isolate daimo-flex daimo-flex-col daimo-flex-1 daimo-min-h-0">
       <PageHeader title={`${actionVerb} with Apple Pay`} onBack={onBack} />
 
-      <div className="daimo-flex daimo-flex-col daimo-items-center daimo-gap-5 daimo-px-6 daimo-pt-2 daimo-pb-4">
+      {/* Amount + fee/receive summary. Hidden once the Apple Pay sheet expands
+          so only the iframe (QR) shows; kept mounted to preserve state. */}
+      <div
+        className="daimo-flex daimo-flex-col daimo-items-center daimo-gap-5 daimo-px-6 daimo-pt-2 daimo-pb-4"
+        style={{ display: isExpanded ? "none" : undefined }}
+      >
         <AmountInput
           minimum={minimum}
           maximum={maximum}
@@ -320,7 +326,7 @@ export function AccountApplePayPage({
             {feeUnits != null ? (
               <span>
                 {currencySymbol}
-                {feeUnits}
+                {formatFixedAmount(Number(feeUnits))}
               </span>
             ) : (
               <span>{isValid && isCreating ? "…" : "—"}</span>
@@ -330,10 +336,10 @@ export function AccountApplePayPage({
             <span>You receive</span>
             <span className="daimo-font-semibold">
               {totalUnits != null
-                ? `${currencySymbol}${totalUnits}`
+                ? `${currencySymbol}${formatFixedAmount(Number(totalUnits))}`
                 : isValid
-                  ? `${currencySymbol}${amount.toFixed(2)}`
-                  : `${currencySymbol}0.00`}
+                  ? `${currencySymbol}${formatFixedAmount(amount)}`
+                  : `${currencySymbol}${formatFixedAmount(0)}`}
             </span>
           </div>
         </div>
