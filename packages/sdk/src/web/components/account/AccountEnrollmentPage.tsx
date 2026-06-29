@@ -369,7 +369,6 @@ function AccountLegalNamePage({
                   type="text"
                   aria-describedby={describedBy}
                   invalid={invalid}
-                  placeholder="Daimo"
                   autoComplete="given-name"
                   autoFocus
                   className="daimo-px-4 daimo-py-3"
@@ -388,7 +387,6 @@ function AccountLegalNamePage({
                   type="text"
                   aria-describedby={describedBy}
                   invalid={invalid}
-                  placeholder="Account"
                   autoComplete="family-name"
                   className="daimo-px-4 daimo-py-3"
                 />
