@@ -10,7 +10,7 @@ const DAIMO_MESSAGE_SOURCE = "daimo-pay";
 const DEFAULT_BASE_URL = "https://daimo.com";
 const INITIAL_HEIGHT = 420;
 /** Show the error fallback if the iframe hasn't rendered content within this. */
-const LOAD_TIMEOUT_MS = 3000;
+const LOAD_TIMEOUT_MS = 15000;
 
 // Hoisted out of the style objects below so the SDK style linter (which scans
 // string literals under a `position:` property for stale Tailwind tokens)
@@ -46,7 +46,8 @@ const bubbleStyle: CSSProperties = {
   // Small shadow that stays within the ~12px gap below the sheet (so it never
   // bleeds into the safe area): offset + blur reaches ~8px.
   boxShadow: "0 2px 6px rgba(0, 0, 0, 0.2)",
-  transition: "height 0.2s ease-in-out, opacity 0.2s ease-in-out",
+  // `transition` is set inline: opacity always animates, height only after the
+  // first appearance (see `animateHeight`).
 };
 
 const iframeStyle: CSSProperties = {
@@ -157,6 +158,10 @@ export function DaimoFrame({
   const [status, setStatus] = useState<"loading" | "loaded" | "error">(
     "loading",
   );
+  // Height animates only after the bubble's first appearance, so revealing it
+  // doesn't animate from INITIAL_HEIGHT down to the first measured (skeleton)
+  // height. Only later growth (skeleton -> content) animates.
+  const [animateHeight, setAnimateHeight] = useState(false);
 
   // Portals require a DOM target, so only render after mount (client-only).
   useEffect(() => setMounted(true), []);
@@ -187,6 +192,14 @@ export function DaimoFrame({
     return () => clearTimeout(id);
   }, [status]);
 
+  // Enable the height transition one frame after the bubble first appears, so
+  // its reveal snaps to the first height instead of animating down to it.
+  useEffect(() => {
+    if (status !== "loaded" || animateHeight) return;
+    const id = requestAnimationFrame(() => setAnimateHeight(true));
+    return () => cancelAnimationFrame(id);
+  }, [status, animateHeight]);
+
   // `layout` is reserved for future modes; only "modal" is supported today.
   void layout;
 
@@ -203,6 +216,9 @@ export function DaimoFrame({
             ...bubbleStyle,
             height,
             opacity: status === "loaded" ? 1 : 0,
+            transition: animateHeight
+              ? "height 0.2s ease-in-out, opacity 0.2s ease-in-out"
+              : "opacity 0.2s ease-in-out",
           }}
         >
           <iframe
