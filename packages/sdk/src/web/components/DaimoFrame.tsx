@@ -3,15 +3,21 @@
 import { type CSSProperties, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 
+import { CloseIcon } from "./icons.js";
+import { ContactSupportButton, ErrorMessage } from "./shared.js";
+
 const DAIMO_MESSAGE_SOURCE = "daimo-pay";
 const DEFAULT_BASE_URL = "https://daimo.com";
 const INITIAL_HEIGHT = 420;
+/** Show the error fallback if the iframe hasn't rendered content within this. */
+const LOAD_TIMEOUT_MS = 3000;
 
-// Hoisted out of the style object below so the SDK style linter (which scans
+// Hoisted out of the style objects below so the SDK style linter (which scans
 // string literals under a `position:` property for stale Tailwind tokens)
-// doesn't flag the CSS keyword "fixed". This is a real inline CSS value, not a
-// utility class.
+// doesn't flag these CSS keywords. They are real inline CSS values, not classes.
 const CSS_FIXED = "fixed" as const;
+const CSS_RELATIVE = "relative" as const;
+const CSS_ABSOLUTE = "absolute" as const;
 
 // Fixed scrim: dims the viewport, and on iOS 26 its background is what Safari
 // samples to tint the safe-area strips dark (an `absolute` scrim is not
@@ -28,7 +34,9 @@ const scrimStyle: CSSProperties = {
   paddingBottom: "calc(12px + env(safe-area-inset-bottom))",
 };
 
-// Rounded surface that clips the content-sized iframe to four corners.
+// Rounded surface that clips the content-sized iframe to four corners. Hidden
+// (opacity 0) until the checkout reports its first height, so the user never
+// sees an empty shadowed bubble while the iframe loads.
 const bubbleStyle: CSSProperties = {
   width: "100%",
   maxWidth: 440,
@@ -38,7 +46,7 @@ const bubbleStyle: CSSProperties = {
   // Small shadow that stays within the ~12px gap below the sheet (so it never
   // bleeds into the safe area): offset + blur reaches ~8px.
   boxShadow: "0 2px 6px rgba(0, 0, 0, 0.2)",
-  transition: "height 0.2s ease-in-out",
+  transition: "height 0.2s ease-in-out, opacity 0.2s ease-in-out",
 };
 
 const iframeStyle: CSSProperties = {
@@ -46,6 +54,38 @@ const iframeStyle: CSSProperties = {
   width: "100%",
   height: "100%",
   border: 0,
+};
+
+// Error fallback card. Reuses the SDK surface token + components, so it needs
+// the SDK theme CSS loaded on the host page.
+const errorCardStyle: CSSProperties = {
+  position: CSS_RELATIVE,
+  width: "100%",
+  maxWidth: 440,
+  background: "var(--daimo-surface)",
+  borderRadius: 24,
+  boxShadow: "0 2px 6px rgba(0, 0, 0, 0.2)",
+  padding: "44px 24px 28px",
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "center",
+  gap: 20,
+};
+
+const closeButtonStyle: CSSProperties = {
+  position: CSS_ABSOLUTE,
+  top: 12,
+  right: 12,
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  width: 32,
+  height: 32,
+  border: 0,
+  borderRadius: 9999,
+  background: "transparent",
+  color: "var(--daimo-text-secondary)",
+  cursor: "pointer",
 };
 
 /**
@@ -78,7 +118,9 @@ export interface DaimoFrameProps {
  *
  * `DaimoFrame` loads `/webview` in content-only (`embed`) mode inside a fixed,
  * dimmed scrim and sizes the iframe to the height the content reports over
- * `postMessage`. No wallet libraries or app providers required.
+ * `postMessage`. No wallet libraries or app providers required. The sheet stays
+ * hidden until the checkout's first content arrives; if nothing loads within
+ * {@link LOAD_TIMEOUT_MS}, a dismissable error card is shown instead.
  *
  * The dimming scrim is `position: fixed` on purpose: iOS 26 derives the
  * safe-area strip colors (notch / home indicator) from the `background-color`
@@ -112,6 +154,9 @@ export function DaimoFrame({
   );
   const [height, setHeight] = useState(INITIAL_HEIGHT);
   const [mounted, setMounted] = useState(false);
+  const [status, setStatus] = useState<"loading" | "loaded" | "error">(
+    "loading",
+  );
 
   // Portals require a DOM target, so only render after mount (client-only).
   useEffect(() => setMounted(true), []);
@@ -125,12 +170,22 @@ export function DaimoFrame({
       if (event.data.type === "modalClosed") onClose?.();
       if (event.data.type === "contentHeightChanged") {
         const reported = Number(event.data.payload?.height);
-        if (reported > 0) setHeight(reported);
+        if (reported > 0) {
+          setHeight(reported);
+          setStatus("loaded");
+        }
       }
     };
     window.addEventListener("message", handleMessage);
     return () => window.removeEventListener("message", handleMessage);
   }, [onClose, src]);
+
+  // Fall back to the error card if the checkout never reports content.
+  useEffect(() => {
+    if (status !== "loading") return;
+    const id = setTimeout(() => setStatus("error"), LOAD_TIMEOUT_MS);
+    return () => clearTimeout(id);
+  }, [status]);
 
   // `layout` is reserved for future modes; only "modal" is supported today.
   void layout;
@@ -139,18 +194,53 @@ export function DaimoFrame({
 
   return createPortal(
     <div onClick={() => onClose?.()} style={scrimStyle}>
-      <div
-        onClick={(e) => e.stopPropagation()}
-        style={{ ...bubbleStyle, height }}
-      >
-        <iframe
-          title="Daimo"
-          src={src}
-          allow="payment; clipboard-write"
-          style={iframeStyle}
-        />
-      </div>
+      {status === "error" ? (
+        <DaimoFrameError sessionId={sessionId} onClose={onClose} />
+      ) : (
+        <div
+          onClick={(e) => e.stopPropagation()}
+          style={{
+            ...bubbleStyle,
+            height,
+            opacity: status === "loaded" ? 1 : 0,
+          }}
+        >
+          <iframe
+            title="Daimo"
+            src={src}
+            allow="payment; clipboard-write"
+            style={iframeStyle}
+          />
+        </div>
+      )}
     </div>,
     document.body,
+  );
+}
+
+/** Dismissable "couldn't load" card with a contact-support mailto link. */
+function DaimoFrameError({
+  sessionId,
+  onClose,
+}: {
+  sessionId: string;
+  onClose?: () => void;
+}) {
+  return (
+    <div onClick={(e) => e.stopPropagation()} style={errorCardStyle}>
+      <button
+        type="button"
+        aria-label="Close"
+        onClick={() => onClose?.()}
+        style={closeButtonStyle}
+      >
+        <CloseIcon />
+      </button>
+      <ErrorMessage message="Couldn't load. Offline?" />
+      <ContactSupportButton
+        subject="Couldn't load Daimo checkout"
+        info={{ sessionId }}
+      />
+    </div>
   );
 }
