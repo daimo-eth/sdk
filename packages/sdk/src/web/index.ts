@@ -1,4 +1,9 @@
 // Components
+export { DaimoFrame } from "./components/DaimoFrame.js";
+export type {
+  DaimoFrameProps,
+  DaimoFrameLayout,
+} from "./components/DaimoFrame.js";
 export { DaimoModal } from "./components/DaimoModal.js";
 export type { DaimoModalProps } from "./components/DaimoModal.js";
 export { DaimoModalPreview } from "./components/DaimoModalPreview.js";
