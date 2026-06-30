@@ -148,7 +148,16 @@ export function ModalContainer({
           <div className="daimo-flex-1 daimo-min-h-0 daimo-flex daimo-flex-col">
             {children}
           </div>
-          {showFooterSpacer && <div className="daimo-h-8 daimo-shrink-0" />}
+          {showFooterSpacer && (
+            // Footer spacer; consumers add a bottom safe-area inset via
+            // --daimo-safe-area-bottom (0 by default, so embeds are unchanged).
+            <div
+              className="daimo-shrink-0"
+              style={{
+                height: "calc(2rem + var(--daimo-safe-area-bottom, 0px))",
+              }}
+            />
+          )}
         </div>
       </div>
     </>
