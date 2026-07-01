@@ -78,6 +78,7 @@ export function AccountEnrollmentPage({
   const rail = node.fiatMethod;
   const requiresLegalNameBeforeEnrollment = rail === "ach" || rail === "sepa";
   const account = useAccountFlow();
+  const setProviderOtp = account?.setProviderOtp;
   const client = useDaimoClient();
   const [response, setResponse] = useState<EnrollmentResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -124,14 +125,14 @@ export function AccountEnrollmentPage({
       } else if (result.action === "provider_otp_required") {
         responseRef.current = result;
         setResponse(result);
-        account?.setProviderOtp(result);
+        setProviderOtp?.(result);
         onProviderOtpRequired();
       } else {
         responseRef.current = result;
         setResponse(result);
       }
     },
-    [account, onReady, onPhoneRequired, onProviderOtpRequired],
+    [onReady, onPhoneRequired, onProviderOtpRequired, setProviderOtp],
   );
 
   const fetchEnrollment = useCallback(async () => {
