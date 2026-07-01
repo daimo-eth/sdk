@@ -270,6 +270,7 @@ export function DaimoModal(props: DaimoModalProps) {
       <EmbeddedContainer
         showFooterSpacer={showFooterSpacer}
         onClose={handleClose}
+        themeMode={loaded.session.display.themeMode}
       >
         {modalBody}
       </EmbeddedContainer>
@@ -281,6 +282,7 @@ export function DaimoModal(props: DaimoModalProps) {
       pageKey={pageKey}
       reserveLoadingHeight={reserveLoadingHeight}
       showFooterSpacer={showFooterSpacer}
+      themeMode={loaded.session.display.themeMode}
     >
       {modalBody}
     </ModalContainer>

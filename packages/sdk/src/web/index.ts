@@ -34,6 +34,7 @@ export type {
   DaimoModalTheme,
   DaimoModalThemeMode,
   DaimoModalThemeModeName,
+  DaimoThemeMode,
 } from "./theme.js";
 
 // Hooks

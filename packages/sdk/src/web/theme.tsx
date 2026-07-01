@@ -11,6 +11,7 @@ export type {
   DaimoModalTheme,
   DaimoModalThemeMode,
   DaimoModalThemeModeName,
+  DaimoThemeMode,
 } from "../common/theme.js";
 
 export function useDaimoThemeReady(url: string | undefined): boolean {

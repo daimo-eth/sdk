@@ -2,6 +2,7 @@ import type { Address, Hex } from "viem";
 import { z } from "zod";
 
 import type { AccountRail } from "./account.js";
+import type { DaimoThemeMode } from "./theme.js";
 import type {
   SolanaAddress,
   SolanaTxHash,
@@ -29,6 +30,8 @@ export type SessionDisplay = {
   verb: string;
   /** Custom theme CSS URL. */
   themeCssUrl?: string;
+  /** Org-controlled light/dark/system theme mode. */
+  themeMode: DaimoThemeMode;
 };
 
 export type SessionDestination =

@@ -5,7 +5,8 @@
  * compiled SDK stylesheet and the legacy `theme.css` entrypoint.
  */
 
-:root {
+:root,
+[data-theme="light"] {
   /* Backgrounds */
   --daimo-bg: #00000008;
   --daimo-surface: #ffffff;

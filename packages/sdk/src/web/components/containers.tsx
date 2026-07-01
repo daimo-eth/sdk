@@ -1,4 +1,5 @@
 import { ReactNode, useLayoutEffect, useRef } from "react";
+import type { DaimoThemeMode } from "../../common/theme.js";
 
 const MODAL_LOADING_MIN_HEIGHT = "min(360px, 90dvh)";
 const HEIGHT_MORPH_MS = 180;
@@ -9,6 +10,7 @@ export const MODAL_CONTENT_CLASS =
 type ContainerProps = {
   children: ReactNode;
   showFooterSpacer?: boolean;
+  themeMode?: DaimoThemeMode;
 };
 
 type ModalContainerProps = ContainerProps & {
@@ -116,12 +118,19 @@ function prefersReducedMotion(): boolean {
   );
 }
 
+function themeModeDataAttribute(
+  themeMode: DaimoThemeMode | undefined,
+): "light" | "dark" | undefined {
+  return themeMode === "light" || themeMode === "dark" ? themeMode : undefined;
+}
+
 export function ModalContainer({
   children,
   showFooterSpacer = true,
   onClose,
   pageKey,
   reserveLoadingHeight = false,
+  themeMode,
 }: ModalContainerProps) {
   const backdropClass =
     "daimo-modal-backdrop daimo-fixed daimo-inset-0 daimo-z-50 daimo-bg-black/50";
@@ -134,7 +143,10 @@ export function ModalContainer({
       {/* Backdrop with fade-in - click to close */}
       <div className={backdropClass} onClick={onClose} />
       {/* Modal container - bottom on mobile, centered on desktop */}
-      <div className="daimo-fixed daimo-inset-0 daimo-z-50 daimo-flex daimo-justify-center daimo-items-end sm:daimo-items-center daimo-pointer-events-none daimo-px-0 sm:daimo-px-4">
+      <div
+        className="daimo-fixed daimo-inset-0 daimo-z-50 daimo-flex daimo-justify-center daimo-items-end sm:daimo-items-center daimo-pointer-events-none daimo-px-0 sm:daimo-px-4"
+        data-theme={themeModeDataAttribute(themeMode)}
+      >
         <div
           ref={contentRef}
           className={`daimo-pointer-events-auto ${MODAL_CONTENT_CLASS}`}
@@ -158,9 +170,13 @@ export function ModalContainer({
 export function EmbeddedContainer({
   children,
   showFooterSpacer = true,
+  themeMode,
 }: ContainerProps & { onClose?: () => void }) {
   return (
-    <div className="daimo-bg-transparent daimo-flex daimo-flex-col daimo-items-center">
+    <div
+      className="daimo-bg-transparent daimo-flex daimo-flex-col daimo-items-center"
+      data-theme={themeModeDataAttribute(themeMode)}
+    >
       <div className="daimo-relative daimo-w-full daimo-max-w-[512px] daimo-bg-[var(--daimo-surface)] daimo-flex daimo-flex-col">
         {children}
         {showFooterSpacer && <div className="daimo-h-8" />}
