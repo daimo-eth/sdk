@@ -125,14 +125,14 @@ export function AccountEnrollmentPage({
       } else if (result.action === "provider_otp_required") {
         responseRef.current = result;
         setResponse(result);
-        setProviderOtp?.(result);
+        account?.setProviderOtp(result);
         onProviderOtpRequired();
       } else {
         responseRef.current = result;
         setResponse(result);
       }
     },
-    [onReady, onPhoneRequired, onProviderOtpRequired, setProviderOtp],
+    [account, onReady, onPhoneRequired, onProviderOtpRequired],
   );
 
   const fetchEnrollment = useCallback(async () => {
