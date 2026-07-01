@@ -106,10 +106,14 @@ export type EnrollmentFormSubmitRequest = z.infer<
 export type EnrollmentOtpRequest = {
   rail: Extract<AccountRail, "ars">;
   code: string;
+  /** Client UI locale (short code, e.g. "es"). Server localizes OTP errors. */
+  locale?: string;
 };
 
 export type EnrollmentOtpResendRequest = {
   rail: Extract<AccountRail, "ars">;
+  /** Client UI locale (short code, e.g. "es"). Server localizes OTP errors. */
+  locale?: string;
 };
 
 export type ApplePayEnhancedVerificationDateOfBirth = {
@@ -182,6 +186,17 @@ type HostedEnrollmentResponse = {
   checkingDescription: string;
 };
 
+export type ProviderOtpCopy = {
+  title: string;
+  message: string;
+  invalidMessage: string;
+};
+
+type ProviderOtpEnrollmentResponse = {
+  destination: "email";
+  copy: ProviderOtpCopy;
+};
+
 export type EnrollmentResponse =
   | ({ action: "kyc_required" } & LinkOutEnrollmentResponse)
   | ({ action: "kyc_retry"; reason: string } & LinkOutEnrollmentResponse)
@@ -191,11 +206,7 @@ export type EnrollmentResponse =
   | { action: "not_eligible"; reason: string }
   | ({ action: "hosted_agreement_required" } & HostedEnrollmentResponse)
   | ({ action: "hosted_kyc_required" } & LinkOutEnrollmentResponse)
-  | {
-      action: "provider_otp_required";
-      provider: "ripio";
-      destination: "email";
-    }
+  | ({ action: "provider_otp_required" } & ProviderOtpEnrollmentResponse)
   | { action: "provider_pending" }
   /** User must verify a phone number before continuing. */
   | { action: "phone_required"; reason?: string }

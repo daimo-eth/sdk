@@ -78,6 +78,7 @@ export function AccountEnrollmentPage({
   const rail = node.fiatMethod;
   const requiresLegalNameBeforeEnrollment = rail === "ach" || rail === "sepa";
   const account = useAccountFlow();
+  const setProviderOtp = account?.setProviderOtp;
   const client = useDaimoClient();
   const [response, setResponse] = useState<EnrollmentResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -124,13 +125,14 @@ export function AccountEnrollmentPage({
       } else if (result.action === "provider_otp_required") {
         responseRef.current = result;
         setResponse(result);
+        setProviderOtp?.(result);
         onProviderOtpRequired();
       } else {
         responseRef.current = result;
         setResponse(result);
       }
     },
-    [onReady, onPhoneRequired, onProviderOtpRequired],
+    [onReady, onPhoneRequired, onProviderOtpRequired, setProviderOtp],
   );
 
   const fetchEnrollment = useCallback(async () => {
@@ -419,48 +421,48 @@ function AccountLegalNamePage({
         onSubmit={handleSubmit(onSubmit)}
       >
         <CenteredContent>
-        <div className="daimo-flex daimo-w-full daimo-max-w-xs daimo-flex-col daimo-gap-4">
-          <p className="daimo-text-center daimo-text-sm daimo-leading-relaxed daimo-text-[var(--daimo-text-secondary)]">
-            {t.accountLegalNameDesc}
-          </p>
+          <div className="daimo-flex daimo-w-full daimo-max-w-xs daimo-flex-col daimo-gap-4">
+            <p className="daimo-text-center daimo-text-sm daimo-leading-relaxed daimo-text-[var(--daimo-text-secondary)]">
+              {t.accountLegalNameDesc}
+            </p>
 
-          <div className="daimo-flex daimo-flex-col daimo-gap-3">
-            <DaimoFormField
-              label={t.accountLegalNameFirst}
-              error={errors.firstName?.message}
-            >
-              {({ id, describedBy, invalid }) => (
-                <DaimoTextField
-                  {...register("firstName")}
-                  id={id}
-                  type="text"
-                  aria-describedby={describedBy}
-                  invalid={invalid}
-                  autoComplete="given-name"
-                  autoFocus
-                  className="daimo-px-4 daimo-py-3"
-                />
-              )}
-            </DaimoFormField>
+            <div className="daimo-flex daimo-flex-col daimo-gap-3">
+              <DaimoFormField
+                label={t.accountLegalNameFirst}
+                error={errors.firstName?.message}
+              >
+                {({ id, describedBy, invalid }) => (
+                  <DaimoTextField
+                    {...register("firstName")}
+                    id={id}
+                    type="text"
+                    aria-describedby={describedBy}
+                    invalid={invalid}
+                    autoComplete="given-name"
+                    autoFocus
+                    className="daimo-px-4 daimo-py-3"
+                  />
+                )}
+              </DaimoFormField>
 
-            <DaimoFormField
-              label={t.accountLegalNameLast}
-              error={errors.lastName?.message}
-            >
-              {({ id, describedBy, invalid }) => (
-                <DaimoTextField
-                  {...register("lastName")}
-                  id={id}
-                  type="text"
-                  aria-describedby={describedBy}
-                  invalid={invalid}
-                  autoComplete="family-name"
-                  className="daimo-px-4 daimo-py-3"
-                />
-              )}
-            </DaimoFormField>
+              <DaimoFormField
+                label={t.accountLegalNameLast}
+                error={errors.lastName?.message}
+              >
+                {({ id, describedBy, invalid }) => (
+                  <DaimoTextField
+                    {...register("lastName")}
+                    id={id}
+                    type="text"
+                    aria-describedby={describedBy}
+                    invalid={invalid}
+                    autoComplete="family-name"
+                    className="daimo-px-4 daimo-py-3"
+                  />
+                )}
+              </DaimoFormField>
+            </div>
           </div>
-        </div>
         </CenteredContent>
 
         <div className="daimo-px-6 daimo-pb-6 daimo-flex daimo-flex-col daimo-items-center">
