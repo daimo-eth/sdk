@@ -49,6 +49,7 @@ export type UpsertDepositRequest = {
   sessionId: string;
   depositAmount: string;
   rail: AccountRail;
+  locale?: string;
   deliverySig?: string;
   deliverySigData?: Record<string, unknown>;
   routingSig?: string;
@@ -278,7 +279,7 @@ export function createDaimoClient(config: TransportConfig): DaimoClient {
         return transport.request<CreateDepositResponse>({
           method: "POST",
           path: "/v1/internal/account/deposit",
-          body: input,
+          body: { ...input, locale: input.locale ?? getLocale() },
           headers: authHeaders(auth),
         });
       },
