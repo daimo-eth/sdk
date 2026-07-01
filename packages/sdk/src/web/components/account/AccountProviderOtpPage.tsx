@@ -39,7 +39,7 @@ export function AccountProviderOtpPage({
           account.setProviderOtp(result);
           return {
             ok: false,
-            msg: result.copy.invalidMessage,
+            msg: result.copy?.invalidMessage ?? invalidMessage,
           };
         }
         case "error":
