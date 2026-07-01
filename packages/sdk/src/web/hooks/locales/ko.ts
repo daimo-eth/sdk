@@ -123,6 +123,7 @@ export const ko: typeof en = {
   accountPhone: "전화번호 인증",
   accountPhoneDesc: "6자리 인증 코드를 문자로 보내드립니다.",
   accountSubmit: "제출",
+  accountFieldRequired: "필수",
   accountSelectBank: "은행 선택",
   accountSearchInstitutions: "금융기관 검색...",
   accountOtherInstitutions: "기타 금융기관",

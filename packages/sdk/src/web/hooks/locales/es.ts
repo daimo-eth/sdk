@@ -93,6 +93,7 @@ export const es: typeof en = {
   accountPhoneDesc:
     "Te enviaremos un código de 6 dígitos para verificar tu número.",
   accountSubmit: "Enviar",
+  accountFieldRequired: "Obligatorio",
   accountSelectBank: "Seleccionar banco",
   accountSearchInstitutions: "Buscar instituciones...",
   accountOtherInstitutions: "Otras instituciones",

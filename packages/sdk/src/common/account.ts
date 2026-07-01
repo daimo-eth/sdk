@@ -31,6 +31,78 @@ export type StartEnrollmentRequest = {
   locale?: string;
 };
 
+export const zEnrollmentFormValue = z.union([z.string(), z.boolean()]);
+export type EnrollmentFormValue = z.infer<typeof zEnrollmentFormValue>;
+
+export type EnrollmentFormTextField = {
+  key: string;
+  type: "text";
+  label: string;
+  required: boolean;
+  description?: string;
+  placeholder?: string;
+  defaultValue?: string;
+  inputMode?: "text" | "numeric" | "tel";
+  autoComplete?: string;
+  maxLength?: number;
+};
+
+export type EnrollmentFormSelectField = {
+  key: string;
+  type: "select";
+  label: string;
+  required: boolean;
+  description?: string;
+  placeholder?: string;
+  defaultValue?: string;
+  options: { value: string; label: string }[];
+};
+
+export type EnrollmentFormDateField = {
+  key: string;
+  type: "date";
+  label: string;
+  required: boolean;
+  description?: string;
+  defaultValue?: string;
+};
+
+export type EnrollmentFormBooleanField = {
+  key: string;
+  type: "boolean";
+  label: string;
+  required: boolean;
+  description?: string;
+  defaultValue?: boolean;
+};
+
+export type EnrollmentFormField =
+  | EnrollmentFormTextField
+  | EnrollmentFormSelectField
+  | EnrollmentFormDateField
+  | EnrollmentFormBooleanField;
+
+export type EnrollmentForm = {
+  id: string;
+  revision: string;
+  title: string;
+  description?: string;
+  submitLabel: string;
+  fields: EnrollmentFormField[];
+  fieldErrors?: Record<string, string>;
+};
+
+export const zEnrollmentFormSubmitRequest = z.object({
+  formId: z.string().min(1),
+  revision: z.string().min(1),
+  values: z.record(z.string(), zEnrollmentFormValue),
+  /** Client UI locale (short code, e.g. "es"). Server localizes form errors. */
+  locale: z.string().optional(),
+});
+export type EnrollmentFormSubmitRequest = z.infer<
+  typeof zEnrollmentFormSubmitRequest
+>;
+
 export type EnrollmentOtpRequest = {
   rail: Extract<AccountRail, "ars">;
   code: string;
@@ -113,6 +185,7 @@ type HostedEnrollmentResponse = {
 export type EnrollmentResponse =
   | ({ action: "kyc_required" } & LinkOutEnrollmentResponse)
   | ({ action: "kyc_retry"; reason: string } & LinkOutEnrollmentResponse)
+  | { action: "enrollment_form_required"; form: EnrollmentForm }
   | { action: "kyc_pending_review" }
   | { action: "kyc_rejected_final"; reason: string }
   | { action: "not_eligible"; reason: string }

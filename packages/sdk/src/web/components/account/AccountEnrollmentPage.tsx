@@ -9,12 +9,13 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 
 import type {
+  EnrollmentForm,
   AccountLegalName,
   EnrollmentResponse,
 } from "../../../common/account.js";
 import type { NavNodeFiat } from "../../api/navTree.js";
 import { useDaimoClient } from "../../hooks/DaimoClientContext.js";
-import { t } from "../../hooks/locale.js";
+import { getLocale, t } from "../../hooks/locale.js";
 import { useAccountFlow } from "../../hooks/useAccountFlow.js";
 import type { DaimoPlatform } from "../../platform.js";
 import { isDesktop } from "../../platform.js";
@@ -38,6 +39,10 @@ import {
 } from "./AccountKycInfoPage.js";
 import { type LegalNameFormValues, zLegalNameForm } from "./formSchemas.js";
 import { getKycRequirement, KycIndicator } from "./kycRequirement.js";
+import {
+  PaginatedEnrollmentForm,
+  type PaginatedEnrollmentFormSubmitResult,
+} from "./PaginatedEnrollmentForm.js";
 
 type AccountEnrollmentPageProps = {
   node: NavNodeFiat;
@@ -82,6 +87,52 @@ export function AccountEnrollmentPage({
   const responseRef = useRef<EnrollmentResponse | null>(null);
   const readyTimeoutRef = useRef<number | null>(null);
 
+  const applyEnrollmentResult = useCallback(
+    (
+      result: EnrollmentResponse,
+      previousAction?: EnrollmentResponse["action"],
+    ) => {
+      if (
+        previousAction === "hosted_agreement_required" &&
+        result.action === "active"
+      ) {
+        const pending: EnrollmentResponse = { action: "provider_pending" };
+        responseRef.current = pending;
+        setResponse(pending);
+        if (readyTimeoutRef.current != null) {
+          window.clearTimeout(readyTimeoutRef.current);
+        }
+        readyTimeoutRef.current = window.setTimeout(() => {
+          responseRef.current = result;
+          setResponse(result);
+          onReady();
+        }, 900);
+        return;
+      }
+
+      if (result.action === "active") {
+        responseRef.current = result;
+        setResponse(result);
+        onReady();
+      } else if (result.action === "phone_required") {
+        // Coinbase Headless has no KYC — phone OTP is the only step.
+        // Navigate to the phone entry screen; the server will flip to "active"
+        // once we return from phone verification.
+        responseRef.current = result;
+        setResponse(result);
+        onPhoneRequired();
+      } else if (result.action === "provider_otp_required") {
+        responseRef.current = result;
+        setResponse(result);
+        onProviderOtpRequired();
+      } else {
+        responseRef.current = result;
+        setResponse(result);
+      }
+    },
+    [onReady, onPhoneRequired, onProviderOtpRequired],
+  );
+
   const fetchEnrollment = useCallback(async () => {
     if (!account) return;
     const isInitial = responseRef.current == null;
@@ -101,53 +152,8 @@ export function AccountEnrollmentPage({
 
     if (isInitial) setIsLoading(false);
     if (!result) return;
-
-    if (
-      previousAction === "hosted_agreement_required" &&
-      result.action === "active"
-    ) {
-      const pending: EnrollmentResponse = { action: "provider_pending" };
-      responseRef.current = pending;
-      setResponse(pending);
-      if (readyTimeoutRef.current != null) {
-        window.clearTimeout(readyTimeoutRef.current);
-      }
-      readyTimeoutRef.current = window.setTimeout(() => {
-        responseRef.current = result;
-        setResponse(result);
-        onReady();
-      }, 900);
-      return;
-    }
-
-    if (result.action === "active") {
-      responseRef.current = result;
-      setResponse(result);
-      onReady();
-    } else if (result.action === "phone_required") {
-      // Coinbase Headless has no KYC — phone OTP is the only step.
-      // Navigate to the phone entry screen; the server will flip to "active"
-      // once we return from phone verification.
-      responseRef.current = result;
-      setResponse(result);
-      onPhoneRequired();
-    } else if (result.action === "provider_otp_required") {
-      responseRef.current = result;
-      setResponse(result);
-      onProviderOtpRequired();
-    } else {
-      responseRef.current = result;
-      setResponse(result);
-    }
-  }, [
-    account,
-    client,
-    legalName,
-    rail,
-    onReady,
-    onPhoneRequired,
-    onProviderOtpRequired,
-  ]);
+    applyEnrollmentResult(result, previousAction);
+  }, [account, applyEnrollmentResult, client, legalName, rail]);
 
   // Initial fetch
   useEffect(() => {
@@ -243,6 +249,17 @@ export function AccountEnrollmentPage({
         />
       );
 
+    case "enrollment_form_required":
+      return (
+        <AccountEnrollmentFormPage
+          form={response.form}
+          onBack={onBack}
+          onSubmitted={(result) =>
+            applyEnrollmentResult(result, response.action)
+          }
+        />
+      );
+
     case "hosted_kyc_required":
       return (
         <HostedEnrollmentPage
@@ -325,6 +342,56 @@ export function AccountEnrollmentPage({
 }
 
 // --- Sub-components ---
+
+function AccountEnrollmentFormPage({
+  form,
+  onBack,
+  onSubmitted,
+}: {
+  form: EnrollmentForm;
+  onBack: () => void;
+  onSubmitted: (response: EnrollmentResponse) => void;
+}) {
+  const account = useAccountFlow();
+  const client = useDaimoClient();
+
+  const submitForm = async (
+    values: Record<string, string | boolean>,
+  ): Promise<PaginatedEnrollmentFormSubmitResult> => {
+    if (!account) {
+      return { ok: false, fieldErrors: { _form: t.errorConnectionLost } };
+    }
+    const token = await account.getAccessToken();
+    if (!token) {
+      return { ok: false, fieldErrors: { _form: t.errorConnectionLost } };
+    }
+
+    try {
+      const result = await client.account.submitEnrollmentForm(
+        {
+          formId: form.id,
+          revision: form.revision,
+          values,
+          locale: getLocale(),
+        },
+        { bearerToken: token },
+      );
+      onSubmitted(result);
+      return { ok: true };
+    } catch (err) {
+      console.error("[enrollment] form submit failed:", err);
+      return { ok: false, fieldErrors: { _form: t.errorGeneric } };
+    }
+  };
+
+  return (
+    <PaginatedEnrollmentForm
+      form={form}
+      onBack={onBack}
+      onSubmit={submitForm}
+    />
+  );
+}
 
 function AccountLegalNamePage({
   onBack,
