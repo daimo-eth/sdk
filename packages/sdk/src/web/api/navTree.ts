@@ -1,5 +1,6 @@
 import type { Address } from "viem";
 import type { AccountRail } from "../../common/account.js";
+import type { ExchangeId } from "../../common/api.js";
 import type { SessionPublicInfo } from "../../common/session.js";
 
 /** Session plus server-defined modal navigation data. */
@@ -87,13 +88,7 @@ export type NavNodeDeeplink = NavNodeCommon & {
 
 export type NavNodeExchange = NavNodeCommon & {
   type: "Exchange";
-  exchangeId:
-    | "Coinbase"
-    | "Binance"
-    | "Lemon"
-    | "BitgetExchange"
-    | "BybitExchange"
-    | "MtPelerin";
+  exchangeId: ExchangeId;
   icon?: string;
   requiredUsd?: number;
   minimumUsd: number;

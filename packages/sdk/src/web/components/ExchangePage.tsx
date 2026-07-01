@@ -30,8 +30,13 @@ export function ExchangePage({
     exchangeId === "Coinbase" || exchangeId === "MtPelerin" ? "popup" : "qr";
   const usesDesktopQR = isDesktop(platform) && desktopBehavior === "qr";
 
-  const placeholderDensity =
-    exchangeId === "Binance" ? ("medium" as const) : ("short" as const);
+  const isBinanceExchange =
+    exchangeId === "Binance" ||
+    exchangeId === "Binance_USDC" ||
+    exchangeId === "Binance_USDT";
+  const placeholderDensity = isBinanceExchange
+    ? ("medium" as const)
+    : ("short" as const);
 
   return (
     <ExternalPaymentPage
