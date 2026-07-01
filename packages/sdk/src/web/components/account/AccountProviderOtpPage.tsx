@@ -1,32 +1,32 @@
 import { useCallback } from "react";
 
 import { useDaimoClient } from "../../hooks/DaimoClientContext.js";
+import { t } from "../../hooks/locale.js";
 import { useAccountFlow } from "../../hooks/useAccountFlow.js";
 import {
   AccountOtpCodeEntry,
   type OtpVerifyOutcome,
 } from "./AccountOtpCodeEntry.js";
 
-type AccountRipioOtpPageProps = {
+type AccountProviderOtpPageProps = {
   onBack: () => void;
   onVerified: () => void;
 };
 
-const RIPIO_INVALID_CODE =
-  "El código de Ripio no es válido. Revisalo e intentalo de nuevo.";
-
-export function AccountRipioOtpPage({
+export function AccountProviderOtpPage({
   onBack,
   onVerified,
-}: AccountRipioOtpPageProps) {
+}: AccountProviderOtpPageProps) {
   const account = useAccountFlow();
   const client = useDaimoClient();
+  const copy = account?.providerOtp?.copy ?? null;
+  const invalidMessage = copy?.invalidMessage ?? t.somethingWentWrong;
 
   const handleVerify = useCallback(
     async (code: string): Promise<OtpVerifyOutcome> => {
-      if (!account) return { ok: false, msg: RIPIO_INVALID_CODE };
+      if (!account) return { ok: false, msg: invalidMessage };
       const token = await account.getAccessToken();
-      if (!token) return { ok: false, msg: "No pudimos verificar tu sesión." };
+      if (!token) return { ok: false, msg: invalidMessage };
       const result = await client.account.submitEnrollmentOtp(
         { rail: "ars", code },
         { bearerToken: token },
@@ -35,8 +35,13 @@ export function AccountRipioOtpPage({
         case "active":
         case "provider_pending":
           return { ok: true };
-        case "provider_otp_required":
-          return { ok: false, msg: RIPIO_INVALID_CODE };
+        case "provider_otp_required": {
+          account.setProviderOtp(result);
+          return {
+            ok: false,
+            msg: result.copy.invalidMessage,
+          };
+        }
         case "error":
           return { ok: false, msg: result.message };
         case "suspended":
@@ -55,25 +60,28 @@ export function AccountRipioOtpPage({
           return assertUnreachable(result);
       }
     },
-    [account, client],
+    [account, client, invalidMessage],
   );
 
   const handleResend = useCallback(async () => {
     if (!account) return;
     const token = await account.getAccessToken();
     if (!token) return;
-    await client.account.resendEnrollmentOtp(
+    const result = await client.account.resendEnrollmentOtp(
       { rail: "ars" },
       { bearerToken: token },
     );
+    if (result.action === "provider_otp_required") {
+      account.setProviderOtp(result);
+    }
   }, [account, client]);
 
   return (
     <AccountOtpCodeEntry
       destination="email"
-      title="Ya tenés una cuenta de Ripio"
-      message="Vamos a conectar tu cuenta de Ripio para terminar el flujo. Ingresá el código que Ripio envió a tu email."
-      invalidMessage={RIPIO_INVALID_CODE}
+      title={copy?.title}
+      message={copy?.message}
+      invalidMessage={invalidMessage}
       onBack={onBack}
       onVerified={onVerified}
       onVerify={handleVerify}

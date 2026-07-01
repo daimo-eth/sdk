@@ -2,7 +2,7 @@ import type { NavEntry } from "./types.js";
 
 type AccountAuthChallengeEntryType = Extract<
   NavEntry["type"],
-  "account-otp" | "account-phone-otp" | "account-ripio-otp"
+  "account-otp" | "account-phone-otp" | "account-provider-otp"
 >;
 type AccountAuthEntryType = Extract<
   NavEntry["type"],
@@ -10,14 +10,14 @@ type AccountAuthEntryType = Extract<
   | "account-otp"
   | "account-phone"
   | "account-phone-otp"
-  | "account-ripio-otp"
+  | "account-provider-otp"
 >;
 
 const ACCOUNT_AUTH_CHALLENGE_ENTRY_TYPES =
   new Set<AccountAuthChallengeEntryType>([
     "account-otp",
     "account-phone-otp",
-    "account-ripio-otp",
+    "account-provider-otp",
   ]);
 
 const ACCOUNT_AUTH_ENTRY_TYPES = new Set<AccountAuthEntryType>([
@@ -25,7 +25,7 @@ const ACCOUNT_AUTH_ENTRY_TYPES = new Set<AccountAuthEntryType>([
   "account-otp",
   "account-phone",
   "account-phone-otp",
-  "account-ripio-otp",
+  "account-provider-otp",
 ]);
 
 function isAccountAuthChallengeEntryType(

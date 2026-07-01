@@ -212,7 +212,7 @@ export function createDaimoClient(config: TransportConfig): DaimoClient {
         return transport.request<EnrollmentResponse>({
           method: "POST",
           path: "/v1/internal/account/enrollment/otp",
-          body: input,
+          body: { ...input, locale: input.locale ?? getLocale() },
           headers: authHeaders(auth),
         });
       },
@@ -228,7 +228,7 @@ export function createDaimoClient(config: TransportConfig): DaimoClient {
         return transport.request<EnrollmentResponse>({
           method: "POST",
           path: "/v1/internal/account/enrollment/otp/resend",
-          body: input,
+          body: { ...input, locale: input.locale ?? getLocale() },
           headers: authHeaders(auth),
         });
       },

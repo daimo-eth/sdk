@@ -614,7 +614,7 @@ export function useSessionNav(
         if (
           top.type === "account-creating-wallet" ||
           top.type === "account-enrollment" ||
-          top.type === "account-ripio-otp" ||
+          top.type === "account-provider-otp" ||
           top.type === "account-enrollment-update"
         ) {
           next.pop();
