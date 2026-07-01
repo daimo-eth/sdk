@@ -120,6 +120,7 @@ export const en = {
   accountPhone: "Verify your phone",
   accountPhoneDesc: "We'll text you a 6-digit code to verify your number.",
   accountSubmit: "Submit",
+  accountFieldRequired: "Required",
   accountSelectBank: "Select Bank",
   accountSearchInstitutions: "Search institutions...",
   accountOtherInstitutions: "Other institutions",

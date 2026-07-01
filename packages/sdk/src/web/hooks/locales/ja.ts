@@ -123,6 +123,7 @@ export const ja: typeof en = {
   accountPhone: "電話番号の確認",
   accountPhoneDesc: "6桁の確認コードをSMSでお送りします。",
   accountSubmit: "送信",
+  accountFieldRequired: "必須",
   accountSelectBank: "銀行を選択",
   accountSearchInstitutions: "金融機関を検索...",
   accountOtherInstitutions: "その他の金融機関",

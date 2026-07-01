@@ -120,6 +120,7 @@ export const zh: typeof en = {
   accountPhone: "验证您的手机号",
   accountPhoneDesc: "我们将发送6位验证码以验证您的手机号。",
   accountSubmit: "提交",
+  accountFieldRequired: "必填",
   accountSelectBank: "选择银行",
   accountSearchInstitutions: "搜索机构...",
   accountOtherInstitutions: "其他机构",

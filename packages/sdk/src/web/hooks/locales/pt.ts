@@ -124,6 +124,7 @@ export const pt: typeof en = {
   accountPhoneDesc:
     "Enviaremos um código de 6 dígitos por SMS para verificar seu número.",
   accountSubmit: "Enviar",
+  accountFieldRequired: "Obrigatório",
   accountSelectBank: "Selecionar banco",
   accountSearchInstitutions: "Buscar instituições...",
   accountOtherInstitutions: "Outras instituições",
