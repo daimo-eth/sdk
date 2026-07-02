@@ -17,6 +17,11 @@ import type {
 import type { DaimoClient } from "../../client/createDaimoClient.js";
 import { getLocale } from "./locale.js";
 
+type ProviderOtpResponse = Extract<
+  EnrollmentResponse,
+  { action: "provider_otp_required" }
+>;
+
 /** Auth-provider hooks registered by AccountFlowProvider. */
 export type PrivyHooks = {
   sendCode: (email: string) => Promise<void>;
@@ -78,6 +83,8 @@ export type AccountFlowState = {
   isAuthenticated: boolean;
   authError: string | null;
   setAuthError: (error: string | null) => void;
+  providerOtp: ProviderOtpResponse | null;
+  setProviderOtp: (response: ProviderOtpResponse | null) => void;
 
   sendOtp: (email?: string) => Promise<boolean>;
   verifyOtp: (code: string) => Promise<boolean>;
@@ -159,6 +166,9 @@ export function useAccountFlowState(): AccountFlowState {
   const [isReady, setIsReady] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
+  const [providerOtp, setProviderOtp] = useState<ProviderOtpResponse | null>(
+    null,
+  );
   const [isCreatingWallet, setIsCreatingWallet] = useState(false);
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
   const [storedDepositState, setStoredDepositState] =
@@ -441,6 +451,7 @@ export function useAccountFlowState(): AccountFlowState {
     setEmail("");
     setPhoneNumber("");
     setAuthError(null);
+    setProviderOtp(null);
     setStoredDepositState(null);
   }, []);
 
@@ -454,6 +465,8 @@ export function useAccountFlowState(): AccountFlowState {
     isAuthenticated,
     authError,
     setAuthError,
+    providerOtp,
+    setProviderOtp,
     sendOtp,
     verifyOtp,
     sendPhoneOtp,

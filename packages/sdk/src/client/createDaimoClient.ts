@@ -5,6 +5,7 @@ import type {
   DepositConstraints,
   EnrollmentOtpRequest,
   EnrollmentOtpResendRequest,
+  EnrollmentFormSubmitRequest,
   EnrollmentUpdateRequest,
   AccountEnrollmentUpdate,
   EnrollmentResponse,
@@ -48,6 +49,7 @@ export type UpsertDepositRequest = {
   sessionId: string;
   depositAmount: string;
   rail: AccountRail;
+  locale?: string;
   deliverySig?: string;
   deliverySigData?: Record<string, unknown>;
   routingSig?: string;
@@ -79,6 +81,11 @@ export type DaimoClient = {
     /** Submit a provider-owned OTP for account enrollment. */
     submitEnrollmentOtp(
       input: EnrollmentOtpRequest,
+      auth: BearerAuth,
+    ): Promise<EnrollmentResponse>;
+    /** Submit a backend-driven enrollment form. */
+    submitEnrollmentForm(
+      input: EnrollmentFormSubmitRequest,
       auth: BearerAuth,
     ): Promise<EnrollmentResponse>;
     /** Resend a provider-owned OTP for account enrollment. */
@@ -206,6 +213,14 @@ export function createDaimoClient(config: TransportConfig): DaimoClient {
         return transport.request<EnrollmentResponse>({
           method: "POST",
           path: "/v1/internal/account/enrollment/otp",
+          body: { ...input, locale: input.locale ?? getLocale() },
+          headers: authHeaders(auth),
+        });
+      },
+      submitEnrollmentForm(input, auth) {
+        return transport.request<EnrollmentResponse>({
+          method: "POST",
+          path: "/v1/internal/account/enrollment/form",
           body: input,
           headers: authHeaders(auth),
         });
@@ -214,7 +229,7 @@ export function createDaimoClient(config: TransportConfig): DaimoClient {
         return transport.request<EnrollmentResponse>({
           method: "POST",
           path: "/v1/internal/account/enrollment/otp/resend",
-          body: input,
+          body: { ...input, locale: input.locale ?? getLocale() },
           headers: authHeaders(auth),
         });
       },
@@ -264,7 +279,7 @@ export function createDaimoClient(config: TransportConfig): DaimoClient {
         return transport.request<CreateDepositResponse>({
           method: "POST",
           path: "/v1/internal/account/deposit",
-          body: input,
+          body: { ...input, locale: input.locale ?? getLocale() },
           headers: authHeaders(auth),
         });
       },

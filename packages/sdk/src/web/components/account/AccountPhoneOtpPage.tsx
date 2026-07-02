@@ -57,6 +57,7 @@ export function AccountPhoneOtpPage({
           return { ok: false, msg: result.reason };
         case "kyc_required":
         case "kyc_retry":
+        case "enrollment_form_required":
         case "kyc_pending_review":
         case "kyc_rejected_final":
         case "hosted_agreement_required":
