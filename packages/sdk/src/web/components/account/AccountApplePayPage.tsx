@@ -380,10 +380,10 @@ export function AccountApplePayPage({
       <div className="daimo-flex-1 daimo-min-h-0 daimo-px-4 daimo-pb-6 daimo-flex daimo-flex-col daimo-items-center daimo-justify-end">
         <div
           ref={buttonShellRef}
-          className={`daimo-relative daimo-w-full daimo-overflow-hidden ${
+          className={`daimo-w-full daimo-overflow-hidden ${
             isFullscreen
               ? "daimo-fixed daimo-inset-0 daimo-z-[60] daimo-max-w-none daimo-bg-[#111]"
-              : ""
+              : "daimo-relative"
           }`}
           style={{
             maxWidth: shellMaxWidth,
