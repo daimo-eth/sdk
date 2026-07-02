@@ -7,7 +7,22 @@ export type DaimoFrameMessage =
   | {
       source: typeof DAIMO_MESSAGE_SOURCE;
       version: typeof DAIMO_MESSAGE_VERSION;
+      type: "modalOpened";
+    }
+  | {
+      source: typeof DAIMO_MESSAGE_SOURCE;
+      version: typeof DAIMO_MESSAGE_VERSION;
       type: "modalClosed";
+    }
+  | {
+      source: typeof DAIMO_MESSAGE_SOURCE;
+      version: typeof DAIMO_MESSAGE_VERSION;
+      type: "paymentStarted";
+    }
+  | {
+      source: typeof DAIMO_MESSAGE_SOURCE;
+      version: typeof DAIMO_MESSAGE_VERSION;
+      type: "paymentCompleted";
     }
   | {
       source: typeof DAIMO_MESSAGE_SOURCE;
@@ -25,17 +40,35 @@ export function parseDaimoFrameMessage(value: unknown): DaimoFrameMessage | null
   if (!("source" in value) || value.source !== DAIMO_MESSAGE_SOURCE) {
     return null;
   }
-  if (!("version" in value) || value.version !== DAIMO_MESSAGE_VERSION) {
+  if ("version" in value && value.version !== DAIMO_MESSAGE_VERSION) {
     return null;
   }
   if (!("type" in value) || typeof value.type !== "string") return null;
 
   switch (value.type) {
+    case "modalOpened":
+      return {
+        source: DAIMO_MESSAGE_SOURCE,
+        version: DAIMO_MESSAGE_VERSION,
+        type: "modalOpened",
+      };
     case "modalClosed":
       return {
         source: DAIMO_MESSAGE_SOURCE,
         version: DAIMO_MESSAGE_VERSION,
         type: "modalClosed",
+      };
+    case "paymentStarted":
+      return {
+        source: DAIMO_MESSAGE_SOURCE,
+        version: DAIMO_MESSAGE_VERSION,
+        type: "paymentStarted",
+      };
+    case "paymentCompleted":
+      return {
+        source: DAIMO_MESSAGE_SOURCE,
+        version: DAIMO_MESSAGE_VERSION,
+        type: "paymentCompleted",
       };
     case "contentHeightChanged": {
       const payload = getPayload(value);

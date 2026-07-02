@@ -3,6 +3,7 @@
 import { type CSSProperties, useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 
+import type { DaimoModalEventHandlers } from "../hooks/types.js";
 import {
   DAIMO_FRAME_PARENT_ORIGIN_PARAM,
   parseDaimoFrameMessage,
@@ -98,7 +99,7 @@ const closeButtonStyle: CSSProperties = {
  */
 export type DaimoFrameLayout = "modal";
 
-export interface DaimoFrameProps {
+export type DaimoFrameProps = DaimoModalEventHandlers & {
   /** Session ID, created server-side via `POST /v1/sessions`. */
   sessionId: string;
   /** Client secret returned alongside the session. */
@@ -108,14 +109,12 @@ export interface DaimoFrameProps {
    * dimmed overlay with a rounded sheet sized to the checkout content.
    */
   layout?: DaimoFrameLayout;
-  /** Called when the user dismisses the checkout (taps the scrim or closes). */
-  onClose?: () => void;
   /**
    * Base URL of the hosted checkout. Defaults to `https://daimo.com`.
    * Override only for staging / self-hosted environments.
    */
   baseUrl?: string;
-}
+};
 
 /**
  * Hosted Daimo checkout, embedded as an iframe in a full-screen modal overlay.
@@ -148,6 +147,9 @@ export function DaimoFrame({
   clientSecret,
   layout = "modal",
   onClose,
+  onOpen,
+  onPaymentStarted,
+  onPaymentCompleted,
   baseUrl = DEFAULT_BASE_URL,
 }: DaimoFrameProps) {
   const [parentOrigin, setParentOrigin] = useState<string | null>(null);
@@ -184,7 +186,10 @@ export function DaimoFrame({
       const message = parseDaimoFrameMessage(event.data);
       if (!message) return;
 
+      if (message.type === "modalOpened") onOpen?.();
       if (message.type === "modalClosed") onClose?.();
+      if (message.type === "paymentStarted") onPaymentStarted?.();
+      if (message.type === "paymentCompleted") onPaymentCompleted?.();
       if (message.type === "contentHeightChanged") {
         setHeight(message.payload.height);
         setStatus("loaded");
@@ -192,7 +197,7 @@ export function DaimoFrame({
     };
     window.addEventListener("message", handleMessage);
     return () => window.removeEventListener("message", handleMessage);
-  }, [onClose, src]);
+  }, [onClose, onOpen, onPaymentCompleted, onPaymentStarted, src]);
 
   // Fall back to the error card if the checkout never reports content.
   useEffect(() => {
