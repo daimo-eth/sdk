@@ -38,15 +38,19 @@ export function postDaimoFrameMessage(
   const targetOrigin = getDaimoFrameParentOrigin();
   if (!targetOrigin) return false;
 
-  window.parent.postMessage(
-    {
-      source: DAIMO_MESSAGE_SOURCE,
-      version: DAIMO_MESSAGE_VERSION,
-      ...input,
-    },
-    targetOrigin,
-  );
-  return true;
+  try {
+    window.parent.postMessage(
+      {
+        source: DAIMO_MESSAGE_SOURCE,
+        version: DAIMO_MESSAGE_VERSION,
+        ...input,
+      },
+      targetOrigin,
+    );
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export function parseDaimoFrameMessage(value: unknown): DaimoFrameMessage | null {
