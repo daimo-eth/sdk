@@ -7,11 +7,6 @@ export function openDeeplink(
   deeplink: DepositDeeplink,
   platform: DaimoPlatform,
 ): void {
-  if (isDaimoFrameChild()) {
-    openDeeplinkInNewWindow(deeplink);
-    return;
-  }
-
   const desktop = isDesktop(platform);
 
   if (!desktop) {
@@ -19,22 +14,15 @@ export function openDeeplink(
       deeplink.type === "form-post" ? deeplink.warmUrl : deeplink.url;
     // In a native WKWebView, use the bridge to open in Safari directly.
     if (postNativeOpenUrl(url)) return;
+    if (isDaimoFrameChild()) {
+      window.open(url, "_blank");
+      return;
+    }
     // Fallback: trigger navigation for the native delegate to intercept.
     window.location.href = url;
     return;
   }
 
-  switch (deeplink.type) {
-    case "redirect":
-      window.open(deeplink.url, "_blank");
-      break;
-    case "form-post":
-      openFormPost(deeplink);
-      break;
-  }
-}
-
-function openDeeplinkInNewWindow(deeplink: DepositDeeplink) {
   switch (deeplink.type) {
     case "redirect":
       window.open(deeplink.url, "_blank");
