@@ -124,6 +124,8 @@ export const ja: typeof en = {
   accountPhoneDesc: "6桁の確認コードをSMSでお送りします。",
   accountSubmit: "送信",
   accountFieldRequired: "必須",
+  accountBooleanYes: "はい",
+  accountBooleanNo: "いいえ",
   accountSelectBank: "銀行を選択",
   accountSearchInstitutions: "金融機関を検索...",
   accountOtherInstitutions: "その他の金融機関",

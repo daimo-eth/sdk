@@ -94,6 +94,8 @@ export const es: typeof en = {
     "Te enviaremos un código de 6 dígitos para verificar tu número.",
   accountSubmit: "Enviar",
   accountFieldRequired: "Obligatorio",
+  accountBooleanYes: "Sí",
+  accountBooleanNo: "No",
   accountSelectBank: "Seleccionar banco",
   accountSearchInstitutions: "Buscar instituciones...",
   accountOtherInstitutions: "Otras instituciones",

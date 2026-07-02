@@ -34,6 +34,13 @@ export type StartEnrollmentRequest = {
 export const zEnrollmentFormValue = z.union([z.string(), z.boolean()]);
 export type EnrollmentFormValue = z.infer<typeof zEnrollmentFormValue>;
 
+export type EnrollmentFormTextMask = {
+  type: "pattern";
+  pattern: string;
+  input: "digits";
+  placeholder?: string;
+};
+
 export type EnrollmentFormTextField = {
   key: string;
   type: "text";
@@ -45,6 +52,7 @@ export type EnrollmentFormTextField = {
   inputMode?: "text" | "numeric" | "tel";
   autoComplete?: string;
   maxLength?: number;
+  mask?: EnrollmentFormTextMask;
 };
 
 export type EnrollmentFormSelectField = {
@@ -74,6 +82,9 @@ export type EnrollmentFormBooleanField = {
   required: boolean;
   description?: string;
   defaultValue?: boolean;
+  control?: "checkbox" | "yes_no";
+  trueLabel?: string;
+  falseLabel?: string;
 };
 
 export type EnrollmentFormField =

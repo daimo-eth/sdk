@@ -125,6 +125,8 @@ export const pt: typeof en = {
     "Enviaremos um código de 6 dígitos por SMS para verificar seu número.",
   accountSubmit: "Enviar",
   accountFieldRequired: "Obrigatório",
+  accountBooleanYes: "Sim",
+  accountBooleanNo: "Não",
   accountSelectBank: "Selecionar banco",
   accountSearchInstitutions: "Buscar instituições...",
   accountOtherInstitutions: "Outras instituições",

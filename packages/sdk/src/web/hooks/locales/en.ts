@@ -121,6 +121,8 @@ export const en = {
   accountPhoneDesc: "We'll text you a 6-digit code to verify your number.",
   accountSubmit: "Submit",
   accountFieldRequired: "Required",
+  accountBooleanYes: "Yes",
+  accountBooleanNo: "No",
   accountSelectBank: "Select Bank",
   accountSearchInstitutions: "Search institutions...",
   accountOtherInstitutions: "Other institutions",
