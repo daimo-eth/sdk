@@ -11,6 +11,7 @@ export type {
   DaimoModalTheme,
   DaimoModalThemeMode,
   DaimoModalThemeModeName,
+  DaimoSessionTheme,
   DaimoThemeMode,
 } from "../common/theme.js";
 

@@ -31,6 +31,13 @@ export type DaimoModalThemeModeName = "light" | "dark";
 
 export type DaimoThemeMode = "system" | DaimoModalThemeModeName;
 
+export type DaimoSessionTheme = {
+  /** Custom theme CSS URL. */
+  themeCssUrl?: string;
+  /** Org-controlled light/dark/system theme mode. */
+  themeMode: DaimoThemeMode;
+};
+
 export type DaimoModalThemeStyle = Record<`--${string}`, string>;
 
 export type LegacyDaimoModalTheme = {

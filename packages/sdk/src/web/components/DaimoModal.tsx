@@ -45,6 +45,7 @@ import {
   useInjectedWallets,
   type InjectedWallet,
 } from "../hooks/useInjectedWallets.js";
+import type { DaimoThemeMode } from "../../common/theme.js";
 import { detectPlatform, isDesktop, type DaimoPlatform } from "../platform.js";
 import { useDaimoThemeReady } from "../theme.js";
 import { useWalletFlow } from "../hooks/useWalletFlow.js";
@@ -107,6 +108,8 @@ export type DaimoModalProps = DaimoModalEventHandlers & {
   connectToAddress?: Address;
   /** Render inline instead of as a floating modal. */
   embedded?: boolean;
+  /** Override the session's light/dark/system theme mode. */
+  themeMode?: DaimoThemeMode;
   /** Caller's platform. Prefer "desktop" or "mobile"; legacy values still work. Auto-detected. */
   platform?: DaimoPlatform;
   /** URL to navigate to after successful payment. */
@@ -264,13 +267,14 @@ export function DaimoModal(props: DaimoModalProps) {
       )}
     </>
   );
+  const themeMode = props.themeMode ?? loaded.session.display.themeMode;
 
   if (embedded) {
     return (
       <EmbeddedContainer
         showFooterSpacer={showFooterSpacer}
         onClose={handleClose}
-        themeMode={loaded.session.display.themeMode}
+        themeMode={themeMode}
       >
         {modalBody}
       </EmbeddedContainer>
@@ -282,7 +286,7 @@ export function DaimoModal(props: DaimoModalProps) {
       pageKey={pageKey}
       reserveLoadingHeight={reserveLoadingHeight}
       showFooterSpacer={showFooterSpacer}
-      themeMode={loaded.session.display.themeMode}
+      themeMode={themeMode}
     >
       {modalBody}
     </ModalContainer>
