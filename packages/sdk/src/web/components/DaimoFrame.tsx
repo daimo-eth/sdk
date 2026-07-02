@@ -3,6 +3,7 @@
 import { type CSSProperties, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 
+import type { DepositDeeplink } from "../../common/account.js";
 import { CloseIcon } from "./icons.js";
 import { ContactSupportButton, ErrorMessage } from "./shared.js";
 
@@ -173,6 +174,10 @@ export function DaimoFrame({
       if (event.origin !== frameOrigin) return;
       if (event.data?.source !== DAIMO_MESSAGE_SOURCE) return;
       if (event.data.type === "modalClosed") onClose?.();
+      if (event.data.type === "openDeeplink") {
+        const deeplink = parseDepositDeeplink(event.data.payload?.deeplink);
+        if (deeplink) openDeeplinkFromFrame(deeplink);
+      }
       if (event.data.type === "contentHeightChanged") {
         const reported = Number(event.data.payload?.height);
         if (reported > 0) {
@@ -232,6 +237,123 @@ export function DaimoFrame({
     </div>,
     document.body,
   );
+}
+
+function openDeeplinkFromFrame(deeplink: DepositDeeplink) {
+  switch (deeplink.type) {
+    case "redirect":
+      openExternalUrl(deeplink.url);
+      break;
+    case "form-post":
+      openFormPostFromFrame(deeplink);
+      break;
+  }
+}
+
+function openFormPostFromFrame(
+  deeplink: DepositDeeplink & { type: "form-post" },
+) {
+  const popup = window.open(deeplink.warmUrl, "_blank");
+  if (!popup) {
+    window.location.href = deeplink.warmUrl;
+    return;
+  }
+
+  setTimeout(() => {
+    if (popup.closed) return;
+    popup.location.href = "about:blank";
+    writeFormPostPage(popup, deeplink);
+  }, deeplink.warmDelayMs);
+}
+
+function openExternalUrl(url: string) {
+  const popup = window.open(url, "_blank");
+  if (!popup) window.location.href = url;
+}
+
+function writeFormPostPage(
+  popup: Window,
+  deeplink: DepositDeeplink & { type: "form-post" },
+  attempt = 0,
+) {
+  if (popup.closed) return;
+  try {
+    popup.document.open();
+    const fields = Object.entries(deeplink.formFields)
+      .map(
+        ([k, v]) =>
+          `<input type="hidden" name="${escAttr(k)}" value="${escAttr(v)}"/>`,
+      )
+      .join("\n");
+    popup.document.write(
+      `<html><body>` +
+        `<p style="font-family:system-ui;color:#666;text-align:center;margin-top:40vh">` +
+        `Connecting to your bank...</p>` +
+        `<form id="f" method="POST" action="${escAttr(deeplink.formAction)}">` +
+        `${fields}</form>` +
+        `<script>document.getElementById('f').submit();</script>` +
+        `</body></html>`,
+    );
+    popup.document.close();
+  } catch (error) {
+    if (attempt >= 20) {
+      console.error("[DaimoFrame] failed to prepare form-post popup:", error);
+      return;
+    }
+    setTimeout(() => {
+      writeFormPostPage(popup, deeplink, attempt + 1);
+    }, 100);
+  }
+}
+
+function parseDepositDeeplink(value: unknown): DepositDeeplink | null {
+  if (value == null || typeof value !== "object") return null;
+  if (!("type" in value)) return null;
+
+  if (value.type === "redirect") {
+    if (!("url" in value) || typeof value.url !== "string") return null;
+    return { type: "redirect", url: value.url };
+  }
+
+  if (value.type !== "form-post") return null;
+  if (!("warmUrl" in value) || typeof value.warmUrl !== "string") return null;
+  if (
+    !("warmDelayMs" in value) ||
+    typeof value.warmDelayMs !== "number" ||
+    !Number.isFinite(value.warmDelayMs)
+  ) {
+    return null;
+  }
+  if (
+    !("formAction" in value) ||
+    typeof value.formAction !== "string" ||
+    !("formFields" in value) ||
+    !isStringRecord(value.formFields)
+  ) {
+    return null;
+  }
+
+  return {
+    type: "form-post",
+    warmUrl: value.warmUrl,
+    warmDelayMs: value.warmDelayMs,
+    formAction: value.formAction,
+    formFields: value.formFields,
+  };
+}
+
+function isStringRecord(value: unknown): value is Record<string, string> {
+  if (value == null || typeof value !== "object") return false;
+  return Object.values(value).every((entry) => typeof entry === "string");
+}
+
+/** Escape a string for safe embedding in an HTML attribute (double-quoted). */
+function escAttr(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/"/g, "&quot;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
 }
 
 /** Dismissable "couldn't load" card with a contact-support mailto link. */

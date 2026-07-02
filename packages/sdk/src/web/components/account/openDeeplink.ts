@@ -1,11 +1,15 @@
 import type { DepositDeeplink } from "../../../common/account.js";
 import { isDesktop, type DaimoPlatform } from "../../platform.js";
 
+const DAIMO_MESSAGE_SOURCE = "daimo-pay";
+
 /** Execute a provider deeplink in the user's browser. */
 export function openDeeplink(
   deeplink: DepositDeeplink,
   platform: DaimoPlatform,
 ): void {
+  if (postFrameOpenDeeplink(deeplink)) return;
+
   const desktop = isDesktop(platform);
 
   if (!desktop) {
@@ -78,6 +82,20 @@ function escAttr(s: string): string {
     .replace(/"/g, "&quot;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;");
+}
+
+function postFrameOpenDeeplink(deeplink: DepositDeeplink): boolean {
+  if (window.parent === window) return false;
+  window.parent.postMessage(
+    {
+      source: DAIMO_MESSAGE_SOURCE,
+      version: 1,
+      type: "openDeeplink",
+      payload: { deeplink },
+    },
+    "*",
+  );
+  return true;
 }
 
 /** Post an openUrl message to the native WKWebView bridge. Returns true if sent. */
