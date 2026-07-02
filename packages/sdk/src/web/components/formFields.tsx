@@ -22,6 +22,7 @@ export type DaimoFormFieldProps = {
   error?: string;
   hideError?: boolean;
   labelVisibility?: "visible" | "sr-only";
+  as?: "label" | "div";
 };
 
 export function DaimoFormField({
@@ -31,14 +32,15 @@ export function DaimoFormField({
   error,
   hideError,
   labelVisibility = "visible",
+  as = "label",
 }: DaimoFormFieldProps) {
   const id = useId();
   const descriptionId = description ? `${id}-description` : undefined;
   const errorId = error ? `${id}-error` : undefined;
   const describedBy = [descriptionId, errorId].filter(Boolean).join(" ");
-
-  return (
-    <label className="daimo-flex daimo-flex-col daimo-gap-1.5" htmlFor={id}>
+  const className = "daimo-flex daimo-flex-col daimo-gap-1.5";
+  const content = (
+    <>
       <span
         className={
           labelVisibility === "sr-only"
@@ -69,6 +71,16 @@ export function DaimoFormField({
           {error}
         </span>
       )}
+    </>
+  );
+
+  if (as === "div") {
+    return <div className={className}>{content}</div>;
+  }
+
+  return (
+    <label className={className} htmlFor={id}>
+      {content}
     </label>
   );
 }

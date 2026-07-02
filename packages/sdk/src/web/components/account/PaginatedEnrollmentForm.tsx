@@ -3,6 +3,7 @@ import { type FormEvent, useEffect, useMemo, useState } from "react";
 import type {
   EnrollmentForm,
   EnrollmentFormField,
+  EnrollmentFormTextMask,
   EnrollmentFormValue,
 } from "../../../common/account.js";
 import { t } from "../../hooks/locale.js";
@@ -196,12 +197,14 @@ function EnrollmentFormFieldControl({
               type="text"
               inputMode={field.inputMode}
               autoComplete={field.autoComplete}
-              maxLength={field.maxLength}
-              value={typeof value === "string" ? value : ""}
+              maxLength={formattedMaxLength(field)}
+              value={formatTextFieldValue(field, value)}
               placeholder={field.placeholder}
               aria-describedby={describedBy}
               invalid={invalid}
-              onChange={(event) => onChange(event.target.value)}
+              onChange={(event) =>
+                onChange(parseTextFieldValue(field, event.target.value))
+              }
               className="daimo-px-4 daimo-py-3"
             />
           )}
@@ -256,6 +259,50 @@ function EnrollmentFormFieldControl({
         </DaimoFormField>
       );
     case "boolean":
+      if (field.control === "yes_no") {
+        return (
+          <DaimoFormField
+            as="div"
+            label={field.label}
+            description={field.description}
+            error={error}
+          >
+            {({ id, describedBy, invalid }) => (
+              <div
+                id={id}
+                role="radiogroup"
+                aria-label={field.label}
+                aria-describedby={describedBy}
+                aria-invalid={invalid || undefined}
+                className={`daimo-grid daimo-grid-cols-2 daimo-gap-2 ${invalid ? "daimo-rounded-[var(--daimo-radius-md)] daimo-ring-1 daimo-ring-[var(--daimo-error)]" : ""}`}
+              >
+                {[
+                  { value: true, label: field.trueLabel ?? t.accountBooleanYes },
+                  {
+                    value: false,
+                    label: field.falseLabel ?? t.accountBooleanNo,
+                  },
+                ].map((option) => (
+                  <button
+                    key={String(option.value)}
+                    type="button"
+                    role="radio"
+                    aria-checked={value === option.value}
+                    onClick={() => onChange(option.value)}
+                    className={`daimo-min-h-[48px] daimo-rounded-[var(--daimo-radius-md)] daimo-px-4 daimo-py-3 daimo-text-base daimo-font-medium daimo-touch-action-manipulation daimo-transition-[background-color,color,box-shadow] daimo-duration-150 daimo-ease-out ${
+                      value === option.value
+                        ? "daimo-bg-[var(--daimo-accent)] daimo-text-white daimo-shadow-sm"
+                        : "daimo-bg-[var(--daimo-surface-secondary)] daimo-text-[var(--daimo-text)]"
+                    }`}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </DaimoFormField>
+        );
+      }
       return (
         <DaimoFormField
           label={field.label}
@@ -296,11 +343,15 @@ function initialFormValues(
   form: EnrollmentForm,
 ): Record<string, EnrollmentFormValue> {
   return Object.fromEntries(
-    form.fields.map((field) => [
-      field.key,
-      field.defaultValue ?? (field.type === "boolean" ? false : ""),
-    ]),
+    form.fields.map((field) => [field.key, initialFieldValue(field)]),
   );
+}
+
+function initialFieldValue(field: EnrollmentFormField): EnrollmentFormValue {
+  if (field.defaultValue != null) return field.defaultValue;
+  if (field.type !== "boolean") return "";
+  if (field.control !== "yes_no") return false;
+  return field.required ? "" : false;
 }
 
 function validateFields(
@@ -313,11 +364,82 @@ function validateFields(
     const value = values[field.key];
     if (typeof value === "string" && value.trim() === "") {
       errors[field.key] = t.accountFieldRequired;
-    } else if (typeof value === "boolean" && !value) {
+    } else if (
+      field.type === "boolean" &&
+      field.control !== "yes_no" &&
+      typeof value === "boolean" &&
+      !value
+    ) {
+      errors[field.key] = t.accountFieldRequired;
+    } else if (field.type === "boolean" && typeof value !== "boolean") {
       errors[field.key] = t.accountFieldRequired;
     }
   }
   return errors;
+}
+
+function formattedMaxLength(field: EnrollmentFormField): number | undefined {
+  if (field.type !== "text") return undefined;
+  if (field.mask) return textMaskDisplayMaxLength(field.mask);
+  return field.maxLength;
+}
+
+function formatTextFieldValue(
+  field: EnrollmentFormField,
+  value: EnrollmentFormValue | undefined,
+): string {
+  if (field.type !== "text" || typeof value !== "string") return "";
+  if (field.mask) return formatMaskedText(field.mask, value);
+  return value;
+}
+
+function parseTextFieldValue(field: EnrollmentFormField, value: string): string {
+  if (field.type === "text" && field.mask) {
+    return parseMaskedText(
+      value,
+      field.maxLength ?? textMaskRawMaxLength(field.mask),
+    );
+  }
+  return value;
+}
+
+function parseMaskedText(value: string, maxLength: number): string {
+  return value.replace(/\D/g, "").slice(0, maxLength);
+}
+
+function formatMaskedText(mask: EnrollmentFormTextMask, value: string): string {
+  return formatPatternMask(mask, value);
+}
+
+function formatPatternMask(
+  mask: EnrollmentFormTextMask,
+  value: string,
+): string {
+  const placeholder = mask.placeholder ?? "X";
+  const rawValue = parseMaskedText(value, textMaskRawMaxLength(mask));
+  let output = "";
+  let rawIndex = 0;
+
+  for (const patternChar of mask.pattern) {
+    if (patternChar === placeholder) {
+      if (rawIndex >= rawValue.length) break;
+      output += rawValue[rawIndex];
+      rawIndex += 1;
+    } else if (rawIndex < rawValue.length) {
+      output += patternChar;
+    }
+  }
+
+  return output;
+}
+
+function textMaskRawMaxLength(mask: EnrollmentFormTextMask): number {
+  const placeholder = mask.placeholder ?? "X";
+  return [...mask.pattern].filter((char) => char === placeholder).length;
+}
+
+function textMaskDisplayMaxLength(mask: EnrollmentFormTextMask): number {
+  return mask.pattern.length;
 }
 
 function replaceErrorsForFields(
