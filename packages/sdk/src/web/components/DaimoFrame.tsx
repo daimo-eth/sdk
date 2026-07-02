@@ -1,13 +1,16 @@
 "use client";
 
-import { type CSSProperties, useEffect, useState } from "react";
+import { type CSSProperties, useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 
 import type { DepositDeeplink } from "../../common/account.js";
+import {
+  DAIMO_FRAME_PARENT_ORIGIN_PARAM,
+  parseDaimoFrameMessage,
+} from "./frameMessages.js";
 import { CloseIcon } from "./icons.js";
 import { ContactSupportButton, ErrorMessage } from "./shared.js";
 
-const DAIMO_MESSAGE_SOURCE = "daimo-pay";
 const DEFAULT_BASE_URL = "https://daimo.com";
 const INITIAL_HEIGHT = 420;
 /** Show the error fallback if the iframe hasn't rendered content within this. */
@@ -148,11 +151,13 @@ export function DaimoFrame({
   onClose,
   baseUrl = DEFAULT_BASE_URL,
 }: DaimoFrameProps) {
-  const [src] = useState(
+  const [parentOrigin, setParentOrigin] = useState<string | null>(null);
+  const src = useMemo(
     () =>
-      `${baseUrl.replace(/\/$/, "")}/webview?session=${encodeURIComponent(
-        sessionId,
-      )}&cs=${encodeURIComponent(clientSecret)}&layout=embed`,
+      parentOrigin
+        ? getFrameSrc(baseUrl, sessionId, clientSecret, parentOrigin)
+        : null,
+    [baseUrl, clientSecret, parentOrigin, sessionId],
   );
   const [height, setHeight] = useState(INITIAL_HEIGHT);
   const [mounted, setMounted] = useState(false);
@@ -165,25 +170,28 @@ export function DaimoFrame({
   const [animateHeight, setAnimateHeight] = useState(false);
 
   // Portals require a DOM target, so only render after mount (client-only).
-  useEffect(() => setMounted(true), []);
+  useEffect(() => {
+    setMounted(true);
+    setParentOrigin(window.location.origin);
+  }, []);
 
   useEffect(() => {
+    if (!src) return;
+
     // Only trust messages from the iframe's own origin.
     const frameOrigin = new URL(src, window.location.href).origin;
     const handleMessage = (event: MessageEvent) => {
       if (event.origin !== frameOrigin) return;
-      if (event.data?.source !== DAIMO_MESSAGE_SOURCE) return;
-      if (event.data.type === "modalClosed") onClose?.();
-      if (event.data.type === "openDeeplink") {
-        const deeplink = parseDepositDeeplink(event.data.payload?.deeplink);
-        if (deeplink) openDeeplinkFromFrame(deeplink);
+      const message = parseDaimoFrameMessage(event.data);
+      if (!message) return;
+
+      if (message.type === "modalClosed") onClose?.();
+      if (message.type === "openDeeplink") {
+        openDeeplinkFromFrame(message.payload.deeplink);
       }
-      if (event.data.type === "contentHeightChanged") {
-        const reported = Number(event.data.payload?.height);
-        if (reported > 0) {
-          setHeight(reported);
-          setStatus("loaded");
-        }
+      if (message.type === "contentHeightChanged") {
+        setHeight(message.payload.height);
+        setStatus("loaded");
       }
     };
     window.addEventListener("message", handleMessage);
@@ -208,7 +216,7 @@ export function DaimoFrame({
   // `layout` is reserved for future modes; only "modal" is supported today.
   void layout;
 
-  if (!mounted) return null;
+  if (!mounted || !src) return null;
 
   return createPortal(
     <div onClick={() => onClose?.()} style={scrimStyle}>
@@ -239,6 +247,22 @@ export function DaimoFrame({
   );
 }
 
+function getFrameSrc(
+  baseUrl: string,
+  sessionId: string,
+  clientSecret: string,
+  parentOrigin: string,
+) {
+  const base = baseUrl.replace(/\/$/, "");
+  const params = new URLSearchParams({
+    session: sessionId,
+    cs: clientSecret,
+    layout: "embed",
+    [DAIMO_FRAME_PARENT_ORIGIN_PARAM]: parentOrigin,
+  });
+  return `${base}/webview?${params.toString()}`;
+}
+
 function openDeeplinkFromFrame(deeplink: DepositDeeplink) {
   switch (deeplink.type) {
     case "redirect":
@@ -254,10 +278,7 @@ function openFormPostFromFrame(
   deeplink: DepositDeeplink & { type: "form-post" },
 ) {
   const popup = window.open(deeplink.warmUrl, "_blank");
-  if (!popup) {
-    window.location.href = deeplink.warmUrl;
-    return;
-  }
+  if (!popup) return;
 
   setTimeout(() => {
     if (popup.closed) return;
@@ -304,47 +325,6 @@ function writeFormPostPage(
       writeFormPostPage(popup, deeplink, attempt + 1);
     }, 100);
   }
-}
-
-function parseDepositDeeplink(value: unknown): DepositDeeplink | null {
-  if (value == null || typeof value !== "object") return null;
-  if (!("type" in value)) return null;
-
-  if (value.type === "redirect") {
-    if (!("url" in value) || typeof value.url !== "string") return null;
-    return { type: "redirect", url: value.url };
-  }
-
-  if (value.type !== "form-post") return null;
-  if (!("warmUrl" in value) || typeof value.warmUrl !== "string") return null;
-  if (
-    !("warmDelayMs" in value) ||
-    typeof value.warmDelayMs !== "number" ||
-    !Number.isFinite(value.warmDelayMs)
-  ) {
-    return null;
-  }
-  if (
-    !("formAction" in value) ||
-    typeof value.formAction !== "string" ||
-    !("formFields" in value) ||
-    !isStringRecord(value.formFields)
-  ) {
-    return null;
-  }
-
-  return {
-    type: "form-post",
-    warmUrl: value.warmUrl,
-    warmDelayMs: value.warmDelayMs,
-    formAction: value.formAction,
-    formFields: value.formFields,
-  };
-}
-
-function isStringRecord(value: unknown): value is Record<string, string> {
-  if (value == null || typeof value !== "object") return false;
-  return Object.values(value).every((entry) => typeof entry === "string");
 }
 
 /** Escape a string for safe embedding in an HTML attribute (double-quoted). */

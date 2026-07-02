@@ -1,7 +1,6 @@
 import type { DepositDeeplink } from "../../../common/account.js";
 import { isDesktop, type DaimoPlatform } from "../../platform.js";
-
-const DAIMO_MESSAGE_SOURCE = "daimo-pay";
+import { postDaimoFrameMessage } from "../frameMessages.js";
 
 /** Execute a provider deeplink in the user's browser. */
 export function openDeeplink(
@@ -85,17 +84,10 @@ function escAttr(s: string): string {
 }
 
 function postFrameOpenDeeplink(deeplink: DepositDeeplink): boolean {
-  if (window.parent === window) return false;
-  window.parent.postMessage(
-    {
-      source: DAIMO_MESSAGE_SOURCE,
-      version: 1,
-      type: "openDeeplink",
-      payload: { deeplink },
-    },
-    "*",
-  );
-  return true;
+  return postDaimoFrameMessage({
+    type: "openDeeplink",
+    payload: { deeplink },
+  });
 }
 
 /** Post an openUrl message to the native WKWebView bridge. Returns true if sent. */
