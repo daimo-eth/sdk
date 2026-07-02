@@ -1,13 +1,16 @@
 import type { DepositDeeplink } from "../../../common/account.js";
 import { isDesktop, type DaimoPlatform } from "../../platform.js";
-import { postDaimoFrameMessage } from "../frameMessages.js";
+import { isDaimoFrameChild } from "../frameMessages.js";
 
 /** Execute a provider deeplink in the user's browser. */
 export function openDeeplink(
   deeplink: DepositDeeplink,
   platform: DaimoPlatform,
 ): void {
-  if (postFrameOpenDeeplink(deeplink)) return;
+  if (isDaimoFrameChild()) {
+    openDeeplinkInNewWindow(deeplink);
+    return;
+  }
 
   const desktop = isDesktop(platform);
 
@@ -21,6 +24,17 @@ export function openDeeplink(
     return;
   }
 
+  switch (deeplink.type) {
+    case "redirect":
+      window.open(deeplink.url, "_blank");
+      break;
+    case "form-post":
+      openFormPost(deeplink);
+      break;
+  }
+}
+
+function openDeeplinkInNewWindow(deeplink: DepositDeeplink) {
   switch (deeplink.type) {
     case "redirect":
       window.open(deeplink.url, "_blank");
@@ -81,13 +95,6 @@ function escAttr(s: string): string {
     .replace(/"/g, "&quot;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;");
-}
-
-function postFrameOpenDeeplink(deeplink: DepositDeeplink): boolean {
-  return postDaimoFrameMessage({
-    type: "openDeeplink",
-    payload: { deeplink },
-  });
 }
 
 /** Post an openUrl message to the native WKWebView bridge. Returns true if sent. */

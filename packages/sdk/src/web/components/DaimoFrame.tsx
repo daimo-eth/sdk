@@ -3,7 +3,6 @@
 import { type CSSProperties, useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 
-import type { DepositDeeplink } from "../../common/account.js";
 import {
   DAIMO_FRAME_PARENT_ORIGIN_PARAM,
   parseDaimoFrameMessage,
@@ -186,9 +185,6 @@ export function DaimoFrame({
       if (!message) return;
 
       if (message.type === "modalClosed") onClose?.();
-      if (message.type === "openDeeplink") {
-        openDeeplinkFromFrame(message.payload.deeplink);
-      }
       if (message.type === "contentHeightChanged") {
         setHeight(message.payload.height);
         setStatus("loaded");
@@ -261,79 +257,6 @@ function getFrameSrc(
     [DAIMO_FRAME_PARENT_ORIGIN_PARAM]: parentOrigin,
   });
   return `${base}/webview?${params.toString()}`;
-}
-
-function openDeeplinkFromFrame(deeplink: DepositDeeplink) {
-  switch (deeplink.type) {
-    case "redirect":
-      openExternalUrl(deeplink.url);
-      break;
-    case "form-post":
-      openFormPostFromFrame(deeplink);
-      break;
-  }
-}
-
-function openFormPostFromFrame(
-  deeplink: DepositDeeplink & { type: "form-post" },
-) {
-  const popup = window.open(deeplink.warmUrl, "_blank");
-  if (!popup) return;
-
-  setTimeout(() => {
-    if (popup.closed) return;
-    popup.location.href = "about:blank";
-    writeFormPostPage(popup, deeplink);
-  }, deeplink.warmDelayMs);
-}
-
-function openExternalUrl(url: string) {
-  const popup = window.open(url, "_blank");
-  if (!popup) window.location.href = url;
-}
-
-function writeFormPostPage(
-  popup: Window,
-  deeplink: DepositDeeplink & { type: "form-post" },
-  attempt = 0,
-) {
-  if (popup.closed) return;
-  try {
-    popup.document.open();
-    const fields = Object.entries(deeplink.formFields)
-      .map(
-        ([k, v]) =>
-          `<input type="hidden" name="${escAttr(k)}" value="${escAttr(v)}"/>`,
-      )
-      .join("\n");
-    popup.document.write(
-      `<html><body>` +
-        `<p style="font-family:system-ui;color:#666;text-align:center;margin-top:40vh">` +
-        `Connecting to your bank...</p>` +
-        `<form id="f" method="POST" action="${escAttr(deeplink.formAction)}">` +
-        `${fields}</form>` +
-        `<script>document.getElementById('f').submit();</script>` +
-        `</body></html>`,
-    );
-    popup.document.close();
-  } catch (error) {
-    if (attempt >= 20) {
-      console.error("[DaimoFrame] failed to prepare form-post popup:", error);
-      return;
-    }
-    setTimeout(() => {
-      writeFormPostPage(popup, deeplink, attempt + 1);
-    }, 100);
-  }
-}
-
-/** Escape a string for safe embedding in an HTML attribute (double-quoted). */
-function escAttr(s: string): string {
-  return s
-    .replace(/&/g, "&amp;")
-    .replace(/"/g, "&quot;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
 }
 
 /** Dismissable "couldn't load" card with a contact-support mailto link. */
