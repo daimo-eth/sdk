@@ -779,11 +779,9 @@ function renderEntry(
           sessionId={ctx.session.sessionId}
           clientSecret={ctx.session.clientSecret}
           actionVerb={ctx.displayVerb}
-          isDesktop={ctx.isDesktop}
           initialAmount={ctx.session.destination.amountUnits}
           onBack={ctx.canGoBack ? ctx.onBack : null}
           onAdvance={() => ctx.onAccountAdvance("account-status")}
-          setModalCloseVisible={ctx.setModalCloseVisible}
         />
       );
     case "account-bank-details":

@@ -23,11 +23,9 @@ type AccountApplePayPageProps = {
   sessionId: string;
   clientSecret: string;
   actionVerb: string;
-  isDesktop: boolean;
   initialAmount?: string;
   onBack?: (() => void) | null;
   onAdvance: () => void;
-  setModalCloseVisible?: (show: boolean) => void;
 };
 
 const APPLE_PAY_BUTTON_WIDTH = 296;
@@ -55,11 +53,9 @@ export function AccountApplePayPage({
   sessionId,
   clientSecret,
   actionVerb,
-  isDesktop,
   initialAmount,
   onBack,
   onAdvance,
-  setModalCloseVisible,
 }: AccountApplePayPageProps) {
   const client = useDaimoClient();
   const { accountFlow, depositState } = useSessionDepositState(sessionId);
@@ -163,8 +159,6 @@ export function AccountApplePayPage({
     onRefreshDeposit: refreshFromServer,
     paymentLinkUrl,
   });
-  const isExpanded = allowExpandedView && iframeExpanded;
-  const isFullscreen = isDesktop && isExpanded;
 
   useEffect(() => {
     if (!isValid) {
@@ -211,11 +205,6 @@ export function AccountApplePayPage({
     },
   });
 
-  useEffect(() => {
-    setModalCloseVisible?.(!isFullscreen);
-    return () => setModalCloseVisible?.(true);
-  }, [isFullscreen, setModalCloseVisible]);
-
   if (widgetError) {
     return (
       <ErrorPage
@@ -245,11 +234,8 @@ export function AccountApplePayPage({
     payment?.flow === "wallet-pay-widget"
       ? (payment.receiveUnits ?? payment.purchaseAmount)
       : null;
-  const collapsedShellWidth = Math.min(
-    buttonShellWidth,
-    APPLE_PAY_SHELL_MAX_WIDTH,
-  );
-  const scaledButtonRatio = collapsedShellWidth / APPLE_PAY_BUTTON_WIDTH;
+  const isExpanded = allowExpandedView && iframeExpanded;
+  const scaledButtonRatio = buttonShellWidth / APPLE_PAY_BUTTON_WIDTH;
   const buttonScale =
     Number.isFinite(scaledButtonRatio) && scaledButtonRatio > 0
       ? Math.min(scaledButtonRatio, APPLE_PAY_COLLAPSED_SCALE_MAX)
@@ -261,28 +247,24 @@ export function AccountApplePayPage({
   const collapsedShellRadius = Math.round(collapsedShellHeight / 2);
   const collapsedViewportWidth = Math.max(
     0,
-    collapsedShellWidth - APPLE_PAY_COLLAPSED_CROP_X * 2,
+    buttonShellWidth - APPLE_PAY_COLLAPSED_CROP_X * 2,
   );
   const collapsedViewportHeight = Math.max(
     0,
     collapsedShellHeight - APPLE_PAY_COLLAPSED_CROP_Y * 2,
   );
   const shellMaxWidth = isExpanded
-    ? isFullscreen
-      ? "100dvw"
-      : `${APPLE_PAY_EXPANDED_WIDTH}px`
+    ? `${APPLE_PAY_EXPANDED_WIDTH}px`
     : `${APPLE_PAY_SHELL_MAX_WIDTH}px`;
   const iframeShellHeight = isExpanded
-    ? isFullscreen
-      ? "100dvh"
-      : `${APPLE_PAY_EXPANDED_HEIGHT}px`
+    ? `${APPLE_PAY_EXPANDED_HEIGHT}px`
     : `${collapsedShellHeight}px`;
   const iframeViewportStyle = isExpanded
     ? {
         left: 0,
         top: 0,
         width: "100%",
-        height: isFullscreen ? "100%" : APPLE_PAY_EXPANDED_HEIGHT,
+        height: APPLE_PAY_EXPANDED_HEIGHT,
         borderRadius: "0px",
         transform: "none",
       }
@@ -302,7 +284,7 @@ export function AccountApplePayPage({
         left: 0,
         top: 0,
         width: "100%",
-        height: isFullscreen ? "100%" : APPLE_PAY_EXPANDED_HEIGHT,
+        height: APPLE_PAY_EXPANDED_HEIGHT,
         transform: "none",
         transformOrigin: "center center",
       }
@@ -380,19 +362,11 @@ export function AccountApplePayPage({
       <div className="daimo-flex-1 daimo-min-h-0 daimo-px-4 daimo-pb-6 daimo-flex daimo-flex-col daimo-items-center daimo-justify-end">
         <div
           ref={buttonShellRef}
-          className={`daimo-relative daimo-w-full daimo-overflow-hidden ${
-            isFullscreen
-              ? "daimo-fixed daimo-inset-0 daimo-z-[60] daimo-max-w-none daimo-bg-[#111]"
-              : ""
-          }`}
+          className="daimo-relative daimo-w-full daimo-overflow-hidden"
           style={{
             maxWidth: shellMaxWidth,
             height: iframeShellHeight,
-            borderRadius: isFullscreen
-              ? "0px"
-              : isExpanded
-                ? "24px"
-                : `${collapsedShellRadius}px`,
+            borderRadius: isExpanded ? "24px" : `${collapsedShellRadius}px`,
             transition:
               "opacity 160ms ease, max-width 160ms ease, height 160ms ease",
           }}
