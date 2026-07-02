@@ -6,6 +6,7 @@ import { createPortal } from "react-dom";
 import type { DaimoModalEventHandlers } from "../hooks/types.js";
 import {
   DAIMO_FRAME_PARENT_ORIGIN_PARAM,
+  type DaimoFramePresentationMode,
   parseDaimoFrameMessage,
 } from "./frameMessages.js";
 import { CloseIcon } from "./icons.js";
@@ -38,6 +39,13 @@ const scrimStyle: CSSProperties = {
   paddingBottom: "calc(12px + env(safe-area-inset-bottom))",
 };
 
+const fullscreenScrimStyle: CSSProperties = {
+  ...scrimStyle,
+  alignItems: "stretch",
+  padding: 0,
+  paddingBottom: 0,
+};
+
 // Rounded surface that clips the content-sized iframe to four corners. Hidden
 // (opacity 0) until the checkout reports its first height, so the user never
 // sees an empty shadowed bubble while the iframe loads.
@@ -52,6 +60,15 @@ const bubbleStyle: CSSProperties = {
   boxShadow: "0 2px 6px rgba(0, 0, 0, 0.2)",
   // `transition` is set inline: opacity always animates, height only after the
   // first appearance (see `animateHeight`).
+};
+
+const fullscreenBubbleStyle: CSSProperties = {
+  width: "100dvw",
+  maxWidth: "none",
+  height: "100dvh",
+  maxHeight: "100dvh",
+  borderRadius: 0,
+  boxShadow: "none",
 };
 
 const iframeStyle: CSSProperties = {
@@ -165,6 +182,8 @@ export function DaimoFrame({
   const [status, setStatus] = useState<"loading" | "loaded" | "error">(
     "loading",
   );
+  const [presentationMode, setPresentationMode] =
+    useState<DaimoFramePresentationMode>("content");
   // Height animates only after the bubble's first appearance, so revealing it
   // doesn't animate from INITIAL_HEIGHT down to the first measured (skeleton)
   // height. Only later growth (skeleton -> content) animates.
@@ -194,10 +213,17 @@ export function DaimoFrame({
         setHeight(message.payload.height);
         setStatus("loaded");
       }
+      if (message.type === "framePresentationChanged") {
+        setPresentationMode(message.payload.mode);
+      }
     };
     window.addEventListener("message", handleMessage);
     return () => window.removeEventListener("message", handleMessage);
   }, [onClose, onOpen, onPaymentCompleted, onPaymentStarted, src]);
+
+  useEffect(() => {
+    setPresentationMode("content");
+  }, [src]);
 
   // Fall back to the error card if the checkout never reports content.
   useEffect(() => {
@@ -219,20 +245,28 @@ export function DaimoFrame({
 
   if (!mounted || !src) return null;
 
+  const isFullscreen = presentationMode === "fullscreen";
+  const currentScrimStyle = isFullscreen ? fullscreenScrimStyle : scrimStyle;
+  const currentBubbleStyle = isFullscreen
+    ? { ...bubbleStyle, ...fullscreenBubbleStyle }
+    : bubbleStyle;
+
   return createPortal(
-    <div onClick={() => onClose?.()} style={scrimStyle}>
+    <div onClick={() => onClose?.()} style={currentScrimStyle}>
       {status === "error" ? (
         <DaimoFrameError sessionId={sessionId} onClose={onClose} />
       ) : (
         <div
           onClick={(e) => e.stopPropagation()}
           style={{
-            ...bubbleStyle,
-            height,
+            ...currentBubbleStyle,
+            height: isFullscreen ? "100dvh" : height,
             opacity: status === "loaded" ? 1 : 0,
-            transition: animateHeight
-              ? "height 0.2s ease-in-out, opacity 0.2s ease-in-out"
-              : "opacity 0.2s ease-in-out",
+            transition: isFullscreen
+              ? "opacity 0.2s ease-in-out"
+              : animateHeight
+                ? "height 0.2s ease-in-out, opacity 0.2s ease-in-out"
+                : "opacity 0.2s ease-in-out",
           }}
         >
           <iframe

@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  type CSSProperties,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
+import { createPortal } from "react-dom";
 
 import type {
   AccountRail,
@@ -6,6 +13,7 @@ import type {
   DepositPaymentInfo,
 } from "../../../common/account.js";
 import { isSafariBrowser } from "../../platform.js";
+import { sendDaimoFramePresentationChanged } from "../frameMessages.js";
 import { useDaimoClient } from "../../hooks/DaimoClientContext.js";
 import { t } from "../../hooks/locale.js";
 import { useSessionDepositState } from "../../hooks/useAccountFlow.js";
@@ -17,6 +25,13 @@ import { formatFixedAmount } from "../../formatAmount.js";
 import { AmountInput, PageHeader, useAmountInput } from "../shared.js";
 import { AccountEnrollmentUpdatePage } from "./AccountEnrollmentUpdatePage.js";
 import { useCoinbaseApplePayWidget } from "./useCoinbaseApplePayWidget.js";
+
+type ShellRect = {
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+};
 
 type AccountApplePayPageProps = {
   rail: AccountRail;
@@ -31,8 +46,6 @@ type AccountApplePayPageProps = {
 const APPLE_PAY_BUTTON_WIDTH = 296;
 const APPLE_PAY_BUTTON_HEIGHT = 44;
 const APPLE_PAY_SHELL_MAX_WIDTH = 344;
-const APPLE_PAY_EXPANDED_WIDTH = 576;
-const APPLE_PAY_EXPANDED_HEIGHT = 576;
 const APPLE_PAY_COLLAPSED_SCALE_MAX = 1.18;
 const APPLE_PAY_COLLAPSED_CROP_X = 22;
 const APPLE_PAY_COLLAPSED_CROP_Y = 6;
@@ -133,6 +146,10 @@ export function AccountApplePayPage({
     payment?.flow === "wallet-pay-widget" ? payment.paymentLinkUrl : null;
   const allowExpandedView = !isSafariBrowser();
   const buttonShellRef = useRef<HTMLDivElement | null>(null);
+  const [mounted, setMounted] = useState(false);
+  const [buttonShellRect, setButtonShellRect] = useState<ShellRect | null>(
+    null,
+  );
   const [buttonShellWidth, setButtonShellWidth] = useState(
     APPLE_PAY_SHELL_MAX_WIDTH,
   );
@@ -159,6 +176,18 @@ export function AccountApplePayPage({
     onRefreshDeposit: refreshFromServer,
     paymentLinkUrl,
   });
+  const isExpanded = allowExpandedView && iframeExpanded;
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    sendDaimoFramePresentationChanged(isExpanded ? "fullscreen" : "content");
+    return () => {
+      sendDaimoFramePresentationChanged("content");
+    };
+  }, [isExpanded]);
 
   useEffect(() => {
     if (!isValid) {
@@ -175,17 +204,35 @@ export function AccountApplePayPage({
     const el = buttonShellRef.current;
     if (!el) return;
 
-    const updateWidth = () => {
-      const nextWidth = el.getBoundingClientRect().width;
-      if (nextWidth > 0) setButtonShellWidth(nextWidth);
+    const updateShellMetrics = () => {
+      const rect = el.getBoundingClientRect();
+      if (rect.width <= 0 || rect.height <= 0) return;
+      setButtonShellWidth(rect.width);
+      setButtonShellRect({
+        left: rect.left,
+        top: rect.top,
+        width: rect.width,
+        height: rect.height,
+      });
     };
 
-    updateWidth();
+    updateShellMetrics();
+    window.addEventListener("resize", updateShellMetrics);
+    window.addEventListener("scroll", updateShellMetrics, true);
 
-    if (typeof ResizeObserver === "undefined") return;
-    const observer = new ResizeObserver(updateWidth);
+    if (typeof ResizeObserver === "undefined") {
+      return () => {
+        window.removeEventListener("resize", updateShellMetrics);
+        window.removeEventListener("scroll", updateShellMetrics, true);
+      };
+    }
+    const observer = new ResizeObserver(updateShellMetrics);
     observer.observe(el);
-    return () => observer.disconnect();
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", updateShellMetrics);
+      window.removeEventListener("scroll", updateShellMetrics, true);
+    };
   }, []);
 
   useDepositPoller({
@@ -234,8 +281,11 @@ export function AccountApplePayPage({
     payment?.flow === "wallet-pay-widget"
       ? (payment.receiveUnits ?? payment.purchaseAmount)
       : null;
-  const isExpanded = allowExpandedView && iframeExpanded;
-  const scaledButtonRatio = buttonShellWidth / APPLE_PAY_BUTTON_WIDTH;
+  const collapsedShellWidth = Math.min(
+    buttonShellWidth,
+    APPLE_PAY_SHELL_MAX_WIDTH,
+  );
+  const scaledButtonRatio = collapsedShellWidth / APPLE_PAY_BUTTON_WIDTH;
   const buttonScale =
     Number.isFinite(scaledButtonRatio) && scaledButtonRatio > 0
       ? Math.min(scaledButtonRatio, APPLE_PAY_COLLAPSED_SCALE_MAX)
@@ -247,24 +297,19 @@ export function AccountApplePayPage({
   const collapsedShellRadius = Math.round(collapsedShellHeight / 2);
   const collapsedViewportWidth = Math.max(
     0,
-    buttonShellWidth - APPLE_PAY_COLLAPSED_CROP_X * 2,
+    collapsedShellWidth - APPLE_PAY_COLLAPSED_CROP_X * 2,
   );
   const collapsedViewportHeight = Math.max(
     0,
     collapsedShellHeight - APPLE_PAY_COLLAPSED_CROP_Y * 2,
   );
-  const shellMaxWidth = isExpanded
-    ? `${APPLE_PAY_EXPANDED_WIDTH}px`
-    : `${APPLE_PAY_SHELL_MAX_WIDTH}px`;
-  const iframeShellHeight = isExpanded
-    ? `${APPLE_PAY_EXPANDED_HEIGHT}px`
-    : `${collapsedShellHeight}px`;
+  const iframeShellHeight = `${collapsedShellHeight}px`;
   const iframeViewportStyle = isExpanded
     ? {
         left: 0,
         top: 0,
         width: "100%",
-        height: APPLE_PAY_EXPANDED_HEIGHT,
+        height: "100%",
         borderRadius: "0px",
         transform: "none",
       }
@@ -284,7 +329,7 @@ export function AccountApplePayPage({
         left: 0,
         top: 0,
         width: "100%",
-        height: APPLE_PAY_EXPANDED_HEIGHT,
+        height: "100%",
         transform: "none",
         transformOrigin: "center center",
       }
@@ -296,6 +341,57 @@ export function AccountApplePayPage({
         transform: `translate(-50%, -50%) scale(${buttonScale})`,
         transformOrigin: "center center",
       };
+
+  const iframeLayerStyle: CSSProperties =
+    isExpanded || !buttonShellRect
+      ? {
+          left: 0,
+          top: 0,
+          width: "100dvw",
+          height: "100dvh",
+          borderRadius: "0px",
+          backgroundColor: "#111",
+          opacity: iframeReady ? 1 : 0,
+          pointerEvents: iframeReady ? "auto" : "none",
+        }
+      : {
+          left: buttonShellRect.left,
+          top: buttonShellRect.top,
+          width: buttonShellRect.width,
+          height: buttonShellRect.height,
+          borderRadius: `${collapsedShellRadius}px`,
+          opacity: iframeReady ? 1 : 0,
+          pointerEvents: iframeReady ? "auto" : "none",
+        };
+
+  const iframeLayer =
+    mounted && paymentLinkUrl && buttonShellRect
+      ? createPortal(
+          <div
+            className="daimo-fixed daimo-z-[70] daimo-overflow-hidden daimo-transition-opacity daimo-duration-150 daimo-ease"
+            style={iframeLayerStyle}
+          >
+            <div
+              className="daimo-absolute daimo-overflow-hidden"
+              style={iframeViewportStyle}
+            >
+              <iframe
+                key={paymentLinkUrl}
+                ref={iframeRef}
+                src={paymentLinkUrl}
+                title="Apple Pay Checkout"
+                allow="payment"
+                sandbox="allow-scripts allow-same-origin"
+                referrerPolicy="no-referrer"
+                onLoad={onIframeLoad}
+                className="daimo-absolute daimo-border-0 daimo-overflow-hidden"
+                style={iframeStyle}
+              />
+            </div>
+          </div>,
+          document.body,
+        )
+      : null;
 
   return (
     <div className="daimo-relative daimo-isolate daimo-flex daimo-flex-col daimo-flex-1 daimo-min-h-0">
@@ -364,9 +460,9 @@ export function AccountApplePayPage({
           ref={buttonShellRef}
           className="daimo-relative daimo-w-full daimo-overflow-hidden"
           style={{
-            maxWidth: shellMaxWidth,
+            maxWidth: `${APPLE_PAY_SHELL_MAX_WIDTH}px`,
             height: iframeShellHeight,
-            borderRadius: isExpanded ? "24px" : `${collapsedShellRadius}px`,
+            borderRadius: `${collapsedShellRadius}px`,
             transition:
               "opacity 160ms ease, max-width 160ms ease, height 160ms ease",
           }}
@@ -390,27 +486,7 @@ export function AccountApplePayPage({
                   />
                 </div>
               )}
-              <div
-                className="daimo-absolute daimo-overflow-hidden daimo-transition-opacity"
-                style={{
-                  ...iframeViewportStyle,
-                  opacity: iframeReady ? 1 : 0,
-                  pointerEvents: iframeReady ? "auto" : "none",
-                }}
-              >
-                <iframe
-                  key={paymentLinkUrl}
-                  ref={iframeRef}
-                  src={paymentLinkUrl}
-                  title="Apple Pay Checkout"
-                  allow="payment"
-                  sandbox="allow-scripts allow-same-origin"
-                  referrerPolicy="no-referrer"
-                  onLoad={onIframeLoad}
-                  className="daimo-absolute daimo-border-0 daimo-overflow-hidden"
-                  style={iframeStyle}
-                />
-              </div>
+              {iframeLayer}
             </>
           ) : (
             <ApplePayPlaceholderButton
