@@ -267,7 +267,8 @@ export function DaimoModal(props: DaimoModalProps) {
       )}
     </>
   );
-  const themeMode = props.themeMode ?? loaded.session.display.themeMode;
+  const themeMode =
+    props.themeMode ?? loaded.session.display.themeMode ?? "system";
 
   if (embedded) {
     return (
