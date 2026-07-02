@@ -24,6 +24,9 @@ describe("bank picker errors", () => {
   });
 
   test("falls back to generic deposit failure copy for empty errors", () => {
+    expect(formatUserError(new Error(""), t.errorDepositFailed)).toBe(
+      t.errorDepositFailed,
+    );
     expect(getBankPickerErrorMessage("")).toBe(t.errorDepositFailed);
   });
 });

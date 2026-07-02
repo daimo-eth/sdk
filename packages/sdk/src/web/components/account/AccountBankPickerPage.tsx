@@ -214,6 +214,7 @@ export function AccountCanadaBankPickerPage({
   );
 }
 
+/** Falls back to the generic deposit-failure copy when the error is empty. */
 export function getBankPickerErrorMessage(error: string): string {
   return error || t.errorDepositFailed;
 }

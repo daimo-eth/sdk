@@ -12,6 +12,7 @@ import {
   useSessionDepositState,
 } from "./useAccountFlow.js";
 import { formatUserError } from "./formatUserError.js";
+import { t } from "./locale.js";
 
 type UseDraftDepositArgs = {
   client: DaimoClient;
@@ -125,7 +126,7 @@ export function useDraftDeposit({
             error: err instanceof Error ? err.message : String(err),
           });
           setDepositState({ depositAmount, kind: "idle" });
-          setError(formatUserError(err, "failed to create deposit"));
+          setError(formatUserError(err, t.errorDepositFailed));
         }
       })();
     }, 350);
