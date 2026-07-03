@@ -1,5 +1,6 @@
 import { t } from "../hooks/locale.js";
 import { isDesktop, type DaimoPlatform } from "../platform.js";
+import { ApplePayLogo, isApplePayLogo } from "./ApplePayLogo.js";
 import { ExternalLinkIcon, PrimaryButton } from "./buttons.js";
 import { QRCode } from "./QRCode.js";
 import { SkeletonText } from "./Skeleton.js";
@@ -82,6 +83,13 @@ export function ExternalPaymentPage({
               }
             />
           </div>
+        ) : icon && isApplePayLogo(icon) ? (
+          // Masked + filled with the text color so it adapts to dark mode.
+          <ApplePayLogo
+            baseUrl={baseUrl}
+            alt={title}
+            className="daimo-w-20 daimo-h-20"
+          />
         ) : (
           icon && <PageLogo icon={icon} alt={title} baseUrl={baseUrl} />
         )}
