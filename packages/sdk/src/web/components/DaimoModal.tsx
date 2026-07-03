@@ -45,8 +45,9 @@ import {
   useInjectedWallets,
   type InjectedWallet,
 } from "../hooks/useInjectedWallets.js";
+import type { DaimoThemeMode } from "../../common/theme.js";
 import { detectPlatform, isDesktop, type DaimoPlatform } from "../platform.js";
-import { useDaimoThemeReady } from "../theme.js";
+import { resolveDaimoSessionTheme, useDaimoThemeReady } from "../theme.js";
 import { useWalletFlow } from "../hooks/useWalletFlow.js";
 import { ExternalLinkIcon, PrimaryButton } from "./buttons.js";
 import { ChooseChainPage } from "./ChooseChainPage.js";
@@ -107,6 +108,8 @@ export type DaimoModalProps = DaimoModalEventHandlers & {
   connectToAddress?: Address;
   /** Render inline instead of as a floating modal. */
   embedded?: boolean;
+  /** Override the session's light/dark/system theme mode. */
+  themeMode?: DaimoThemeMode;
   /** Caller's platform. Prefer "desktop" or "mobile"; legacy values still work. Auto-detected. */
   platform?: DaimoPlatform;
   /** URL to navigate to after successful payment. */
@@ -210,7 +213,7 @@ export function DaimoModal(props: DaimoModalProps) {
   if (loaded == null || !themeReady) {
     if (!embedded) return null;
     return (
-      <EmbeddedContainer showFooterSpacer={false}>
+      <EmbeddedContainer showFooterSpacer={false} themeMode={props.themeMode}>
         <SkeletonContent rowCount={3} showFooter={false} />
       </EmbeddedContainer>
     );
@@ -264,12 +267,17 @@ export function DaimoModal(props: DaimoModalProps) {
       )}
     </>
   );
+  const { themeMode } = resolveDaimoSessionTheme(
+    loaded.session.display,
+    props.themeMode,
+  );
 
   if (embedded) {
     return (
       <EmbeddedContainer
         showFooterSpacer={showFooterSpacer}
         onClose={handleClose}
+        themeMode={themeMode}
       >
         {modalBody}
       </EmbeddedContainer>
@@ -281,6 +289,7 @@ export function DaimoModal(props: DaimoModalProps) {
       pageKey={pageKey}
       reserveLoadingHeight={reserveLoadingHeight}
       showFooterSpacer={showFooterSpacer}
+      themeMode={themeMode}
     >
       {modalBody}
     </ModalContainer>

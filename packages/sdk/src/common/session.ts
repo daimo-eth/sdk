@@ -2,6 +2,7 @@ import type { Address, Hex } from "viem";
 import { z } from "zod";
 
 import type { AccountRail } from "./account.js";
+import type { DaimoSessionTheme } from "./theme.js";
 import type {
   SolanaAddress,
   SolanaTxHash,
@@ -22,13 +23,11 @@ export const zSessionStatus = z.enum([
 export type SessionStatus = z.infer<typeof zSessionStatus>;
 
 /** UI display metadata. */
-export type SessionDisplay = {
+export type SessionDisplay = DaimoSessionTheme & {
   /** Title shown in the payment modal, e.g. "Deposit to Acme". */
   title: string;
   /** One-word verb for CTAs, e.g. "Deposit". */
   verb: string;
-  /** Custom theme CSS URL. */
-  themeCssUrl?: string;
 };
 
 export type SessionDestination =

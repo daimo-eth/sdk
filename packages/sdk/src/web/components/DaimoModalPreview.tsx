@@ -1,7 +1,8 @@
 import type { ReactNode } from "react";
+import { useEffect, useState } from "react";
 import { TokenLogo } from "../../common/token.js";
 import type { DaimoModalTheme } from "../theme.js";
-import type { DaimoModalThemeModeName } from "../theme.js";
+import type { DaimoModalThemeModeName, DaimoThemeMode } from "../theme.js";
 import { daimoModalThemeToCssVars } from "../theme.js";
 import type { NavNodeChooseOption } from "../api/navTree.js";
 import { ChooseOptionPage } from "./ChooseOptionPage.js";
@@ -13,11 +14,16 @@ import { Skeleton } from "./Skeleton.js";
 export type DaimoModalPreviewProps = {
   theme: DaimoModalTheme;
   mode?: DaimoModalThemeModeName;
+  themeMode?: DaimoThemeMode;
   variant?: DaimoModalPreviewVariant;
   baseUrl?: string;
 };
 
-export type DaimoModalPreviewVariant = "options" | "loading" | "semantic" | "qr";
+export type DaimoModalPreviewVariant =
+  | "options"
+  | "loading"
+  | "semantic"
+  | "qr";
 
 const PREVIEW_NODE: NavNodeChooseOption = {
   type: "ChooseOption",
@@ -79,12 +85,21 @@ const PREVIEW_NODE: NavNodeChooseOption = {
 export function DaimoModalPreview({
   theme,
   mode = "light",
+  themeMode,
   variant = "options",
   baseUrl = "",
 }: DaimoModalPreviewProps) {
+  const activeThemeMode = themeMode ?? mode;
+  const resolvedMode = useResolvedThemeMode(activeThemeMode);
+
   return (
     <div
-      style={daimoModalThemeToCssVars(theme, mode)}
+      data-theme={
+        activeThemeMode === "light" || activeThemeMode === "dark"
+          ? activeThemeMode
+          : undefined
+      }
+      style={daimoModalThemeToCssVars(theme, resolvedMode)}
       className="daimo-mt-5 daimo-flex daimo-min-h-[520px] daimo-items-center daimo-justify-center daimo-overflow-hidden daimo-rounded-lg daimo-border daimo-border-[var(--daimo-border)] daimo-bg-[var(--daimo-bg)] daimo-p-6"
     >
       <div className={MODAL_CONTENT_CLASS}>
@@ -99,6 +114,32 @@ export function DaimoModalPreview({
       </div>
     </div>
   );
+}
+
+function useResolvedThemeMode(
+  themeMode: DaimoThemeMode,
+): DaimoModalThemeModeName {
+  const [systemMode, setSystemMode] =
+    useState<DaimoModalThemeModeName>(getSystemThemeMode);
+
+  useEffect(() => {
+    if (themeMode !== "system") return;
+
+    const media = window.matchMedia("(prefers-color-scheme: dark)");
+    const onChange = () => setSystemMode(media.matches ? "dark" : "light");
+    onChange();
+    media.addEventListener("change", onChange);
+    return () => media.removeEventListener("change", onChange);
+  }, [themeMode]);
+
+  return themeMode === "system" ? systemMode : themeMode;
+}
+
+function getSystemThemeMode(): DaimoModalThemeModeName {
+  if (typeof window === "undefined") return "light";
+  return window.matchMedia("(prefers-color-scheme: dark)").matches
+    ? "dark"
+    : "light";
 }
 
 function PreviewContent({
