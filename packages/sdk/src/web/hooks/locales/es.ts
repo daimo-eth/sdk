@@ -169,6 +169,7 @@ export const es: typeof en = {
   popupWaitingTitle: "Termina en la ventana de Daimo",
   popupWaitingBody:
     "Completa tu depósito en la ventana que abrimos. Esta página se actualiza automáticamente.",
+  popupCloseThisPage: "Puedes cerrar esta página.",
   popupReopenWindow: "Reabrir ventana",
   popupBlocked: "Tu navegador bloqueó la ventana. Inténtalo de nuevo.",
 };

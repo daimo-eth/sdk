@@ -205,6 +205,7 @@ export const pt: typeof en = {
   popupWaitingTitle: "Conclua na janela da Daimo",
   popupWaitingBody:
     "Complete seu depósito na janela que abrimos. Esta página é atualizada automaticamente.",
+  popupCloseThisPage: "Você pode fechar esta página.",
   popupReopenWindow: "Reabrir janela",
   popupBlocked: "Seu navegador bloqueou a janela. Tente novamente.",
 };

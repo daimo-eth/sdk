@@ -193,6 +193,7 @@ export const zh: typeof en = {
   popupLaunchBody: "您将在安全的 Daimo 窗口中完成充值。",
   popupWaitingTitle: "请在 Daimo 窗口中完成",
   popupWaitingBody: "请在我们打开的窗口中完成充值。本页面会自动更新。",
+  popupCloseThisPage: "您可以关闭此页面。",
   popupReopenWindow: "重新打开窗口",
   popupBlocked: "浏览器拦截了弹出窗口。请重试。",
 };

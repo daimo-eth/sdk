@@ -202,6 +202,7 @@ export const ko: typeof en = {
   popupWaitingTitle: "Daimo 창에서 완료하세요",
   popupWaitingBody:
     "열린 창에서 입금을 완료하세요. 이 페이지는 자동으로 업데이트됩니다.",
+  popupCloseThisPage: "이 페이지를 닫으셔도 됩니다.",
   popupReopenWindow: "창 다시 열기",
   popupBlocked: "브라우저가 창을 차단했습니다. 다시 시도하세요.",
 };

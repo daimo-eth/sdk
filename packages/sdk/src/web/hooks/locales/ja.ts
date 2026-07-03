@@ -205,6 +205,7 @@ export const ja: typeof en = {
   popupWaitingTitle: "Daimoウィンドウで完了してください",
   popupWaitingBody:
     "開いたウィンドウで入金を完了してください。このページは自動的に更新されます。",
+  popupCloseThisPage: "このページを閉じてください。",
   popupReopenWindow: "ウィンドウを再度開く",
   popupBlocked:
     "ブラウザがウィンドウをブロックしました。もう一度お試しください。",

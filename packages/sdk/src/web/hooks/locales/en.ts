@@ -201,6 +201,7 @@ export const en = {
   popupWaitingTitle: "Finish in the Daimo window",
   popupWaitingBody:
     "Complete your deposit in the window we opened. This page updates automatically.",
+  popupCloseThisPage: "You can close this page.",
   popupReopenWindow: "Reopen window",
   popupBlocked: "Your browser blocked the window. Try again.",
 };
