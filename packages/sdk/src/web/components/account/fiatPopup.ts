@@ -9,8 +9,7 @@ const FIAT_POPUP_RAILS: ReadonlySet<AccountRail> = new Set(["apple_pay"]);
 
 export const FIAT_POPUP_WINDOW_NAME = "daimo-pay-popup";
 
-const FIAT_POPUP_WIDTH = 420;
-const FIAT_POPUP_HEIGHT = 760;
+export const FIAT_POPUP_FEATURES = "popup=yes,width=420,height=760";
 
 export function railRequiresPopup(rail: AccountRail): boolean {
   return FIAT_POPUP_RAILS.has(rail);
@@ -38,22 +37,4 @@ export function buildFiatPopupUrl(currentHref: string, nodeId: string): string {
   url.searchParams.set("popup", "1");
   url.searchParams.set("nav", nodeId);
   return url.toString();
-}
-
-/**
- * Open the fiat popup. Must be called synchronously from a user-gesture
- * handler or the browser will block it. Returns null when blocked. Desktop
- * gets a centered window; mobile browsers ignore features and open a tab.
- */
-export function openFiatPopup(url: string): Window | null {
-  const left = Math.max(
-    0,
-    window.screenX + (window.outerWidth - FIAT_POPUP_WIDTH) / 2,
-  );
-  const top = Math.max(
-    0,
-    window.screenY + (window.outerHeight - FIAT_POPUP_HEIGHT) / 2,
-  );
-  const features = `popup=yes,width=${FIAT_POPUP_WIDTH},height=${FIAT_POPUP_HEIGHT},left=${Math.round(left)},top=${Math.round(top)}`;
-  return window.open(url, FIAT_POPUP_WINDOW_NAME, features);
 }

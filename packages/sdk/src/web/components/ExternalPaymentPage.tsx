@@ -20,13 +20,15 @@ type ExternalPaymentPageProps = {
   icon?: string;
   message: string;
   isLoading?: boolean;
-  onBack: () => void;
+  onBack: (() => void) | null;
   baseUrl: string;
   desktopBehavior: DesktopBehavior;
   openLabel?: string;
   popupName?: string;
   popupFeatures?: string;
   placeholderDensity?: QRDensity;
+  /** Called with the opened window (null when blocked by the browser). */
+  onOpened?: (popup: Window | null) => void;
 };
 
 const DEFAULT_POPUP_FEATURES = "width=500,height=700";
@@ -46,17 +48,18 @@ export function ExternalPaymentPage({
   popupName,
   popupFeatures = DEFAULT_POPUP_FEATURES,
   placeholderDensity,
+  onOpened,
 }: ExternalPaymentPageProps) {
   const desktop = isDesktop(platform);
   const showQR = desktop && desktopBehavior === "qr";
 
   const openProvider = () => {
     if (!url) return;
-    if (desktop && desktopBehavior === "popup") {
-      window.open(url, popupName ?? title.toLowerCase(), popupFeatures);
-      return;
-    }
-    window.open(url, "_blank");
+    const popup =
+      desktop && desktopBehavior === "popup"
+        ? window.open(url, popupName ?? title.toLowerCase(), popupFeatures)
+        : window.open(url, "_blank");
+    onOpened?.(popup);
   };
 
   return (

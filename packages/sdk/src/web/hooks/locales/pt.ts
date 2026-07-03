@@ -199,13 +199,6 @@ export const pt: typeof en = {
   retryPayment: "Tentar pagamento novamente",
   closeAndReturn: "Feche esta página e volte ao app",
 
-  // FiatPopupPage
-  popupContinueWith: (method: string) => `Continuar com ${method}`,
-  popupLaunchBody: "Você concluirá seu depósito em uma janela segura da Daimo.",
-  popupWaitingTitle: "Conclua na janela da Daimo",
-  popupWaitingBody:
-    "Complete seu depósito na janela que abrimos. Esta página é atualizada automaticamente.",
+  // FiatPopupPage / popup surface
   popupCloseThisPage: "Você pode fechar esta página.",
-  popupReopenWindow: "Reabrir janela",
-  popupBlocked: "Seu navegador bloqueou a janela. Tente novamente.",
 };

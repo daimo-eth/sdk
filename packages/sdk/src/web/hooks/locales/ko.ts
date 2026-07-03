@@ -196,13 +196,6 @@ export const ko: typeof en = {
   retryPayment: "결제 재시도",
   closeAndReturn: "이 페이지를 닫고 앱으로 돌아가기",
 
-  // FiatPopupPage
-  popupContinueWith: (method: string) => `${method}(으)로 계속`,
-  popupLaunchBody: "안전한 Daimo 창에서 입금을 완료합니다.",
-  popupWaitingTitle: "Daimo 창에서 완료하세요",
-  popupWaitingBody:
-    "열린 창에서 입금을 완료하세요. 이 페이지는 자동으로 업데이트됩니다.",
+  // FiatPopupPage / popup surface
   popupCloseThisPage: "이 페이지를 닫으셔도 됩니다.",
-  popupReopenWindow: "창 다시 열기",
-  popupBlocked: "브라우저가 창을 차단했습니다. 다시 시도하세요.",
 };

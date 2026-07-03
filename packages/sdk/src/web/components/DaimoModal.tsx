@@ -700,6 +700,7 @@ function renderEntry(
           node={node}
           sessionId={ctx.session.sessionId}
           clientSecret={ctx.session.clientSecret}
+          platform={ctx.platform}
           baseUrl={ctx.session.baseUrl}
           onBack={ctx.canGoBack ? ctx.onBack : null}
         />
