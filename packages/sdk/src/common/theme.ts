@@ -43,6 +43,17 @@ export type DaimoResolvedSessionTheme = DaimoSessionTheme & {
   themeMode: DaimoThemeMode;
 };
 
+export function resolveDaimoSessionTheme(
+  theme: DaimoSessionTheme | undefined,
+  themeModeOverride?: DaimoThemeMode,
+): DaimoResolvedSessionTheme {
+  const themeCssUrl = theme?.themeCssUrl;
+  return {
+    ...(themeCssUrl == null ? {} : { themeCssUrl }),
+    themeMode: themeModeOverride ?? theme?.themeMode ?? "system",
+  };
+}
+
 export type DaimoModalThemeStyle = Record<`--${string}`, string>;
 
 export type LegacyDaimoModalTheme = {

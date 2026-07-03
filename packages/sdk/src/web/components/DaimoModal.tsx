@@ -47,7 +47,7 @@ import {
 } from "../hooks/useInjectedWallets.js";
 import type { DaimoThemeMode } from "../../common/theme.js";
 import { detectPlatform, isDesktop, type DaimoPlatform } from "../platform.js";
-import { useDaimoThemeReady } from "../theme.js";
+import { resolveDaimoSessionTheme, useDaimoThemeReady } from "../theme.js";
 import { useWalletFlow } from "../hooks/useWalletFlow.js";
 import { ExternalLinkIcon, PrimaryButton } from "./buttons.js";
 import { ChooseChainPage } from "./ChooseChainPage.js";
@@ -267,8 +267,10 @@ export function DaimoModal(props: DaimoModalProps) {
       )}
     </>
   );
-  const themeMode =
-    props.themeMode ?? loaded.session.display.themeMode ?? "system";
+  const { themeMode } = resolveDaimoSessionTheme(
+    loaded.session.display,
+    props.themeMode,
+  );
 
   if (embedded) {
     return (

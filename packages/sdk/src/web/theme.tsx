@@ -6,6 +6,7 @@ export {
   daimoModalThemeToCss,
   daimoModalThemeToCssVars,
   normalizeDaimoModalTheme,
+  resolveDaimoSessionTheme,
 } from "../common/theme.js";
 export type {
   DaimoModalTheme,
