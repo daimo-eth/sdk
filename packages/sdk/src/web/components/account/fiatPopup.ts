@@ -2,8 +2,8 @@ import type { AccountRail } from "../../../common/account.js";
 
 /**
  * Fiat rails that must run in a top-level daimo.com window when the checkout
- * is embedded cross-origin. Apple Pay merchant validation checks the
- * top-level domain, so it cannot run inside an iframe on a partner site.
+ * is framed. Apple Pay merchant validation checks the top-level domain, so
+ * it cannot run inside an iframe on a partner site.
  */
 const FIAT_POPUP_RAILS: ReadonlySet<AccountRail> = new Set(["apple_pay"]);
 
@@ -17,19 +17,15 @@ export function railRequiresPopup(rail: AccountRail): boolean {
 }
 
 /**
- * True when running in an iframe whose top-level page is another origin.
- * Same-origin embeds and top-level surfaces (direct webview, miniapp) keep
- * the inline flow.
+ * True when running inside an iframe, regardless of parent origin.
+ * Top-level surfaces (direct webview, miniapp, the popup itself) keep the
+ * inline flow. Same-origin frames (daimo demo pages) pop out too — inline
+ * would work there, but one consistent path is simpler and makes any
+ * framed context a faithful popup test harness.
  */
-export function isCrossOriginEmbed(): boolean {
+export function isFramed(): boolean {
   if (typeof window === "undefined") return false;
-  if (window.self === window.top) return false;
-  try {
-    return window.top!.location.origin !== window.location.origin;
-  } catch {
-    // Cross-origin access to window.top throws.
-    return true;
-  }
+  return window.self !== window.top;
 }
 
 /**

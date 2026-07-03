@@ -21,7 +21,7 @@ type FiatPopupPageProps = {
 type PopupState = "idle" | "opened" | "blocked";
 
 /**
- * Launcher shown when a fiat rail must run top-level (cross-origin embed).
+ * Launcher shown when a fiat rail must run top-level (framed checkout).
  * Opens the checkout in a popup on the daimo origin, where Apple Pay
  * merchant validation and account login run first-party. This page never
  * creates a deposit; completion arrives via session polling, which swaps

@@ -22,10 +22,7 @@ import type { WalletPaymentOption } from "../api/walletTypes.js";
 
 import { getAccountPaymentEntryTarget } from "../components/account/accountNav.js";
 import { detectPlatform, isDesktop, type DaimoPlatform } from "../platform.js";
-import {
-  isCrossOriginEmbed,
-  railRequiresPopup,
-} from "../components/account/fiatPopup.js";
+import { isFramed, railRequiresPopup } from "../components/account/fiatPopup.js";
 import { pruneCompletedAccountAuth } from "./accountAuthNav.js";
 import { useDaimoClient } from "./DaimoClientContext.js";
 import { formatUserError } from "./formatUserError.js";
@@ -137,7 +134,7 @@ export function useSessionNav(
   walletFlow?: WalletFlowResult,
   accountFlow?: AccountFlowState | null,
   options?: {
-    /** Pop out popup-required fiat rails when embedded cross-origin. */
+    /** Pop out popup-required fiat rails when framed. */
     enableFiatPopup?: boolean;
     /** Node to auto-navigate to on load (popup deep-link). */
     startNodeId?: string;
@@ -598,7 +595,7 @@ export function useSessionNav(
         if (
           enableFiatPopup &&
           railRequiresPopup(targetNode.fiatMethod) &&
-          isCrossOriginEmbed()
+          isFramed()
         ) {
           setStack((prev) => [
             ...prev,

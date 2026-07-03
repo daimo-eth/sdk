@@ -119,7 +119,7 @@ export type DaimoModalProps = DaimoModalEventHandlers & {
   returnLabel?: string;
   /**
    * Pop out popup-required fiat rails (Apple Pay) to a top-level window
-   * when embedded cross-origin. Set only by the daimo webview surface.
+   * when framed. Set only by the daimo webview surface.
    */
   enableFiatPopup?: boolean;
   /** Node to auto-navigate to on load (popup deep-link). */
