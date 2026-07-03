@@ -213,7 +213,7 @@ export function DaimoModal(props: DaimoModalProps) {
   if (loaded == null || !themeReady) {
     if (!embedded) return null;
     return (
-      <EmbeddedContainer showFooterSpacer={false}>
+      <EmbeddedContainer showFooterSpacer={false} themeMode={props.themeMode}>
         <SkeletonContent rowCount={3} showFooter={false} />
       </EmbeddedContainer>
     );
