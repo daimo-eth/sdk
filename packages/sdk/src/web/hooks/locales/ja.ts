@@ -198,4 +198,14 @@ export const ja: typeof en = {
   confirmInWallet: "ウォレットで確認",
   retryPayment: "支払いを再試行",
   closeAndReturn: "このページを閉じてアプリに戻る",
+
+  // FiatPopupPage
+  popupContinueWith: (method: string) => `${method}で続ける`,
+  popupLaunchBody: "安全なDaimoウィンドウで入金を完了します。",
+  popupWaitingTitle: "Daimoウィンドウで完了してください",
+  popupWaitingBody:
+    "開いたウィンドウで入金を完了してください。このページは自動的に更新されます。",
+  popupReopenWindow: "ウィンドウを再度開く",
+  popupBlocked:
+    "ブラウザがウィンドウをブロックしました。もう一度お試しください。",
 };

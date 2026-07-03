@@ -187,4 +187,12 @@ export const zh: typeof en = {
   confirmInWallet: "在钱包中确认",
   retryPayment: "重试付款",
   closeAndReturn: "关闭此页面并返回应用",
+
+  // FiatPopupPage
+  popupContinueWith: (method: string) => `使用${method}继续`,
+  popupLaunchBody: "您将在安全的 Daimo 窗口中完成充值。",
+  popupWaitingTitle: "请在 Daimo 窗口中完成",
+  popupWaitingBody: "请在我们打开的窗口中完成充值。本页面会自动更新。",
+  popupReopenWindow: "重新打开窗口",
+  popupBlocked: "浏览器拦截了弹出窗口。请重试。",
 };

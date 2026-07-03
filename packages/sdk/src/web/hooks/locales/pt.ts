@@ -198,4 +198,13 @@ export const pt: typeof en = {
   confirmInWallet: "Confirme na carteira",
   retryPayment: "Tentar pagamento novamente",
   closeAndReturn: "Feche esta página e volte ao app",
+
+  // FiatPopupPage
+  popupContinueWith: (method: string) => `Continuar com ${method}`,
+  popupLaunchBody: "Você concluirá seu depósito em uma janela segura da Daimo.",
+  popupWaitingTitle: "Conclua na janela da Daimo",
+  popupWaitingBody:
+    "Complete seu depósito na janela que abrimos. Esta página é atualizada automaticamente.",
+  popupReopenWindow: "Reabrir janela",
+  popupBlocked: "Seu navegador bloqueou a janela. Tente novamente.",
 };

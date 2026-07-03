@@ -97,6 +97,9 @@ export type NavEntry =
       rejected?: boolean;
       autoNav?: boolean;
     }
+  // Not "account-" prefixed: the session-terminal success page must take
+  // over when the payment completes in the popup.
+  | ({ type: "fiat-popup" } & AccountNavBase)
   | ({ type: "account-email" } & AccountNavBase)
   | ({ type: "account-loading" } & AccountNavBase)
   | ({ type: "account-otp" } & AccountNavBase)

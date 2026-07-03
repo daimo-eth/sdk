@@ -194,4 +194,13 @@ export const en = {
   confirmInWallet: "Confirm In Wallet",
   retryPayment: "Retry Payment",
   closeAndReturn: "Close this page and return to app",
+
+  // FiatPopupPage
+  popupContinueWith: (method: string) => `Continue with ${method}`,
+  popupLaunchBody: "You'll finish your deposit in a secure Daimo window.",
+  popupWaitingTitle: "Finish in the Daimo window",
+  popupWaitingBody:
+    "Complete your deposit in the window we opened. This page updates automatically.",
+  popupReopenWindow: "Reopen window",
+  popupBlocked: "Your browser blocked the window. Try again.",
 };

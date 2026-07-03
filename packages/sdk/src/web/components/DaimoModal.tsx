@@ -64,6 +64,7 @@ import { AccountEnrollmentUpdatePage } from "./account/AccountEnrollmentUpdatePa
 import { AccountCreatingWalletPage } from "./account/AccountCreatingWalletPage.js";
 import { AccountDeeplinkPage } from "./account/AccountDeeplinkPage.js";
 import { AccountApplePayPage } from "./account/AccountApplePayPage.js";
+import { FiatPopupPage } from "./account/FiatPopupPage.js";
 import { AccountEmailPage } from "./account/AccountEmailPage.js";
 import { AccountEnrollmentPage } from "./account/AccountEnrollmentPage.js";
 import { AccountOtpPage } from "./account/AccountOtpPage.js";
@@ -116,6 +117,13 @@ export type DaimoModalProps = DaimoModalEventHandlers & {
   returnUrl?: string;
   /** Text shown on successful payment. Button label if returnUrl set, otherwise plain text. */
   returnLabel?: string;
+  /**
+   * Pop out popup-required fiat rails (Apple Pay) to a top-level window
+   * when embedded cross-origin. Set only by the daimo webview surface.
+   */
+  enableFiatPopup?: boolean;
+  /** Node to auto-navigate to on load (popup deep-link). */
+  startNodeId?: string;
 };
 
 type NodeContext = { nodeId: string | null; nodeType: NavNodeType | null };
@@ -332,6 +340,8 @@ function DaimoModalInner({
   platform,
   returnUrl,
   returnLabel,
+  enableFiatPopup = false,
+  startNodeId,
   onPaymentStarted,
   onPaymentCompleted,
   onOpen,
@@ -384,6 +394,7 @@ function DaimoModalInner({
     resolvedPlatform,
     walletFlow,
     accountFlow,
+    { enableFiatPopup, startNodeId },
   );
 
   useEffect(() => {
@@ -681,6 +692,19 @@ function renderEntry(
       return renderWalletSelectAmount(entry, ctx);
     case "wallet-sending":
       return renderWalletSending(entry, ctx);
+    case "fiat-popup": {
+      const node = findNode(entry.nodeId, ctx.session.navTree);
+      if (node?.type !== "Fiat") return null;
+      return (
+        <FiatPopupPage
+          node={node}
+          sessionId={ctx.session.sessionId}
+          clientSecret={ctx.session.clientSecret}
+          baseUrl={ctx.session.baseUrl}
+          onBack={ctx.canGoBack ? ctx.onBack : null}
+        />
+      );
+    }
     case "account-loading":
       return <LoadingMessage />;
     case "account-email":
