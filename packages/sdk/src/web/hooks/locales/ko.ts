@@ -195,4 +195,7 @@ export const ko: typeof en = {
   confirmInWallet: "지갑에서 확인",
   retryPayment: "결제 재시도",
   closeAndReturn: "이 페이지를 닫고 앱으로 돌아가기",
+
+  // FiatPopupPage / popup surface
+  popupCloseThisPage: "이 페이지를 닫으셔도 됩니다.",
 };

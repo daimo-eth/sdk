@@ -198,4 +198,7 @@ export const pt: typeof en = {
   confirmInWallet: "Confirme na carteira",
   retryPayment: "Tentar pagamento novamente",
   closeAndReturn: "Feche esta página e volte ao app",
+
+  // FiatPopupPage / popup surface
+  popupCloseThisPage: "Você pode fechar esta página.",
 };

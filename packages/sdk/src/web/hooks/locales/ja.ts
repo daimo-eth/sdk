@@ -198,4 +198,7 @@ export const ja: typeof en = {
   confirmInWallet: "ウォレットで確認",
   retryPayment: "支払いを再試行",
   closeAndReturn: "このページを閉じてアプリに戻る",
+
+  // FiatPopupPage / popup surface
+  popupCloseThisPage: "このページを閉じてください。",
 };

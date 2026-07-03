@@ -187,4 +187,7 @@ export const zh: typeof en = {
   confirmInWallet: "在钱包中确认",
   retryPayment: "重试付款",
   closeAndReturn: "关闭此页面并返回应用",
+
+  // FiatPopupPage / popup surface
+  popupCloseThisPage: "您可以关闭此页面。",
 };

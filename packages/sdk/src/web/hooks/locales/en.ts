@@ -194,4 +194,7 @@ export const en = {
   confirmInWallet: "Confirm In Wallet",
   retryPayment: "Retry Payment",
   closeAndReturn: "Close this page and return to app",
+
+  // FiatPopupPage / popup surface
+  popupCloseThisPage: "You can close this page.",
 };
