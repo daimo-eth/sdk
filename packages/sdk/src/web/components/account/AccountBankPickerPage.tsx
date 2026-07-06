@@ -5,6 +5,7 @@ import type {
   DepositInstitution,
 } from "../../../common/account.js";
 import { useDaimoClient } from "../../hooks/DaimoClientContext.js";
+import { formatUserError } from "../../hooks/formatUserError.js";
 import { t } from "../../hooks/locale.js";
 import {
   useAccountFlow,
@@ -132,9 +133,7 @@ export function AccountCanadaBankPickerPage({
         openDeeplink(institution.deeplink, platform);
         onSelect();
       } catch (err) {
-        setStartError(
-          err instanceof Error ? err.message : "failed to create deposit",
-        );
+        setStartError(formatUserError(err, t.errorDepositFailed));
       }
     },
     [
@@ -155,7 +154,7 @@ export function AccountCanadaBankPickerPage({
   if (error) {
     return (
       <ErrorPage
-        message={t.errorDepositFailed}
+        message={getBankPickerErrorMessage(error)}
         retryText={t.tryAgain}
         onRetry={() => window.location.reload()}
       />
@@ -213,6 +212,11 @@ export function AccountCanadaBankPickerPage({
       </ScrollContent>
     </div>
   );
+}
+
+/** Falls back to the generic deposit-failure copy when the error is empty. */
+export function getBankPickerErrorMessage(error: string): string {
+  return error || t.errorDepositFailed;
 }
 
 type InstitutionProps = {
