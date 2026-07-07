@@ -205,6 +205,15 @@ export async function signAndUpsertDeposit({
   );
 }
 
+/** Sign + upsert a deposit and require payment info (bank rails). */
+export async function startBankDeposit(
+  args: SignAndUpsertDepositArgs,
+): Promise<{ depositId: string; payment: DepositPaymentInfo }> {
+  const result = await signAndUpsertDeposit(args);
+  if (!result.payment) throw new Error("deposit payment info missing");
+  return { depositId: result.deposit.id, payment: result.payment };
+}
+
 async function upsertPlainDraftDeposit({
   client,
   accountFlow,

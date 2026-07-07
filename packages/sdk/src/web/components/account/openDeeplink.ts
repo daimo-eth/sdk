@@ -2,10 +2,15 @@ import type { DepositDeeplink } from "../../../common/account.js";
 import { isDesktop, type DaimoPlatform } from "../../platform.js";
 import { isDaimoFrameChild } from "../frameMessages.js";
 
-/** Execute a provider deeplink in the user's browser. */
+/**
+ * Execute a provider deeplink in the user's browser. Pass `newWindow` to open
+ * in a new tab on mobile web instead of navigating the current page away —
+ * keeps the deposit page alive to poll (matches desktop behavior).
+ */
 export function openDeeplink(
   deeplink: DepositDeeplink,
   platform: DaimoPlatform,
+  opts: { newWindow?: boolean } = {},
 ): void {
   if (isDaimoFrameChild()) {
     openDeeplinkInNewWindow(deeplink);
@@ -19,6 +24,11 @@ export function openDeeplink(
       deeplink.type === "form-post" ? deeplink.warmUrl : deeplink.url;
     // In a native WKWebView, use the bridge to open in Safari directly.
     if (postNativeOpenUrl(url)) return;
+    // On mobile web, open a new tab so the deposit page keeps polling.
+    if (opts.newWindow) {
+      openDeeplinkInNewWindow(deeplink);
+      return;
+    }
     // Fallback: trigger navigation for the native delegate to intercept.
     window.location.href = url;
     return;
