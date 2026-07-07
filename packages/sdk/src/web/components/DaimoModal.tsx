@@ -782,7 +782,11 @@ function renderEntry(
           }
         />
       );
-    case "account-payment":
+    case "account-payment": {
+      const advanceTarget = getAccountPaymentAdvanceTarget(
+        entry.rail,
+        ctx.platform,
+      );
       return (
         <AccountPaymentPage
           rail={entry.rail}
@@ -790,12 +794,12 @@ function renderEntry(
           initialAmount={ctx.session.destination.amountUnits}
           platform={ctx.platform}
           baseUrl={ctx.session.baseUrl}
+          startDepositOnAdvance={advanceTarget === "account-deeplink"}
           onBack={ctx.canGoBack ? ctx.onBack : null}
-          onAdvance={() =>
-            ctx.onAccountAdvance(getAccountPaymentAdvanceTarget(entry.rail))
-          }
+          onAdvance={() => ctx.onAccountAdvance(advanceTarget)}
         />
       );
+    }
     case "account-canada-bank-picker":
       return (
         <AccountCanadaBankPickerPage

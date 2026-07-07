@@ -3,13 +3,16 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type {
   AccountRail,
   DepositConstraints,
+  DepositPaymentInfo,
 } from "../../../common/account.js";
 import { useDaimoClient } from "../../hooks/DaimoClientContext.js";
+import { formatUserError } from "../../hooks/formatUserError.js";
 import {
   useAccountFlow,
   useSessionDepositState,
 } from "../../hooks/useAccountFlow.js";
 import { t } from "../../hooks/locale.js";
+import { startBankDeposit } from "../../hooks/useDraftDeposit.js";
 import type { DaimoPlatform } from "../../platform.js";
 import { PrimaryButton } from "../buttons.js";
 import { Skeleton } from "../Skeleton.js";
@@ -18,6 +21,7 @@ import {
   TokenAmountEntry,
   type TokenAmountEntryValue,
 } from "../TokenAmountEntry.js";
+import { openDeeplink } from "./openDeeplink.js";
 
 type AccountPaymentPageProps = {
   rail: AccountRail;
@@ -25,17 +29,23 @@ type AccountPaymentPageProps = {
   initialAmount?: string;
   platform: DaimoPlatform;
   baseUrl: string;
+  startDepositOnAdvance: boolean;
   onBack?: (() => void) | null;
   onAdvance: () => void;
 };
 
-/** Amount entry for bank-transfer rails. Stores depositAmount and advances. */
+/**
+ * Amount entry for bank-transfer rails. Stores depositAmount and advances.
+ * When `startDepositOnAdvance` is set (interac on mobile, where the bank
+ * picker is skipped), signs + upserts the deposit and opens Interac first.
+ */
 export function AccountPaymentPage({
   rail,
   sessionId,
   initialAmount,
   platform,
   baseUrl,
+  startDepositOnAdvance,
   onBack,
   onAdvance,
 }: AccountPaymentPageProps) {
@@ -73,25 +83,82 @@ export function AccountPaymentPage({
   const [amountUsd, setAmountUsd] = useState(0);
   const [amountNative, setAmountNative] = useState(0);
   const [isValid, setIsValid] = useState(false);
+  const [isStarting, setIsStarting] = useState(false);
+  const [startError, setStartError] = useState<string | null>(null);
   const handleChange = useCallback(
     (value: { amountUsd: number; nativeAmount: number; isValid: boolean }) => {
       setAmountUsd(value.amountUsd);
       setAmountNative(value.nativeAmount);
       setIsValid(value.isValid);
+      setStartError(null);
     },
     [],
   );
 
   const handleSubmit = useCallback(
     ({ nativeAmount }: TokenAmountEntryValue) => {
-      if (!accountFlow || !constraints) return;
-      setDepositState({
-        depositAmount: nativeAmount.toFixed(2),
-        kind: "idle",
-      });
-      onAdvance();
+      if (!accountFlow || !constraints || isStarting) return;
+      const depositAmount = nativeAmount.toFixed(2);
+      if (!startDepositOnAdvance) {
+        setDepositState({ depositAmount, kind: "idle" });
+        onAdvance();
+        return;
+      }
+      // The deeplink page needs a started deposit — reuse one from back-nav
+      // if the amount is unchanged, otherwise sign + upsert before advancing.
+      if (
+        depositState?.kind === "started" &&
+        depositState.depositAmount === depositAmount
+      ) {
+        openInterac(depositState.payment, platform);
+        onAdvance();
+        return;
+      }
+      setIsStarting(true);
+      setStartError(null);
+      void (async () => {
+        try {
+          const { depositId, payment } = await startBankDeposit({
+            client,
+            accountFlow,
+            sessionId,
+            rail,
+            depositAmount,
+          });
+          // The deeplink page has no actionable UI without a qrUrl to open;
+          // treat a missing one as a failure rather than advancing to it.
+          if (payment.flow !== "bank-picker" || payment.qrUrl == null) {
+            setStartError(t.errorDepositFailed);
+            return;
+          }
+          setDepositState({
+            depositAmount,
+            kind: "started",
+            depositId,
+            payment,
+          });
+          openInterac(payment, platform);
+          onAdvance();
+        } catch (err) {
+          setStartError(formatUserError(err, t.errorDepositFailed));
+        } finally {
+          setIsStarting(false);
+        }
+      })();
     },
-    [accountFlow, constraints, onAdvance, setDepositState],
+    [
+      accountFlow,
+      client,
+      constraints,
+      depositState,
+      isStarting,
+      onAdvance,
+      platform,
+      rail,
+      sessionId,
+      setDepositState,
+      startDepositOnAdvance,
+    ],
   );
   const initialAmountUsd =
     depositState?.depositAmount != null
@@ -142,13 +209,26 @@ export function AccountPaymentPage({
           onClick={() =>
             isValid && handleSubmit({ amountUsd, nativeAmount: amountNative })
           }
-          disabled={!isValid || !constraints}
+          disabled={!isValid || !constraints || isStarting}
         >
           {t.continue}
         </PrimaryButton>
+        {startError && (
+          <p className="daimo-mt-3 daimo-text-xs daimo-text-[var(--daimo-error)] daimo-text-center daimo-max-w-[320px]">
+            {startError}
+          </p>
+        )}
       </div>
     </div>
   );
+}
+
+/** Open the generic Interac request page (mobile bank-picker-skip flow). */
+function openInterac(payment: DepositPaymentInfo, platform: DaimoPlatform) {
+  if (payment.flow !== "bank-picker" || payment.qrUrl == null) return;
+  openDeeplink({ type: "redirect", url: payment.qrUrl }, platform, {
+    newWindow: true,
+  });
 }
 
 function AmountEntrySkeleton() {
