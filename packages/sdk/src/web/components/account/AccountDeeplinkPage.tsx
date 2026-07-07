@@ -88,6 +88,16 @@ export function AccountDeeplinkPage({
               {t.open} {selectedInstitution.name}
             </PrimaryButton>
           )}
+          {!selectedInstitution && !desktop && bankUrl && (
+            <PrimaryButton
+              onClick={() =>
+                openDeeplink({ type: "redirect", url: bankUrl }, platform)
+              }
+              icon={<ExternalLinkIcon size={14} />}
+            >
+              {t.open} Interac
+            </PrimaryButton>
+          )}
         </div>
       </CenteredContent>
     </div>

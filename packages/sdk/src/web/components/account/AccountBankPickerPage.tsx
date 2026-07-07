@@ -12,7 +12,7 @@ import {
   useSessionDepositState,
 } from "../../hooks/useAccountFlow.js";
 import {
-  signAndUpsertDeposit,
+  startBankDeposit,
   useDraftDeposit,
 } from "../../hooks/useDraftDeposit.js";
 import type { DaimoPlatform } from "../../platform.js";
@@ -113,21 +113,18 @@ export function AccountCanadaBankPickerPage({
 
       setStartError(null);
       try {
-        const result = await signAndUpsertDeposit({
+        const { depositId, payment } = await startBankDeposit({
           client,
           accountFlow,
           sessionId,
           rail,
           depositAmount,
         });
-        if (!result.payment) {
-          throw new Error("deposit payment info missing");
-        }
         setDepositState({
           depositAmount,
           kind: "started",
-          depositId: result.deposit.id,
-          payment: result.payment,
+          depositId,
+          payment,
           selectedInstitutionId: institution.id,
         });
         openDeeplink(institution.deeplink, platform);
