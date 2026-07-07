@@ -91,7 +91,9 @@ export function AccountDeeplinkPage({
           {!selectedInstitution && !desktop && bankUrl && (
             <PrimaryButton
               onClick={() =>
-                openDeeplink({ type: "redirect", url: bankUrl }, platform)
+                openDeeplink({ type: "redirect", url: bankUrl }, platform, {
+                  newWindow: true,
+                })
               }
               icon={<ExternalLinkIcon size={14} />}
             >

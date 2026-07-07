@@ -220,7 +220,9 @@ export function AccountPaymentPage({
 /** Open the generic Interac request page (mobile bank-picker-skip flow). */
 function openInterac(payment: DepositPaymentInfo, platform: DaimoPlatform) {
   if (payment.flow !== "bank-picker" || payment.qrUrl == null) return;
-  openDeeplink({ type: "redirect", url: payment.qrUrl }, platform);
+  openDeeplink({ type: "redirect", url: payment.qrUrl }, platform, {
+    newWindow: true,
+  });
 }
 
 function AmountEntrySkeleton() {
