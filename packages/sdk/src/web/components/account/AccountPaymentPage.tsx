@@ -125,6 +125,12 @@ export function AccountPaymentPage({
             rail,
             depositAmount,
           });
+          // The deeplink page has no actionable UI without a qrUrl to open;
+          // treat a missing one as a failure rather than advancing to it.
+          if (payment.flow !== "bank-picker" || payment.qrUrl == null) {
+            setStartError(t.errorDepositFailed);
+            return;
+          }
           setDepositState({
             depositAmount,
             kind: "started",
