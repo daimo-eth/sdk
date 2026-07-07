@@ -5,7 +5,8 @@
  * compiled SDK stylesheet and the legacy `theme.css` entrypoint.
  */
 
-:root {
+:root,
+[data-theme="light"] {
   /* Backgrounds */
   --daimo-bg: #00000008;
   --daimo-surface: #ffffff;
@@ -422,17 +423,17 @@
 /* Dark mode: explicit override */
 [data-theme="dark"] {
   /* Backgrounds */
-  --daimo-bg: #111827;
-  --daimo-surface: #1f2937;
-  --daimo-surface-secondary: #374151;
-  --daimo-surface-hover: #4b5563;
-  --daimo-skeleton: #4b5563;
+  --daimo-bg: #00000008;
+  --daimo-surface: #2b2b2b;
+  --daimo-surface-secondary: #383838;
+  --daimo-surface-hover: #404040;
+  --daimo-skeleton: #383838;
 
   /* Text */
-  --daimo-title: #f3f4f6;
-  --daimo-text: #f3f4f6;
-  --daimo-text-secondary: #9ca3af;
-  --daimo-text-muted: #6b7280;
+  --daimo-title: #ffffff;
+  --daimo-text: #ffffff;
+  --daimo-text-secondary: #7e7e7e;
+  --daimo-text-muted: #858585;
 
   /* Semantic */
   --daimo-success: #4ade80;
@@ -450,5 +451,18 @@
   --daimo-accent: #0977d5;
 
   /* Placeholder/Inactive */
-  --daimo-placeholder: #6b7280;
+  --daimo-placeholder: #9ca3af;
+
+  /* Border */
+  --daimo-border: #3d3d3d;
+
+  /* QR Code */
+  --daimo-qr-bg: #2b2b2b;
+  --daimo-qr-dot: #ffffff;
+
+  /* Radius */
+  --daimo-radius-sm: 0.5rem;
+  --daimo-radius-md: 0.75rem;
+  --daimo-radius-lg: 1rem;
+  --daimo-radius-xl: 20px;
 }

@@ -121,6 +121,8 @@ export const zh: typeof en = {
   accountPhoneDesc: "我们将发送6位验证码以验证您的手机号。",
   accountSubmit: "提交",
   accountFieldRequired: "必填",
+  accountBooleanYes: "是",
+  accountBooleanNo: "否",
   accountSelectBank: "选择银行",
   accountSearchInstitutions: "搜索机构...",
   accountOtherInstitutions: "其他机构",
@@ -185,4 +187,7 @@ export const zh: typeof en = {
   confirmInWallet: "在钱包中确认",
   retryPayment: "重试付款",
   closeAndReturn: "关闭此页面并返回应用",
+
+  // FiatPopupPage / popup surface
+  popupCloseThisPage: "您可以关闭此页面。",
 };

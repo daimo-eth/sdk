@@ -23,6 +23,7 @@ import type { WalletPaymentOption } from "../api/walletTypes.js";
 
 import { getAccountPaymentEntryTarget } from "../components/account/accountNav.js";
 import { detectPlatform, isDesktop, type DaimoPlatform } from "../platform.js";
+import { isFramed, railRequiresPopup } from "../components/account/fiatPopup.js";
 import { pruneCompletedAccountAuth } from "./accountAuthNav.js";
 import { useDaimoClient } from "./DaimoClientContext.js";
 import { formatUserError } from "./formatUserError.js";
@@ -125,7 +126,15 @@ export function useSessionNav(
   platform?: DaimoPlatform,
   walletFlow?: WalletFlowResult,
   accountFlow?: AccountFlowState | null,
+  options?: {
+    /** Pop out popup-required fiat rails when framed. */
+    enableFiatPopup?: boolean;
+    /** Node to auto-navigate to on load (popup deep-link). */
+    startNodeId?: string;
+  },
 ): SessionNavResult {
+  const enableFiatPopup = options?.enableFiatPopup ?? false;
+  const startNodeId = options?.startNodeId;
   const effectivePlatform = platform ?? detectPlatform();
   const client = useDaimoClient();
   const logNavEvent = createNavLogger(client);
@@ -576,6 +585,22 @@ export function useSessionNav(
       }
 
       if (targetNode.type === "Fiat") {
+        if (
+          enableFiatPopup &&
+          railRequiresPopup(targetNode.fiatMethod) &&
+          isFramed()
+        ) {
+          setStack((prev) => [
+            ...prev,
+            {
+              type: "fiat-popup",
+              nodeId,
+              rail: targetNode.fiatMethod,
+              autoNav,
+            },
+          ]);
+          return;
+        }
         handleAccountNavigate(nodeId, targetNode, autoNav);
         return;
       }
@@ -588,6 +613,7 @@ export function useSessionNav(
       fetchExchangeUrl,
       fetchStripeOnramp,
       handleAccountNavigate,
+      enableFiatPopup,
     ],
   );
 
@@ -950,6 +976,16 @@ export function useSessionNav(
       return;
     }
 
+    // Popup deep-link: land directly on the requested node.
+    if (startNodeId && autoNavRef.current !== startNodeId) {
+      const startNode = findNode(startNodeId, session.navTree);
+      if (startNode && startNode.type !== "ChooseOption") {
+        autoNavRef.current = startNodeId;
+        handleNavigate(startNodeId, { autoNav: true });
+        return;
+      }
+    }
+
     const currentNodeId = topEntry?.nodeId;
     let node: NavNode | null = currentNodeId
       ? findNode(currentNodeId, session.navTree)
@@ -972,7 +1008,7 @@ export function useSessionNav(
       autoNavRef.current = targetId;
       handleNavigate(targetId, { autoNav: true });
     }
-  }, [isOpen, topEntry, session.navTree, handleNavigate]);
+  }, [isOpen, topEntry, session.navTree, handleNavigate, startNodeId]);
 
   // Auto-advance from wallet-connect to wallet-select-token when connected
   useEffect(() => {

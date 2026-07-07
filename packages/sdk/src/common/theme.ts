@@ -29,6 +29,31 @@ export type DaimoModalTheme = {
 
 export type DaimoModalThemeModeName = "light" | "dark";
 
+export type DaimoThemeMode = "system" | DaimoModalThemeModeName;
+
+export type DaimoSessionTheme = {
+  /** Custom theme CSS URL. */
+  themeCssUrl?: string;
+  /** Org-controlled light/dark/system theme mode. Defaults to system. */
+  themeMode?: DaimoThemeMode;
+};
+
+export type DaimoResolvedSessionTheme = DaimoSessionTheme & {
+  /** Org-controlled light/dark/system theme mode. */
+  themeMode: DaimoThemeMode;
+};
+
+export function resolveDaimoSessionTheme(
+  theme: DaimoSessionTheme | undefined,
+  themeModeOverride?: DaimoThemeMode,
+): DaimoResolvedSessionTheme {
+  const themeCssUrl = theme?.themeCssUrl;
+  return {
+    ...(themeCssUrl == null ? {} : { themeCssUrl }),
+    themeMode: themeModeOverride ?? theme?.themeMode ?? "system",
+  };
+}
+
 export type DaimoModalThemeStyle = Record<`--${string}`, string>;
 
 export type LegacyDaimoModalTheme = {
@@ -224,7 +249,10 @@ export function daimoModalThemeToCssVars(
 }
 
 export function daimoModalThemeToCss(theme: DaimoModalTheme): string {
-  const light = cssBlock(":root", daimoModalThemeToCssVars(theme, "light"));
+  const light = cssBlock(
+    ':root, [data-theme="light"]',
+    daimoModalThemeToCssVars(theme, "light"),
+  );
   const dark = cssBlock(
     ':root:not([data-theme="light"])',
     daimoModalThemeToCssVars(theme, "dark"),

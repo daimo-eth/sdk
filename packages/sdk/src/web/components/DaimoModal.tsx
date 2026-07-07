@@ -45,8 +45,9 @@ import {
   useInjectedWallets,
   type InjectedWallet,
 } from "../hooks/useInjectedWallets.js";
+import type { DaimoThemeMode } from "../../common/theme.js";
 import { detectPlatform, isDesktop, type DaimoPlatform } from "../platform.js";
-import { useDaimoThemeReady } from "../theme.js";
+import { resolveDaimoSessionTheme, useDaimoThemeReady } from "../theme.js";
 import { useWalletFlow } from "../hooks/useWalletFlow.js";
 import { ExternalLinkIcon, PrimaryButton } from "./buttons.js";
 import { ChooseChainPage } from "./ChooseChainPage.js";
@@ -63,6 +64,7 @@ import { AccountEnrollmentUpdatePage } from "./account/AccountEnrollmentUpdatePa
 import { AccountCreatingWalletPage } from "./account/AccountCreatingWalletPage.js";
 import { AccountDeeplinkPage } from "./account/AccountDeeplinkPage.js";
 import { AccountApplePayPage } from "./account/AccountApplePayPage.js";
+import { FiatPopupPage } from "./account/FiatPopupPage.js";
 import { AccountEmailPage } from "./account/AccountEmailPage.js";
 import { AccountEnrollmentPage } from "./account/AccountEnrollmentPage.js";
 import { AccountOtpPage } from "./account/AccountOtpPage.js";
@@ -107,12 +109,21 @@ export type DaimoModalProps = DaimoModalEventHandlers & {
   connectToAddress?: Address;
   /** Render inline instead of as a floating modal. */
   embedded?: boolean;
+  /** Override the session's light/dark/system theme mode. */
+  themeMode?: DaimoThemeMode;
   /** Caller's platform. Prefer "desktop" or "mobile"; legacy values still work. Auto-detected. */
   platform?: DaimoPlatform;
   /** URL to navigate to after successful payment. */
   returnUrl?: string;
   /** Text shown on successful payment. Button label if returnUrl set, otherwise plain text. */
   returnLabel?: string;
+  /**
+   * Pop out popup-required fiat rails (Apple Pay) to a top-level window
+   * when framed. Set only by the daimo webview surface.
+   */
+  enableFiatPopup?: boolean;
+  /** Node to auto-navigate to on load (popup deep-link). */
+  startNodeId?: string;
 };
 
 type NodeContext = { nodeId: string | null; nodeType: NavNodeType | null };
@@ -210,7 +221,7 @@ export function DaimoModal(props: DaimoModalProps) {
   if (loaded == null || !themeReady) {
     if (!embedded) return null;
     return (
-      <EmbeddedContainer showFooterSpacer={false}>
+      <EmbeddedContainer showFooterSpacer={false} themeMode={props.themeMode}>
         <SkeletonContent rowCount={3} showFooter={false} />
       </EmbeddedContainer>
     );
@@ -264,12 +275,17 @@ export function DaimoModal(props: DaimoModalProps) {
       )}
     </>
   );
+  const { themeMode } = resolveDaimoSessionTheme(
+    loaded.session.display,
+    props.themeMode,
+  );
 
   if (embedded) {
     return (
       <EmbeddedContainer
         showFooterSpacer={showFooterSpacer}
         onClose={handleClose}
+        themeMode={themeMode}
       >
         {modalBody}
       </EmbeddedContainer>
@@ -281,6 +297,7 @@ export function DaimoModal(props: DaimoModalProps) {
       pageKey={pageKey}
       reserveLoadingHeight={reserveLoadingHeight}
       showFooterSpacer={showFooterSpacer}
+      themeMode={themeMode}
     >
       {modalBody}
     </ModalContainer>
@@ -323,6 +340,8 @@ function DaimoModalInner({
   platform,
   returnUrl,
   returnLabel,
+  enableFiatPopup = false,
+  startNodeId,
   onPaymentStarted,
   onPaymentCompleted,
   onOpen,
@@ -375,6 +394,7 @@ function DaimoModalInner({
     resolvedPlatform,
     walletFlow,
     accountFlow,
+    { enableFiatPopup, startNodeId },
   );
 
   useEffect(() => {
@@ -672,6 +692,20 @@ function renderEntry(
       return renderWalletSelectAmount(entry, ctx);
     case "wallet-sending":
       return renderWalletSending(entry, ctx);
+    case "fiat-popup": {
+      const node = findNode(entry.nodeId, ctx.session.navTree);
+      if (node?.type !== "Fiat") return null;
+      return (
+        <FiatPopupPage
+          node={node}
+          sessionId={ctx.session.sessionId}
+          clientSecret={ctx.session.clientSecret}
+          platform={ctx.platform}
+          baseUrl={ctx.session.baseUrl}
+          onBack={ctx.canGoBack ? ctx.onBack : null}
+        />
+      );
+    }
     case "account-loading":
       return <LoadingMessage />;
     case "account-email":

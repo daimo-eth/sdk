@@ -94,6 +94,8 @@ export const es: typeof en = {
     "Te enviaremos un código de 6 dígitos para verificar tu número.",
   accountSubmit: "Enviar",
   accountFieldRequired: "Obligatorio",
+  accountBooleanYes: "Sí",
+  accountBooleanNo: "No",
   accountSelectBank: "Seleccionar banco",
   accountSearchInstitutions: "Buscar instituciones...",
   accountOtherInstitutions: "Otras instituciones",
@@ -160,4 +162,7 @@ export const es: typeof en = {
   confirmInWallet: "Confirmar en billetera",
   retryPayment: "Reintentar pago",
   closeAndReturn: "Cierra esta página y vuelve a la app",
+
+  // FiatPopupPage / popup surface
+  popupCloseThisPage: "Puedes cerrar esta página.",
 };

@@ -124,6 +124,8 @@ export const ko: typeof en = {
   accountPhoneDesc: "6자리 인증 코드를 문자로 보내드립니다.",
   accountSubmit: "제출",
   accountFieldRequired: "필수",
+  accountBooleanYes: "예",
+  accountBooleanNo: "아니요",
   accountSelectBank: "은행 선택",
   accountSearchInstitutions: "금융기관 검색...",
   accountOtherInstitutions: "기타 금융기관",
@@ -193,4 +195,7 @@ export const ko: typeof en = {
   confirmInWallet: "지갑에서 확인",
   retryPayment: "결제 재시도",
   closeAndReturn: "이 페이지를 닫고 앱으로 돌아가기",
+
+  // FiatPopupPage / popup surface
+  popupCloseThisPage: "이 페이지를 닫으셔도 됩니다.",
 };

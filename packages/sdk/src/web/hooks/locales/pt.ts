@@ -125,6 +125,8 @@ export const pt: typeof en = {
     "Enviaremos um código de 6 dígitos por SMS para verificar seu número.",
   accountSubmit: "Enviar",
   accountFieldRequired: "Obrigatório",
+  accountBooleanYes: "Sim",
+  accountBooleanNo: "Não",
   accountSelectBank: "Selecionar banco",
   accountSearchInstitutions: "Buscar instituições...",
   accountOtherInstitutions: "Outras instituições",
@@ -196,4 +198,7 @@ export const pt: typeof en = {
   confirmInWallet: "Confirme na carteira",
   retryPayment: "Tentar pagamento novamente",
   closeAndReturn: "Feche esta página e volte ao app",
+
+  // FiatPopupPage / popup surface
+  popupCloseThisPage: "Você pode fechar esta página.",
 };

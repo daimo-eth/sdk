@@ -6,11 +6,15 @@ export {
   daimoModalThemeToCss,
   daimoModalThemeToCssVars,
   normalizeDaimoModalTheme,
+  resolveDaimoSessionTheme,
 } from "../common/theme.js";
 export type {
   DaimoModalTheme,
   DaimoModalThemeMode,
   DaimoModalThemeModeName,
+  DaimoResolvedSessionTheme,
+  DaimoSessionTheme,
+  DaimoThemeMode,
 } from "../common/theme.js";
 
 export function useDaimoThemeReady(url: string | undefined): boolean {

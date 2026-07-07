@@ -37,6 +37,8 @@ export type NavEventAction =
       success: boolean;
       error?: string;
     }
+  | { action: "popup_open"; reopen: boolean }
+  | { action: "popup_blocked" }
   | { action: "qr_toggle"; visible: boolean }
   | { action: "copy_address"; address: string }
   | { action: "session_expired" }

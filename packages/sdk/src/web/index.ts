@@ -29,11 +29,15 @@ export {
   daimoModalThemeToCss,
   daimoModalThemeToCssVars,
   normalizeDaimoModalTheme,
+  resolveDaimoSessionTheme,
 } from "./theme.js";
 export type {
   DaimoModalTheme,
   DaimoModalThemeMode,
   DaimoModalThemeModeName,
+  DaimoResolvedSessionTheme,
+  DaimoSessionTheme,
+  DaimoThemeMode,
 } from "./theme.js";
 
 // Hooks

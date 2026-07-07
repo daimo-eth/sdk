@@ -1,12 +1,17 @@
 "use client";
 
-import { type CSSProperties, useEffect, useState } from "react";
+import { type CSSProperties, useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 
+import type { DaimoModalEventHandlers } from "../hooks/types.js";
+import {
+  DAIMO_FRAME_PARENT_ORIGIN_PARAM,
+  type DaimoFramePresentationMode,
+  parseDaimoFrameMessage,
+} from "./frameMessages.js";
 import { CloseIcon } from "./icons.js";
 import { ContactSupportButton, ErrorMessage } from "./shared.js";
 
-const DAIMO_MESSAGE_SOURCE = "daimo-pay";
 const DEFAULT_BASE_URL = "https://daimo.com";
 const INITIAL_HEIGHT = 420;
 /** Show the error fallback if the iframe hasn't rendered content within this. */
@@ -34,6 +39,13 @@ const scrimStyle: CSSProperties = {
   paddingBottom: "calc(12px + env(safe-area-inset-bottom))",
 };
 
+const fullscreenScrimStyle: CSSProperties = {
+  ...scrimStyle,
+  alignItems: "stretch",
+  padding: 0,
+  paddingBottom: 0,
+};
+
 // Rounded surface that clips the content-sized iframe to four corners. Hidden
 // (opacity 0) until the checkout reports its first height, so the user never
 // sees an empty shadowed bubble while the iframe loads.
@@ -48,6 +60,15 @@ const bubbleStyle: CSSProperties = {
   boxShadow: "0 2px 6px rgba(0, 0, 0, 0.2)",
   // `transition` is set inline: opacity always animates, height only after the
   // first appearance (see `animateHeight`).
+};
+
+const fullscreenBubbleStyle: CSSProperties = {
+  width: "100dvw",
+  maxWidth: "none",
+  height: "100dvh",
+  maxHeight: "100dvh",
+  borderRadius: 0,
+  boxShadow: "none",
 };
 
 const iframeStyle: CSSProperties = {
@@ -95,7 +116,7 @@ const closeButtonStyle: CSSProperties = {
  */
 export type DaimoFrameLayout = "modal";
 
-export interface DaimoFrameProps {
+export type DaimoFrameProps = DaimoModalEventHandlers & {
   /** Session ID, created server-side via `POST /v1/sessions`. */
   sessionId: string;
   /** Client secret returned alongside the session. */
@@ -105,14 +126,12 @@ export interface DaimoFrameProps {
    * dimmed overlay with a rounded sheet sized to the checkout content.
    */
   layout?: DaimoFrameLayout;
-  /** Called when the user dismisses the checkout (taps the scrim or closes). */
-  onClose?: () => void;
   /**
    * Base URL of the hosted checkout. Defaults to `https://daimo.com`.
    * Override only for staging / self-hosted environments.
    */
   baseUrl?: string;
-}
+};
 
 /**
  * Hosted Daimo checkout, embedded as an iframe in a full-screen modal overlay.
@@ -145,45 +164,66 @@ export function DaimoFrame({
   clientSecret,
   layout = "modal",
   onClose,
+  onOpen,
+  onPaymentStarted,
+  onPaymentCompleted,
   baseUrl = DEFAULT_BASE_URL,
 }: DaimoFrameProps) {
-  const [src] = useState(
+  const [parentOrigin, setParentOrigin] = useState<string | null>(null);
+  const src = useMemo(
     () =>
-      `${baseUrl.replace(/\/$/, "")}/webview?session=${encodeURIComponent(
-        sessionId,
-      )}&cs=${encodeURIComponent(clientSecret)}&layout=embed`,
+      parentOrigin
+        ? getFrameSrc(baseUrl, sessionId, clientSecret, parentOrigin)
+        : null,
+    [baseUrl, clientSecret, parentOrigin, sessionId],
   );
   const [height, setHeight] = useState(INITIAL_HEIGHT);
   const [mounted, setMounted] = useState(false);
   const [status, setStatus] = useState<"loading" | "loaded" | "error">(
     "loading",
   );
+  const [presentationMode, setPresentationMode] =
+    useState<DaimoFramePresentationMode>("content");
   // Height animates only after the bubble's first appearance, so revealing it
   // doesn't animate from INITIAL_HEIGHT down to the first measured (skeleton)
   // height. Only later growth (skeleton -> content) animates.
   const [animateHeight, setAnimateHeight] = useState(false);
 
   // Portals require a DOM target, so only render after mount (client-only).
-  useEffect(() => setMounted(true), []);
+  useEffect(() => {
+    setMounted(true);
+    setParentOrigin(window.location.origin);
+  }, []);
 
   useEffect(() => {
+    if (!src) return;
+
     // Only trust messages from the iframe's own origin.
     const frameOrigin = new URL(src, window.location.href).origin;
     const handleMessage = (event: MessageEvent) => {
       if (event.origin !== frameOrigin) return;
-      if (event.data?.source !== DAIMO_MESSAGE_SOURCE) return;
-      if (event.data.type === "modalClosed") onClose?.();
-      if (event.data.type === "contentHeightChanged") {
-        const reported = Number(event.data.payload?.height);
-        if (reported > 0) {
-          setHeight(reported);
-          setStatus("loaded");
-        }
+      const message = parseDaimoFrameMessage(event.data);
+      if (!message) return;
+
+      if (message.type === "modalOpened") onOpen?.();
+      if (message.type === "modalClosed") onClose?.();
+      if (message.type === "paymentStarted") onPaymentStarted?.();
+      if (message.type === "paymentCompleted") onPaymentCompleted?.();
+      if (message.type === "contentHeightChanged") {
+        setHeight(message.payload.height);
+        setStatus("loaded");
+      }
+      if (message.type === "framePresentationChanged") {
+        setPresentationMode(message.payload.mode);
       }
     };
     window.addEventListener("message", handleMessage);
     return () => window.removeEventListener("message", handleMessage);
-  }, [onClose, src]);
+  }, [onClose, onOpen, onPaymentCompleted, onPaymentStarted, src]);
+
+  useEffect(() => {
+    setPresentationMode("content");
+  }, [src]);
 
   // Fall back to the error card if the checkout never reports content.
   useEffect(() => {
@@ -203,22 +243,30 @@ export function DaimoFrame({
   // `layout` is reserved for future modes; only "modal" is supported today.
   void layout;
 
-  if (!mounted) return null;
+  if (!mounted || !src) return null;
+
+  const isFullscreen = presentationMode === "fullscreen";
+  const currentScrimStyle = isFullscreen ? fullscreenScrimStyle : scrimStyle;
+  const currentBubbleStyle = isFullscreen
+    ? { ...bubbleStyle, ...fullscreenBubbleStyle }
+    : bubbleStyle;
 
   return createPortal(
-    <div onClick={() => onClose?.()} style={scrimStyle}>
+    <div onClick={() => onClose?.()} style={currentScrimStyle}>
       {status === "error" ? (
         <DaimoFrameError sessionId={sessionId} onClose={onClose} />
       ) : (
         <div
           onClick={(e) => e.stopPropagation()}
           style={{
-            ...bubbleStyle,
-            height,
+            ...currentBubbleStyle,
+            height: isFullscreen ? "100dvh" : height,
             opacity: status === "loaded" ? 1 : 0,
-            transition: animateHeight
-              ? "height 0.2s ease-in-out, opacity 0.2s ease-in-out"
-              : "opacity 0.2s ease-in-out",
+            transition: isFullscreen
+              ? "opacity 0.2s ease-in-out"
+              : animateHeight
+                ? "height 0.2s ease-in-out, opacity 0.2s ease-in-out"
+                : "opacity 0.2s ease-in-out",
           }}
         >
           <iframe
@@ -232,6 +280,22 @@ export function DaimoFrame({
     </div>,
     document.body,
   );
+}
+
+function getFrameSrc(
+  baseUrl: string,
+  sessionId: string,
+  clientSecret: string,
+  parentOrigin: string,
+) {
+  const base = baseUrl.replace(/\/$/, "");
+  const params = new URLSearchParams({
+    session: sessionId,
+    cs: clientSecret,
+    layout: "embed",
+    [DAIMO_FRAME_PARENT_ORIGIN_PARAM]: parentOrigin,
+  });
+  return `${base}/webview?${params.toString()}`;
 }
 
 /** Dismissable "couldn't load" card with a contact-support mailto link. */

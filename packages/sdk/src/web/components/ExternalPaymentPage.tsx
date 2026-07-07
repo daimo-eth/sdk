@@ -1,5 +1,6 @@
 import { t } from "../hooks/locale.js";
 import { isDesktop, type DaimoPlatform } from "../platform.js";
+import { ApplePayLogo, isApplePayLogo } from "./ApplePayLogo.js";
 import { ExternalLinkIcon, PrimaryButton } from "./buttons.js";
 import { QRCode } from "./QRCode.js";
 import { SkeletonText } from "./Skeleton.js";
@@ -20,13 +21,15 @@ type ExternalPaymentPageProps = {
   icon?: string;
   message: string;
   isLoading?: boolean;
-  onBack: () => void;
+  onBack: (() => void) | null;
   baseUrl: string;
   desktopBehavior: DesktopBehavior;
   openLabel?: string;
   popupName?: string;
   popupFeatures?: string;
   placeholderDensity?: QRDensity;
+  /** Called with the opened window (null when blocked by the browser). */
+  onOpened?: (popup: Window | null) => void;
 };
 
 const DEFAULT_POPUP_FEATURES = "width=500,height=700";
@@ -46,17 +49,18 @@ export function ExternalPaymentPage({
   popupName,
   popupFeatures = DEFAULT_POPUP_FEATURES,
   placeholderDensity,
+  onOpened,
 }: ExternalPaymentPageProps) {
   const desktop = isDesktop(platform);
   const showQR = desktop && desktopBehavior === "qr";
 
   const openProvider = () => {
     if (!url) return;
-    if (desktop && desktopBehavior === "popup") {
-      window.open(url, popupName ?? title.toLowerCase(), popupFeatures);
-      return;
-    }
-    window.open(url, "_blank");
+    const popup =
+      desktop && desktopBehavior === "popup"
+        ? window.open(url, popupName ?? title.toLowerCase(), popupFeatures)
+        : window.open(url, "_blank");
+    onOpened?.(popup);
   };
 
   return (
@@ -79,6 +83,13 @@ export function ExternalPaymentPage({
               }
             />
           </div>
+        ) : icon && isApplePayLogo(icon) ? (
+          // Masked + filled with the text color so it adapts to dark mode.
+          <ApplePayLogo
+            baseUrl={baseUrl}
+            alt={title}
+            className="daimo-w-20 daimo-h-20"
+          />
         ) : (
           icon && <PageLogo icon={icon} alt={title} baseUrl={baseUrl} />
         )}
