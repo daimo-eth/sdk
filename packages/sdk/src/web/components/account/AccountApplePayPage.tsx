@@ -13,7 +13,6 @@ import type {
   DepositPaymentInfo,
 } from "../../../common/account.js";
 import { isSafariBrowser } from "../../platform.js";
-import { sendDaimoFramePresentationChanged } from "../frameMessages.js";
 import { useDaimoClient } from "../../hooks/DaimoClientContext.js";
 import { t } from "../../hooks/locale.js";
 import { useSessionDepositState } from "../../hooks/useAccountFlow.js";
@@ -181,13 +180,6 @@ export function AccountApplePayPage({
   useEffect(() => {
     setMounted(true);
   }, []);
-
-  useEffect(() => {
-    sendDaimoFramePresentationChanged(isExpanded ? "fullscreen" : "content");
-    return () => {
-      sendDaimoFramePresentationChanged("content");
-    };
-  }, [isExpanded]);
 
   useEffect(() => {
     if (!isValid) {
