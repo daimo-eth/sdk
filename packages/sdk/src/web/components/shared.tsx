@@ -26,6 +26,7 @@ import {
   tron,
   worldchain,
 } from "../../common/chain.js";
+import { DAIMO_SUPPORT_EMAIL } from "../../common/constants.js";
 import type { DaimoPayToken } from "../api/walletTypes.js";
 import { BankLogo, isBankLogo } from "./BankLogo.js";
 import {
@@ -450,7 +451,7 @@ export function ContactSupportButton({
   subject,
   info,
 }: ContactSupportButtonProps) {
-  const email = "support@daimo.com";
+  const email = DAIMO_SUPPORT_EMAIL;
   const bodyLines = [
     ...Object.entries(info).map(([key, value]) => `${key}: ${value}`),
     "",

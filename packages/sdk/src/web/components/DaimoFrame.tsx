@@ -9,6 +9,7 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 
+import { DAIMO_BASE_URL } from "../../common/constants.js";
 import type { DaimoModalEventHandlers } from "../hooks/types.js";
 import {
   DAIMO_FRAME_PARENT_ORIGIN_PARAM,
@@ -17,7 +18,6 @@ import {
 import { CloseIcon } from "./icons.js";
 import { ContactSupportButton, ErrorMessage } from "./shared.js";
 
-const DEFAULT_BASE_URL = "https://daimo.com";
 const INITIAL_HEIGHT = 420;
 /** Show the error fallback if the iframe hasn't rendered content within this. */
 const LOAD_TIMEOUT_MS = 15000;
@@ -175,7 +175,7 @@ export function DaimoFrame({
   onOpen,
   onPaymentStarted,
   onPaymentCompleted,
-  baseUrl = DEFAULT_BASE_URL,
+  baseUrl = DAIMO_BASE_URL,
 }: DaimoFrameProps) {
   const [parentOrigin, setParentOrigin] = useState<string | null>(null);
   const src = useMemo(
