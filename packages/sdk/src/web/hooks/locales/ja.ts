@@ -70,6 +70,7 @@ export const ja: typeof en = {
 
   // containers
   close: "閉じる",
+  changeCountry: "国を変更",
 
   // flows
   flowError: "エラー：",

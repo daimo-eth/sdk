@@ -68,6 +68,7 @@ export const en = {
 
   // containers
   close: "Close",
+  changeCountry: "Change country",
 
   // flows
   flowError: "Error:",

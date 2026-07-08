@@ -38,14 +38,34 @@ export type AccountAuthConfig = AccountAuthHint & {
   privyAppId: string;
 };
 
+export type NavLocation = {
+  countryCode: string | null;
+  countryName: string;
+  emoji: string;
+};
+
+export type NavLocationOption = {
+  countryCode: string;
+  countryName: string;
+  emoji: string;
+};
+
 export type RetrieveSessionWithNavResponse = {
   session: SessionNavInfo;
+  /** Server-effective location used to build the nav tree. */
+  location: NavLocation;
+  /** Curated locations that can be selected in the modal country picker. */
+  locationOptions: NavLocationOption[];
   /** Account auth config, present when the nav tree includes Fiat. */
   accountAuth?: AccountAuthConfig;
 };
 
 export type RecreateSessionWithNavResponse = {
   session: SessionWithNav;
+  /** Server-effective location used to build the nav tree. */
+  location: NavLocation;
+  /** Curated locations that can be selected in the modal country picker. */
+  locationOptions: NavLocationOption[];
   /** Account auth config, present when the nav tree includes Fiat. */
   accountAuth?: AccountAuthConfig;
 };
