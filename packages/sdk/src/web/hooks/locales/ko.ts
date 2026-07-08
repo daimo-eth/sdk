@@ -86,6 +86,7 @@ export const ko: typeof en = {
   applePayRegionUnsupported:
     "현재 지역에서는 Apple Pay 입금을 사용할 수 없습니다.",
   applePayUsPhoneRequired: "Apple Pay 입금에는 미국 전화번호가 필요합니다.",
+  applePayUnavailable: "Apple Pay를 사용할 수 없음",
 
   // embed page
   missingSessionParam: "세션 매개변수가 없습니다",

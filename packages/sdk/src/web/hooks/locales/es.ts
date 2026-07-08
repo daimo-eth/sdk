@@ -60,6 +60,7 @@ export const es: typeof en = {
     "Los depósitos con Apple Pay no están disponibles en tu región.",
   applePayUsPhoneRequired:
     "Los depósitos con Apple Pay requieren un número de teléfono de EE. UU.",
+  applePayUnavailable: "Apple Pay no disponible",
   missingSessionParam: "falta el parámetro de sesión",
   failedToLoadSession: "no se pudo cargar la sesión",
   accountEmail: "Inicia sesión en Daimo",

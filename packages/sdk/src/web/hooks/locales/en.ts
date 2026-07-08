@@ -84,6 +84,7 @@ export const en = {
   applePayRegionUnsupported:
     "Apple Pay deposits are not supported in your region.",
   applePayUsPhoneRequired: "Apple Pay deposits require a US phone number.",
+  applePayUnavailable: "Apple Pay unavailable",
 
   // embed page
   missingSessionParam: "missing session parameter",

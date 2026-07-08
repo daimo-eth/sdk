@@ -86,6 +86,7 @@ export const ja: typeof en = {
   applePayRegionUnsupported:
     "お住まいの地域ではApple Pay入金をご利用いただけません。",
   applePayUsPhoneRequired: "Apple Pay入金には米国の電話番号が必要です。",
+  applePayUnavailable: "Apple Payは利用できません",
 
   // embed page
   missingSessionParam: "セッションパラメータがありません",
