@@ -7,9 +7,21 @@ import type { SessionPublicInfo } from "./session.js";
 
 const zPlatform = z.enum(["ios", "android", "other", "desktop", "mobile"]);
 
-export const zSessionId = z
-  .string()
-  .describe("Session ID");
+export const zExchangeId = z.enum([
+  "Coinbase",
+  "Binance",
+  "BinanceUSDC",
+  "BinanceUSDT",
+  "Lemon",
+  "BitgetExchange",
+  "BybitExchange",
+  "MtPelerin",
+  "CashApp",
+]);
+
+export type ExchangeId = z.infer<typeof zExchangeId>;
+
+export const zSessionId = z.string().describe("Session ID");
 
 export const zCreatePaymentMethodRequest = z.object({
   clientSecret: z.string(),
@@ -25,15 +37,7 @@ export const zCreatePaymentMethodRequest = z.object({
     }),
     z.object({
       type: z.literal("exchange"),
-      exchangeId: z.enum([
-        "Coinbase",
-        "Binance",
-        "Lemon",
-        "BitgetExchange",
-        "BybitExchange",
-        "MtPelerin",
-        "CashApp",
-      ]),
+      exchangeId: zExchangeId,
       amountUsd: z.number().positive(),
       platform: zPlatform.optional(),
     }),

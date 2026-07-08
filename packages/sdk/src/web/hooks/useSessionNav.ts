@@ -7,6 +7,7 @@ import {
   useState,
 } from "react";
 import type { AccountRail } from "../../common/account.js";
+import type { ExchangeId } from "../../common/api.js";
 import type {
   AccountAuthConfig,
   RecreateSessionWithNavResponse,
@@ -40,14 +41,6 @@ import type { InjectedWallet } from "./useInjectedWallets.js";
 import { isUserRejection, type WalletFlowResult } from "./useWalletFlow.js";
 
 type NodeContext = { nodeId: string | null; nodeType: NavNodeType | null };
-type ExchangeId =
-  | "Coinbase"
-  | "Binance"
-  | "Lemon"
-  | "BitgetExchange"
-  | "BybitExchange"
-  | "MtPelerin"
-  | "CashApp";
 type ExchangeNode = NavNodeExchange | NavNodeCashApp;
 
 type SessionNavResult = {
