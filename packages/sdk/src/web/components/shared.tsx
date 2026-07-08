@@ -27,6 +27,7 @@ import {
   worldchain,
 } from "../../common/chain.js";
 import type { DaimoPayToken } from "../api/walletTypes.js";
+import { BankLogo, isBankLogo } from "./BankLogo.js";
 import {
   formatAmountInput,
   formatFixedAmount,
@@ -326,6 +327,11 @@ type PageLogoProps = {
 export function PageLogo({ icon, alt, size = "lg", baseUrl }: PageLogoProps) {
   const sizeClass =
     size === "lg" ? "daimo-w-20 daimo-h-20" : "daimo-w-16 daimo-h-16";
+  if (isBankLogo(icon)) {
+    return (
+      <BankLogo alt={alt} className={`${sizeClass} daimo-rounded-[25%]`} />
+    );
+  }
   return (
     <img
       src={resolveIconUrl(icon, baseUrl)}

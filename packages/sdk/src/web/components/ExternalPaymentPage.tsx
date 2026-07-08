@@ -1,6 +1,7 @@
 import { t } from "../hooks/locale.js";
 import { isDesktop, type DaimoPlatform } from "../platform.js";
 import { ApplePayLogo, isApplePayLogo } from "./ApplePayLogo.js";
+import { BankLogo, isBankLogo } from "./BankLogo.js";
 import { ExternalLinkIcon, PrimaryButton } from "./buttons.js";
 import { QRCode } from "./QRCode.js";
 import { SkeletonText } from "./Skeleton.js";
@@ -73,7 +74,12 @@ export function ExternalPaymentPage({
               value={url}
               placeholderDensity={placeholderDensity}
               image={
-                icon ? (
+                icon && isBankLogo(icon) ? (
+                  <BankLogo
+                    alt={title}
+                    className="daimo-w-full daimo-h-full daimo-rounded-[25%]"
+                  />
+                ) : icon ? (
                   <img
                     src={resolveIconUrl(icon, baseUrl)}
                     alt={title}
@@ -89,6 +95,11 @@ export function ExternalPaymentPage({
             baseUrl={baseUrl}
             alt={title}
             className="daimo-w-20 daimo-h-20"
+          />
+        ) : icon && isBankLogo(icon) ? (
+          <BankLogo
+            alt={title}
+            className="daimo-w-20 daimo-h-20 daimo-rounded-[25%]"
           />
         ) : (
           icon && <PageLogo icon={icon} alt={title} baseUrl={baseUrl} />

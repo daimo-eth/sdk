@@ -4,6 +4,7 @@ import type { InjectedWallet } from "../hooks/useInjectedWallets.js";
 
 import { t } from "../hooks/locale.js";
 import { ApplePayLogo, isApplePayLogo } from "./ApplePayLogo.js";
+import { BankLogo, isBankLogo } from "./BankLogo.js";
 import { getKycRequirement } from "./account/kycRequirement.js";
 import { DaimoLogoIcon } from "./icons.js";
 import {
@@ -270,6 +271,9 @@ function OptionIcon({
         style={style}
       />
     );
+  }
+  if (isBankLogo(icon)) {
+    return <BankLogo alt={alt} className={className} style={style} />;
   }
 
   return (
