@@ -87,6 +87,7 @@ export const pt: typeof en = {
     "Depósitos com Apple Pay não são aceitos na sua região.",
   applePayUsPhoneRequired:
     "Depósitos com Apple Pay exigem um número de telefone dos EUA.",
+  applePayUnavailable: "Apple Pay indisponível",
 
   // embed page
   missingSessionParam: "parâmetro de sessão ausente",
