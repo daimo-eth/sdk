@@ -7,7 +7,8 @@ export type AccountResumeTarget = {
   rail: AccountRail;
 };
 
-const PAID_ACCOUNT_SESSION_STATUSES = new Set<SessionStatus>([
+const ACCOUNT_RESUME_SESSION_STATUSES = new Set<SessionStatus>([
+  "waiting_payment",
   "processing",
   "succeeded",
   "bounced",
@@ -16,7 +17,7 @@ const PAID_ACCOUNT_SESSION_STATUSES = new Set<SessionStatus>([
 export function getAccountResumeTarget(
   session: Pick<SessionWithNav, "status" | "paymentMethod" | "navTree">,
 ): AccountResumeTarget | null {
-  if (!PAID_ACCOUNT_SESSION_STATUSES.has(session.status)) return null;
+  if (!ACCOUNT_RESUME_SESSION_STATUSES.has(session.status)) return null;
   if (session.paymentMethod?.type !== "fiat") return null;
 
   const rail = session.paymentMethod.fiatMethod;

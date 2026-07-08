@@ -79,9 +79,23 @@ describe("getAccountResumeTarget", () => {
     });
   });
 
-  test("unpaid fiat session returns no resume target", () => {
+  test("selected fiat session resumes while waiting for account payment", () => {
     expect(
       getAccountResumeTarget(session({ status: "waiting_payment" })),
+    ).toEqual({
+      nodeId: "Interac",
+      rail: "interac",
+    });
+  });
+
+  test("session requiring payment method returns no resume target", () => {
+    expect(
+      getAccountResumeTarget(
+        session({
+          status: "requires_payment_method",
+          paymentMethod: undefined,
+        }),
+      ),
     ).toBeNull();
   });
 
