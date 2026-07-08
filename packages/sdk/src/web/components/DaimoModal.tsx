@@ -575,6 +575,9 @@ function DaimoModalInner({
       : null;
   const close = closeVisible ? { onClose: handleClose } : null;
   const showCountryPicker =
+    // Server sends locations only when switching affects the nav
+    // (paymentMethods auto sessions); empty means hide the picker.
+    locationOptions.length > 0 &&
     !embedded &&
     closeVisible &&
     !connectToInjectedWallets &&
