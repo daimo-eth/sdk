@@ -37,6 +37,8 @@ type NodeContext = { nodeId: string | null; nodeType: NavNodeType | null };
 type ExchangeId =
   | "Coinbase"
   | "Binance"
+  | "BinanceUSDC"
+  | "BinanceUSDT"
   | "Lemon"
   | "BitgetExchange"
   | "BybitExchange"

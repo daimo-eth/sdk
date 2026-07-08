@@ -90,6 +90,8 @@ export type NavNodeExchange = NavNodeCommon & {
   exchangeId:
     | "Coinbase"
     | "Binance"
+    | "BinanceUSDC"
+    | "BinanceUSDT"
     | "Lemon"
     | "BitgetExchange"
     | "BybitExchange"
