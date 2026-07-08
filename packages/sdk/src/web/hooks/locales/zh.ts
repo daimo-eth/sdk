@@ -127,6 +127,16 @@ export const zh: typeof en = {
   accountSearchInstitutions: "搜索机构...",
   accountOtherInstitutions: "其他机构",
   accountBankTransfer: "银行转账",
+  accountInteracConfirmTitle: "确认 Interac 请求",
+  accountInteracConfirmDesc:
+    "您的银行会显示来自 PayTrie AB Inc 的请求，它是 Daimo 在加拿大的 Interac 支付合作伙伴。",
+  accountInteracConfirmAmount: "金额",
+  accountInteracConfirmSender: "发送方",
+  accountInteracConfirmReference: "请求参考号",
+  accountInteracConfirmBank: "银行",
+  accountInteracConfirmOpenInterac: "打开 Interac",
+  accountInteracWaitingInstructions: (amount: string) =>
+    `请在您的银行批准来自 PayTrie AB Inc 的 ${amount} 请求。PayTrie 是 Daimo 在加拿大的 Interac 支付合作伙伴。`,
   accountBankDetails: "转账详情",
   accountDirections: "操作指南",
   accountDirectionsStep: (current: number, total: number) =>

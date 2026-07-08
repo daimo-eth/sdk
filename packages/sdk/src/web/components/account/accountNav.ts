@@ -33,10 +33,10 @@ export function getAccountPaymentAdvanceTarget(
   switch (rail) {
     case "interac":
       // JS-driven bank deeplinks (form-post popups, window.open) are
-      // unreliable on mobile — skip the picker, link straight to Interac.
+      // unreliable on mobile — skip the picker, then review before Interac.
       return isDesktop(platform)
         ? ("account-canada-bank-picker" as const)
-        : ("account-deeplink" as const);
+        : ("account-interac-confirm" as const);
     case "ach":
     case "sepa":
     case "jpyc":
