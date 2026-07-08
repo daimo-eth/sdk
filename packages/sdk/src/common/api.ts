@@ -28,6 +28,8 @@ export const zCreatePaymentMethodRequest = z.object({
       exchangeId: z.enum([
         "Coinbase",
         "Binance",
+        "BinanceUSDC",
+        "BinanceUSDT",
         "Lemon",
         "BitgetExchange",
         "BybitExchange",
