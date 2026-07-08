@@ -162,10 +162,12 @@ export type DaimoClient = {
       retrieveWithNav(
         sessionId: string,
         clientSecret: string,
+        params?: { countryCode?: string },
       ): Promise<RetrieveSessionWithNavResponse>;
       recreate(
         sessionId: string,
         clientSecret: string,
+        params?: { countryCode?: string },
       ): Promise<RecreateSessionWithNavResponse>;
       walletOptions(
         sessionId: string,
@@ -350,17 +352,22 @@ export function createDaimoClient(config: TransportConfig): DaimoClient {
 
     internal: {
       sessions: {
-        async retrieveWithNav(sessionId, clientSecret) {
+        async retrieveWithNav(sessionId, clientSecret, params) {
           return transport.request<RetrieveSessionWithNavResponse>({
             method: "GET",
             path: `/v1/sessions/${sessionId}/internal/nav`,
-            query: { clientSecret, locale: getLocale() },
+            query: {
+              clientSecret,
+              locale: getLocale(),
+              country: params?.countryCode,
+            },
           });
         },
-        async recreate(sessionId, clientSecret) {
+        async recreate(sessionId, clientSecret, params) {
           return transport.request<RecreateSessionWithNavResponse>({
             method: "POST",
             path: `/v1/sessions/${sessionId}/internal/recreate`,
+            query: { country: params?.countryCode },
             body: { clientSecret, locale: getLocale() },
           });
         },

@@ -70,6 +70,7 @@ export const zh: typeof en = {
 
   // containers
   close: "关闭",
+  changeCountry: "更改国家/地区",
 
   // flows
   flowError: "错误：",
