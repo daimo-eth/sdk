@@ -32,8 +32,8 @@ export function ExchangePage({
 
   const isBinanceExchange =
     exchangeId === "Binance" ||
-    exchangeId === "Binance_USDC" ||
-    exchangeId === "Binance_USDT";
+    exchangeId === "BinanceUSDC" ||
+    exchangeId === "BinanceUSDT";
   const placeholderDensity = isBinanceExchange
     ? ("medium" as const)
     : ("short" as const);

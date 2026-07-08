@@ -3,8 +3,8 @@ import { describe, expect, test } from "vitest";
 import { zCreatePaymentMethodRequest } from "./api.js";
 
 describe("zCreatePaymentMethodRequest", () => {
-  test("accepts Binance_USDC and Binance_USDT exchange ids", () => {
-    for (const exchangeId of ["Binance_USDC", "Binance_USDT"] as const) {
+  test("accepts BinanceUSDC and BinanceUSDT exchange ids", () => {
+    for (const exchangeId of ["BinanceUSDC", "BinanceUSDT"] as const) {
       expect(
         zCreatePaymentMethodRequest.parse({
           clientSecret: "secret",

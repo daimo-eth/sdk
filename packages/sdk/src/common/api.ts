@@ -10,8 +10,8 @@ const zPlatform = z.enum(["ios", "android", "other", "desktop", "mobile"]);
 export const zExchangeId = z.enum([
   "Coinbase",
   "Binance",
-  "Binance_USDC",
-  "Binance_USDT",
+  "BinanceUSDC",
+  "BinanceUSDT",
   "Lemon",
   "BitgetExchange",
   "BybitExchange",
@@ -21,9 +21,7 @@ export const zExchangeId = z.enum([
 
 export type ExchangeId = z.infer<typeof zExchangeId>;
 
-export const zSessionId = z
-  .string()
-  .describe("Session ID");
+export const zSessionId = z.string().describe("Session ID");
 
 export const zCreatePaymentMethodRequest = z.object({
   clientSecret: z.string(),
