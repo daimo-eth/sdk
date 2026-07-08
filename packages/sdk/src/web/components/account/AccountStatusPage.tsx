@@ -4,6 +4,7 @@ import type {
   AccountDepositEta,
   AccountDepositStatus,
 } from "../../../common/account.js";
+import type { SessionStatus } from "../../../common/session.js";
 import { useDaimoClient } from "../../hooks/DaimoClientContext.js";
 import { t } from "../../hooks/locale.js";
 import { useDepositPoller } from "../../hooks/useDepositPoller.js";
@@ -14,6 +15,7 @@ import { CenteredContent, PageHeader, ShowReceiptButton } from "../shared.js";
 type AccountStatusPageProps = {
   sessionId: string;
   clientSecret: string;
+  initialSessionStatus?: SessionStatus;
   baseUrl: string;
 };
 
@@ -40,11 +42,13 @@ function getStatusLabel(status: AccountDepositStatus): string {
 export function AccountStatusPage({
   sessionId,
   clientSecret,
+  initialSessionStatus,
   baseUrl,
 }: AccountStatusPageProps) {
   const client = useDaimoClient();
-  const [status, setStatus] =
-    useState<AccountDepositStatus>("payment_received");
+  const [status, setStatus] = useState<AccountDepositStatus>(
+    getInitialDepositStatus(initialSessionStatus),
+  );
   const [eta, setEta] = useState<AccountDepositEta | null>(null);
 
   useDepositPoller({
@@ -92,6 +96,24 @@ export function AccountStatusPage({
       </div>
     </div>
   );
+}
+
+function getInitialDepositStatus(
+  sessionStatus: SessionStatus | undefined,
+): AccountDepositStatus {
+  switch (sessionStatus) {
+    case "processing":
+      return "token_delivered";
+    case "succeeded":
+      return "completed";
+    case "bounced":
+      return "failed";
+    case "requires_payment_method":
+    case "waiting_payment":
+    case "expired":
+    case undefined:
+      return "payment_received";
+  }
 }
 
 function getStatusEta(

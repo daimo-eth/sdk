@@ -1,4 +1,4 @@
-import type { NavEntry } from "./types.js";
+import type { AccountNavEntry, NavEntry } from "./types.js";
 
 type AccountAuthChallengeEntryType = Extract<
   NavEntry["type"],
@@ -48,4 +48,22 @@ export function pruneCompletedAccountAuth(
 ) {
   if (isAccountAuthChallengeEntryType(nextType)) return stack;
   return stack.filter((entry) => !isAccountAuthEntryType(entry.type));
+}
+
+export function getAccountEmailOtpEntry(
+  entry: Extract<NavEntry, { type: "account-email" }>,
+): Extract<NavEntry, { type: "account-otp" }> {
+  return {
+    type: "account-otp",
+    nodeId: entry.nodeId,
+    rail: entry.rail,
+    autoNav: entry.autoNav,
+    ...(entry.postAuthTarget ? { postAuthTarget: entry.postAuthTarget } : {}),
+  };
+}
+
+export function getAccountOtpAdvanceTarget(
+  entry: Pick<Extract<NavEntry, { type: "account-otp" }>, "postAuthTarget">,
+): AccountNavEntry["type"] {
+  return entry.postAuthTarget ?? "account-creating-wallet";
 }

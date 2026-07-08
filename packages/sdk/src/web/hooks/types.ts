@@ -13,6 +13,8 @@ type AccountNavBase = {
   autoNav?: boolean;
 };
 
+export type AccountPostAuthTarget = "account-status";
+
 /**
  * A single entry in the navigation stack. Back = pop.
  * autoNav marks entries pushed by auto-navigation (single-option chains).
@@ -100,9 +102,15 @@ export type NavEntry =
   // Not "account-" prefixed: the session-terminal success page must take
   // over when the payment completes in the popup.
   | ({ type: "fiat-popup" } & AccountNavBase)
-  | ({ type: "account-email" } & AccountNavBase)
+  | ({
+      type: "account-email";
+      postAuthTarget?: AccountPostAuthTarget;
+    } & AccountNavBase)
   | ({ type: "account-loading" } & AccountNavBase)
-  | ({ type: "account-otp" } & AccountNavBase)
+  | ({
+      type: "account-otp";
+      postAuthTarget?: AccountPostAuthTarget;
+    } & AccountNavBase)
   | ({ type: "account-phone" } & AccountNavBase)
   | ({ type: "account-phone-otp" } & AccountNavBase)
   | ({ type: "account-provider-otp" } & AccountNavBase)

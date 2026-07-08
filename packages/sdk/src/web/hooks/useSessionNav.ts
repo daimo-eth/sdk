@@ -29,6 +29,10 @@ import {
   isFramed,
   railRequiresPopup,
 } from "../components/account/fiatPopup.js";
+import {
+  getAccountResumeTarget,
+  type AccountResumeTarget,
+} from "./accountResumeNav.js";
 import { pruneCompletedAccountAuth } from "./accountAuthNav.js";
 import { useDaimoClient } from "./DaimoClientContext.js";
 import { formatUserError } from "./formatUserError.js";
@@ -71,7 +75,10 @@ type SessionNavResult = {
   handleShowMobileWallets: (nodeId: string) => void;
 
   /** Advance account flow to the next screen. */
-  handleAccountAdvance: (nextType: AccountNavEntry["type"]) => void;
+  handleAccountAdvance: (
+    nextType: AccountNavEntry["type"],
+    entry?: AccountNavEntry,
+  ) => void;
   /** Reset the current account rail after logout. */
   handleAccountLogout: () => void;
 };
@@ -472,6 +479,66 @@ export function useSessionNav(
     [accountAuth, accountFlow, client, session.clientSecret, session.sessionId],
   );
 
+  const handleAccountResume = useCallback(
+    async (target: AccountResumeTarget, autoNav: boolean) => {
+      const { nodeId, rail } = target;
+      setStack((prev) => [
+        ...prev,
+        { type: "account-loading", nodeId, rail, autoNav },
+      ]);
+
+      const replaceLoading = (entry: NavEntry) => {
+        setStack((prev) =>
+          replacePendingAccountEntry(prev, nodeId, rail, entry),
+        );
+      };
+
+      if (!accountFlow) {
+        replaceLoading({
+          type: "account-error",
+          nodeId,
+          rail,
+          autoNav,
+          message: "account deposit is not available for this session.",
+        });
+        return;
+      }
+
+      await accountFlow.waitForReady();
+
+      const token = await accountFlow.getAccessToken();
+      if (token) {
+        replaceLoading({ type: "account-status", nodeId, rail, autoNav });
+        return;
+      }
+
+      if (accountAuth?.email) {
+        await accountFlow.logout();
+        accountFlow.setEmail(accountAuth.email);
+        const sent = await accountFlow.sendOtp(accountAuth.email);
+        if (sent) {
+          replaceLoading({
+            type: "account-otp",
+            nodeId,
+            rail,
+            autoNav,
+            postAuthTarget: "account-status",
+          });
+          return;
+        }
+      }
+
+      replaceLoading({
+        type: "account-email",
+        nodeId,
+        rail,
+        autoNav,
+        postAuthTarget: "account-status",
+      });
+    },
+    [accountAuth, accountFlow],
+  );
+
   // ─── Navigation handlers ────────────────────────────────────────────────
 
   const handleNavigate = useCallback(
@@ -605,6 +672,15 @@ export function useSessionNav(
       }
 
       if (targetNode.type === "Fiat") {
+        const accountResumeTarget = getAccountResumeTarget(session);
+        if (
+          accountResumeTarget?.nodeId === nodeId &&
+          accountResumeTarget.rail === targetNode.fiatMethod
+        ) {
+          void handleAccountResume(accountResumeTarget, autoNav);
+          return;
+        }
+
         if (
           enableFiatPopup &&
           railRequiresPopup(targetNode.fiatMethod) &&
@@ -627,12 +703,15 @@ export function useSessionNav(
     },
     [
       session.navTree,
+      session.status,
+      session.paymentMethod,
       session.sessionId,
       getNodeCtx,
       fetchTronAddress,
       fetchExchangeUrl,
       fetchStripeOnramp,
       handleAccountNavigate,
+      handleAccountResume,
       enableFiatPopup,
     ],
   );
@@ -1008,6 +1087,16 @@ export function useSessionNav(
       return;
     }
 
+    const accountResumeTarget = getAccountResumeTarget(session);
+    if (!topEntry && accountResumeTarget) {
+      const resumeKey = `account-resume:${accountResumeTarget.nodeId}`;
+      if (autoNavRef.current !== resumeKey) {
+        autoNavRef.current = resumeKey;
+        void handleAccountResume(accountResumeTarget, true);
+      }
+      return;
+    }
+
     // Popup deep-link: land directly on the requested node.
     if (startNodeId && autoNavRef.current !== startNodeId) {
       const startNode = findNode(startNodeId, session.navTree);
@@ -1040,7 +1129,14 @@ export function useSessionNav(
       autoNavRef.current = targetId;
       handleNavigate(targetId, { autoNav: true });
     }
-  }, [isOpen, topEntry, session.navTree, handleNavigate, startNodeId]);
+  }, [
+    isOpen,
+    topEntry,
+    session,
+    handleNavigate,
+    handleAccountResume,
+    startNodeId,
+  ]);
 
   // Auto-advance from wallet-connect to wallet-select-token when connected
   useEffect(() => {
@@ -1056,7 +1152,7 @@ export function useSessionNav(
 
   /** Advance account flow to the next screen, preserving nodeId + rail. */
   const handleAccountAdvance = useCallback(
-    (nextType: AccountNavEntry["type"]) => {
+    (nextType: AccountNavEntry["type"], entry?: AccountNavEntry) => {
       const { nodeId, rail } = accountEntry(topEntry);
 
       const pushPhoneEntry = (
@@ -1086,7 +1182,10 @@ export function useSessionNav(
 
       setStack((prev) => {
         const nextStack = pruneCompletedAccountAuth(prev, nextType);
-        return [...nextStack, { type: nextType, nodeId, rail } as NavEntry];
+        return [
+          ...nextStack,
+          entry ?? ({ type: nextType, nodeId, rail } as NavEntry),
+        ];
       });
     },
     [accountAuth, accountFlow, topEntry],

@@ -7,7 +7,10 @@ import {
 } from "react";
 import type { Address } from "viem";
 import { tron } from "../../common/chain.js";
-import { isSessionTerminal } from "../../common/session.js";
+import {
+  isSessionTerminal,
+  type SessionStatus,
+} from "../../common/session.js";
 import type {
   AccountAuthConfig,
   NavLocation,
@@ -31,6 +34,10 @@ import type { WalletPaymentOption } from "../api/walletTypes.js";
 import { useDaimoClient } from "../hooks/DaimoClientContext.js";
 import { formatUserError } from "../hooks/formatUserError.js";
 import { autoDetectLocale, t } from "../hooks/locale.js";
+import {
+  getAccountEmailOtpEntry,
+  getAccountOtpAdvanceTarget,
+} from "../hooks/accountAuthNav.js";
 import { createNavLogger, type NavNodeType } from "../hooks/navEvent.js";
 import {
   findNode,
@@ -662,6 +669,7 @@ type RenderContext = {
   session: {
     sessionId: string;
     clientSecret: string;
+    status: SessionStatus;
     navTree: NavNode[];
     baseUrl: string;
     destination: { amountUnits?: string };
@@ -692,7 +700,10 @@ type RenderContext = {
   };
   onWalletSelectToken: (token: WalletPaymentOption) => void;
   onWalletSending: (token: WalletPaymentOption, amountUsd: number) => void;
-  onAccountAdvance: (nextType: AccountNavEntry["type"]) => void;
+  onAccountAdvance: (
+    nextType: AccountNavEntry["type"],
+    entry?: AccountNavEntry,
+  ) => void;
   setModalCloseVisible: (show: boolean) => void;
 };
 
@@ -833,14 +844,18 @@ function renderEntry(
       return (
         <AccountEmailPage
           onBack={ctx.canGoBack ? ctx.onBack : null}
-          onOtpSent={() => ctx.onAccountAdvance("account-otp")}
+          onOtpSent={() =>
+            ctx.onAccountAdvance("account-otp", getAccountEmailOtpEntry(entry))
+          }
         />
       );
     case "account-otp":
       return (
         <AccountOtpPage
           onBack={ctx.onBack}
-          onVerified={() => ctx.onAccountAdvance("account-creating-wallet")}
+          onVerified={() =>
+            ctx.onAccountAdvance(getAccountOtpAdvanceTarget(entry))
+          }
         />
       );
     case "account-creating-wallet":
@@ -985,6 +1000,7 @@ function renderEntry(
         <AccountStatusPage
           sessionId={ctx.session.sessionId}
           clientSecret={ctx.session.clientSecret}
+          initialSessionStatus={ctx.session.status}
           baseUrl={ctx.session.baseUrl}
         />
       );
