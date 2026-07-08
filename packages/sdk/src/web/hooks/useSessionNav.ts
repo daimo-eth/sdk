@@ -7,7 +7,10 @@ import {
   useState,
 } from "react";
 import type { AccountRail } from "../../common/account.js";
-import type { AccountAuthConfig } from "../api/index.js";
+import type {
+  AccountAuthConfig,
+  RecreateSessionWithNavResponse,
+} from "../api/index.js";
 import type {
   NavNode,
   NavNodeCashApp,
@@ -144,6 +147,8 @@ export function useSessionNav(
     startNodeId?: string;
     /** Selected country used when rebuilding nav for a recreated session. */
     countryCode?: string;
+    /** Propagates non-session fields from the recreate response. */
+    onRecreate?: (response: RecreateSessionWithNavResponse) => void;
   },
 ): SessionNavResult {
   const enableFiatPopup = options?.enableFiatPopup ?? false;
@@ -166,6 +171,7 @@ export function useSessionNav(
 
   const canGoBack = stack.length > 0 && stack.some((e) => !e.autoNav);
   const countryCode = options?.countryCode;
+  const onRecreate = options?.onRecreate;
 
   // ─── Async fetchers ─────────────────────────────────────────────────────
 
@@ -858,13 +864,14 @@ export function useSessionNav(
     });
 
     try {
-      const { session: newSession } = await client.internal.sessions.recreate(
+      const response = await client.internal.sessions.recreate(
         session.sessionId,
         session.clientSecret,
         { countryCode },
       );
       setStack([]);
-      setSession(newSession);
+      setSession(response.session);
+      onRecreate?.(response);
     } catch (error) {
       console.error("failed to recreate session:", error);
     }
@@ -875,6 +882,7 @@ export function useSessionNav(
     getNodeCtx,
     setSession,
     client,
+    onRecreate,
   ]);
 
   const handleReset = useCallback(() => setStack([]), []);

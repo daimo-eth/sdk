@@ -12,6 +12,7 @@ import type {
   AccountAuthConfig,
   NavLocation,
   NavLocationOption,
+  RecreateSessionWithNavResponse,
 } from "../api/index.js";
 import type {
   NavNode,
@@ -417,6 +418,17 @@ function DaimoModalInner({
   const accountFlow = useAccountFlow();
   const resolvedPlatform = platform ?? detectPlatform();
   const desktop = isDesktop(resolvedPlatform);
+  const handleRecreate = useCallback(
+    (resp: RecreateSessionWithNavResponse) => {
+      setLoaded({
+        session: resp.session,
+        accountAuth: resp.accountAuth ?? null,
+        location: resp.location ?? UNKNOWN_LOCATION,
+        locationOptions: resp.locationOptions ?? [],
+      });
+    },
+    [setLoaded],
+  );
   const nav = useSessionNav(
     session,
     setSession,
@@ -429,6 +441,7 @@ function DaimoModalInner({
       enableFiatPopup,
       startNodeId,
       countryCode: location.countryCode ?? undefined,
+      onRecreate: handleRecreate,
     },
   );
   const { handleReset } = nav;
@@ -575,6 +588,9 @@ function DaimoModalInner({
       : null;
   const close = closeVisible ? { onClose: handleClose } : null;
   const showCountryPicker =
+    // Server sends locations only when switching affects the nav
+    // (paymentMethods auto sessions); empty means hide the picker.
+    locationOptions.length > 0 &&
     !embedded &&
     closeVisible &&
     !connectToInjectedWallets &&
