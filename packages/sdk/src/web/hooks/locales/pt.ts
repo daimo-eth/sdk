@@ -70,6 +70,7 @@ export const pt: typeof en = {
 
   // containers
   close: "Fechar",
+  changeCountry: "Mudar país",
 
   // flows
   flowError: "Erro:",

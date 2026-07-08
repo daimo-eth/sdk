@@ -49,6 +49,7 @@ export const es: typeof en = {
   showReceipt: "Ver recibo",
   poweredByDaimo: "Powered by Daimo",
   close: "Cerrar",
+  changeCountry: "Cambiar país",
   flowError: "Error:",
   back: "Volver",
   tryAgain: "Reintentar",

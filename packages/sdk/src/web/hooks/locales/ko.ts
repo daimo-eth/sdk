@@ -70,6 +70,7 @@ export const ko: typeof en = {
 
   // containers
   close: "닫기",
+  changeCountry: "국가 변경",
 
   // flows
   flowError: "오류:",

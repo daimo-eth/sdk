@@ -8,7 +8,12 @@ import {
 import type { Address } from "viem";
 import { tron } from "../../common/chain.js";
 import { isSessionTerminal } from "../../common/session.js";
-import type { AccountAuthConfig } from "../api/index.js";
+import type {
+  AccountAuthConfig,
+  NavLocation,
+  NavLocationOption,
+  RecreateSessionWithNavResponse,
+} from "../api/index.js";
 import type {
   NavNode,
   NavNodeCashApp,
@@ -132,9 +137,18 @@ type NodeContext = { nodeId: string | null; nodeType: NavNodeType | null };
 type LoadedSession = {
   session: SessionWithNav;
   accountAuth: AccountAuthConfig | null;
+  location: NavLocation;
+  locationOptions: NavLocationOption[];
 };
 
 const ACCOUNT_CHROME_ENABLED = false;
+
+/** Fallback when the server predates the nav location fields. */
+const UNKNOWN_LOCATION: NavLocation = {
+  countryCode: null,
+  countryName: "Location unknown",
+  emoji: "🌐",
+};
 
 function useModalCloseHandler(
   sessionId: string,
@@ -198,6 +212,10 @@ export function DaimoModal(props: DaimoModalProps) {
         setLoaded({
           session: { ...resp.session, clientSecret },
           accountAuth: resp.accountAuth ?? null,
+          // Defensive defaults: keep the modal working against servers that
+          // predate the location fields.
+          location: resp.location ?? UNKNOWN_LOCATION,
+          locationOptions: resp.locationOptions ?? [],
         });
       })
       .catch((err) => console.error("failed to fetch session:", err));
@@ -233,6 +251,9 @@ export function DaimoModal(props: DaimoModalProps) {
       {...props}
       session={loaded.session}
       accountAuth={loaded.accountAuth}
+      location={loaded.location}
+      locationOptions={loaded.locationOptions}
+      setLoaded={setLoaded}
       isOpen={isOpen}
       setIsOpen={setIsOpen}
       closeRef={closeRef}
@@ -318,6 +339,9 @@ const CONNECT_TO_ADDRESS_NAV: NavNode[] = [CONNECTED_WALLET_NODE];
 type DaimoModalInnerProps = DaimoModalProps & {
   session: SessionWithNav;
   accountAuth: AccountAuthConfig | null;
+  location: NavLocation;
+  locationOptions: NavLocationOption[];
+  setLoaded: React.Dispatch<React.SetStateAction<LoadedSession | null>>;
   isOpen: boolean;
   setIsOpen: (open: boolean) => void;
   closeRef: { current: () => void };
@@ -329,6 +353,9 @@ type DaimoModalInnerProps = DaimoModalProps & {
 function DaimoModalInner({
   session: initialSession,
   accountAuth,
+  location,
+  locationOptions,
+  setLoaded,
   isOpen,
   setIsOpen,
   closeRef,
@@ -356,6 +383,10 @@ function DaimoModalInner({
 
   const [pendingTxHash, setPendingTxHash] = useState<string | undefined>();
   const [pageCloseVisible, setPageCloseVisible] = useState(true);
+  const [loadingCountryCode, setLoadingCountryCode] = useState<string | null>(
+    null,
+  );
+  const client = useDaimoClient();
   const { session, setSession } = useSessionPolling(
     effectiveInitial,
     isOpen,
@@ -387,6 +418,17 @@ function DaimoModalInner({
   const accountFlow = useAccountFlow();
   const resolvedPlatform = platform ?? detectPlatform();
   const desktop = isDesktop(resolvedPlatform);
+  const handleRecreate = useCallback(
+    (resp: RecreateSessionWithNavResponse) => {
+      setLoaded({
+        session: resp.session,
+        accountAuth: resp.accountAuth ?? null,
+        location: resp.location ?? UNKNOWN_LOCATION,
+        locationOptions: resp.locationOptions ?? [],
+      });
+    },
+    [setLoaded],
+  );
   const nav = useSessionNav(
     session,
     setSession,
@@ -395,8 +437,14 @@ function DaimoModalInner({
     resolvedPlatform,
     walletFlow,
     accountFlow,
-    { enableFiatPopup, startNodeId },
+    {
+      enableFiatPopup,
+      startNodeId,
+      countryCode: location.countryCode ?? undefined,
+      onRecreate: handleRecreate,
+    },
   );
+  const { handleReset } = nav;
 
   useEffect(() => {
     const top = nav.topEntry;
@@ -415,6 +463,49 @@ function DaimoModalInner({
   );
 
   closeRef.current = handleClose;
+
+  const handleCountrySelect = useCallback(
+    async (countryCode: string) => {
+      if (countryCode === location.countryCode || loadingCountryCode != null) {
+        return;
+      }
+
+      setLoadingCountryCode(countryCode);
+      try {
+        const resp = await client.internal.sessions.retrieveWithNav(
+          session.sessionId,
+          session.clientSecret,
+          { countryCode },
+        );
+        const nextSession = {
+          ...resp.session,
+          clientSecret: session.clientSecret,
+        };
+        handleReset();
+        setSession(nextSession);
+        setLoaded({
+          session: nextSession,
+          accountAuth: resp.accountAuth ?? null,
+          location: resp.location ?? UNKNOWN_LOCATION,
+          locationOptions: resp.locationOptions ?? [],
+        });
+      } catch (error) {
+        console.error("failed to switch country:", error);
+      } finally {
+        setLoadingCountryCode(null);
+      }
+    },
+    [
+      client,
+      session.sessionId,
+      session.clientSecret,
+      location.countryCode,
+      loadingCountryCode,
+      handleReset,
+      setSession,
+      setLoaded,
+    ],
+  );
 
   usePaymentCallbacks(session, isOpen, {
     onOpen,
@@ -496,6 +587,17 @@ function DaimoModalInner({
         }
       : null;
   const close = closeVisible ? { onClose: handleClose } : null;
+  const showCountryPicker =
+    // Server sends locations only when switching affects the nav
+    // (paymentMethods auto sessions); empty means hide the picker.
+    locationOptions.length > 0 &&
+    !embedded &&
+    closeVisible &&
+    !connectToInjectedWallets &&
+    !connectToAddress &&
+    !startNodeId &&
+    (!nav.topEntry ||
+      (nav.topEntry.type === "choose-option" && !nav.canGoBack));
   let chrome: ModalChromeControls = { type: "none" };
   if (account && close) {
     chrome = { type: "account-close", account, close };
@@ -522,16 +624,34 @@ function DaimoModalInner({
   }, []);
 
   return (
-    <ModalChrome controls={chrome}>
-      {(dismissAccount) => (
-        <div
-          key={pageKey}
-          onClick={dismissAccount ?? undefined}
-          className={`${animate ? "daimo-page-enter " : ""}daimo-flex-1 daimo-min-h-0 daimo-flex daimo-flex-col`}
-        >
-          {content}
-        </div>
-      )}
+    <ModalChrome
+      controls={chrome}
+      country={
+        showCountryPicker
+          ? {
+              location,
+              options: locationOptions,
+              loadingCountryCode,
+              onSelect: handleCountrySelect,
+            }
+          : null
+      }
+    >
+      {(dismissAccount) =>
+        loadingCountryCode != null ? (
+          // Country switch in flight: skeleton the method list for a smooth
+          // swap instead of freezing the old list until the new nav lands.
+          <SkeletonContent rowCount={4} showFooter={false} />
+        ) : (
+          <div
+            key={pageKey}
+            onClick={dismissAccount ?? undefined}
+            className={`${animate ? "daimo-page-enter " : ""}daimo-flex-1 daimo-min-h-0 daimo-flex daimo-flex-col`}
+          >
+            {content}
+          </div>
+        )
+      }
     </ModalChrome>
   );
 }
