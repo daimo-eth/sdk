@@ -179,6 +179,17 @@ export function useSessionNav(
   const canGoBack = stack.length > 0 && stack.some((e) => !e.autoNav);
   const countryCode = options?.countryCode;
   const onRecreate = options?.onRecreate;
+  const accountResumeTarget = useMemo(
+    () => getAccountResumeTarget(session),
+    [
+      session.status,
+      session.paymentMethod?.type,
+      session.paymentMethod?.type === "fiat"
+        ? session.paymentMethod.fiatMethod
+        : undefined,
+      session.navTree,
+    ],
+  );
 
   // ─── Async fetchers ─────────────────────────────────────────────────────
 
@@ -672,7 +683,6 @@ export function useSessionNav(
       }
 
       if (targetNode.type === "Fiat") {
-        const accountResumeTarget = getAccountResumeTarget(session);
         if (
           accountResumeTarget?.nodeId === nodeId &&
           accountResumeTarget.rail === targetNode.fiatMethod
@@ -703,9 +713,8 @@ export function useSessionNav(
     },
     [
       session.navTree,
-      session.status,
-      session.paymentMethod,
       session.sessionId,
+      accountResumeTarget,
       getNodeCtx,
       fetchTronAddress,
       fetchExchangeUrl,
@@ -1087,7 +1096,6 @@ export function useSessionNav(
       return;
     }
 
-    const accountResumeTarget = getAccountResumeTarget(session);
     if (!topEntry && accountResumeTarget) {
       const resumeKey = `account-resume:${accountResumeTarget.nodeId}`;
       if (autoNavRef.current !== resumeKey) {
@@ -1132,7 +1140,8 @@ export function useSessionNav(
   }, [
     isOpen,
     topEntry,
-    session,
+    session.navTree,
+    accountResumeTarget,
     handleNavigate,
     handleAccountResume,
     startNodeId,
