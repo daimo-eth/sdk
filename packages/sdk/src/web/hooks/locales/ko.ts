@@ -130,6 +130,16 @@ export const ko: typeof en = {
   accountSearchInstitutions: "금융기관 검색...",
   accountOtherInstitutions: "기타 금융기관",
   accountBankTransfer: "은행 이체",
+  accountInteracConfirmTitle: "Interac 요청 확인",
+  accountInteracConfirmDesc:
+    "은행에는 Daimo의 캐나다 Interac 결제 파트너인 PayTrie AB Inc의 요청으로 표시됩니다.",
+  accountInteracConfirmAmount: "금액",
+  accountInteracConfirmSender: "보낸 사람",
+  accountInteracConfirmReference: "요청 참조 번호",
+  accountInteracConfirmBank: "은행",
+  accountInteracConfirmOpenInterac: "Interac 열기",
+  accountInteracWaitingInstructions: (amount: string) =>
+    `은행에서 PayTrie AB Inc의 ${amount} 요청을 승인하세요. PayTrie는 Daimo의 캐나다 Interac 결제 파트너입니다.`,
   accountBankDetails: "이체 정보",
   accountDirections: "안내",
   accountDirectionsStep: (current: number, total: number) =>

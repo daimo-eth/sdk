@@ -127,6 +127,16 @@ export const en = {
   accountSearchInstitutions: "Search institutions...",
   accountOtherInstitutions: "Other institutions",
   accountBankTransfer: "Bank Transfer",
+  accountInteracConfirmTitle: "Review Interac request",
+  accountInteracConfirmDesc:
+    "Your bank will show a request from PayTrie AB Inc, Daimo's Canadian Interac payment partner.",
+  accountInteracConfirmAmount: "Amount",
+  accountInteracConfirmSender: "Sender",
+  accountInteracConfirmReference: "Request reference",
+  accountInteracConfirmBank: "Bank",
+  accountInteracConfirmOpenInterac: "Open Interac",
+  accountInteracWaitingInstructions: (amount: string) =>
+    `Approve the ${amount} request from PayTrie AB Inc in your bank. PayTrie is Daimo's Canadian Interac payment partner.`,
   accountBankDetails: "Transfer Details",
   accountDirections: "Directions",
   accountDirectionsStep: (current: number, total: number) =>

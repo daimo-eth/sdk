@@ -100,6 +100,16 @@ export const es: typeof en = {
   accountSearchInstitutions: "Buscar instituciones...",
   accountOtherInstitutions: "Otras instituciones",
   accountBankTransfer: "Transferencia bancaria",
+  accountInteracConfirmTitle: "Revisar solicitud de Interac",
+  accountInteracConfirmDesc:
+    "Tu banco mostrará una solicitud de PayTrie AB Inc, el socio canadiense de Interac de Daimo.",
+  accountInteracConfirmAmount: "Importe",
+  accountInteracConfirmSender: "Remitente",
+  accountInteracConfirmReference: "Referencia de solicitud",
+  accountInteracConfirmBank: "Banco",
+  accountInteracConfirmOpenInterac: "Abrir Interac",
+  accountInteracWaitingInstructions: (amount: string) =>
+    `Aprueba la solicitud de ${amount} de PayTrie AB Inc en tu banco. PayTrie es el socio canadiense de Interac de Daimo.`,
   accountBankDetails: "Datos de transferencia",
   accountDirections: "Instrucciones",
   accountDirectionsStep: (current: number, total: number) =>

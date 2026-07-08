@@ -3,7 +3,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type {
   AccountRail,
   DepositConstraints,
-  DepositPaymentInfo,
 } from "../../../common/account.js";
 import { useDaimoClient } from "../../hooks/DaimoClientContext.js";
 import { formatUserError } from "../../hooks/formatUserError.js";
@@ -21,7 +20,6 @@ import {
   TokenAmountEntry,
   type TokenAmountEntryValue,
 } from "../TokenAmountEntry.js";
-import { openDeeplink } from "./openDeeplink.js";
 
 type AccountPaymentPageProps = {
   rail: AccountRail;
@@ -37,7 +35,7 @@ type AccountPaymentPageProps = {
 /**
  * Amount entry for bank-transfer rails. Stores depositAmount and advances.
  * When `startDepositOnAdvance` is set (interac on mobile, where the bank
- * picker is skipped), signs + upserts the deposit and opens Interac first.
+ * picker is skipped), signs + upserts the deposit before advancing.
  */
 export function AccountPaymentPage({
   rail,
@@ -110,7 +108,6 @@ export function AccountPaymentPage({
         depositState?.kind === "started" &&
         depositState.depositAmount === depositAmount
       ) {
-        openInterac(depositState.payment, platform);
         onAdvance();
         return;
       }
@@ -137,7 +134,6 @@ export function AccountPaymentPage({
             depositId,
             payment,
           });
-          openInterac(payment, platform);
           onAdvance();
         } catch (err) {
           setStartError(formatUserError(err, t.errorDepositFailed));
@@ -153,7 +149,6 @@ export function AccountPaymentPage({
       depositState,
       isStarting,
       onAdvance,
-      platform,
       rail,
       sessionId,
       setDepositState,
@@ -221,14 +216,6 @@ export function AccountPaymentPage({
       </div>
     </div>
   );
-}
-
-/** Open the generic Interac request page (mobile bank-picker-skip flow). */
-function openInterac(payment: DepositPaymentInfo, platform: DaimoPlatform) {
-  if (payment.flow !== "bank-picker" || payment.qrUrl == null) return;
-  openDeeplink({ type: "redirect", url: payment.qrUrl }, platform, {
-    newWindow: true,
-  });
 }
 
 function AmountEntrySkeleton() {

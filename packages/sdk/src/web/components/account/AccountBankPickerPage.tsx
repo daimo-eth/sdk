@@ -15,16 +15,13 @@ import {
   startBankDeposit,
   useDraftDeposit,
 } from "../../hooks/useDraftDeposit.js";
-import type { DaimoPlatform } from "../../platform.js";
 import { ErrorPage } from "../ErrorPage.js";
 import { Skeleton } from "../Skeleton.js";
 import { PageHeader, ScrollContent, TextInput } from "../shared.js";
-import { openDeeplink } from "./openDeeplink.js";
 
 type AccountCanadaBankPickerPageProps = {
   rail: AccountRail;
   sessionId: string;
-  platform: DaimoPlatform;
   onBack?: (() => void) | null;
   onSelect: () => void;
 };
@@ -37,7 +34,6 @@ type AccountCanadaBankPickerPageProps = {
 export function AccountCanadaBankPickerPage({
   rail,
   sessionId,
-  platform,
   onBack,
   onSelect,
 }: AccountCanadaBankPickerPageProps) {
@@ -104,7 +100,6 @@ export function AccountCanadaBankPickerPage({
           ...depositState,
           selectedInstitutionId: institution.id,
         });
-        openDeeplink(institution.deeplink, platform);
         onSelect();
         return;
       }
@@ -127,7 +122,6 @@ export function AccountCanadaBankPickerPage({
           payment,
           selectedInstitutionId: institution.id,
         });
-        openDeeplink(institution.deeplink, platform);
         onSelect();
       } catch (err) {
         setStartError(formatUserError(err, t.errorDepositFailed));
@@ -139,7 +133,6 @@ export function AccountCanadaBankPickerPage({
       client,
       depositAmount,
       onSelect,
-      platform,
       rail,
       sessionId,
       setDepositState,

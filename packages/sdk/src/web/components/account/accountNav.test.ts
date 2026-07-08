@@ -23,10 +23,10 @@ describe("getAccountPaymentAdvanceTarget", () => {
     );
   });
 
-  test("interac skips the bank picker on mobile", () => {
+  test("interac reviews before opening interac on mobile", () => {
     for (const platform of ["mobile", "ios", "android"] as const) {
       expect(getAccountPaymentAdvanceTarget("interac", platform)).toBe(
-        "account-deeplink",
+        "account-interac-confirm",
       );
     }
   });

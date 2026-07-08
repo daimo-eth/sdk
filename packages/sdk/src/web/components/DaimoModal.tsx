@@ -63,6 +63,7 @@ import { AccountCanadaBankPickerPage } from "./account/AccountBankPickerPage.js"
 import { AccountEnrollmentUpdatePage } from "./account/AccountEnrollmentUpdatePage.js";
 import { AccountCreatingWalletPage } from "./account/AccountCreatingWalletPage.js";
 import { AccountDeeplinkPage } from "./account/AccountDeeplinkPage.js";
+import { AccountInteracConfirmPage } from "./account/AccountInteracConfirmPage.js";
 import { AccountApplePayPage } from "./account/AccountApplePayPage.js";
 import { FiatPopupPage } from "./account/FiatPopupPage.js";
 import { AccountEmailPage } from "./account/AccountEmailPage.js";
@@ -794,7 +795,7 @@ function renderEntry(
           initialAmount={ctx.session.destination.amountUnits}
           platform={ctx.platform}
           baseUrl={ctx.session.baseUrl}
-          startDepositOnAdvance={advanceTarget === "account-deeplink"}
+          startDepositOnAdvance={advanceTarget === "account-interac-confirm"}
           onBack={ctx.canGoBack ? ctx.onBack : null}
           onAdvance={() => ctx.onAccountAdvance(advanceTarget)}
         />
@@ -805,11 +806,23 @@ function renderEntry(
         <AccountCanadaBankPickerPage
           rail={entry.rail}
           sessionId={ctx.session.sessionId}
-          platform={ctx.platform}
           onBack={null}
-          onSelect={() => ctx.onAccountAdvance("account-deeplink")}
+          onSelect={() => ctx.onAccountAdvance("account-interac-confirm")}
         />
       );
+    case "account-interac-confirm": {
+      const accountNode = findNode(entry.nodeId, ctx.session.navTree);
+      return (
+        <AccountInteracConfirmPage
+          sessionId={ctx.session.sessionId}
+          baseUrl={ctx.session.baseUrl}
+          platform={ctx.platform}
+          icon={accountNode?.type === "Fiat" ? accountNode.icon : undefined}
+          onBack={ctx.onBack}
+          onAdvance={() => ctx.onAccountAdvance("account-deeplink")}
+        />
+      );
+    }
     case "account-apple-pay":
       return (
         <AccountApplePayPage
