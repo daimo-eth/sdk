@@ -49,6 +49,7 @@ export const es: typeof en = {
   showReceipt: "Ver recibo",
   poweredByDaimo: "Powered by Daimo",
   close: "Cerrar",
+  changeCountry: "Cambiar país",
   flowError: "Error:",
   back: "Volver",
   tryAgain: "Reintentar",
@@ -59,6 +60,7 @@ export const es: typeof en = {
     "Los depósitos con Apple Pay no están disponibles en tu región.",
   applePayUsPhoneRequired:
     "Los depósitos con Apple Pay requieren un número de teléfono de EE. UU.",
+  applePayUnavailable: "Apple Pay no disponible",
   missingSessionParam: "falta el parámetro de sesión",
   failedToLoadSession: "no se pudo cargar la sesión",
   accountEmail: "Inicia sesión en Daimo",
@@ -100,6 +102,16 @@ export const es: typeof en = {
   accountSearchInstitutions: "Buscar instituciones...",
   accountOtherInstitutions: "Otras instituciones",
   accountBankTransfer: "Transferencia bancaria",
+  accountInteracConfirmTitle: "Revisar solicitud de Interac",
+  accountInteracConfirmDesc:
+    "Tu banco mostrará una solicitud de PayTrie AB Inc, el socio canadiense de Interac de Daimo.",
+  accountInteracConfirmAmount: "Importe",
+  accountInteracConfirmSender: "Remitente",
+  accountInteracConfirmReference: "Referencia de solicitud",
+  accountInteracConfirmBank: "Banco",
+  accountInteracConfirmOpenInterac: "Abrir Interac",
+  accountInteracWaitingInstructions: (amount: string) =>
+    `Aprueba la solicitud de ${amount} de PayTrie AB Inc en tu banco. PayTrie es el socio canadiense de Interac de Daimo.`,
   accountBankDetails: "Datos de transferencia",
   accountDirections: "Instrucciones",
   accountDirectionsStep: (current: number, total: number) =>

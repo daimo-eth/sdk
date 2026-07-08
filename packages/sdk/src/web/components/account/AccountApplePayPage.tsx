@@ -13,14 +13,11 @@ import type {
   DepositPaymentInfo,
 } from "../../../common/account.js";
 import { isSafariBrowser } from "../../platform.js";
-import { sendDaimoFramePresentationChanged } from "../frameMessages.js";
 import { useDaimoClient } from "../../hooks/DaimoClientContext.js";
 import { t } from "../../hooks/locale.js";
 import { useSessionDepositState } from "../../hooks/useAccountFlow.js";
 import { useDraftDeposit } from "../../hooks/useDraftDeposit.js";
 import { useDepositPoller } from "../../hooks/useDepositPoller.js";
-import { ErrorPage } from "../ErrorPage.js";
-import { SecondaryButton } from "../buttons.js";
 import { formatFixedAmount } from "../../formatAmount.js";
 import { AmountInput, PageHeader, useAmountInput } from "../shared.js";
 import { AccountEnrollmentUpdatePage } from "./AccountEnrollmentUpdatePage.js";
@@ -140,9 +137,8 @@ export function AccountApplePayPage({
     draftEnrollmentUpdate?.type === "apple_pay_enhanced_verification"
       ? draftEnrollmentUpdate
       : null;
-  const error = draftError;
   const isCreating = isCreatingDraft;
-  const paymentLinkUrl =
+  const rawPaymentLinkUrl =
     payment?.flow === "wallet-pay-widget" ? payment.paymentLinkUrl : null;
   const allowExpandedView = !isSafariBrowser();
   const buttonShellRef = useRef<HTMLDivElement | null>(null);
@@ -174,20 +170,15 @@ export function AccountApplePayPage({
   } = useCoinbaseApplePayWidget({
     allowExpandedView,
     onRefreshDeposit: refreshFromServer,
-    paymentLinkUrl,
+    paymentLinkUrl: rawPaymentLinkUrl,
   });
   const isExpanded = allowExpandedView && iframeExpanded;
+  const isPaymentUnavailable = draftError != null || widgetError != null;
+  const paymentLinkUrl = isPaymentUnavailable ? null : rawPaymentLinkUrl;
 
   useEffect(() => {
     setMounted(true);
   }, []);
-
-  useEffect(() => {
-    sendDaimoFramePresentationChanged(isExpanded ? "fullscreen" : "content");
-    return () => {
-      sendDaimoFramePresentationChanged("content");
-    };
-  }, [isExpanded]);
 
   useEffect(() => {
     if (!isValid) {
@@ -251,16 +242,6 @@ export function AccountApplePayPage({
       }
     },
   });
-
-  if (widgetError) {
-    return (
-      <ErrorPage
-        message={widgetError}
-        retryText={t.tryAgain}
-        onRetry={() => window.location.reload()}
-      />
-    );
-  }
 
   if (enrollmentUpdate) {
     return (
@@ -439,19 +420,6 @@ export function AccountApplePayPage({
             </span>
           </div>
         </div>
-
-        {error && (
-          <div className="daimo-flex daimo-flex-col daimo-items-center daimo-gap-2 daimo-max-w-[320px]">
-            <p className="daimo-text-xs daimo-text-[var(--daimo-error)] daimo-text-center">
-              {error}
-            </p>
-            {draftError && (
-              <SecondaryButton onClick={retryDraft}>
-                {t.tryAgain}
-              </SecondaryButton>
-            )}
-          </div>
-        )}
       </div>
 
       {/* Apple Pay button area — iframe when ready, custom placeholder until then */}
@@ -490,14 +458,16 @@ export function AccountApplePayPage({
             </>
           ) : (
             <ApplePayPlaceholderButton
-              disabled={!isValid || isCreating}
-              loading={isValid && isCreating}
+              disabled={isPaymentUnavailable || !isValid || isCreating}
+              loading={!isPaymentUnavailable && isValid && isCreating}
               label={
-                isValid
-                  ? isCreating
-                    ? "Preparing Apple Pay"
-                    : "Apple Pay Ready"
-                  : "Enter amount to continue"
+                isPaymentUnavailable
+                  ? t.applePayUnavailable
+                  : isValid
+                    ? isCreating
+                      ? "Preparing Apple Pay"
+                      : "Apple Pay Ready"
+                    : "Enter amount to continue"
               }
               height={collapsedShellHeight}
               radius={collapsedShellRadius}

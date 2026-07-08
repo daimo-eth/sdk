@@ -1,3 +1,5 @@
+import { DaimoRequestError } from "../../common/errors.js";
+
 import { t } from "./locale.js";
 import { prefixWalletError, WalletError } from "./walletError.js";
 
@@ -39,6 +41,10 @@ export function formatUserError(
     if (typeof pattern === "string" ? raw === pattern : pattern.test(raw)) {
       return prefixWalletError(walletName, message);
     }
+  }
+
+  if (err instanceof DaimoRequestError && err.type === "api_error") {
+    return prefixWalletError(walletName, fallback);
   }
 
   return prefixWalletError(walletName, raw || fallback);

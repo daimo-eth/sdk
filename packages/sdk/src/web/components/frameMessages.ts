@@ -3,8 +3,6 @@ export const DAIMO_FRAME_PARENT_ORIGIN_PARAM = "parentOrigin";
 const DAIMO_MESSAGE_SOURCE = "daimo-pay";
 const DAIMO_MESSAGE_VERSION = 1;
 
-export type DaimoFramePresentationMode = "content" | "fullscreen";
-
 export type DaimoFrameMessage =
   | {
       source: typeof DAIMO_MESSAGE_SOURCE;
@@ -31,12 +29,6 @@ export type DaimoFrameMessage =
       version: typeof DAIMO_MESSAGE_VERSION;
       type: "contentHeightChanged";
       payload: { height: number };
-    }
-  | {
-      source: typeof DAIMO_MESSAGE_SOURCE;
-      version: typeof DAIMO_MESSAGE_VERSION;
-      type: "framePresentationChanged";
-      payload: { mode: DaimoFramePresentationMode };
     };
 
 export function isDaimoFrameChild(): boolean {
@@ -89,41 +81,9 @@ export function parseDaimoFrameMessage(value: unknown): DaimoFrameMessage | null
         payload: { height },
       };
     }
-    case "framePresentationChanged": {
-      const payload = getPayload(value);
-      if (
-        payload?.mode !== "content" &&
-        payload?.mode !== "fullscreen"
-      ) {
-        return null;
-      }
-      return {
-        source: DAIMO_MESSAGE_SOURCE,
-        version: DAIMO_MESSAGE_VERSION,
-        type: "framePresentationChanged",
-        payload: { mode: payload.mode },
-      };
-    }
     default:
       return null;
   }
-}
-
-export function sendDaimoFramePresentationChanged(
-  mode: DaimoFramePresentationMode,
-): boolean {
-  const parentOrigin = getDaimoFrameParentOrigin();
-  if (window.parent === window || parentOrigin == null) return false;
-  window.parent.postMessage(
-    {
-      source: DAIMO_MESSAGE_SOURCE,
-      version: DAIMO_MESSAGE_VERSION,
-      type: "framePresentationChanged",
-      payload: { mode },
-    },
-    parentOrigin,
-  );
-  return true;
 }
 
 function getDaimoFrameParentOrigin(): string | null {

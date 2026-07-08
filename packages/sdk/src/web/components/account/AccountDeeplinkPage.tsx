@@ -41,6 +41,13 @@ export function AccountDeeplinkPage({
   const selectedInstitution = payment?.institutions.find(
     (inst) => inst.id === started?.selectedInstitutionId,
   );
+  const amount =
+    payment && started
+      ? `${payment.currency.symbol}${started.depositAmount} ${payment.currency.code}`
+      : null;
+  const instructions = amount
+    ? t.accountInteracWaitingInstructions(amount)
+    : payment?.instructions;
 
   useDepositPoller({
     client,
@@ -78,7 +85,7 @@ export function AccountDeeplinkPage({
             </div>
           )}
           <p className="daimo-text-sm daimo-text-[var(--daimo-text-secondary)] daimo-text-center daimo-max-w-xs">
-            {payment?.instructions}
+            {instructions}
           </p>
           {selectedInstitution && (
             <PrimaryButton

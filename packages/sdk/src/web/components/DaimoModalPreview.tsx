@@ -72,7 +72,7 @@ const PREVIEW_NODE: NavNodeChooseOption = {
         kind: "phone",
         icon: "shield",
         label: "Phone verification",
-        rowLabel: "Verify phone ~1 min",
+        rowLabel: "Debit card · Verify phone ~1 min",
         detailTitle: "Verify your phone",
         summary: "Phone verification is required before using Apple Pay.",
         requirements: [{ id: "phone_number", label: "Phone number" }],

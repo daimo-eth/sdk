@@ -8,7 +8,10 @@ import {
 } from "react";
 import type { AccountRail } from "../../common/account.js";
 import type { ExchangeId } from "../../common/api.js";
-import type { AccountAuthConfig } from "../api/index.js";
+import type {
+  AccountAuthConfig,
+  RecreateSessionWithNavResponse,
+} from "../api/index.js";
 import type {
   NavNode,
   NavNodeCashApp,
@@ -23,7 +26,10 @@ import type { WalletPaymentOption } from "../api/walletTypes.js";
 
 import { getAccountPaymentEntryTarget } from "../components/account/accountNav.js";
 import { detectPlatform, isDesktop, type DaimoPlatform } from "../platform.js";
-import { isFramed, railRequiresPopup } from "../components/account/fiatPopup.js";
+import {
+  isFramed,
+  railRequiresPopup,
+} from "../components/account/fiatPopup.js";
 import { pruneCompletedAccountAuth } from "./accountAuthNav.js";
 import { useDaimoClient } from "./DaimoClientContext.js";
 import { formatUserError } from "./formatUserError.js";
@@ -45,6 +51,7 @@ type SessionNavResult = {
 
   handleNavigate: (nodeId: string, options?: { autoNav?: boolean }) => void;
   handleBack: () => void;
+  handleReset: () => void;
   handleAmountContinue: (amountUsd: number) => void;
   handleRetry: () => void;
   handleRefresh: () => Promise<void>;
@@ -131,6 +138,10 @@ export function useSessionNav(
     enableFiatPopup?: boolean;
     /** Node to auto-navigate to on load (popup deep-link). */
     startNodeId?: string;
+    /** Selected country used when rebuilding nav for a recreated session. */
+    countryCode?: string;
+    /** Propagates non-session fields from the recreate response. */
+    onRecreate?: (response: RecreateSessionWithNavResponse) => void;
   },
 ): SessionNavResult {
   const enableFiatPopup = options?.enableFiatPopup ?? false;
@@ -152,6 +163,8 @@ export function useSessionNav(
   }, [topEntry, session.navTree]);
 
   const canGoBack = stack.length > 0 && stack.some((e) => !e.autoNav);
+  const countryCode = options?.countryCode;
+  const onRecreate = options?.onRecreate;
 
   // ─── Async fetchers ─────────────────────────────────────────────────────
 
@@ -844,16 +857,28 @@ export function useSessionNav(
     });
 
     try {
-      const { session: newSession } = await client.internal.sessions.recreate(
+      const response = await client.internal.sessions.recreate(
         session.sessionId,
         session.clientSecret,
+        { countryCode },
       );
       setStack([]);
-      setSession(newSession);
+      setSession(response.session);
+      onRecreate?.(response);
     } catch (error) {
       console.error("failed to recreate session:", error);
     }
-  }, [session.sessionId, session.clientSecret, getNodeCtx, setSession, client]);
+  }, [
+    session.sessionId,
+    session.clientSecret,
+    countryCode,
+    getNodeCtx,
+    setSession,
+    client,
+    onRecreate,
+  ]);
+
+  const handleReset = useCallback(() => setStack([]), []);
 
   // ─── Wallet flow handlers ───────────────────────────────────────────────
 
@@ -1076,6 +1101,7 @@ export function useSessionNav(
       canGoBack,
       handleNavigate,
       handleBack,
+      handleReset,
       handleAmountContinue,
       handleRetry,
       handleRefresh,
@@ -1094,6 +1120,7 @@ export function useSessionNav(
       canGoBack,
       handleNavigate,
       handleBack,
+      handleReset,
       handleAmountContinue,
       handleRetry,
       handleRefresh,
