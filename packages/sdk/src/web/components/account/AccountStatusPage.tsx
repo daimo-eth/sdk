@@ -15,6 +15,8 @@ type AccountStatusPageProps = {
   sessionId: string;
   clientSecret: string;
   baseUrl: string;
+  /** Known deposit status on mount (resume); avoids a wrong first paint. */
+  initialStatus?: AccountDepositStatus;
 };
 
 const TERMINAL_STATUSES: AccountDepositStatus[] = [
@@ -41,10 +43,12 @@ export function AccountStatusPage({
   sessionId,
   clientSecret,
   baseUrl,
+  initialStatus,
 }: AccountStatusPageProps) {
   const client = useDaimoClient();
-  const [status, setStatus] =
-    useState<AccountDepositStatus>("payment_received");
+  const [status, setStatus] = useState<AccountDepositStatus>(
+    initialStatus ?? "payment_received",
+  );
   const [eta, setEta] = useState<AccountDepositEta | null>(null);
 
   useDepositPoller({

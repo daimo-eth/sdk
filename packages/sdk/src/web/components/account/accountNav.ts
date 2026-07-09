@@ -1,5 +1,29 @@
-import type { AccountRail } from "../../../common/account.js";
+import type {
+  AccountDepositStatus,
+  AccountRail,
+} from "../../../common/account.js";
 import { isDesktop, type DaimoPlatform } from "../../platform.js";
+
+/**
+ * Pick the modal page to resume at for a session with an existing deposit.
+ * Once payment is past the provider (or terminal), the status page owns the
+ * UX; earlier states re-enter the normal payment flow.
+ */
+export function getDepositResumeTarget(
+  status: AccountDepositStatus,
+): "account-status" | null {
+  switch (status) {
+    case "payment_received":
+    case "token_delivered":
+    case "completed":
+    case "failed":
+    case "expired":
+      return "account-status";
+    case "initiated":
+    case "awaiting_payment":
+      return null;
+  }
+}
 
 /**
  * Pick the modal entry page for a rail. Each rail has its own payment UX:

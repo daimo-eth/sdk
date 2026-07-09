@@ -1,4 +1,5 @@
 import type {
+  AccountDepositStatus,
   AccountEnrollmentUpdateApplePayEnhancedVerification,
   AccountRail,
 } from "../../common/account.js";
@@ -119,7 +120,10 @@ export type NavEntry =
   | ({ type: "account-apple-pay" } & AccountNavBase)
   | ({ type: "account-stripe-onramp" } & AccountNavBase)
   | ({ type: "account-deeplink" } & AccountNavBase)
-  | ({ type: "account-status" } & AccountNavBase)
+  | ({
+      type: "account-status";
+      initialStatus?: AccountDepositStatus;
+    } & AccountNavBase)
   | ({ type: "account-error"; message: string } & AccountNavBase);
 
 export type AccountNavEntry = Extract<NavEntry, { rail: AccountRail }>;

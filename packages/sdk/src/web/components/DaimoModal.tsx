@@ -976,6 +976,7 @@ function renderEntry(
           sessionId={ctx.session.sessionId}
           clientSecret={ctx.session.clientSecret}
           baseUrl={ctx.session.baseUrl}
+          initialStatus={entry.initialStatus}
         />
       );
     case "account-error":

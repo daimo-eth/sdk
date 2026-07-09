@@ -1,8 +1,14 @@
 import { describe, expect, test } from "vitest";
 
-import type { AccountRail } from "../../../common/account.js";
+import type {
+  AccountDepositStatus,
+  AccountRail,
+} from "../../../common/account.js";
 import type { DaimoPlatform } from "../../platform.js";
-import { getAccountPaymentAdvanceTarget } from "./accountNav.js";
+import {
+  getAccountPaymentAdvanceTarget,
+  getDepositResumeTarget,
+} from "./accountNav.js";
 
 const ALL_PLATFORMS: DaimoPlatform[] = [
   "desktop",
@@ -47,6 +53,44 @@ describe("getAccountPaymentAdvanceTarget", () => {
       expect(getAccountPaymentAdvanceTarget("apple_pay", platform)).toBe(
         "account-apple-pay",
       );
+    }
+  });
+});
+
+describe("getDepositResumeTarget", () => {
+  // Exhaustive: adding a deposit status must force a decision here.
+  const ALL_STATUSES: AccountDepositStatus[] = [
+    "initiated",
+    "awaiting_payment",
+    "payment_received",
+    "token_delivered",
+    "completed",
+    "expired",
+    "failed",
+  ];
+
+  test("deposits past payment resume at the status page", () => {
+    const resumed: AccountDepositStatus[] = [
+      "payment_received",
+      "token_delivered",
+      "completed",
+      "failed",
+      "expired",
+    ];
+    for (const status of resumed) {
+      expect(getDepositResumeTarget(status)).toBe("account-status");
+    }
+  });
+
+  test("pre-payment deposits re-enter the normal flow", () => {
+    expect(getDepositResumeTarget("initiated")).toBeNull();
+    expect(getDepositResumeTarget("awaiting_payment")).toBeNull();
+  });
+
+  test("every status has a decision", () => {
+    for (const status of ALL_STATUSES) {
+      const target = getDepositResumeTarget(status);
+      expect(target === "account-status" || target === null).toBe(true);
     }
   });
 });
