@@ -580,6 +580,7 @@ function DaimoModalInner({
     pageCloseVisible
       ? {
           email: accountFlow.email,
+          badgeEmoji: location.emoji,
         }
       : null;
   const close = closeVisible ? { onClose: handleClose } : null;
@@ -588,10 +589,11 @@ function DaimoModalInner({
     // (paymentMethods auto sessions); empty means hide the picker.
     locationOptions.length > 0 &&
     !embedded &&
-    closeVisible &&
     !connectToInjectedWallets &&
     !connectToAddress &&
-    !startNodeId;
+    !startNodeId &&
+    (!nav.topEntry ||
+      (nav.topEntry.type === "choose-option" && !nav.canGoBack));
   const country = showCountryPicker
     ? {
         location,
@@ -601,11 +603,7 @@ function DaimoModalInner({
       }
     : null;
   let chrome: ModalChromeControls = { type: "none" };
-  if ((account || country) && close) {
-    chrome = { type: "account-close", account, country, close };
-  } else if (account || country) {
-    chrome = { type: "account", account, country };
-  } else if (close) {
+  if (close) {
     chrome = { type: "close", close };
   }
   const isFirstPage = useRef(true);
@@ -626,7 +624,7 @@ function DaimoModalInner({
   }, []);
 
   return (
-    <ModalChrome controls={chrome}>
+    <ModalChrome controls={chrome} country={country} account={account}>
       {(dismissAccount) =>
         loadingCountryCode != null ? (
           // Country switch in flight: skeleton the method list for a smooth

@@ -1,7 +1,6 @@
 import {
   type MouseEvent,
   type ReactNode,
-  useCallback,
   useEffect,
   useRef,
   useState,
@@ -9,14 +8,9 @@ import {
 
 import type { NavLocation, NavLocationOption } from "../api/index.js";
 import { t } from "../hooks/locale.js";
-import { useCopyToClipboard } from "../hooks/useCopyToClipboard.js";
-import {
-  CloseIcon,
-  EllipsisIcon,
-  PersonIcon,
-} from "./icons.js";
+import { CloseIcon, PersonIcon } from "./icons.js";
 
-type AccountControl = { email: string };
+type AccountControl = { email: string; badgeEmoji?: string };
 type CloseControl = { onClose: () => void };
 type CountryControl = {
   location: NavLocation;
@@ -26,43 +20,27 @@ type CountryControl = {
 };
 
 export type ModalChromeControls =
-  | {
-      type: "account";
-      account: AccountControl | null;
-      country: CountryControl | null;
-    }
-  | {
-      type: "account-close";
-      account: AccountControl | null;
-      country: CountryControl | null;
-      close: CloseControl;
-    }
+  | { type: "account"; account: AccountControl }
+  | { type: "account-close"; account: AccountControl; close: CloseControl }
   | { type: "close"; close: CloseControl }
   | { type: "none" };
 
 type ModalChromeProps = {
   controls: ModalChromeControls;
-  children: (dismissAccount: (() => void) | null) => ReactNode;
+  country?: CountryControl | null;
+  account?: AccountControl | null;
+  children: (dismissChrome: (() => void) | null) => ReactNode;
 };
 
-export function ModalChrome({ controls, children }: ModalChromeProps) {
-  const [accountOpen, setAccountOpen] = useState(false);
-
-  useEffect(() => {
-    if (controls.type === "none" || controls.type === "close") {
-      setAccountOpen(false);
-    }
-  }, [controls.type]);
-
-  const dismissAccount = useCallback(() => setAccountOpen(false), []);
-  const accountButton = () => (
-    <ChromeIconButton
-      label="Account"
-      expanded={accountOpen}
-      onClick={() => setAccountOpen(true)}
-    >
-      <EllipsisIcon />
-    </ChromeIconButton>
+export function ModalChrome({
+  controls,
+  country,
+  account,
+  children,
+}: ModalChromeProps) {
+  const countryAccount = country ? account : null;
+  const accountButton = (account: AccountControl) => (
+    <AccountButton account={account} />
   );
   const closeButton = (close: CloseControl) => (
     <ChromeIconButton label={t.close} onClick={close.onClose}>
@@ -71,42 +49,22 @@ export function ModalChrome({ controls, children }: ModalChromeProps) {
   );
 
   let actions: ReactNode = null;
-  let banner: ReactNode = null;
-  let hasAccountPanel = false;
 
   switch (controls.type) {
     case "none":
       break;
     case "account":
-      hasAccountPanel = true;
-      actions = accountButton();
-      banner = (
-        <AccountBanner
-          account={controls.account}
-          country={controls.country}
-          open={accountOpen}
-          onDismiss={dismissAccount}
-        />
-      );
+      actions = countryAccount ? null : accountButton(controls.account);
       break;
     case "close":
       actions = closeButton(controls.close);
       break;
     case "account-close":
-      hasAccountPanel = true;
       actions = (
         <>
-          {accountButton()}
+          {countryAccount ? null : accountButton(controls.account)}
           {closeButton(controls.close)}
         </>
-      );
-      banner = (
-        <AccountBanner
-          account={controls.account}
-          country={controls.country}
-          open={accountOpen}
-          onDismiss={dismissAccount}
-        />
       );
       break;
     default:
@@ -115,13 +73,21 @@ export function ModalChrome({ controls, children }: ModalChromeProps) {
 
   return (
     <>
+      {country && (
+        <CountryPicker
+          location={country.location}
+          options={country.options}
+          loadingCountryCode={country.loadingCountryCode}
+          onSelect={country.onSelect}
+          account={countryAccount}
+        />
+      )}
       {actions && (
-        <div className="daimo-absolute daimo-right-[24px] daimo-top-[22px] daimo-z-20 daimo-flex daimo-h-8 daimo-items-center daimo-gap-0">
+        <div className="daimo-absolute daimo-right-[24px] daimo-top-[22px] daimo-z-20 daimo-flex daimo-h-8 daimo-items-center daimo-gap-2">
           {actions}
         </div>
       )}
-      {banner}
-      {children(hasAccountPanel && accountOpen ? dismissAccount : null)}
+      {children(null)}
     </>
   );
 }
@@ -131,8 +97,10 @@ function CountryPicker({
   options,
   loadingCountryCode,
   onSelect,
-}: CountryControl) {
+  account,
+}: CountryControl & { account?: AccountControl | null }) {
   const [open, setOpen] = useState(false);
+  const [accountActive, setAccountActive] = useState(false);
   const rootRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -163,21 +131,38 @@ function CountryPicker({
       ref={rootRef}
       className="daimo-pointer-events-none daimo-absolute daimo-inset-x-6 daimo-top-[22px] daimo-z-30"
     >
-      <ChromeIconButton
-        label={`${t.changeCountry}: ${displayed.countryName}`}
-        title={displayed.countryName}
-        expanded={open}
-        haspopup="menu"
-        className="daimo-pointer-events-auto daimo-bg-[var(--daimo-surface)] daimo-text-[22px] daimo-leading-none hover:[@media(hover:hover)]:daimo-bg-[var(--daimo-surface-hover)] focus-visible:daimo-bg-[var(--daimo-surface-hover)] focus-visible:daimo-outline-none focus-visible:daimo-ring-2 focus-visible:daimo-ring-[var(--daimo-accent)]"
-        onClick={() => setOpen((value) => !value)}
-      >
-        <span aria-hidden="true">{displayed.emoji}</span>
-      </ChromeIconButton>
+      {account && (accountActive || open) && (
+        <div
+          aria-hidden="true"
+          className="daimo-pointer-events-none daimo-absolute daimo-left-1/2 -daimo-top-[22px] daimo-z-0 daimo-h-[76px] daimo-w-[320px] -daimo-translate-x-1/2 daimo-bg-[var(--daimo-surface)]"
+        />
+      )}
+      {account ? (
+        <AccountCountryButton
+          account={account}
+          countryName={displayed.countryName}
+          emoji={displayed.emoji}
+          expanded={open}
+          onActiveChange={setAccountActive}
+          onClick={() => setOpen((value) => !value)}
+        />
+      ) : (
+        <ChromeIconButton
+          label={`${t.changeCountry}: ${displayed.countryName}`}
+          title={displayed.countryName}
+          expanded={open}
+          haspopup="menu"
+          className="daimo-pointer-events-auto daimo-bg-[var(--daimo-surface)] daimo-text-[22px] daimo-leading-none hover:[@media(hover:hover)]:daimo-bg-[var(--daimo-surface-hover)] focus-visible:daimo-bg-[var(--daimo-surface-hover)] focus-visible:daimo-outline-none focus-visible:daimo-ring-2 focus-visible:daimo-ring-[var(--daimo-accent)]"
+          onClick={() => setOpen((value) => !value)}
+        >
+          <span aria-hidden="true">{displayed.emoji}</span>
+        </ChromeIconButton>
+      )}
 
       {open && (
         <div
           role="menu"
-          className="daimo-pointer-events-auto daimo-absolute daimo-inset-x-0 daimo-top-10 daimo-grid daimo-grid-cols-5 daimo-gap-2 daimo-rounded-[var(--daimo-radius-lg)] daimo-bg-[var(--daimo-surface)] daimo-p-3 daimo-shadow-lg daimo-ring-1 daimo-ring-black/10 sm:daimo-grid-cols-6"
+          className="daimo-pointer-events-auto daimo-absolute daimo-inset-x-0 daimo-top-10 daimo-z-20 daimo-grid daimo-grid-cols-5 daimo-gap-2 daimo-rounded-[var(--daimo-radius-lg)] daimo-bg-[var(--daimo-surface)] daimo-p-3 daimo-shadow-lg daimo-ring-1 daimo-ring-black/10 sm:daimo-grid-cols-6"
           onClick={(event) => event.stopPropagation()}
         >
           {options.map((option) => {
@@ -212,73 +197,63 @@ function CountryPicker({
   );
 }
 
-function AccountBanner({
+function AccountCountryButton({
   account,
-  country,
-  open,
-  onDismiss,
+  countryName,
+  emoji,
+  expanded,
+  onActiveChange,
+  onClick,
 }: {
-  account: AccountControl | null;
-  country: CountryControl | null;
-  open: boolean;
-  onDismiss: () => void;
+  account: AccountControl;
+  countryName: string;
+  emoji: string;
+  expanded: boolean;
+  onActiveChange: (active: boolean) => void;
+  onClick: (event: MouseEvent<HTMLButtonElement>) => void;
 }) {
-  const { copy, copied } = useCopyToClipboard(1200);
-  const [rendered, setRendered] = useState(open);
-
-  useEffect(() => {
-    if (open) {
-      setRendered(true);
-      return;
-    }
-
-    const timeout = window.setTimeout(() => setRendered(false), 180);
-    return () => window.clearTimeout(timeout);
-  }, [open]);
-
-  const handleCopy = useCallback(
-    (event: MouseEvent<HTMLButtonElement>) => {
-      event.stopPropagation();
-      if (account == null) return;
-      void copy(account.email);
-    },
-    [account, copy],
+  return (
+    <button
+      type="button"
+      onClick={(event) => {
+        event.stopPropagation();
+        onClick(event);
+      }}
+      onPointerEnter={() => onActiveChange(true)}
+      onPointerLeave={() => onActiveChange(false)}
+      onFocus={() => onActiveChange(true)}
+      onBlur={() => onActiveChange(false)}
+      className="daimo-account-country-chip daimo-pointer-events-auto daimo-relative daimo-z-10 daimo-flex daimo-h-8 daimo-max-w-8 daimo-items-center daimo-overflow-visible daimo-rounded-full daimo-bg-[var(--daimo-surface)] daimo-text-[var(--daimo-text)] hover:[@media(hover:hover)]:daimo-bg-[var(--daimo-surface-hover)] daimo-transition-[background-color] daimo-duration-100 daimo-ease daimo-touch-action-manipulation daimo-outline-none focus-visible:daimo-bg-[var(--daimo-surface-hover)] focus-visible:daimo-ring-2 focus-visible:daimo-ring-[var(--daimo-accent)]"
+      aria-label={`Account: ${account.email}. ${t.changeCountry}: ${countryName}`}
+      aria-expanded={expanded}
+      aria-haspopup="menu"
+    >
+      <span className="daimo-relative daimo-flex daimo-h-8 daimo-w-8 daimo-shrink-0 daimo-items-center daimo-justify-center">
+        <PersonIcon size={22} />
+        <span className="daimo-absolute -daimo-right-1 -daimo-bottom-1 daimo-flex daimo-h-[18px] daimo-w-[18px] daimo-items-center daimo-justify-center daimo-rounded-full daimo-bg-[var(--daimo-surface)] daimo-text-[12px] daimo-leading-none daimo-ring-2 daimo-ring-[var(--daimo-surface)]">
+          <span aria-hidden="true">{emoji}</span>
+        </span>
+      </span>
+      <span className="daimo-account-country-chip-text daimo-min-w-0 daimo-truncate daimo-pl-3 daimo-pr-4 daimo-text-sm daimo-font-medium">
+        {account.email}
+      </span>
+    </button>
   );
+}
 
-  if (!rendered) return null;
-
+function AccountButton({ account }: { account: AccountControl }) {
   return (
     <div
-      onClick={onDismiss}
-      className={`daimo-account-banner daimo-absolute daimo-inset-x-0 daimo-top-0 daimo-z-30 daimo-h-[76px] daimo-bg-transparent ${
-        open
-          ? "daimo-translate-y-0 daimo-opacity-100 daimo-pointer-events-auto"
-          : "-daimo-translate-y-full daimo-opacity-0 daimo-pointer-events-none"
-      }`}
+      className="daimo-relative daimo-flex daimo-h-8 daimo-w-8 daimo-shrink-0 daimo-items-center daimo-justify-center"
+      role="img"
+      aria-label={`Account: ${account.email}`}
+      title={account.email}
     >
-      {account && (
-        <button
-          type="button"
-          onClick={handleCopy}
-          className="daimo-account-email-chip daimo-account-email-chip-right daimo-absolute daimo-right-[24px] daimo-top-[22px] daimo-z-10 daimo-flex daimo-h-8 daimo-flex-row-reverse daimo-items-center daimo-overflow-hidden daimo-rounded-full daimo-bg-[var(--daimo-surface)] daimo-text-[var(--daimo-text)] hover:[@media(hover:hover)]:daimo-bg-[var(--daimo-surface-hover)] daimo-touch-action-manipulation daimo-outline-none focus-visible:daimo-bg-[var(--daimo-surface-hover)] focus-visible:daimo-ring-2 focus-visible:daimo-ring-[var(--daimo-accent)] focus-visible:daimo-ring-offset-2 focus-visible:daimo-ring-offset-[var(--daimo-surface)]"
-          aria-label={copied ? "Copied email" : "Copy account email"}
-          title={account.email}
-        >
-          <span className="daimo-flex daimo-h-8 daimo-w-8 daimo-shrink-0 daimo-items-center daimo-justify-center">
-            <PersonIcon size={22} />
-          </span>
-          <span className="daimo-account-email-chip-text daimo-min-w-0 daimo-truncate daimo-pl-3 daimo-text-sm daimo-font-medium">
-            {account.email}
-          </span>
-        </button>
-      )}
-      {country && (
-        <CountryPicker
-          location={country.location}
-          options={country.options}
-          loadingCountryCode={country.loadingCountryCode}
-          onSelect={country.onSelect}
-        />
+      <PersonIcon size={22} />
+      {account.badgeEmoji && (
+        <span className="daimo-absolute -daimo-right-1 -daimo-bottom-1 daimo-flex daimo-h-[18px] daimo-w-[18px] daimo-items-center daimo-justify-center daimo-rounded-full daimo-bg-[var(--daimo-surface)] daimo-text-[12px] daimo-leading-none daimo-shadow-sm daimo-ring-2 daimo-ring-[var(--daimo-surface)]">
+          <span aria-hidden="true">{account.badgeEmoji}</span>
+        </span>
       )}
     </div>
   );

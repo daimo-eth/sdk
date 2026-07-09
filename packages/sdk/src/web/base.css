@@ -140,21 +140,14 @@
   }
 }
 
-.daimo-account-banner {
-  transition:
-    transform 180ms cubic-bezier(0.23, 1, 0.32, 1),
-    opacity 140ms ease-out;
-}
-
-.daimo-account-email-chip {
-  max-width: 2rem;
+.daimo-account-country-chip {
   transition:
     max-width 180ms cubic-bezier(0.23, 1, 0.32, 1),
-    background-color 140ms ease;
+    background-color 140ms ease,
+    transform 100ms ease;
 }
 
-.daimo-account-email-chip-text,
-.daimo-account-email-chip-copy {
+.daimo-account-country-chip-text {
   opacity: 0;
   transform: translateX(-6px);
   transition:
@@ -162,37 +155,29 @@
     transform 180ms cubic-bezier(0.23, 1, 0.32, 1);
 }
 
-.daimo-account-email-chip-right .daimo-account-email-chip-text {
-  transform: translateX(6px);
-}
-
 @media (hover: hover) {
-  .daimo-account-email-chip:hover {
+  .daimo-account-country-chip:hover {
     max-width: min(260px, calc(100vw - 124px));
   }
 
-  .daimo-account-email-chip:hover .daimo-account-email-chip-text,
-  .daimo-account-email-chip:hover .daimo-account-email-chip-copy {
+  .daimo-account-country-chip:hover .daimo-account-country-chip-text {
     opacity: 1;
     transform: translateX(0);
   }
 }
 
-.daimo-account-email-chip:focus-visible {
+.daimo-account-country-chip:focus-visible {
   max-width: min(260px, calc(100vw - 124px));
 }
 
-.daimo-account-email-chip:focus-visible .daimo-account-email-chip-text,
-.daimo-account-email-chip:focus-visible .daimo-account-email-chip-copy {
+.daimo-account-country-chip:focus-visible .daimo-account-country-chip-text {
   opacity: 1;
   transform: translateX(0);
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .daimo-account-banner,
-  .daimo-account-email-chip,
-  .daimo-account-email-chip-text,
-  .daimo-account-email-chip-copy {
+  .daimo-account-country-chip,
+  .daimo-account-country-chip-text {
     transition: none;
   }
 }
