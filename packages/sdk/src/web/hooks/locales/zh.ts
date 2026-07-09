@@ -199,6 +199,7 @@ export const zh: typeof en = {
   walletDisconnected: "钱包已断开",
   switchToChain: (chain: string) => `请切换到 ${chain}`,
   transactionFailed: "交易失败",
+  insufficientGas: "Gas 不足。请通过下方联系客服。",
   paymentCancelled: "付款已取消",
   confirmInWallet: "在钱包中确认",
   retryPayment: "重试付款",

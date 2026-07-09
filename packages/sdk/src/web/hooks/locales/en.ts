@@ -206,6 +206,7 @@ export const en = {
   walletDisconnected: "Wallet disconnected",
   switchToChain: (chain: string) => `Please switch to ${chain}`,
   transactionFailed: "Transaction Failed",
+  insufficientGas: "Insufficient gas. Contact support below.",
   paymentCancelled: "Payment Cancelled",
   confirmInWallet: "Confirm In Wallet",
   retryPayment: "Retry Payment",
