@@ -307,10 +307,12 @@ export function AccountApplePayPage({
       };
   const iframeStyle = isExpanded
     ? {
+        // Coinbase's page paints a white hairline along the top and bottom
+        // edges of its viewport; bleed 1px past the clipping wrapper to crop.
         left: 0,
-        top: 0,
+        top: -1,
         width: "100%",
-        height: "100%",
+        height: "calc(100% + 2px)",
         transform: "none",
         transformOrigin: "center center",
       }
