@@ -30,6 +30,7 @@ export function getDepositResumeTarget(
  * - interac: two-step amount entry → bank picker (desktop) or deeplink (mobile)
  * - ach/sepa/jpyc/ars: two-step amount entry → transfer details
  * - apple_pay: single unified amount+Apple Pay page (Coinbase Headless)
+ * - pix: API-only; no modal checkout surface
  */
 export function getAccountPaymentEntryTarget(rail: AccountRail) {
   switch (rail) {
@@ -43,6 +44,8 @@ export function getAccountPaymentEntryTarget(rail: AccountRail) {
     case "ars":
       // Old two-step flow: amount first, then picker/details.
       return "account-payment" as const;
+    case "pix":
+      throw new Error("pix account deposits are api-only");
   }
 }
 
@@ -69,5 +72,7 @@ export function getAccountPaymentAdvanceTarget(
     case "apple_pay":
       // Never used — apple_pay skips account-payment entirely.
       return "account-apple-pay" as const;
+    case "pix":
+      throw new Error("pix account deposits are api-only");
   }
 }

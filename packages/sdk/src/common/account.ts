@@ -15,8 +15,13 @@ export const zAccountRail = z.enum([
   "apple_pay",
   "jpyc",
   "ars",
+  "pix",
 ]);
 export type AccountRail = z.infer<typeof zAccountRail>;
+
+/** Rails supported by Daimo-hosted checkout surfaces. PIX is API-only. */
+export const zHostedAccountRail = zAccountRail.exclude(["pix"]);
+export type HostedAccountRail = z.infer<typeof zHostedAccountRail>;
 
 export const zAccountLegalName = z.object({
   firstName: z.string().trim().min(1).max(80),
@@ -415,6 +420,13 @@ export type DepositPaymentInfo =
       flow: "bank-transfer";
       instructions: string;
       fields: DepositPaymentField[];
+    })
+  | (DepositConstraints & {
+      flow: "pix";
+      instructions: string;
+      brCode: string;
+      /** ISO-8601 expiration returned by the PIX provider. */
+      expiresAt: string;
     })
   | (DepositConstraints & {
       flow: "directions";

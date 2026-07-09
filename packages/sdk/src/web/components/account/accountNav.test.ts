@@ -55,6 +55,12 @@ describe("getAccountPaymentAdvanceTarget", () => {
       );
     }
   });
+
+  test("pix is not exposed in the modal checkout", () => {
+    expect(() => getAccountPaymentAdvanceTarget("pix", "desktop")).toThrow(
+      "pix account deposits are api-only",
+    );
+  });
 });
 
 describe("getDepositResumeTarget", () => {

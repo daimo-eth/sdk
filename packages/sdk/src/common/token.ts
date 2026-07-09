@@ -55,6 +55,7 @@ export interface DaimoPayTokenAmount {
 
 export enum TokenLogo {
   BNB = "https://daimo.com/coin-logos/bnb.png",
+  BRLA = "https://assets.coingecko.com/coins/images/40062/large/IconGreen400.png",
   CADC = "https://daimo.com/coin-logos/cadc.png",
   CELO = "https://daimo.com/coin-logos/celo.png",
   cUSD = "https://daimo.com/coin-logos/cusd.png",
@@ -753,6 +754,16 @@ export const polygonJPYC: Token = token({
   logoURI: TokenLogo.JPYC,
 });
 
+export const polygonBRLA: Token = token({
+  chainId: polygon.chainId,
+  token: getAddress("0xE6A537a407488807F0bbeb0038B79004f19DDDFb"),
+  decimals: 18,
+  fiatISO: "BRL",
+  name: "BRLA Token",
+  symbol: "BRLA",
+  logoURI: TokenLogo.BRLA,
+});
+
 const polygonTokens: Token[] = [
   polygonPOL,
   polygonWPOL,
@@ -762,6 +773,7 @@ const polygonTokens: Token[] = [
   polygonUSDT0,
   polygonUSDCe,
   polygonJPYC,
+  polygonBRLA,
 ];
 
 //
