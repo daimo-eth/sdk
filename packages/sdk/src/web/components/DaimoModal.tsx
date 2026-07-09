@@ -141,8 +141,6 @@ type LoadedSession = {
   locationOptions: NavLocationOption[];
 };
 
-const ACCOUNT_CHROME_ENABLED = true;
-
 /** Fallback when the server predates the nav location fields. */
 const UNKNOWN_LOCATION: NavLocation = {
   countryCode: null,
@@ -573,35 +571,18 @@ function DaimoModalInner({
   }
 
   const closeVisible = !embedded && showClose && pageCloseVisible;
-  const account =
-    ACCOUNT_CHROME_ENABLED &&
-    accountFlow?.isAuthenticated &&
-    accountFlow.email &&
-    pageCloseVisible
-      ? {
-          email: accountFlow.email,
-          badgeEmoji: location.emoji,
-        }
-      : null;
   const close = closeVisible ? { onClose: handleClose } : null;
   const showCountryPicker =
     // Server sends locations only when switching affects the nav
     // (paymentMethods auto sessions); empty means hide the picker.
     locationOptions.length > 0 &&
     !embedded &&
+    closeVisible &&
     !connectToInjectedWallets &&
     !connectToAddress &&
     !startNodeId &&
     (!nav.topEntry ||
       (nav.topEntry.type === "choose-option" && !nav.canGoBack));
-  const country = showCountryPicker
-    ? {
-        location,
-        options: locationOptions,
-        loadingCountryCode,
-        onSelect: handleCountrySelect,
-      }
-    : null;
   let chrome: ModalChromeControls = { type: "none" };
   if (close) {
     chrome = { type: "close", close };
@@ -624,7 +605,19 @@ function DaimoModalInner({
   }, []);
 
   return (
-    <ModalChrome controls={chrome} country={country} account={account}>
+    <ModalChrome
+      controls={chrome}
+      country={
+        showCountryPicker
+          ? {
+              location,
+              options: locationOptions,
+              loadingCountryCode,
+              onSelect: handleCountrySelect,
+            }
+          : null
+      }
+    >
       {(dismissAccount) =>
         loadingCountryCode != null ? (
           // Country switch in flight: skeleton the method list for a smooth
