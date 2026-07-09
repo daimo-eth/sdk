@@ -27,6 +27,9 @@ const TERMINAL_STATUSES: AccountDepositStatus[] = [
 
 function getStatusLabel(status: AccountDepositStatus): string {
   switch (status) {
+    case "initiated":
+    case "awaiting_payment":
+      return t.waitingForYourPayment;
     case "payment_received":
       return t.depositDetected;
     case "token_delivered":
@@ -74,9 +77,7 @@ export function AccountStatusPage({
     );
   }
 
-  const title = isComplete
-    ? t.accountDepositComplete
-    : t.accountDepositReceived;
+  const title = getStatusTitle(status);
   const statusLabel = getStatusLabel(status);
   const displayEta = eta ? getStatusEta(status, eta) : null;
 
@@ -108,11 +109,29 @@ function getInitialDepositStatus(
       return "completed";
     case "bounced":
       return "failed";
-    case "requires_payment_method":
     case "waiting_payment":
+      return "awaiting_payment";
     case "expired":
+      return "expired";
+    case "requires_payment_method":
     case undefined:
       return "payment_received";
+  }
+}
+
+function getStatusTitle(status: AccountDepositStatus): string {
+  switch (status) {
+    case "initiated":
+    case "awaiting_payment":
+      return t.waitingForYourPayment;
+    case "completed":
+      return t.accountDepositComplete;
+    case "payment_received":
+    case "token_delivered":
+      return t.accountDepositReceived;
+    case "failed":
+    case "expired":
+      return t.errorDepositFailed;
   }
 }
 
