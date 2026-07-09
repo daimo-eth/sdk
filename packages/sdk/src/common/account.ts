@@ -425,6 +425,8 @@ export type DepositPaymentInfo =
       flow: "pix";
       instructions: string;
       brCode: string;
+      /** BRLA amount the routing permit must authorize. */
+      purchaseAmount: string;
       /** ISO-8601 expiration returned by the PIX provider. */
       expiresAt: string;
     })
