@@ -94,11 +94,15 @@ export const pt: typeof en = {
   failedToLoadSession: "não foi possível carregar a sessão",
 
   // account flow
-  accountEmail: "Entrar na Daimo",
-  accountEmailDesc: "Insira seu email para começar",
+  accountEmail: "Email",
+  accountEmailDesc: "Insira seu email para continuar.",
+  accountEmailMethodDesc: (method: string) =>
+    `Insira seu email para continuar com ${method}.`,
   accountEmailPlaceholder: "email@exemplo.com",
   accountOtp: "Insira o código de verificação",
-  accountOtpSent: "Enviamos um código para",
+  accountOtpSent: "Enviamos um código via Daimo para",
+  accountOtpSentViaDaimo: (destination: string) =>
+    `Enviamos um código de verificação via Daimo para ${destination}.`,
   accountCreatingWallet: "Preparando sua conta",
   accountEnrollment: "Configuração da conta",
   accountEnrollmentRetry: "Reenviar documentos",

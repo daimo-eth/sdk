@@ -18,11 +18,16 @@ import {
 } from "./formSchemas.js";
 
 type AccountEmailPageProps = {
+  methodLabel: string;
   onBack: (() => void) | null;
   onOtpSent: () => void;
 };
 
-export function AccountEmailPage({ onBack, onOtpSent }: AccountEmailPageProps) {
+export function AccountEmailPage({
+  methodLabel,
+  onBack,
+  onOtpSent,
+}: AccountEmailPageProps) {
   const account = useAccountFlow();
   const logoutDone = useRef(false);
   const {
@@ -63,7 +68,7 @@ export function AccountEmailPage({ onBack, onOtpSent }: AccountEmailPageProps) {
 
   return (
     <div className="daimo-flex daimo-flex-col daimo-flex-1 daimo-min-h-0">
-      <PageHeader title={t.accountEmail} onBack={onBack} />
+      <PageHeader title={methodLabel} onBack={onBack} />
 
       <form
         className="daimo-flex daimo-flex-col daimo-flex-1 daimo-min-h-0"
@@ -71,7 +76,7 @@ export function AccountEmailPage({ onBack, onOtpSent }: AccountEmailPageProps) {
       >
         <CenteredContent>
           <p className="daimo-text-sm daimo-text-[var(--daimo-text-secondary)] daimo-text-center">
-            {t.accountEmailDesc}
+            {t.accountEmailMethodDesc(methodLabel)}
           </p>
 
           <div className="daimo-w-full daimo-max-w-xs">

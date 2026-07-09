@@ -92,11 +92,15 @@ export const zh: typeof en = {
   failedToLoadSession: "无法加载会话",
 
   // account flow
-  accountEmail: "登录 Daimo",
-  accountEmailDesc: "输入您的邮箱以开始",
+  accountEmail: "邮箱",
+  accountEmailDesc: "输入您的邮箱以继续。",
+  accountEmailMethodDesc: (method: string) =>
+    `输入您的邮箱以继续使用 ${method}。`,
   accountEmailPlaceholder: "email@example.com",
   accountOtp: "输入验证码",
-  accountOtpSent: "我们已发送验证码到",
+  accountOtpSent: "我们已通过 Daimo 发送验证码到",
+  accountOtpSentViaDaimo: (destination: string) =>
+    `我们已通过 Daimo 向 ${destination} 发送验证码。`,
   accountCreatingWallet: "正在准备您的账户",
   accountEnrollment: "账户设置",
   accountEnrollmentRetry: "重新提交文件",

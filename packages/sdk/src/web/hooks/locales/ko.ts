@@ -93,11 +93,15 @@ export const ko: typeof en = {
   failedToLoadSession: "세션을 불러오지 못했습니다",
 
   // account flow
-  accountEmail: "Daimo 로그인",
-  accountEmailDesc: "이메일을 입력하여 시작하세요",
+  accountEmail: "이메일",
+  accountEmailDesc: "계속하려면 이메일을 입력하세요.",
+  accountEmailMethodDesc: (method: string) =>
+    `${method}을 계속하려면 이메일을 입력하세요.`,
   accountEmailPlaceholder: "email@example.com",
   accountOtp: "인증 코드 입력",
-  accountOtpSent: "인증 코드를 전송했습니다:",
+  accountOtpSent: "Daimo를 통해 인증 코드를 전송했습니다:",
+  accountOtpSentViaDaimo: (destination: string) =>
+    `Daimo를 통해 ${destination}(으)로 인증 코드를 보냈습니다.`,
   accountCreatingWallet: "계정 준비 중",
   accountEnrollment: "계정 설정",
   accountEnrollmentRetry: "서류 재제출",

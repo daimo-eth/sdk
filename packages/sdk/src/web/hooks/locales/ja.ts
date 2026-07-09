@@ -93,11 +93,15 @@ export const ja: typeof en = {
   failedToLoadSession: "セッションの読み込みに失敗しました",
 
   // account flow
-  accountEmail: "Daimoにログイン",
-  accountEmailDesc: "メールアドレスを入力してください",
+  accountEmail: "メールアドレス",
+  accountEmailDesc: "続行するにはメールアドレスを入力してください。",
+  accountEmailMethodDesc: (method: string) =>
+    `${method}を続行するにはメールアドレスを入力してください。`,
   accountEmailPlaceholder: "email@example.com",
   accountOtp: "確認コードを入力",
-  accountOtpSent: "確認コードを送信しました：",
+  accountOtpSent: "Daimo経由で確認コードを送信しました：",
+  accountOtpSentViaDaimo: (destination: string) =>
+    `Daimo経由で${destination}に確認コードを送信しました。`,
   accountCreatingWallet: "アカウントを準備中",
   accountEnrollment: "アカウント設定",
   accountEnrollmentRetry: "書類を再提出",

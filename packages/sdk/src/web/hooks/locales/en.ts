@@ -91,11 +91,15 @@ export const en = {
   failedToLoadSession: "failed to load session",
 
   // account flow
-  accountEmail: "Sign in to Daimo",
-  accountEmailDesc: "Enter your email to get started",
+  accountEmail: "Email",
+  accountEmailDesc: "Enter your email to continue.",
+  accountEmailMethodDesc: (method: string) =>
+    `Enter your email to continue with ${method}.`,
   accountEmailPlaceholder: "email@example.com",
   accountOtp: "Enter verification code",
-  accountOtpSent: "We sent a code to",
+  accountOtpSent: "We sent a code via Daimo to",
+  accountOtpSentViaDaimo: (destination: string) =>
+    `We sent a verification code via Daimo to ${destination}.`,
   accountCreatingWallet: "Preparing your account",
   accountEnrollment: "Account setup",
   accountEnrollmentRetry: "Resubmit documents",

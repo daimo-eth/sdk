@@ -819,13 +819,17 @@ function renderEntry(
     }
     case "account-loading":
       return <LoadingMessage />;
-    case "account-email":
+    case "account-email": {
+      const node = findNode(entry.nodeId, ctx.session.navTree);
+      if (node?.type !== "Fiat") return null;
       return (
         <AccountEmailPage
+          methodLabel={node.title}
           onBack={ctx.canGoBack ? ctx.onBack : null}
           onOtpSent={() => ctx.onAccountAdvance("account-otp")}
         />
       );
+    }
     case "account-otp":
       return (
         <AccountOtpPage

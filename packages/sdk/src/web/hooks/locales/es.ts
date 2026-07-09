@@ -63,11 +63,15 @@ export const es: typeof en = {
   applePayUnavailable: "Apple Pay no disponible",
   missingSessionParam: "falta el parámetro de sesión",
   failedToLoadSession: "no se pudo cargar la sesión",
-  accountEmail: "Inicia sesión en Daimo",
-  accountEmailDesc: "Ingresa tu email para comenzar",
+  accountEmail: "Email",
+  accountEmailDesc: "Ingresa tu email para continuar.",
+  accountEmailMethodDesc: (method: string) =>
+    `Ingresa tu email para continuar con ${method}.`,
   accountEmailPlaceholder: "email@ejemplo.com",
   accountOtp: "Ingresa el código de verificación",
-  accountOtpSent: "Enviamos un código a",
+  accountOtpSent: "Enviamos un código vía Daimo a",
+  accountOtpSentViaDaimo: (destination: string) =>
+    `Enviamos un código de verificación vía Daimo a ${destination}.`,
   accountCreatingWallet: "Preparando tu cuenta",
   accountEnrollment: "Configurar cuenta",
   accountEnrollmentRetry: "Reenviar documentos",
