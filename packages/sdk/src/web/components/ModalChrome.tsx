@@ -6,7 +6,11 @@ import {
   useState,
 } from "react";
 
-import type { NavLocation, NavLocationOption } from "../api/index.js";
+import type {
+  DaimoCountryCode,
+  NavLocation,
+  NavLocationOption,
+} from "../api/index.js";
 import { t } from "../hooks/locale.js";
 import { CloseIcon } from "./icons.js";
 
@@ -14,8 +18,8 @@ type CloseControl = { onClose: () => void };
 type CountryControl = {
   location: NavLocation;
   options: NavLocationOption[];
-  loadingCountryCode: string | null;
-  onSelect: (countryCode: string) => Promise<void>;
+  loadingCountryCode: DaimoCountryCode | null;
+  onSelect: (countryCode: DaimoCountryCode) => Promise<void>;
 };
 
 export type ModalChromeControls =

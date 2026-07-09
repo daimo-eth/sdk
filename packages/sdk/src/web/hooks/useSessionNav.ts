@@ -10,6 +10,7 @@ import type { AccountRail } from "../../common/account.js";
 import type { ExchangeId } from "../../common/api.js";
 import type {
   AccountAuthConfig,
+  DaimoCountryCode,
   RecreateSessionWithNavResponse,
 } from "../api/index.js";
 import type {
@@ -142,7 +143,7 @@ export function useSessionNav(
     /** Node to auto-navigate to on load (popup deep-link). */
     startNodeId?: string;
     /** Selected country used when rebuilding nav for a recreated session. */
-    countryCode?: string;
+    countryCode?: DaimoCountryCode;
     /** Propagates non-session fields from the recreate response. */
     onRecreate?: (response: RecreateSessionWithNavResponse) => void;
   },

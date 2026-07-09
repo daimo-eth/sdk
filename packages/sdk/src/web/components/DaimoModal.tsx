@@ -10,6 +10,7 @@ import { tron } from "../../common/chain.js";
 import { isSessionTerminal } from "../../common/session.js";
 import type {
   AccountAuthConfig,
+  DaimoCountryCode,
   NavLocation,
   NavLocationOption,
   RecreateSessionWithNavResponse,
@@ -102,7 +103,14 @@ import { WalletAmountPage } from "./WalletAmountPage.js";
 
 type ExchangeLikeNode = NavNodeExchange | NavNodeCashApp;
 
-export type DaimoModalProps = DaimoModalEventHandlers & {
+export type DaimoModalLocalizationProps = {
+  /** Override country used to localize auto payment-method sessions. */
+  countryCode?: DaimoCountryCode;
+  /** Called after the modal country picker successfully switches country. */
+  onCountryCodeChange?: (countryCode: DaimoCountryCode) => void;
+};
+
+type DaimoModalBaseProps = {
   /** Unique session ID. Sessions are created server-side. */
   sessionId: string;
   /** Unique client secret, returned at session creation. */
@@ -131,6 +139,10 @@ export type DaimoModalProps = DaimoModalEventHandlers & {
   /** Node to auto-navigate to on load (popup deep-link). */
   startNodeId?: string;
 };
+
+export type DaimoModalProps = DaimoModalEventHandlers &
+  DaimoModalLocalizationProps &
+  DaimoModalBaseProps;
 
 type NodeContext = { nodeId: string | null; nodeType: NavNodeType | null };
 
@@ -185,6 +197,7 @@ export function DaimoModal(props: DaimoModalProps) {
     clientSecret,
     embedded = false,
     defaultOpen = true,
+    countryCode,
     onClose,
   } = props;
 
@@ -205,7 +218,11 @@ export function DaimoModal(props: DaimoModalProps) {
 
   useEffect(() => {
     client.internal.sessions
-      .retrieveWithNav(sessionId, clientSecret)
+      .retrieveWithNav(
+        sessionId,
+        clientSecret,
+        countryCode ? { countryCode } : undefined,
+      )
       .then((resp) => {
         setLoaded({
           session: { ...resp.session, clientSecret },
@@ -217,7 +234,7 @@ export function DaimoModal(props: DaimoModalProps) {
         });
       })
       .catch((err) => console.error("failed to fetch session:", err));
-  }, [sessionId, clientSecret]);
+  }, [sessionId, clientSecret, countryCode]);
 
   // If the API returned account auth config and no AccountFlowProvider exists
   // upstream (e.g. customer didn't pass privyAppId to DaimoSDKProvider),
@@ -246,6 +263,7 @@ export function DaimoModal(props: DaimoModalProps) {
 
   const content = (
     <DaimoModalInner
+      key={loaded.location.countryCode ?? "unknown"}
       {...props}
       session={loaded.session}
       accountAuth={loaded.accountAuth}
@@ -370,6 +388,7 @@ function DaimoModalInner({
   startNodeId,
   onPaymentStarted,
   onPaymentCompleted,
+  onCountryCodeChange,
   onOpen,
   onClose,
 }: DaimoModalInnerProps) {
@@ -381,9 +400,8 @@ function DaimoModalInner({
 
   const [pendingTxHash, setPendingTxHash] = useState<string | undefined>();
   const [pageCloseVisible, setPageCloseVisible] = useState(true);
-  const [loadingCountryCode, setLoadingCountryCode] = useState<string | null>(
-    null,
-  );
+  const [loadingCountryCode, setLoadingCountryCode] =
+    useState<DaimoCountryCode | null>(null);
   const client = useDaimoClient();
   const { session, setSession } = useSessionPolling(
     effectiveInitial,
@@ -463,7 +481,7 @@ function DaimoModalInner({
   closeRef.current = handleClose;
 
   const handleCountrySelect = useCallback(
-    async (countryCode: string) => {
+    async (countryCode: DaimoCountryCode) => {
       if (countryCode === location.countryCode || loadingCountryCode != null) {
         return;
       }
@@ -487,6 +505,9 @@ function DaimoModalInner({
           location: resp.location ?? UNKNOWN_LOCATION,
           locationOptions: resp.locationOptions ?? [],
         });
+        if (resp.location.countryCode != null) {
+          onCountryCodeChange?.(resp.location.countryCode);
+        }
       } catch (error) {
         console.error("failed to switch country:", error);
       } finally {
@@ -502,6 +523,7 @@ function DaimoModalInner({
       handleReset,
       setSession,
       setLoaded,
+      onCountryCodeChange,
     ],
   );
 
@@ -576,8 +598,7 @@ function DaimoModalInner({
     // Server sends locations only when switching affects the nav
     // (paymentMethods auto sessions); empty means hide the picker.
     locationOptions.length > 0 &&
-    !embedded &&
-    closeVisible &&
+    (embedded || closeVisible) &&
     !connectToInjectedWallets &&
     !connectToAddress &&
     !startNodeId &&

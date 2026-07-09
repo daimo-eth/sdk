@@ -25,6 +25,7 @@ import type {
   TokenOptionsResponse,
 } from "../common/api.js";
 import type {
+  DaimoCountryCode,
   RecreateSessionWithNavResponse,
   RetrieveSessionWithNavResponse,
   WalletOptionsResponse,
@@ -162,12 +163,12 @@ export type DaimoClient = {
       retrieveWithNav(
         sessionId: string,
         clientSecret: string,
-        params?: { countryCode?: string },
+        params?: { countryCode?: DaimoCountryCode },
       ): Promise<RetrieveSessionWithNavResponse>;
       recreate(
         sessionId: string,
         clientSecret: string,
-        params?: { countryCode?: string },
+        params?: { countryCode?: DaimoCountryCode },
       ): Promise<RecreateSessionWithNavResponse>;
       walletOptions(
         sessionId: string,
