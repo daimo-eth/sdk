@@ -139,14 +139,14 @@ export const pt: typeof en = {
   accountBankTransfer: "Transferência bancária",
   accountInteracConfirmTitle: "Revisar solicitação Interac",
   accountInteracConfirmDesc:
-    "Seu banco mostrará uma solicitação da PayTrie AB Inc, parceira canadense da Daimo para pagamentos Interac.",
+    "Seu banco mostrará uma solicitação da PayTrie AB Inc, parceira canadense de Interac para este depósito.",
   accountInteracConfirmAmount: "Valor",
   accountInteracConfirmSender: "Remetente",
   accountInteracConfirmReference: "Referência da solicitação",
   accountInteracConfirmBank: "Banco",
   accountInteracConfirmOpenInterac: "Abrir Interac",
   accountInteracWaitingInstructions: (amount: string) =>
-    `Aprove a solicitação de ${amount} da PayTrie AB Inc no seu banco. A PayTrie é a parceira canadense da Daimo para pagamentos Interac.`,
+    `Aprove a solicitação de ${amount} da PayTrie AB Inc no seu banco. A PayTrie é a parceira canadense de Interac para este depósito. Depois da aprovação, a transferência pode levar alguns minutos para chegar. Isso é esperado; mantenha esta página aberta e ela continuará automaticamente.`,
   accountBankDetails: "Dados da transferência",
   accountDirections: "Instruções",
   accountDirectionsStep: (current: number, total: number) =>

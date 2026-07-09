@@ -138,14 +138,14 @@ export const ja: typeof en = {
   accountBankTransfer: "銀行振込",
   accountInteracConfirmTitle: "Interacリクエストを確認",
   accountInteracConfirmDesc:
-    "銀行には、Daimoのカナダ向けInterac決済パートナーであるPayTrie AB Incからのリクエストとして表示されます。",
+    "銀行には、この入金のカナダ向けInterac決済パートナーであるPayTrie AB Incからのリクエストとして表示されます。",
   accountInteracConfirmAmount: "金額",
   accountInteracConfirmSender: "送信者",
   accountInteracConfirmReference: "リクエスト参照番号",
   accountInteracConfirmBank: "銀行",
   accountInteracConfirmOpenInterac: "Interacを開く",
   accountInteracWaitingInstructions: (amount: string) =>
-    `銀行でPayTrie AB Incからの${amount}のリクエストを承認してください。PayTrieはDaimoのカナダ向けInterac決済パートナーです。`,
+    `銀行でPayTrie AB Incからの${amount}のリクエストを承認してください。PayTrieはこの入金のカナダ向けInterac決済パートナーです。承認後、送金が届くまで数分かかることがあります。これは通常の動作です。このページを開いたままにすると、自動的に続行します。`,
   accountBankDetails: "振込詳細",
   accountDirections: "手順",
   accountDirectionsStep: (current: number, total: number) =>
