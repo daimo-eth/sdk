@@ -226,6 +226,35 @@ export function EmailIcon({ className, size = 16 }: IconProps) {
   );
 }
 
+/** Person silhouette for account identity */
+export function PersonIcon({ className, size = 18 }: IconProps) {
+  return (
+    <svg
+      aria-hidden="true"
+      width={size}
+      height={size}
+      viewBox="0 0 18 18"
+      fill="none"
+      className={className ?? "daimo-text-[var(--daimo-text-muted)]"}
+    >
+      <path
+        d="M9 9.25a3.25 3.25 0 1 0 0-6.5 3.25 3.25 0 0 0 0 6.5Z"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M3.25 15.25c.66-2.53 2.85-4.25 5.75-4.25s5.09 1.72 5.75 4.25"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 /** Door arrow for signing out */
 export function LogoutIcon({ className, size = 18 }: IconProps) {
   return (

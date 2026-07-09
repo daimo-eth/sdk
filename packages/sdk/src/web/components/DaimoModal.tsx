@@ -141,7 +141,7 @@ type LoadedSession = {
   locationOptions: NavLocationOption[];
 };
 
-const ACCOUNT_CHROME_ENABLED = false;
+const ACCOUNT_CHROME_ENABLED = true;
 
 /** Fallback when the server predates the nav location fields. */
 const UNKNOWN_LOCATION: NavLocation = {
@@ -580,10 +580,6 @@ function DaimoModalInner({
     pageCloseVisible
       ? {
           email: accountFlow.email,
-          onLogout: async () => {
-            await accountFlow.logout();
-            if (isAccountFlow) nav.handleAccountLogout();
-          },
         }
       : null;
   const close = closeVisible ? { onClose: handleClose } : null;
@@ -595,14 +591,20 @@ function DaimoModalInner({
     closeVisible &&
     !connectToInjectedWallets &&
     !connectToAddress &&
-    !startNodeId &&
-    (!nav.topEntry ||
-      (nav.topEntry.type === "choose-option" && !nav.canGoBack));
+    !startNodeId;
+  const country = showCountryPicker
+    ? {
+        location,
+        options: locationOptions,
+        loadingCountryCode,
+        onSelect: handleCountrySelect,
+      }
+    : null;
   let chrome: ModalChromeControls = { type: "none" };
-  if (account && close) {
-    chrome = { type: "account-close", account, close };
-  } else if (account) {
-    chrome = { type: "account", account };
+  if ((account || country) && close) {
+    chrome = { type: "account-close", account, country, close };
+  } else if (account || country) {
+    chrome = { type: "account", account, country };
   } else if (close) {
     chrome = { type: "close", close };
   }
@@ -624,19 +626,7 @@ function DaimoModalInner({
   }, []);
 
   return (
-    <ModalChrome
-      controls={chrome}
-      country={
-        showCountryPicker
-          ? {
-              location,
-              options: locationOptions,
-              loadingCountryCode,
-              onSelect: handleCountrySelect,
-            }
-          : null
-      }
-    >
+    <ModalChrome controls={chrome}>
       {(dismissAccount) =>
         loadingCountryCode != null ? (
           // Country switch in flight: skeleton the method list for a smooth
