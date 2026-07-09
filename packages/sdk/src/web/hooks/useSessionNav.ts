@@ -24,7 +24,10 @@ import type {
 } from "../api/navTree.js";
 import type { WalletPaymentOption } from "../api/walletTypes.js";
 
-import { getAccountPaymentEntryTarget } from "../components/account/accountNav.js";
+import {
+  getAccountPaymentEntryTarget,
+  getDepositResumeTarget,
+} from "../components/account/accountNav.js";
 import { detectPlatform, isDesktop, type DaimoPlatform } from "../platform.js";
 import {
   isFramed,
@@ -376,7 +379,12 @@ export function useSessionNav(
   // ─── Account deposit handler ────────────────────────────────────────────────
 
   const handleAccountNavigate = useCallback(
-    async (nodeId: string, node: NavNodeFiat, autoNav: boolean) => {
+    async (
+      nodeId: string,
+      node: NavNodeFiat,
+      autoNav: boolean,
+      options?: { popupRequired?: boolean },
+    ) => {
       const rail = node.fiatMethod;
       setStack((prev) => [
         ...prev,
@@ -388,6 +396,36 @@ export function useSessionNav(
           replacePendingAccountEntry(prev, nodeId, rail, entry),
         );
       };
+
+      // Resume: if this session already has a deposit past payment, jump
+      // straight to the status screen. getDeposit is auth-free (clientSecret
+      // only), so a finished deposit never shows a login screen.
+      try {
+        const { deposit } = await client.account.getDeposit({
+          sessionId: session.sessionId,
+          clientSecret: session.clientSecret,
+          refresh: true,
+        });
+        const resumeType = deposit && getDepositResumeTarget(deposit.status);
+        if (deposit && resumeType) {
+          replaceLoading({
+            type: resumeType,
+            nodeId,
+            rail,
+            autoNav,
+            initialStatus: deposit.status,
+          });
+          return;
+        }
+      } catch (err) {
+        console.error("[account-nav] deposit resume check failed:", err);
+        // fall through to the normal enrollment/auth flow
+      }
+
+      if (options?.popupRequired) {
+        replaceLoading({ type: "fiat-popup", nodeId, rail, autoNav });
+        return;
+      }
 
       if (!accountFlow) {
         replaceLoading({
@@ -598,23 +636,11 @@ export function useSessionNav(
       }
 
       if (targetNode.type === "Fiat") {
-        if (
+        const popupRequired =
           enableFiatPopup &&
           railRequiresPopup(targetNode.fiatMethod) &&
-          isFramed()
-        ) {
-          setStack((prev) => [
-            ...prev,
-            {
-              type: "fiat-popup",
-              nodeId,
-              rail: targetNode.fiatMethod,
-              autoNav,
-            },
-          ]);
-          return;
-        }
-        handleAccountNavigate(nodeId, targetNode, autoNav);
+          isFramed();
+        handleAccountNavigate(nodeId, targetNode, autoNav, { popupRequired });
         return;
       }
     },
