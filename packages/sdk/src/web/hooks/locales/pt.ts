@@ -210,6 +210,7 @@ export const pt: typeof en = {
   walletDisconnected: "Carteira desconectada",
   switchToChain: (chain: string) => `Mude para ${chain}`,
   transactionFailed: "Transação falhou",
+  insufficientGas: "Gás insuficiente. Contate o suporte abaixo.",
   paymentCancelled: "Pagamento cancelado",
   confirmInWallet: "Confirme na carteira",
   retryPayment: "Tentar pagamento novamente",

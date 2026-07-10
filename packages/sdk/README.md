@@ -13,6 +13,7 @@ See [docs.daimo.com](https://docs.daimo.com) for more.
 - `@daimo/sdk/common` — session types, API schemas, and constants
 - `@daimo/sdk/client` — thin REST client wrapping `/v1/*` Daimo API, useful for custom UI
 - `@daimo/sdk/web` — React modal (`<DaimoModal>`) and hooks for the built-in deposit UI
+- `@daimo/sdk/native` — React Native deposit UI (`<DaimoFrameRN>`) over `react-native-webview`
 
 ### Styles
 

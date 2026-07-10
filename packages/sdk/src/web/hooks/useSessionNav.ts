@@ -36,7 +36,6 @@ import {
 } from "../components/account/fiatPopup.js";
 import { pruneCompletedAccountAuth } from "./accountAuthNav.js";
 import { useDaimoClient } from "./DaimoClientContext.js";
-import { formatUserError } from "./formatUserError.js";
 import { t } from "./locale.js";
 import { createNavLogger, type NavNodeType } from "./navEvent.js";
 import { findNode, type AccountNavEntry, type NavEntry } from "./types.js";
@@ -784,10 +783,10 @@ export function useSessionNav(
             });
             return;
           }
-          updateWalletTxResult(
-            undefined,
-            formatUserError(err, t.transactionFailed),
-          );
+          // Store the raw message: the error page formats it for display
+          // and passes the raw text on to contact support.
+          const raw = err instanceof Error ? err.message : String(err ?? "");
+          updateWalletTxResult(undefined, raw || t.transactionFailed);
         });
     },
     [walletFlow, updateWalletTxResult],

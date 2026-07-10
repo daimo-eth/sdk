@@ -174,6 +174,7 @@ export const es: typeof en = {
   walletDisconnected: "Billetera desconectada",
   switchToChain: (chain: string) => `Cambia a ${chain}`,
   transactionFailed: "Transacción fallida",
+  insufficientGas: "Gas insuficiente. Contacta a soporte abajo.",
   paymentCancelled: "Pago cancelado",
   confirmInWallet: "Confirmar en billetera",
   retryPayment: "Reintentar pago",

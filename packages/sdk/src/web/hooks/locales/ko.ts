@@ -207,6 +207,7 @@ export const ko: typeof en = {
   walletDisconnected: "지갑 연결이 해제되었습니다",
   switchToChain: (chain: string) => `${chain}(으)로 전환해 주세요`,
   transactionFailed: "트랜잭션 실패",
+  insufficientGas: "가스비가 부족합니다. 아래에서 지원팀에 문의하세요.",
   paymentCancelled: "결제가 취소되었습니다",
   confirmInWallet: "지갑에서 확인",
   retryPayment: "결제 재시도",

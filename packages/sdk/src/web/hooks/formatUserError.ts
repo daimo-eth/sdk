@@ -15,6 +15,12 @@ function getErrorMappings(): [pattern: string | RegExp, message: string][] {
       /\bus_phone_required\b|require.*us phone number/i,
       t.applePayUsPhoneRequired,
     ],
+    // Node/viem native-balance shortfall, e.g. "insufficient funds for
+    // gas * price + value: have 0 want 453189600000".
+    [
+      /insufficient funds for (gas|transfer)|exceeds the balance of the account/i,
+      t.insufficientGas,
+    ],
   ];
 }
 

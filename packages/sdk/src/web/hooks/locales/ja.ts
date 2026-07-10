@@ -210,6 +210,8 @@ export const ja: typeof en = {
   walletDisconnected: "ウォレットが切断されました",
   switchToChain: (chain: string) => `${chain}に切り替えてください`,
   transactionFailed: "トランザクション失敗",
+  insufficientGas:
+    "ガス代が不足しています。以下からサポートにお問い合わせください。",
   paymentCancelled: "支払いがキャンセルされました",
   confirmInWallet: "ウォレットで確認",
   retryPayment: "支払いを再試行",
