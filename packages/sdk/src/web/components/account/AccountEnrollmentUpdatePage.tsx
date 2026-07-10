@@ -13,6 +13,7 @@ import type {
   AccountEnrollmentUpdateApplePayEnhancedVerification,
   ApplePayEnhancedVerificationStatus,
 } from "../../../common/account.js";
+import { DAIMO_SUPPORT_EMAIL } from "../../../common/constants.js";
 import { useDaimoClient } from "../../hooks/DaimoClientContext.js";
 import { formatUserError } from "../../hooks/formatUserError.js";
 import { t } from "../../hooks/locale.js";
@@ -433,7 +434,7 @@ function buildSupportHref({
     t.tellUsHowWeCanHelp,
   ];
   const body = bodyLines.join("\n");
-  return `mailto:support@daimo.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  return `mailto:${DAIMO_SUPPORT_EMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 }
 
 function EnrollmentUpdateMessage({

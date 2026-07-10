@@ -123,6 +123,12 @@ type DaimoModalBaseProps = {
   connectToAddress?: Address;
   /** Render inline instead of as a floating modal. */
   embedded?: boolean;
+  /**
+   * Show the close button even when `embedded`. Set only by the native webview
+   * surface (DaimoFrameRN), which has no chrome of its own and needs the flow's
+   * own close button. Web embedders own their chrome, so this stays off there.
+   */
+  embeddedClose?: boolean;
   /** Override the session's light/dark/system theme mode. */
   themeMode?: DaimoThemeMode;
   /** Caller's platform. Prefer "desktop" or "mobile"; legacy values still work. Auto-detected. */
@@ -379,6 +385,7 @@ function DaimoModalInner({
   setShowFooterSpacer,
   setShowCloseButton,
   embedded = false,
+  embeddedClose = false,
   connectToInjectedWallets = false,
   connectToAddress,
   platform,
@@ -592,7 +599,8 @@ function DaimoModalInner({
     });
   }
 
-  const closeVisible = !embedded && showClose && pageCloseVisible;
+  const closeVisible =
+    (!embedded || embeddedClose) && showClose && pageCloseVisible;
   const close = closeVisible ? { onClose: handleClose } : null;
   const showCountryPicker =
     // Server sends locations only when switching affects the nav

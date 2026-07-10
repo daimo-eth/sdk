@@ -1,6 +1,6 @@
 {
   "name": "@daimo/sdk",
-  "version": "1.7.1-dev",
+  "version": "1.8.0-beta.0",
   "description": "Daimo SDK - universal ramp for stablecoin apps",
   "author": "Daimo",
   "license": "BSD-2-Clause",
@@ -23,7 +23,11 @@
       "types": "./dist/web/api/index.d.ts"
     },
     "./web/styles.css": "./dist/web/styles.css",
-    "./web/theme.css": "./dist/web/theme.css"
+    "./web/theme.css": "./dist/web/theme.css",
+    "./native": {
+      "import": "./dist/native/index.js",
+      "types": "./dist/native/index.d.ts"
+    }
   },
   "files": [
     "dist",
@@ -31,7 +35,7 @@
   ],
   "scripts": {
     "dev": "node scripts/genVersion.mjs && tsc --watch --preserveWatchOutput & pnpm exec tailwindcss -i src/web/theme.css -o dist/web/theme.css --watch & wait",
-    "build": "node scripts/genVersion.mjs && tsc && pnpm exec tailwindcss -i src/web/theme.css -o dist/web/theme.css --minify && cp dist/web/theme.css dist/web/styles.css && pnpm run verify:styles",
+    "build": "node scripts/genVersion.mjs && tsc && tsc -p tsconfig.native.json && pnpm exec tailwindcss -i src/web/theme.css -o dist/web/theme.css --minify && cp dist/web/theme.css dist/web/styles.css && pnpm run verify:styles",
     "test": "pnpm run lint && vitest run && pnpm run build",
     "lint": "eslint --max-warnings=0",
     "verify:styles": "node ./scripts/verifyStyles.mjs"
@@ -52,7 +56,9 @@
     "@solana/web3.js": "^1.95.4",
     "qrcode": "^1.5.0",
     "react": "18.x || 19.x",
-    "react-dom": "18.x || 19.x"
+    "react-dom": "18.x || 19.x",
+    "react-native": ">=0.72",
+    "react-native-webview": ">=13.0.0"
   },
   "peerDependenciesMeta": {
     "react-dom": {
@@ -63,6 +69,12 @@
     },
     "@solana/web3.js": {
       "optional": true
+    },
+    "react-native": {
+      "optional": true
+    },
+    "react-native-webview": {
+      "optional": true
     }
   },
   "devDependencies": {
@@ -72,6 +84,8 @@
     "@types/react-dom": "^19.0.0",
     "postcss": "^8.5.6",
     "postcss-selector-parser": "^6.1.2",
+    "react-native": "^0.86.0",
+    "react-native-webview": "^14.0.1",
     "tailwindcss": "^3.4.12",
     "typescript": "5.9.2",
     "vitest": "^4.1.0"
