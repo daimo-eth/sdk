@@ -11,6 +11,8 @@ export type {
   DaimoModalPreviewProps,
   DaimoModalPreviewVariant,
 } from "./components/DaimoModalPreview.js";
+export { DaimoRampPreview } from "./components/DaimoRampPreview.js";
+export type { DaimoRampPreviewProps } from "./components/DaimoRampPreview.js";
 export { DaimoSDKProvider } from "./hooks/DaimoClientContext.js";
 export { ErrorPage } from "./components/ErrorPage.js";
 export { AccountFlowProvider } from "./components/account/AccountFlowProvider.js";
