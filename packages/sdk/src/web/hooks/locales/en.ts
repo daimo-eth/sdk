@@ -144,6 +144,7 @@ export const en = {
   accountInteracWaitingInstructions: (amount: string) =>
     `Approve the ${amount} request from PayTrie AB Inc in your bank. PayTrie is the Canadian Interac payment partner for this deposit. After approval, the transfer can take a few minutes to arrive. This is expected; keep this page open and it will continue automatically.`,
   accountBankDetails: "Transfer Details",
+  accountPixCopyCode: "Copy PIX code",
   accountDirections: "Directions",
   accountDirectionsStep: (current: number, total: number) =>
     `Step ${current} of ${total}`,

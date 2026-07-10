@@ -77,6 +77,7 @@ import { AccountEnrollmentPage } from "./account/AccountEnrollmentPage.js";
 import { AccountOtpPage } from "./account/AccountOtpPage.js";
 import { AccountPhonePage } from "./account/AccountPhonePage.js";
 import { AccountPhoneOtpPage } from "./account/AccountPhoneOtpPage.js";
+import { AccountPixPage } from "./account/AccountPixPage.js";
 import { AccountPaymentPage } from "./account/AccountPaymentPage.js";
 import { AccountProviderOtpPage } from "./account/AccountProviderOtpPage.js";
 import { AccountStatusPage } from "./account/AccountStatusPage.js";
@@ -573,7 +574,8 @@ function DaimoModalInner({
     showFooterSpacer = !(
       !nav.topEntry ||
       (nav.topEntry.type === "choose-option" && !nav.canGoBack) ||
-      nav.topEntry.type === "account-bank-details"
+      nav.topEntry.type === "account-bank-details" ||
+      nav.topEntry.type === "account-pix"
     );
     content = renderEntry(nav.topEntry, {
       session,
@@ -596,6 +598,7 @@ function DaimoModalInner({
       onWalletSending: nav.handleWalletSending,
       onAccountAdvance: nav.handleAccountAdvance,
       setModalCloseVisible: setPageCloseVisible,
+      returnUrl,
     });
   }
 
@@ -702,8 +705,12 @@ type RenderContext = {
   };
   onWalletSelectToken: (token: WalletPaymentOption) => void;
   onWalletSending: (token: WalletPaymentOption, amountUsd: number) => void;
-  onAccountAdvance: (nextType: AccountNavEntry["type"]) => void;
+  onAccountAdvance: (
+    nextType: AccountNavEntry["type"],
+    options?: { resumePayment?: boolean },
+  ) => void;
   setModalCloseVisible: (show: boolean) => void;
+  returnUrl?: string;
 };
 
 function renderEntry(
@@ -872,10 +879,16 @@ function renderEntry(
         <AccountEnrollmentPage
           node={node}
           sessionId={ctx.session.sessionId}
+          clientSecret={ctx.session.clientSecret}
           platform={ctx.platform}
+          returnUrl={ctx.returnUrl}
           onBack={ctx.onBack}
           onReady={() =>
-            ctx.onAccountAdvance(getAccountPaymentEntryTarget(entry.rail))
+            ctx.onAccountAdvance(
+              entry.resumePayment
+                ? getAccountPaymentAdvanceTarget(entry.rail, ctx.platform)
+                : getAccountPaymentEntryTarget(entry.rail),
+            )
           }
           onPhoneRequired={() => ctx.onAccountAdvance("account-phone")}
           onProviderOtpRequired={() =>
@@ -895,6 +908,7 @@ function renderEntry(
       return (
         <AccountPhoneOtpPage
           rail={entry.rail}
+          returnUrl={ctx.returnUrl}
           onBack={ctx.onBack}
           onVerified={() => ctx.onAccountAdvance("account-enrollment")}
         />
@@ -902,6 +916,7 @@ function renderEntry(
     case "account-provider-otp":
       return (
         <AccountProviderOtpPage
+          returnUrl={ctx.returnUrl}
           onBack={ctx.onBack}
           onVerified={() => ctx.onAccountAdvance("account-enrollment")}
         />
@@ -931,7 +946,13 @@ function renderEntry(
           baseUrl={ctx.session.baseUrl}
           startDepositOnAdvance={advanceTarget === "account-interac-confirm"}
           onBack={ctx.canGoBack ? ctx.onBack : null}
-          onAdvance={() => ctx.onAccountAdvance(advanceTarget)}
+          onAdvance={() =>
+            entry.requireEnrollment
+              ? ctx.onAccountAdvance("account-enrollment", {
+                  resumePayment: true,
+                })
+              : ctx.onAccountAdvance(advanceTarget)
+          }
         />
       );
     }
@@ -980,6 +1001,18 @@ function renderEntry(
           onAdvance={() => ctx.onAccountAdvance("account-status")}
         />
       );
+    case "account-pix": {
+      const accountNode = findNode(entry.nodeId, ctx.session.navTree);
+      return (
+        <AccountPixPage
+          sessionId={ctx.session.sessionId}
+          clientSecret={ctx.session.clientSecret}
+          baseUrl={ctx.session.baseUrl}
+          icon={accountNode?.type === "Fiat" ? accountNode.icon : undefined}
+          onAdvance={() => ctx.onAccountAdvance("account-status")}
+        />
+      );
+    }
     case "account-deeplink": {
       const accountNode = findNode(entry.nodeId, ctx.session.navTree);
       return (

@@ -7,6 +7,7 @@ import type {
 import type { DaimoPlatform } from "../../platform.js";
 import {
   getAccountPaymentAdvanceTarget,
+  getAccountPaymentEntryTarget,
   getDepositResumeTarget,
 } from "./accountNav.js";
 
@@ -56,10 +57,13 @@ describe("getAccountPaymentAdvanceTarget", () => {
     }
   });
 
-  test("pix is not exposed in the modal checkout", () => {
-    expect(() => getAccountPaymentAdvanceTarget("pix", "desktop")).toThrow(
-      "pix account deposits are api-only",
-    );
+  test("pix collects an amount before opening its hosted QR page", () => {
+    expect(getAccountPaymentEntryTarget("pix")).toBe("account-payment");
+    for (const platform of ALL_PLATFORMS) {
+      expect(getAccountPaymentAdvanceTarget("pix", platform)).toBe(
+        "account-pix",
+      );
+    }
   });
 });
 

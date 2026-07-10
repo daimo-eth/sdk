@@ -19,8 +19,8 @@ export const zAccountRail = z.enum([
 ]);
 export type AccountRail = z.infer<typeof zAccountRail>;
 
-/** Rails supported by Daimo-hosted checkout surfaces. PIX is API-only. */
-export const zHostedAccountRail = zAccountRail.exclude(["pix"]);
+/** Rails supported by Daimo-hosted checkout surfaces. */
+export const zHostedAccountRail = zAccountRail;
 export type HostedAccountRail = z.infer<typeof zHostedAccountRail>;
 
 export const zAccountLegalName = z.object({
@@ -34,6 +34,8 @@ export type StartEnrollmentRequest = {
   legalName?: AccountLegalName;
   /** Client UI locale (short code, e.g. "es"). Server localizes step copy. */
   locale?: string;
+  /** App destination offered after a hosted KYC flow is submitted. */
+  returnUrl?: string;
 };
 
 export const zEnrollmentFormValue = z.union([z.string(), z.boolean()]);
@@ -114,6 +116,8 @@ export const zEnrollmentFormSubmitRequest = z.object({
   values: z.record(z.string(), zEnrollmentFormValue),
   /** Client UI locale (short code, e.g. "es"). Server localizes form errors. */
   locale: z.string().optional(),
+  /** App destination offered after provider-hosted form completion. */
+  returnUrl: z.string().optional(),
 });
 export type EnrollmentFormSubmitRequest = z.infer<
   typeof zEnrollmentFormSubmitRequest
@@ -124,6 +128,8 @@ export type EnrollmentOtpRequest = {
   code: string;
   /** Client UI locale (short code, e.g. "es"). Server localizes OTP errors. */
   locale?: string;
+  /** App destination offered after provider-hosted verification. */
+  returnUrl?: string;
 };
 
 export type EnrollmentOtpResendRequest = {

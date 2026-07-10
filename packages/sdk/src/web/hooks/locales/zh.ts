@@ -144,6 +144,7 @@ export const zh: typeof en = {
   accountInteracWaitingInstructions: (amount: string) =>
     `请在您的银行批准来自 PayTrie AB Inc 的 ${amount} 请求。PayTrie 是本次存款在加拿大的 Interac 支付合作伙伴。批准后，转账可能需要几分钟才会到账。这是正常情况；请保持此页面打开，它会自动继续。`,
   accountBankDetails: "转账详情",
+  accountPixCopyCode: "复制 PIX 代码",
   accountDirections: "操作指南",
   accountDirectionsStep: (current: number, total: number) =>
     `第 ${current} 步，共 ${total} 步`,

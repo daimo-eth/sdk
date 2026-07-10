@@ -47,7 +47,7 @@ type TokenAmountEntryProps = {
   balance?: { usd: number; nativeAmountUnits: number };
   /** Show the "Max" pill. Clicking sets the input to `maximumUsd`. */
   showMax?: boolean;
-  /** Override for the primary icon. Fiat flows use a country/region icon. */
+  /** Override for the primary icon. Fiat flows use their rail's brand icon. */
   iconLogoURI?: string;
   /** Alt text for the primary icon override. */
   iconAlt?: string;
@@ -242,7 +242,7 @@ export function TokenAmountEntry({
             onChange={handleInputChange}
             onKeyDown={handleKeyDown}
             placeholder={amountPlaceholder}
-            className="daimo-bg-transparent daimo-font-semibold daimo-text-[var(--daimo-text)] daimo-placeholder-[var(--daimo-placeholder)] daimo-outline-none daimo-border-none daimo-shadow-none daimo-caret-[var(--daimo-text-muted)] daimo-tabular-nums daimo-ring-0 focus:daimo-outline-none focus:daimo-ring-0 focus:daimo-border-none focus:daimo-shadow-none"
+            className="daimo-bg-transparent daimo-p-0 daimo-font-semibold daimo-text-[var(--daimo-text)] daimo-placeholder-[var(--daimo-placeholder)] daimo-outline-none daimo-border-none daimo-shadow-none daimo-caret-[var(--daimo-text-muted)] daimo-tabular-nums daimo-ring-0 focus:daimo-outline-none focus:daimo-ring-0 focus:daimo-border-none focus:daimo-shadow-none"
             style={{
               width: inputWidth,
               minWidth: "1ch",

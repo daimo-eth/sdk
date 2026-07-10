@@ -67,7 +67,10 @@ type SessionNavResult = {
   handleShowMobileWallets: (nodeId: string) => void;
 
   /** Advance account flow to the next screen. */
-  handleAccountAdvance: (nextType: AccountNavEntry["type"]) => void;
+  handleAccountAdvance: (
+    nextType: AccountNavEntry["type"],
+    options?: { resumePayment?: boolean },
+  ) => void;
   /** Reset the current account rail after logout. */
   handleAccountLogout: () => void;
 };
@@ -466,6 +469,16 @@ export function useSessionNav(
             return;
           }
           if (result.nextAction === "enrollment") {
+            if (rail === "pix") {
+              replaceLoading({
+                type: "account-payment",
+                nodeId,
+                rail,
+                autoNav,
+                requireEnrollment: true,
+              });
+              return;
+            }
             replaceLoading({
               type: "account-enrollment",
               nodeId,
@@ -1075,7 +1088,10 @@ export function useSessionNav(
 
   /** Advance account flow to the next screen, preserving nodeId + rail. */
   const handleAccountAdvance = useCallback(
-    (nextType: AccountNavEntry["type"]) => {
+    (
+      nextType: AccountNavEntry["type"],
+      options?: { resumePayment?: boolean },
+    ) => {
       const { nodeId, rail } = accountEntry(topEntry);
 
       const pushPhoneEntry = (
@@ -1105,7 +1121,15 @@ export function useSessionNav(
 
       setStack((prev) => {
         const nextStack = pruneCompletedAccountAuth(prev, nextType);
-        return [...nextStack, { type: nextType, nodeId, rail } as NavEntry];
+        const entry = {
+          type: nextType,
+          nodeId,
+          rail,
+          ...(nextType === "account-enrollment" && options?.resumePayment
+            ? { resumePayment: true }
+            : {}),
+        } as NavEntry;
+        return [...nextStack, entry];
       });
     },
     [accountAuth, accountFlow, topEntry],

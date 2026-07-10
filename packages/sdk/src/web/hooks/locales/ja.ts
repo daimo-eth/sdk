@@ -147,6 +147,7 @@ export const ja: typeof en = {
   accountInteracWaitingInstructions: (amount: string) =>
     `銀行でPayTrie AB Incからの${amount}のリクエストを承認してください。PayTrieはこの入金のカナダ向けInterac決済パートナーです。承認後、送金が届くまで数分かかることがあります。これは通常の動作です。このページを開いたままにすると、自動的に続行します。`,
   accountBankDetails: "振込詳細",
+  accountPixCopyCode: "PIXコードをコピー",
   accountDirections: "手順",
   accountDirectionsStep: (current: number, total: number) =>
     `ステップ ${current} / ${total}`,

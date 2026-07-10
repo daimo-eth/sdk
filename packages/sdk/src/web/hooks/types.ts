@@ -108,15 +108,16 @@ export type NavEntry =
   | ({ type: "account-phone-otp" } & AccountNavBase)
   | ({ type: "account-provider-otp" } & AccountNavBase)
   | ({ type: "account-creating-wallet" } & AccountNavBase)
-  | ({ type: "account-enrollment" } & AccountNavBase)
+  | ({ type: "account-enrollment"; resumePayment?: boolean } & AccountNavBase)
   | ({
       type: "account-enrollment-update";
       update: AccountEnrollmentUpdateApplePayEnhancedVerification;
     } & AccountNavBase)
-  | ({ type: "account-payment" } & AccountNavBase)
+  | ({ type: "account-payment"; requireEnrollment?: boolean } & AccountNavBase)
   | ({ type: "account-canada-bank-picker" } & AccountNavBase)
   | ({ type: "account-interac-confirm" } & AccountNavBase)
   | ({ type: "account-bank-details" } & AccountNavBase)
+  | ({ type: "account-pix" } & AccountNavBase)
   | ({ type: "account-apple-pay" } & AccountNavBase)
   | ({ type: "account-stripe-onramp" } & AccountNavBase)
   | ({ type: "account-deeplink" } & AccountNavBase)

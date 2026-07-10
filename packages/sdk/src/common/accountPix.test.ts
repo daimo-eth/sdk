@@ -9,13 +9,13 @@ describe("pix public metadata", () => {
     expect(zAccountRail.parse("pix")).toBe("pix");
   });
 
-  test("keeps pix out of hosted payment-method creation", () => {
+  test("accepts pix in hosted payment-method creation", () => {
     expect(
       zCreatePaymentMethodRequest.safeParse({
         clientSecret: "secret",
         paymentMethod: { type: "fiat", fiatMethod: "pix" },
       }).success,
-    ).toBe(false);
+    ).toBe(true);
   });
 
   test("registers polygon brla", () => {

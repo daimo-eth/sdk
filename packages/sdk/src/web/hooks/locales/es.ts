@@ -117,6 +117,7 @@ export const es: typeof en = {
   accountInteracWaitingInstructions: (amount: string) =>
     `Aprueba la solicitud de ${amount} de PayTrie AB Inc en tu banco. PayTrie es el socio canadiense de Interac para este depósito. Después de aprobarla, la transferencia puede tardar unos minutos en llegar. Esto es normal; mantén esta página abierta y continuará automáticamente.`,
   accountBankDetails: "Datos de transferencia",
+  accountPixCopyCode: "Copiar código PIX",
   accountDirections: "Instrucciones",
   accountDirectionsStep: (current: number, total: number) =>
     `Paso ${current} de ${total}`,

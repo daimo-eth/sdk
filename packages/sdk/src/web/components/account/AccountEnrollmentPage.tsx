@@ -37,6 +37,7 @@ import {
   AccountKycInfoPage,
   AccountKycInfoSkeleton,
 } from "./AccountKycInfoPage.js";
+import { getAccountEnrollmentRequest } from "./accountEnrollmentRequest.js";
 import { type LegalNameFormValues, zLegalNameForm } from "./formSchemas.js";
 import { getKycRequirement, KycIndicator } from "./kycRequirement.js";
 import {
@@ -47,7 +48,9 @@ import {
 type AccountEnrollmentPageProps = {
   node: NavNodeFiat;
   sessionId: string;
+  clientSecret: string;
   platform: DaimoPlatform;
+  returnUrl?: string;
   onBack: () => void;
   onReady: () => void;
   /** Called when enrollment requires a phone OTP (e.g. Coinbase Headless). */
@@ -69,7 +72,9 @@ const POLLING_ACTIONS = new Set([
 export function AccountEnrollmentPage({
   node,
   sessionId,
+  clientSecret,
   platform,
+  returnUrl,
   onBack,
   onReady,
   onPhoneRequired,
@@ -143,10 +148,14 @@ export function AccountEnrollmentPage({
 
     let result: EnrollmentResponse | null;
     try {
-      result = await account.startEnrollment(client, {
-        rail,
-        ...(legalName ? { legalName } : {}),
-      });
+      result = await account.startEnrollment(
+        client,
+        getAccountEnrollmentRequest({
+          rail,
+          legalName,
+          returnUrl,
+        }),
+      );
     } catch (err) {
       console.error("[enrollment] fetch failed:", err);
       result = { action: "error", message: t.errorGeneric, retryable: true };
@@ -155,7 +164,7 @@ export function AccountEnrollmentPage({
     if (isInitial) setIsLoading(false);
     if (!result) return;
     applyEnrollmentResult(result, previousAction);
-  }, [account, applyEnrollmentResult, client, legalName, rail]);
+  }, [account, applyEnrollmentResult, client, legalName, rail, returnUrl]);
 
   // Initial fetch
   useEffect(() => {
@@ -255,6 +264,7 @@ export function AccountEnrollmentPage({
       return (
         <AccountEnrollmentFormPage
           form={response.form}
+          returnUrl={returnUrl}
           onBack={onBack}
           onSubmitted={(result) =>
             applyEnrollmentResult(result, response.action)
@@ -322,6 +332,7 @@ export function AccountEnrollmentPage({
         <ErrorPage
           message={response.message}
           sessionId={sessionId}
+          clientSecret={clientSecret}
           retryText={t.tryAgain}
           onRetry={response.retryable ? fetchEnrollment : undefined}
           hideRetry={!response.retryable}
@@ -347,10 +358,12 @@ export function AccountEnrollmentPage({
 
 function AccountEnrollmentFormPage({
   form,
+  returnUrl,
   onBack,
   onSubmitted,
 }: {
   form: EnrollmentForm;
+  returnUrl?: string;
   onBack: () => void;
   onSubmitted: (response: EnrollmentResponse) => void;
 }) {
@@ -375,6 +388,7 @@ function AccountEnrollmentFormPage({
           revision: form.revision,
           values,
           locale: getLocale(),
+          ...(returnUrl ? { returnUrl } : {}),
         },
         { bearerToken: token },
       );

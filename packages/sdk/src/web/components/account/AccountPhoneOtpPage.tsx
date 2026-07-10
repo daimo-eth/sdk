@@ -12,6 +12,7 @@ import { formatUsPhoneDisplay } from "./phone.js";
 
 type AccountPhoneOtpPageProps = {
   rail: AccountRail;
+  returnUrl?: string;
   onBack: () => void;
   onVerified: () => void;
 };
@@ -23,6 +24,7 @@ type AccountPhoneOtpPageProps = {
  */
 export function AccountPhoneOtpPage({
   rail,
+  returnUrl,
   onBack,
   onVerified,
 }: AccountPhoneOtpPageProps) {
@@ -36,7 +38,10 @@ export function AccountPhoneOtpPage({
       if (!verified) return { ok: false };
       // startEnrollment advances the provider state machine after the Daimo
       // phone verification endpoint stores the Coinbase checkpoint.
-      const result = await account.startEnrollment(client, { rail });
+      const result = await account.startEnrollment(client, {
+        rail,
+        ...(returnUrl ? { returnUrl } : {}),
+      });
       if (!result) {
         return { ok: false, msg: "failed to submit phone verification" };
       }
@@ -69,7 +74,7 @@ export function AccountPhoneOtpPage({
           return assertUnreachable(result);
       }
     },
-    [account, client, rail],
+    [account, client, rail, returnUrl],
   );
 
   const handleResend = useCallback(async () => {
