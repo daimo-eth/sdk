@@ -50,7 +50,6 @@ type AccountEnrollmentPageProps = {
   sessionId: string;
   clientSecret: string;
   platform: DaimoPlatform;
-  returnUrl?: string;
   onBack: () => void;
   onReady: () => void;
   /** Called when enrollment requires a phone OTP (e.g. Coinbase Headless). */
@@ -74,7 +73,6 @@ export function AccountEnrollmentPage({
   sessionId,
   clientSecret,
   platform,
-  returnUrl,
   onBack,
   onReady,
   onPhoneRequired,
@@ -153,7 +151,6 @@ export function AccountEnrollmentPage({
         getAccountEnrollmentRequest({
           rail,
           legalName,
-          returnUrl,
         }),
       );
     } catch (err) {
@@ -164,7 +161,7 @@ export function AccountEnrollmentPage({
     if (isInitial) setIsLoading(false);
     if (!result) return;
     applyEnrollmentResult(result, previousAction);
-  }, [account, applyEnrollmentResult, client, legalName, rail, returnUrl]);
+  }, [account, applyEnrollmentResult, client, legalName, rail]);
 
   // Initial fetch
   useEffect(() => {
@@ -264,7 +261,6 @@ export function AccountEnrollmentPage({
       return (
         <AccountEnrollmentFormPage
           form={response.form}
-          returnUrl={returnUrl}
           onBack={onBack}
           onSubmitted={(result) =>
             applyEnrollmentResult(result, response.action)
@@ -358,12 +354,10 @@ export function AccountEnrollmentPage({
 
 function AccountEnrollmentFormPage({
   form,
-  returnUrl,
   onBack,
   onSubmitted,
 }: {
   form: EnrollmentForm;
-  returnUrl?: string;
   onBack: () => void;
   onSubmitted: (response: EnrollmentResponse) => void;
 }) {
@@ -388,7 +382,6 @@ function AccountEnrollmentFormPage({
           revision: form.revision,
           values,
           locale: getLocale(),
-          ...(returnUrl ? { returnUrl } : {}),
         },
         { bearerToken: token },
       );

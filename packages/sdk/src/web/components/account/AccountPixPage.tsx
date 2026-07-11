@@ -1,15 +1,7 @@
-import { useEffect } from "react";
-
 import type { DepositPaymentInfo } from "../../../common/account.js";
-import { useDaimoClient } from "../../hooks/DaimoClientContext.js";
 import { t } from "../../hooks/locale.js";
-import {
-  useAccountFlow,
-  useSessionDepositState,
-} from "../../hooks/useAccountFlow.js";
 import { useCopyToClipboard } from "../../hooks/useCopyToClipboard.js";
-import { useDepositPoller } from "../../hooks/useDepositPoller.js";
-import { useDraftDeposit } from "../../hooks/useDraftDeposit.js";
+import { useSignedDraftDepositLifecycle } from "../../hooks/useSignedDraftDepositLifecycle.js";
 import { PrimaryButton } from "../buttons.js";
 import { Countdown, useCountdown } from "../Countdown.js";
 import { ErrorPage } from "../ErrorPage.js";
@@ -38,73 +30,24 @@ export function AccountPixPage({
   icon,
   onAdvance,
 }: AccountPixPageProps) {
-  const client = useDaimoClient();
-  const accountFlow = useAccountFlow();
-  const { depositState, setDepositState } = useSessionDepositState(sessionId);
-  const depositAmount = depositState?.depositAmount ?? "";
   const { copy, copied } = useCopyToClipboard();
   const {
-    payment: draftedPayment,
+    depositAmount,
+    payment,
     error: draftError,
     retry: retryDraft,
-  } = useDraftDeposit({
-    client,
-    accountFlow,
+  } = useSignedDraftDepositLifecycle({
     sessionId,
+    clientSecret,
     rail: "pix",
-    depositAmount,
-    enabled: depositAmount !== "",
-    draftMode: "signed",
+    isPayment: isPixPayment,
+    onAdvance,
   });
-  const currentDepositId =
-    depositState?.depositAmount === depositAmount &&
-    (depositState.kind === "drafted" || depositState.kind === "started")
-      ? depositState.depositId
-      : null;
-  const startedPayment =
-    depositState?.kind === "started" && isPixPayment(depositState.payment)
-      ? depositState.payment
-      : null;
-  const payment =
-    startedPayment ??
-    (draftedPayment && isPixPayment(draftedPayment) ? draftedPayment : null);
   const expiresAt = parseExpiry(payment?.expiresAt);
   const { remainingS, isExpired } = useCountdown(
     expiresAt,
     PIX_TICKET_LIFETIME_S,
   );
-
-  useEffect(() => {
-    if (!payment || !currentDepositId || depositState?.kind === "started") {
-      return;
-    }
-    setDepositState({
-      depositAmount,
-      kind: "started",
-      depositId: currentDepositId,
-      payment,
-    });
-  }, [
-    currentDepositId,
-    depositAmount,
-    depositState?.kind,
-    payment,
-    setDepositState,
-  ]);
-
-  useDepositPoller({
-    client,
-    sessionId,
-    clientSecret,
-    onUpdate(deposit) {
-      if (
-        deposit.status !== "initiated" &&
-        deposit.status !== "awaiting_payment"
-      ) {
-        onAdvance();
-      }
-    },
-  });
 
   if (draftError) {
     return (

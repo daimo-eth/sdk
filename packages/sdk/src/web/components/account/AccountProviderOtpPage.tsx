@@ -9,13 +9,11 @@ import {
 } from "./AccountOtpCodeEntry.js";
 
 type AccountProviderOtpPageProps = {
-  returnUrl?: string;
   onBack: () => void;
   onVerified: () => void;
 };
 
 export function AccountProviderOtpPage({
-  returnUrl,
   onBack,
   onVerified,
 }: AccountProviderOtpPageProps) {
@@ -30,7 +28,7 @@ export function AccountProviderOtpPage({
       const token = await account.getAccessToken();
       if (!token) return { ok: false, msg: invalidMessage };
       const result = await client.account.submitEnrollmentOtp(
-        { rail: "ars", code, ...(returnUrl ? { returnUrl } : {}) },
+        { rail: "ars", code },
         { bearerToken: token },
       );
       switch (result.action) {
@@ -62,7 +60,7 @@ export function AccountProviderOtpPage({
           return assertUnreachable(result);
       }
     },
-    [account, client, invalidMessage, returnUrl],
+    [account, client, invalidMessage],
   );
 
   const handleResend = useCallback(async () => {

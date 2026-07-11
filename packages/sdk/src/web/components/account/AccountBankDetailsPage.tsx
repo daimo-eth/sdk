@@ -1,19 +1,13 @@
-import { useEffect, useState, type KeyboardEvent } from "react";
+import { useState, type KeyboardEvent } from "react";
 import type {
   AccountRail,
   DepositPaymentInfo,
   DepositPaymentReference,
   DepositPaymentStep,
 } from "../../../common/account.js";
-import { useDaimoClient } from "../../hooks/DaimoClientContext.js";
 import { getLocale, t } from "../../hooks/locale.js";
-import {
-  useAccountFlow,
-  useSessionDepositState,
-} from "../../hooks/useAccountFlow.js";
 import { useCopyToClipboard } from "../../hooks/useCopyToClipboard.js";
-import { useDepositPoller } from "../../hooks/useDepositPoller.js";
-import { useDraftDeposit } from "../../hooks/useDraftDeposit.js";
+import { useSignedDraftDepositLifecycle } from "../../hooks/useSignedDraftDepositLifecycle.js";
 import { ErrorPage } from "../ErrorPage.js";
 import {
   ChevronIcon,
@@ -103,43 +97,22 @@ export function AccountBankDetailsPage({
   onBack,
   onAdvance,
 }: AccountBankDetailsPageProps) {
-  const client = useDaimoClient();
-  const accountFlow = useAccountFlow();
-  const { depositState, setDepositState } = useSessionDepositState(sessionId);
   const [directionsView, setDirectionsView] = useState<DirectionsView>({
     type: "steps",
     stepIndex: 0,
   });
-  const depositAmount = depositState?.depositAmount ?? "";
-  const currentDepositId =
-    depositState?.depositAmount === depositAmount &&
-    (depositState.kind === "drafted" || depositState.kind === "started")
-      ? depositState.depositId
-      : null;
   const {
-    payment: draftedPayment,
-    isCreating,
+    depositAmount,
+    payment,
     error: draftError,
     retry: retryDraft,
-  } = useDraftDeposit({
-    client,
-    accountFlow,
+  } = useSignedDraftDepositLifecycle({
     sessionId,
+    clientSecret,
     rail,
-    depositAmount,
-    enabled: depositAmount !== "",
-    draftMode: "signed",
+    isPayment: isTransferInstructionFlow,
+    onAdvance,
   });
-  const startedPayment =
-    depositState?.kind === "started" &&
-    isTransferInstructionFlow(depositState.payment)
-      ? depositState.payment
-      : null;
-  const payment =
-    startedPayment ??
-    (draftedPayment && isTransferInstructionFlow(draftedPayment)
-      ? draftedPayment
-      : null);
   const instructions = payment?.instructions ?? "";
   const bankTransferFields =
     payment?.flow === "bank-transfer"
@@ -168,37 +141,6 @@ export function AccountBankDetailsPage({
     : payment?.flow === "directions"
       ? t.accountDirections
       : t.accountBankDetails;
-
-  useEffect(() => {
-    if (!payment || !depositAmount || !currentDepositId) return;
-    if (depositState?.kind === "started") return;
-    setDepositState({
-      depositAmount,
-      kind: "started",
-      depositId: currentDepositId,
-      payment,
-    });
-  }, [
-    currentDepositId,
-    depositAmount,
-    depositState?.kind,
-    payment,
-    setDepositState,
-  ]);
-
-  useDepositPoller({
-    client,
-    sessionId,
-    clientSecret,
-    onUpdate(deposit) {
-      if (
-        deposit.status !== "initiated" &&
-        deposit.status !== "awaiting_payment"
-      ) {
-        onAdvance();
-      }
-    },
-  });
 
   if (draftError) {
     return (

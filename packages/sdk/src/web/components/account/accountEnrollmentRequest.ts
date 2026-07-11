@@ -7,11 +7,9 @@ import type {
 export function getAccountEnrollmentRequest(args: {
   rail: AccountRail;
   legalName: AccountLegalName | null;
-  returnUrl?: string;
 }): StartEnrollmentRequest {
   return {
     rail: args.rail,
     ...(args.legalName ? { legalName: args.legalName } : {}),
-    ...(args.returnUrl ? { returnUrl: args.returnUrl } : {}),
   };
 }

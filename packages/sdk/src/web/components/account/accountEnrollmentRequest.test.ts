@@ -3,11 +3,10 @@ import { describe, expect, test } from "vitest";
 import { getAccountEnrollmentRequest } from "./accountEnrollmentRequest.js";
 
 describe("getAccountEnrollmentRequest", () => {
-  test("forwards the hosted KYC destination on initial and polling calls", () => {
+  test("includes the legal name on initial and polling calls", () => {
     const args = {
       rail: "sepa" as const,
       legalName: { firstName: "Ada", lastName: "Lovelace" },
-      returnUrl: "https://app.example/verification/done",
     };
 
     const initialRequest = getAccountEnrollmentRequest(args);
@@ -16,11 +15,8 @@ describe("getAccountEnrollmentRequest", () => {
     expect(initialRequest).toEqual({
       rail: "sepa",
       legalName: args.legalName,
-      returnUrl: "https://app.example/verification/done",
     });
-    expect(pollingRequest.returnUrl).toBe(
-      "https://app.example/verification/done",
-    );
+    expect(pollingRequest).toEqual(initialRequest);
   });
 
   test("omits absent optional fields", () => {

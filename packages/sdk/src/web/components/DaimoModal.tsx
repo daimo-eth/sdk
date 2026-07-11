@@ -881,7 +881,6 @@ function renderEntry(
           sessionId={ctx.session.sessionId}
           clientSecret={ctx.session.clientSecret}
           platform={ctx.platform}
-          returnUrl={ctx.returnUrl}
           onBack={ctx.onBack}
           onReady={() =>
             ctx.onAccountAdvance(
@@ -908,7 +907,6 @@ function renderEntry(
       return (
         <AccountPhoneOtpPage
           rail={entry.rail}
-          returnUrl={ctx.returnUrl}
           onBack={ctx.onBack}
           onVerified={() => ctx.onAccountAdvance("account-enrollment")}
         />
@@ -916,7 +914,6 @@ function renderEntry(
     case "account-provider-otp":
       return (
         <AccountProviderOtpPage
-          returnUrl={ctx.returnUrl}
           onBack={ctx.onBack}
           onVerified={() => ctx.onAccountAdvance("account-enrollment")}
         />

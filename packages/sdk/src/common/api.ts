@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { zAccountRail, zHostedAccountRail } from "./account.js";
+import { zAccountRail } from "./account.js";
 import type { TronAddress, UUID } from "./primitives.js";
 import { zAddress, zSolanaAddress } from "./primitives.js";
 import type { SessionPublicInfo } from "./session.js";
@@ -47,7 +47,7 @@ export const zCreatePaymentMethodRequest = z.object({
     }),
     z.object({
       type: z.literal("fiat"),
-      fiatMethod: zHostedAccountRail.optional(),
+      fiatMethod: zAccountRail.optional(),
     }),
   ]),
 });
