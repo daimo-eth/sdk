@@ -6,7 +6,10 @@ import {
   useRef,
   useState,
 } from "react";
-import type { AccountRail } from "../../common/account.js";
+import type {
+  AccountDepositStatus,
+  AccountRail,
+} from "../../common/account.js";
 import type { ExchangeId } from "../../common/api.js";
 import type {
   AccountAuthConfig,
@@ -29,6 +32,7 @@ import {
   getAccountPaymentEntryTarget,
   getDepositResumeTarget,
 } from "../components/account/accountNav.js";
+import { runPixRetryFlow } from "../components/account/pixRetry.js";
 import { detectPlatform, isDesktop, type DaimoPlatform } from "../platform.js";
 import {
   isFramed,
@@ -45,6 +49,11 @@ import { isUserRejection, type WalletFlowResult } from "./useWalletFlow.js";
 
 type NodeContext = { nodeId: string | null; nodeType: NavNodeType | null };
 type ExchangeNode = NavNodeExchange | NavNodeCashApp;
+type AccountAdvanceOptions = {
+  resumePayment?: boolean;
+  initialStatus?: AccountDepositStatus;
+  initialFiatAmount?: string;
+};
 
 type SessionNavResult = {
   stack: NavEntry[];
@@ -58,6 +67,8 @@ type SessionNavResult = {
   handleAmountContinue: (amountUsd: number) => void;
   handleRetry: () => void;
   handleRefresh: () => Promise<void>;
+  /** Recreate session and reopen PIX with the same deposit amount. */
+  handlePixRetry: (depositAmount: string) => Promise<void>;
 
   handleInjectedWalletSelect: (wallet: InjectedWallet) => void;
   handleChainSelect: (chain: "evm" | "solana") => void;
@@ -69,7 +80,7 @@ type SessionNavResult = {
   /** Advance account flow to the next screen. */
   handleAccountAdvance: (
     nextType: AccountNavEntry["type"],
-    options?: { resumePayment?: boolean },
+    options?: AccountAdvanceOptions,
   ) => void;
   /** Reset the current account rail after logout. */
   handleAccountLogout: () => void;
@@ -157,6 +168,7 @@ export function useSessionNav(
   const logNavEvent = createNavLogger(client);
 
   const [stack, setStack] = useState<NavEntry[]>([]);
+  const autoNavRef = useRef<string | null>(null);
 
   const topEntry = stack.length > 0 ? stack[stack.length - 1] : null;
 
@@ -386,9 +398,16 @@ export function useSessionNav(
       nodeId: string,
       node: NavNodeFiat,
       autoNav: boolean,
-      options?: { popupRequired?: boolean },
+      options?: {
+        popupRequired?: boolean;
+        session?: { sessionId: string; clientSecret: string };
+      },
     ) => {
       const rail = node.fiatMethod;
+      const sessionCtx = options?.session ?? {
+        sessionId: session.sessionId,
+        clientSecret: session.clientSecret,
+      };
       setStack((prev) => [
         ...prev,
         { type: "account-loading", nodeId, rail, autoNav },
@@ -405,8 +424,8 @@ export function useSessionNav(
       // only), so a finished deposit never shows a login screen.
       try {
         const { deposit } = await client.account.getDeposit({
-          sessionId: session.sessionId,
-          clientSecret: session.clientSecret,
+          sessionId: sessionCtx.sessionId,
+          clientSecret: sessionCtx.clientSecret,
           refresh: true,
         });
         const resumeType = deposit && getDepositResumeTarget(deposit.status);
@@ -417,6 +436,7 @@ export function useSessionNav(
             rail,
             autoNav,
             initialStatus: deposit.status,
+            initialFiatAmount: deposit.fiatAmount,
           });
           return;
         }
@@ -453,10 +473,6 @@ export function useSessionNav(
       // If user has an active Privy session, check their account status
       // to skip onboarding steps they've already completed.
       if (token) {
-        const sessionCtx = {
-          sessionId: session.sessionId,
-          clientSecret: session.clientSecret,
-        };
         const result = await accountFlow.getAccount(client, sessionCtx, {
           rail,
         });
@@ -917,6 +933,76 @@ export function useSessionNav(
     onRecreate,
   ]);
 
+  const handlePixRetry = useCallback(
+    async (depositAmount: string) => {
+      const { nodeId, rail } = accountEntry(topEntry);
+      if (rail !== "pix") return;
+
+      logNavEvent(session.sessionId, session.clientSecret, {
+        ...getNodeCtx(),
+        action: "flow_refresh",
+      });
+
+      const result = await runPixRetryFlow({
+        depositAmount,
+        nodeId,
+        recreate: () =>
+          client.internal.sessions.recreate(
+            session.sessionId,
+            session.clientSecret,
+            { countryCode },
+          ),
+        waitForAuthReady: () =>
+          accountFlow?.waitForReady() ?? Promise.resolve(),
+        getAccessToken: () =>
+          accountFlow?.getAccessToken() ?? Promise.resolve(null),
+        getAccount: (sessionCtx) =>
+          accountFlow?.getAccount(client, sessionCtx, { rail: "pix" }) ??
+          Promise.resolve(null),
+        setDepositState: (sessionId, state) =>
+          accountFlow?.setDepositState(sessionId, state),
+      });
+
+      if (!result.ok) {
+        console.error("failed to recreate pix session");
+        return;
+      }
+
+      const { response, nav } = result;
+      autoNavRef.current = null;
+      setSession(response.session);
+      onRecreate?.(response);
+
+      if (nav === "normal-navigation") {
+        setStack([]);
+        const node = findNode(nodeId, response.session.navTree);
+        if (node?.type === "Fiat") {
+          await handleAccountNavigate(nodeId, node, true, {
+            session: {
+              sessionId: response.session.sessionId,
+              clientSecret: response.session.clientSecret,
+            },
+          });
+        }
+        return;
+      }
+
+      setStack([nav]);
+    },
+    [
+      topEntry,
+      session.sessionId,
+      session.clientSecret,
+      countryCode,
+      getNodeCtx,
+      client,
+      accountFlow,
+      setSession,
+      onRecreate,
+      handleAccountNavigate,
+    ],
+  );
+
   const handleReset = useCallback(() => setStack([]), []);
 
   // ─── Wallet flow handlers ───────────────────────────────────────────────
@@ -1032,7 +1118,6 @@ export function useSessionNav(
   // ─── Internal effects ──────────────────────────────────────────────────
 
   // Auto-navigate through single-option ChooseOption chains
-  const autoNavRef = useRef<string | null>(null);
   useLayoutEffect(() => {
     if (!isOpen) return;
 
@@ -1088,10 +1173,7 @@ export function useSessionNav(
 
   /** Advance account flow to the next screen, preserving nodeId + rail. */
   const handleAccountAdvance = useCallback(
-    (
-      nextType: AccountNavEntry["type"],
-      options?: { resumePayment?: boolean },
-    ) => {
+    (nextType: AccountNavEntry["type"], options?: AccountAdvanceOptions) => {
       const { nodeId, rail } = accountEntry(topEntry);
 
       const pushPhoneEntry = (
@@ -1128,6 +1210,12 @@ export function useSessionNav(
           ...(nextType === "account-enrollment" && options?.resumePayment
             ? { resumePayment: true }
             : {}),
+          ...(nextType === "account-status" && options?.initialStatus
+            ? {
+                initialStatus: options.initialStatus,
+                initialFiatAmount: options.initialFiatAmount,
+              }
+            : {}),
         } as NavEntry;
         return [...nextStack, entry];
       });
@@ -1155,6 +1243,7 @@ export function useSessionNav(
       handleAmountContinue,
       handleRetry,
       handleRefresh,
+      handlePixRetry,
       handleInjectedWalletSelect,
       handleChainSelect,
       handleShowMobileWallets,
@@ -1174,6 +1263,7 @@ export function useSessionNav(
       handleAmountContinue,
       handleRetry,
       handleRefresh,
+      handlePixRetry,
       handleInjectedWalletSelect,
       handleChainSelect,
       handleShowMobileWallets,

@@ -124,6 +124,7 @@ export type NavEntry =
   | ({
       type: "account-status";
       initialStatus?: AccountDepositStatus;
+      initialFiatAmount?: string;
     } & AccountNavBase)
   | ({ type: "account-error"; message: string } & AccountNavBase);
 

@@ -6,6 +6,7 @@ import {
   useState,
 } from "react";
 import type { Address } from "viem";
+import type { AccountDepositStatus } from "../../common/account.js";
 import { tron } from "../../common/chain.js";
 import { isSessionTerminal } from "../../common/session.js";
 import type {
@@ -586,6 +587,7 @@ function DaimoModalInner({
       onAmountContinue: nav.handleAmountContinue,
       onRetry: nav.handleRetry,
       onRefresh: nav.handleRefresh,
+      onPixRetry: nav.handlePixRetry,
       injectedWallets,
       isLoadingWallets,
       platform: resolvedPlatform,
@@ -686,6 +688,7 @@ type RenderContext = {
   onAmountContinue: (amountUsd: number) => void;
   onRetry: () => void;
   onRefresh: () => Promise<void>;
+  onPixRetry: (depositAmount: string) => Promise<void>;
   injectedWallets: InjectedWallet[];
   isLoadingWallets: boolean;
   platform: DaimoPlatform;
@@ -707,7 +710,11 @@ type RenderContext = {
   onWalletSending: (token: WalletPaymentOption, amountUsd: number) => void;
   onAccountAdvance: (
     nextType: AccountNavEntry["type"],
-    options?: { resumePayment?: boolean },
+    options?: {
+      resumePayment?: boolean;
+      initialStatus?: AccountDepositStatus;
+      initialFiatAmount?: string;
+    },
   ) => void;
   setModalCloseVisible: (show: boolean) => void;
   returnUrl?: string;
@@ -1006,7 +1013,13 @@ function renderEntry(
           clientSecret={ctx.session.clientSecret}
           baseUrl={ctx.session.baseUrl}
           icon={accountNode?.type === "Fiat" ? accountNode.icon : undefined}
-          onAdvance={() => ctx.onAccountAdvance("account-status")}
+          onAdvance={(deposit) =>
+            ctx.onAccountAdvance("account-status", {
+              initialStatus: deposit.status,
+              initialFiatAmount: deposit.fiatAmount,
+            })
+          }
+          onRetry={ctx.onPixRetry}
         />
       );
     }
@@ -1030,7 +1043,10 @@ function renderEntry(
           sessionId={ctx.session.sessionId}
           clientSecret={ctx.session.clientSecret}
           baseUrl={ctx.session.baseUrl}
+          rail={entry.rail}
           initialStatus={entry.initialStatus}
+          initialFiatAmount={entry.initialFiatAmount}
+          onPixRetry={entry.rail === "pix" ? ctx.onPixRetry : undefined}
         />
       );
     case "account-error":

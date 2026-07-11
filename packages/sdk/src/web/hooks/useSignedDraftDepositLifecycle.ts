@@ -1,14 +1,12 @@
 import { useEffect } from "react";
 
 import type {
+  AccountDeposit,
   AccountRail,
   DepositPaymentInfo,
 } from "../../common/account.js";
 import { useDaimoClient } from "./DaimoClientContext.js";
-import {
-  useAccountFlow,
-  useSessionDepositState,
-} from "./useAccountFlow.js";
+import { useAccountFlow, useSessionDepositState } from "./useAccountFlow.js";
 import { useDepositPoller } from "./useDepositPoller.js";
 import { useDraftDeposit } from "./useDraftDeposit.js";
 
@@ -17,7 +15,7 @@ type SignedDraftDepositLifecycleArgs<TPayment extends DepositPaymentInfo> = {
   clientSecret: string;
   rail: AccountRail;
   isPayment: (payment: DepositPaymentInfo) => payment is TPayment;
-  onAdvance: () => void;
+  onAdvance: (deposit: AccountDeposit) => void;
 };
 
 /** Creates, promotes, and polls a signed account-deposit draft. */
@@ -86,7 +84,7 @@ export function useSignedDraftDepositLifecycle<
         deposit.status !== "initiated" &&
         deposit.status !== "awaiting_payment"
       ) {
-        onAdvance();
+        onAdvance(deposit);
       }
     },
   });

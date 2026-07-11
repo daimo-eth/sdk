@@ -33,6 +33,7 @@ describe("locale selection", () => {
     expect(getLocale()).toBe("en");
     expect(getNumberLocale()).toBe("en-US");
     expect(t.selectAmount).toBe("Select Amount");
+    expect(t.accountPixExpired).toBe("This PIX code has expired");
   });
 
   test("falls back to English text but preserves local separators", () => {

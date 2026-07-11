@@ -1,4 +1,9 @@
-import type { DepositPaymentInfo } from "../../../common/account.js";
+import { useCallback, useState } from "react";
+
+import type {
+  AccountDeposit,
+  DepositPaymentInfo,
+} from "../../../common/account.js";
 import { t } from "../../hooks/locale.js";
 import { useCopyToClipboard } from "../../hooks/useCopyToClipboard.js";
 import { useSignedDraftDepositLifecycle } from "../../hooks/useSignedDraftDepositLifecycle.js";
@@ -9,6 +14,7 @@ import { CopyIcon } from "../icons.js";
 import { QRCode } from "../QRCode.js";
 import { CenteredContent, PageHeader, resolveIconUrl } from "../shared.js";
 import { Skeleton } from "../Skeleton.js";
+import { AccountPixExpiredContent } from "./AccountPixExpiredContent.js";
 
 const PIX_TICKET_LIFETIME_S = 10 * 60;
 
@@ -19,7 +25,8 @@ type AccountPixPageProps = {
   clientSecret: string;
   baseUrl: string;
   icon?: string;
-  onAdvance: () => void;
+  onAdvance: (deposit: AccountDeposit) => void;
+  onRetry: (depositAmount: string) => Promise<void>;
 };
 
 /** Creates a PIX ticket, renders its QR/BR Code, and waits for payment. */
@@ -29,8 +36,10 @@ export function AccountPixPage({
   baseUrl,
   icon,
   onAdvance,
+  onRetry,
 }: AccountPixPageProps) {
   const { copy, copied } = useCopyToClipboard();
+  const [isRetrying, setIsRetrying] = useState(false);
   const {
     depositAmount,
     payment,
@@ -48,6 +57,16 @@ export function AccountPixPage({
     expiresAt,
     PIX_TICKET_LIFETIME_S,
   );
+
+  const handleRetry = useCallback(async () => {
+    if (!depositAmount || isRetrying) return;
+    setIsRetrying(true);
+    try {
+      await onRetry(depositAmount);
+    } finally {
+      setIsRetrying(false);
+    }
+  }, [depositAmount, isRetrying, onRetry]);
 
   if (draftError) {
     return (
@@ -71,30 +90,37 @@ export function AccountPixPage({
     <div className="daimo-flex daimo-flex-col daimo-flex-1 daimo-min-h-0">
       <PageHeader title="PIX" />
       <CenteredContent>
-        <div className="daimo-flex daimo-w-full daimo-max-w-xs daimo-flex-col daimo-items-center daimo-gap-5">
-          <div className="daimo-w-full daimo-max-w-[220px]">
-            <QRCode
-              value={payment.brCode}
-              placeholderDensity="long"
-              image={<PixLogo baseUrl={baseUrl} icon={icon} />}
+        {isExpired ? (
+          <AccountPixExpiredContent
+            sessionId={sessionId}
+            onRetry={handleRetry}
+            isRetrying={isRetrying}
+          />
+        ) : (
+          <div className="daimo-flex daimo-w-full daimo-max-w-xs daimo-flex-col daimo-items-center daimo-gap-5">
+            <div className="daimo-w-full daimo-max-w-[220px]">
+              <QRCode
+                value={payment.brCode}
+                placeholderDensity="long"
+                image={<PixLogo baseUrl={baseUrl} icon={icon} />}
+              />
+            </div>
+            <p className="daimo-text-center daimo-text-sm daimo-leading-relaxed daimo-text-[var(--daimo-text-secondary)]">
+              {payment.instructions}
+            </p>
+            <PrimaryButton
+              onClick={() => copy(payment.brCode)}
+              icon={<CopyIcon size={16} copied={copied} />}
+            >
+              {copied ? t.accountBankDetailsCopied : t.accountPixCopyCode}
+            </PrimaryButton>
+            <Countdown
+              remainingS={remainingS}
+              isExpired={isExpired}
+              totalS={PIX_TICKET_LIFETIME_S}
             />
           </div>
-          <p className="daimo-text-center daimo-text-sm daimo-leading-relaxed daimo-text-[var(--daimo-text-secondary)]">
-            {payment.instructions}
-          </p>
-          <PrimaryButton
-            onClick={() => copy(payment.brCode)}
-            disabled={isExpired}
-            icon={<CopyIcon size={16} copied={copied} />}
-          >
-            {copied ? t.accountBankDetailsCopied : t.accountPixCopyCode}
-          </PrimaryButton>
-          <Countdown
-            remainingS={remainingS}
-            isExpired={isExpired}
-            totalS={PIX_TICKET_LIFETIME_S}
-          />
-        </div>
+        )}
       </CenteredContent>
     </div>
   );
