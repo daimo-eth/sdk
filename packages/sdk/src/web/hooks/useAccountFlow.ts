@@ -29,6 +29,7 @@ export type PrivyHooks = {
   createWallet: () => Promise<{ address: string }>;
   getAccessToken: () => Promise<string | null>;
   signTypedData: (typedData: Record<string, unknown>) => Promise<string>;
+  signMessage: (message: string) => Promise<string>;
   logout: () => Promise<void>;
   ready: boolean;
   authenticated: boolean;
@@ -102,6 +103,7 @@ export type AccountFlowState = {
 
   getAccessToken: () => Promise<string | null>;
   signTypedData: (typedData: Record<string, unknown>) => Promise<string>;
+  signMessage: (message: string) => Promise<string>;
 
   getDepositState: (sessionId: string) => DepositState | null;
   setDepositState: (sessionId: string, state: DepositStateInput) => void;
@@ -374,6 +376,11 @@ export function useAccountFlowState(): AccountFlowState {
     [],
   );
 
+  const signMessage = useCallback(async (message: string): Promise<string> => {
+    if (!privyRef.current) throw new Error("privy not initialized");
+    return privyRef.current.signMessage(message);
+  }, []);
+
   const getDepositState = useCallback(
     (sessionId: string): DepositState | null => {
       if (storedDepositState?.sessionId !== sessionId) return null;
@@ -476,6 +483,7 @@ export function useAccountFlowState(): AccountFlowState {
     ensureWallet,
     getAccessToken,
     signTypedData,
+    signMessage,
     getDepositState,
     setDepositState,
     clearDepositState,

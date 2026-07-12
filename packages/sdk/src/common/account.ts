@@ -15,6 +15,7 @@ export const zAccountRail = z.enum([
   "apple_pay",
   "jpyc",
   "ars",
+  "chf",
 ]);
 export type AccountRail = z.infer<typeof zAccountRail>;
 
@@ -204,9 +205,31 @@ export type ProviderOtpCopy = {
 };
 
 type ProviderOtpEnrollmentResponse = {
-  destination: "email";
+  destination: "email" | "phone";
   copy: ProviderOtpCopy;
 };
+
+export type MtPelerinKycEnrollmentResponse = {
+  action: "mtpelerin_kyc";
+  remainingAllowance: string;
+  verificationAvailable: boolean;
+};
+
+export type MtPelerinEnrollmentRequest =
+  | { action: "choose_account"; choice: "existing" | "new"; locale?: string }
+  | { action: "start_phone"; phone: string }
+  | { action: "submit_otp"; code: string; locale?: string }
+  | { action: "submit_email"; email: string; locale?: string }
+  | { action: "submit_signature"; signature: string; locale?: string }
+  | { action: "resume"; locale?: string };
+
+export type MtPelerinEnrollmentResult =
+  | {
+      kind: "signature_required";
+      purpose: "device_auth" | "wallet_validation";
+      message: string;
+    }
+  | { kind: "enrollment"; enrollment: EnrollmentResponse };
 
 export type EnrollmentResponse =
   | ({ action: "kyc_required" } & LinkOutEnrollmentResponse)
@@ -218,6 +241,10 @@ export type EnrollmentResponse =
   | ({ action: "hosted_agreement_required" } & HostedEnrollmentResponse)
   | ({ action: "hosted_kyc_required" } & LinkOutEnrollmentResponse)
   | ({ action: "provider_otp_required" } & ProviderOtpEnrollmentResponse)
+  | { action: "provider_account_choice_required" }
+  | { action: "provider_phone_required" }
+  | { action: "provider_email_required" }
+  | MtPelerinKycEnrollmentResponse
   | { action: "provider_pending" }
   /** User must verify a phone number before continuing. */
   | { action: "phone_required"; reason?: string }

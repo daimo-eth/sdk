@@ -12,6 +12,7 @@ import type {
   EnrollmentForm,
   AccountLegalName,
   EnrollmentResponse,
+  MtPelerinEnrollmentRequest,
 } from "../../../common/account.js";
 import type { NavNodeFiat } from "../../api/navTree.js";
 import { useDaimoClient } from "../../hooks/DaimoClientContext.js";
@@ -84,6 +85,7 @@ export function AccountEnrollmentPage({
   const [isLoading, setIsLoading] = useState(true);
   const [kycAccepted, setKycAccepted] = useState(false);
   const [legalName, setLegalName] = useState<AccountLegalName | null>(null);
+  const [mtPelerinBusy, setMtPelerinBusy] = useState(false);
   const started = useRef(false);
   const responseRef = useRef<EnrollmentResponse | null>(null);
   const readyTimeoutRef = useRef<number | null>(null);
@@ -122,7 +124,10 @@ export function AccountEnrollmentPage({
         responseRef.current = result;
         setResponse(result);
         onPhoneRequired();
-      } else if (result.action === "provider_otp_required") {
+      } else if (
+        result.action === "provider_otp_required" &&
+        rail !== "chf"
+      ) {
         responseRef.current = result;
         setResponse(result);
         setProviderOtp?.(result);
@@ -132,7 +137,43 @@ export function AccountEnrollmentPage({
         setResponse(result);
       }
     },
-    [onReady, onPhoneRequired, onProviderOtpRequired, setProviderOtp],
+    [onReady, onPhoneRequired, onProviderOtpRequired, rail, setProviderOtp],
+  );
+
+  const continueMtPelerin = useCallback(
+    async (input: MtPelerinEnrollmentRequest) => {
+      if (!account) return;
+      setMtPelerinBusy(true);
+      try {
+        const token = await account.getAccessToken();
+        if (!token) throw new Error("not authenticated");
+        let result = await client.account.continueMtPelerinEnrollment(input, {
+          bearerToken: token,
+        });
+        while (result.kind === "signature_required") {
+          const signature = await account.signMessage(result.message);
+          result = await client.account.continueMtPelerinEnrollment(
+            {
+              action: "submit_signature",
+              signature,
+              locale: getLocale(),
+            },
+            { bearerToken: token },
+          );
+        }
+        applyEnrollmentResult(result.enrollment);
+      } catch (err) {
+        console.error("[enrollment] mtpelerin connection failed:", err);
+        applyEnrollmentResult({
+          action: "error",
+          message: "We couldn’t connect your Daimo wallet.",
+          retryable: true,
+        });
+      } finally {
+        setMtPelerinBusy(false);
+      }
+    },
+    [account, applyEnrollmentResult, client],
   );
 
   const fetchEnrollment = useCallback(async () => {
@@ -168,9 +209,13 @@ export function AccountEnrollmentPage({
   // Poll while the state is still advancing
   useEffect(() => {
     if (!response || !POLLING_ACTIONS.has(response.action)) return;
+    if (rail === "chf" && response.action === "provider_pending") {
+      void continueMtPelerin({ action: "resume", locale: getLocale() });
+      return;
+    }
     const interval = setInterval(fetchEnrollment, 2000);
     return () => clearInterval(interval);
-  }, [response?.action, fetchEnrollment]);
+  }, [response?.action, continueMtPelerin, fetchEnrollment, rail]);
 
   useEffect(() => {
     return () => {
@@ -211,6 +256,16 @@ export function AccountEnrollmentPage({
   }
 
   if (!response) return null;
+
+  if (mtPelerinBusy) {
+    return (
+      <EnrollmentWaiting
+        title="Mt Pelerin"
+        label="Creating your Mt Pelerin profile…"
+        onBack={onBack}
+      />
+    );
+  }
 
   switch (response.action) {
     case "kyc_required":
@@ -334,13 +389,172 @@ export function AccountEnrollmentPage({
       return <PhoneEntrySkeleton onBack={onBack} />;
 
     case "provider_otp_required":
+      if (rail === "chf") {
+        return (
+          <MtPelerinTextEntry
+            title="Enter your SMS code"
+            description={response.copy.message}
+            inputMode="numeric"
+            maxLength={6}
+            submitLabel="Verify code"
+            onBack={onBack}
+            onSubmit={(code) =>
+              continueMtPelerin({
+                action: "submit_otp",
+                code,
+                locale: getLocale(),
+              })
+            }
+          />
+        );
+      }
       return <PhoneEntrySkeleton onBack={onBack} />;
+
+    case "provider_account_choice_required":
+      return (
+        <MtPelerinAccountChoice
+          onBack={onBack}
+          onChoose={(choice) =>
+            continueMtPelerin({
+              action: "choose_account",
+              choice,
+              locale: getLocale(),
+            })
+          }
+        />
+      );
+
+    case "provider_phone_required":
+      return (
+        <MtPelerinTextEntry
+          title="Sign in to Mt Pelerin"
+          description="Enter the phone number on your Mt Pelerin account, including country code."
+          inputMode="tel"
+          submitLabel="Send SMS code"
+          onBack={onBack}
+          onSubmit={(phone) =>
+            continueMtPelerin({ action: "start_phone", phone })
+          }
+        />
+      );
+
+    case "provider_email_required":
+      return (
+        <MtPelerinTextEntry
+          title="Add your email"
+          description="Mt Pelerin requires an email before creating a CHF order."
+          inputMode="email"
+          defaultValue={account?.email ?? ""}
+          submitLabel="Continue"
+          onBack={onBack}
+          onSubmit={(email) =>
+            continueMtPelerin({
+              action: "submit_email",
+              email,
+              locale: getLocale(),
+            })
+          }
+        />
+      );
+
+    case "mtpelerin_kyc":
+      return (
+        <EnrollmentIneligible
+          message={`Identity verification is required. You can lower the amount to ${response.remainingAllowance} CHF while verification is unavailable.`}
+          sessionId={sessionId}
+          onBack={onBack}
+        />
+      );
 
     case "active":
       return null;
     default:
       return assertUnreachable(response);
   }
+}
+
+function MtPelerinAccountChoice({
+  onBack,
+  onChoose,
+}: {
+  onBack: () => void;
+  onChoose: (choice: "existing" | "new") => void;
+}) {
+  return (
+    <div className="daimo-flex daimo-flex-col daimo-flex-1 daimo-min-h-0">
+      <PageHeader title="Mt Pelerin" onBack={onBack} />
+      <CenteredContent>
+        <div className="daimo-flex daimo-w-full daimo-max-w-xs daimo-flex-col daimo-gap-3 daimo-px-6 daimo-text-center">
+          <h2 className="daimo-text-xl daimo-font-semibold daimo-text-[var(--daimo-text)]">
+            Do you already have a Mt Pelerin account?
+          </h2>
+          <p className="daimo-text-sm daimo-leading-relaxed daimo-text-[var(--daimo-text-secondary)]">
+            Signing in by SMS lets us reuse your profile and verification,
+            making your deposit faster.
+          </p>
+        </div>
+      </CenteredContent>
+      <div className="daimo-flex daimo-flex-col daimo-items-center daimo-gap-3 daimo-px-6 daimo-pb-6">
+        <PrimaryButton onClick={() => onChoose("existing")}>
+          Yes, sign in
+        </PrimaryButton>
+        <SecondaryButton onClick={() => onChoose("new")}>
+          No, create one
+        </SecondaryButton>
+      </div>
+    </div>
+  );
+}
+
+function MtPelerinTextEntry({
+  title,
+  description,
+  inputMode,
+  defaultValue = "",
+  maxLength,
+  submitLabel,
+  onBack,
+  onSubmit,
+}: {
+  title: string;
+  description: string;
+  inputMode: "email" | "numeric" | "tel";
+  defaultValue?: string;
+  maxLength?: number;
+  submitLabel: string;
+  onBack: () => void;
+  onSubmit: (value: string) => void;
+}) {
+  const [value, setValue] = useState(defaultValue);
+  return (
+    <div className="daimo-flex daimo-flex-col daimo-flex-1 daimo-min-h-0">
+      <PageHeader title={title} onBack={onBack} />
+      <CenteredContent>
+        <div className="daimo-flex daimo-w-full daimo-max-w-xs daimo-flex-col daimo-gap-4 daimo-px-6">
+          <p className="daimo-text-center daimo-text-sm daimo-leading-relaxed daimo-text-[var(--daimo-text-secondary)]">
+            {description}
+          </p>
+          <DaimoTextField
+            value={value}
+            onChange={(event) => setValue(event.target.value)}
+            type={inputMode === "email" ? "email" : "text"}
+            inputMode={inputMode}
+            maxLength={maxLength}
+            autoFocus
+            className="daimo-px-4 daimo-py-3"
+          />
+        </div>
+      </CenteredContent>
+      <div className="daimo-px-6 daimo-pb-6 daimo-flex daimo-flex-col daimo-items-center">
+        <PrimaryButton
+          onClick={() => onSubmit(value.trim())}
+          disabled={!value.trim()}
+        >
+          {submitLabel}
+        </PrimaryButton>
+      </div>
+    </div>
+  );
 }
 
 // --- Sub-components ---

@@ -77,6 +77,7 @@ export enum TokenLogo {
   WETH = "https://daimo.com/coin-logos/weth.png",
   WLD = "https://daimo.com/coin-logos/wld.jpeg",
   XDAI = "https://daimo.com/coin-logos/xdai.png",
+  ZCHF = "https://assets.coingecko.com/coins/images/29505/large/ZCHF.png",
 }
 
 const NATIVE_TOKEN_ADDRESS = zeroAddress;
@@ -233,6 +234,17 @@ export const baseWARS: Token = token({
     "https://assets.coingecko.com/coins/images/70846/large/world_logos_wars_logo_3.png?1764176749",
 });
 
+/** Frankencoin's canonical bridged ZCHF deployment on Base. */
+export const baseZCHF: Token = token({
+  chainId: base.chainId,
+  token: getAddress("0xD4dD9e2F021BB459D5A5f6c24C12fE09c5D45553"),
+  decimals: 18,
+  fiatISO: "CHF",
+  name: "Frankencoin",
+  symbol: "ZCHF",
+  logoURI: TokenLogo.ZCHF,
+});
+
 const baseTokens: Token[] = [
   baseETH,
   baseWETH,
@@ -243,6 +255,7 @@ const baseTokens: Token[] = [
   baseDAI,
   baseUSDT,
   baseWARS,
+  baseZCHF,
 ];
 
 //

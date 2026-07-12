@@ -41,6 +41,7 @@ export function getAccountPaymentEntryTarget(rail: AccountRail) {
     case "sepa":
     case "jpyc":
     case "ars":
+    case "chf":
       // Old two-step flow: amount first, then picker/details.
       return "account-payment" as const;
   }
@@ -65,6 +66,7 @@ export function getAccountPaymentAdvanceTarget(
     case "sepa":
     case "jpyc":
     case "ars":
+    case "chf":
       return "account-bank-details" as const;
     case "apple_pay":
       // Never used — apple_pay skips account-payment entirely.

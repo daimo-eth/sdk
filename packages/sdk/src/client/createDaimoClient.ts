@@ -13,6 +13,8 @@ import type {
   GetDepositResponse,
   RoutingSignDataResponse,
   StartEnrollmentRequest,
+  MtPelerinEnrollmentRequest,
+  MtPelerinEnrollmentResult,
 } from "../common/account.js";
 import type {
   CheckSessionRequest,
@@ -79,6 +81,12 @@ export type DaimoClient = {
       input: StartEnrollmentRequest,
       auth: BearerAuth,
     ): Promise<EnrollmentResponse>;
+    /** Continue Mt Pelerin enrollment. Signature challenges are consumed by
+     * the Account flow and must never be rendered as enrollment copy. */
+    continueMtPelerinEnrollment(
+      input: MtPelerinEnrollmentRequest,
+      auth: BearerAuth,
+    ): Promise<MtPelerinEnrollmentResult>;
     /** Submit a provider-owned OTP for account enrollment. */
     submitEnrollmentOtp(
       input: EnrollmentOtpRequest,
@@ -208,6 +216,14 @@ export function createDaimoClient(config: TransportConfig): DaimoClient {
         return transport.request<EnrollmentResponse>({
           method: "POST",
           path: "/v1/internal/account/enrollment/start",
+          body: input,
+          headers: authHeaders(auth),
+        });
+      },
+      continueMtPelerinEnrollment(input, auth) {
+        return transport.request<MtPelerinEnrollmentResult>({
+          method: "POST",
+          path: "/v1/internal/account/enrollment/mtpelerin",
           body: input,
           headers: authHeaders(auth),
         });

@@ -8,6 +8,7 @@ import {
   PrivyProvider,
   useLoginWithEmail,
   usePrivy,
+  useSignMessage,
   useWallets,
 } from "@privy-io/react-auth";
 import { type ReactNode, useCallback, useEffect, useMemo } from "react";
@@ -83,6 +84,7 @@ function PrivyConsumer({
   const { sendCode: rawSendCode, loginWithCode: rawLoginWithCode } =
     useLoginWithEmail();
   const { wallets, ready: walletsReady } = useWallets();
+  const { signMessage: rawSignMessage } = useSignMessage();
 
   const sendCode = useCallback(
     async (email: string) => {
@@ -126,6 +128,27 @@ function PrivyConsumer({
     [signingWallet, walletAddress],
   );
 
+  const signMessage = useCallback(
+    async (message: string): Promise<string> => {
+      if (
+        !signingWallet ||
+        !walletAddress ||
+        signingWallet.walletClientType !== "privy"
+      ) {
+        throw new Error("no canonical privy embedded wallet");
+      }
+      const { signature } = await rawSignMessage(
+        { message },
+        {
+          address: walletAddress,
+          uiOptions: { showWalletUIs: false },
+        },
+      );
+      return signature;
+    },
+    [rawSignMessage, signingWallet, walletAddress],
+  );
+
   const hooks = useMemo(
     () => ({
       sendCode,
@@ -133,6 +156,7 @@ function PrivyConsumer({
       createWallet,
       getAccessToken,
       signTypedData,
+      signMessage,
       logout,
       ready,
       authenticated,
@@ -155,6 +179,7 @@ function PrivyConsumer({
       createWallet,
       getAccessToken,
       signTypedData,
+      signMessage,
       logout,
     ],
   );

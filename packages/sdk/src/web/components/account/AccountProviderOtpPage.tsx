@@ -55,6 +55,10 @@ export function AccountProviderOtpPage({
         case "hosted_agreement_required":
         case "hosted_kyc_required":
         case "phone_required":
+        case "provider_account_choice_required":
+        case "provider_phone_required":
+        case "provider_email_required":
+        case "mtpelerin_kyc":
           return { ok: true };
         default:
           return assertUnreachable(result);
