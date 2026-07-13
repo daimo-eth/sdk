@@ -254,16 +254,18 @@ export function DaimoModal(props: DaimoModalProps) {
 
   if (!isOpen) return null;
 
-  // While the session and theme load, embedded mode renders a sized skeleton
-  // instead of nothing, so the host iframe reports a non-zero height on its
-  // first paint. Otherwise the surrounding bubble has no height to show and
-  // stays hidden until the full content arrives (or the load timeout fires).
+  // While the session and theme load, embedded mode reserves a sized skeleton
+  // so the host iframe reports a non-zero height early — but keeps it
+  // `visibility: hidden` so default (unthemed) colors never paint. Reveal once
+  // the session and org stylesheet are ready.
   if (loaded == null || !themeReady) {
     if (!embedded) return null;
     return (
-      <EmbeddedContainer showFooterSpacer={false} themeMode={props.themeMode}>
-        <SkeletonContent rowCount={3} showFooter={false} />
-      </EmbeddedContainer>
+      <div style={{ visibility: "hidden" }}>
+        <EmbeddedContainer showFooterSpacer={false} themeMode={props.themeMode}>
+          <SkeletonContent rowCount={3} showFooter={false} />
+        </EmbeddedContainer>
+      </div>
     );
   }
 

@@ -10,6 +10,12 @@ import {
 import { createPortal } from "react-dom";
 
 import { DAIMO_BASE_URL } from "../../common/constants.js";
+import {
+  applyFrameHeight,
+  applyFrameReady,
+  createFrameReadiness,
+  markFrameError,
+} from "../../common/frameReadiness.js";
 import type { DaimoModalEventHandlers } from "../hooks/types.js";
 import {
   DAIMO_FRAME_PARENT_ORIGIN_PARAM,
@@ -141,8 +147,9 @@ export type DaimoFrameProps = DaimoModalEventHandlers & {
  * `DaimoFrame` loads `/webview` in content-only (`embed`) mode and sizes the
  * iframe to the height the content reports over `postMessage`. No wallet
  * libraries or app providers required. The surface stays hidden until the
- * flow's first content arrives; if nothing loads within
- * {@link LOAD_TIMEOUT_MS}, a dismissable error card is shown instead.
+ * flow reports both `ready` (theme resolved) and a positive content height;
+ * if nothing loads within {@link LOAD_TIMEOUT_MS}, a dismissable error card
+ * is shown instead.
  *
  * With `layout="modal"` (default) the iframe renders inside a fixed, dimmed
  * scrim portaled to `document.body`. With `layout="embed"` it renders inline
@@ -186,10 +193,9 @@ export function DaimoFrame({
     [baseUrl, clientSecret, parentOrigin, sessionId],
   );
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
-  const [height, setHeight] = useState(INITIAL_HEIGHT);
   const [mounted, setMounted] = useState(false);
-  const [status, setStatus] = useState<"loading" | "loaded" | "error">(
-    "loading",
+  const [readiness, setReadiness] = useState(() =>
+    createFrameReadiness(INITIAL_HEIGHT),
   );
   // Height animates only after the surface's first appearance, so revealing it
   // doesn't animate from INITIAL_HEIGHT down to the first measured (skeleton)
@@ -201,6 +207,12 @@ export function DaimoFrame({
     setMounted(true);
     setParentOrigin(window.location.origin);
   }, []);
+
+  // New session / frame URL: hide again until the next ready + height pair.
+  useEffect(() => {
+    setReadiness(createFrameReadiness(INITIAL_HEIGHT));
+    setAnimateHeight(false);
+  }, [src]);
 
   useEffect(() => {
     if (!src) return;
@@ -214,36 +226,55 @@ export function DaimoFrame({
       const message = parseDaimoFrameMessage(event.data);
       if (!message) return;
 
-      if (message.type === "modalOpened") onOpen?.();
-      if (message.type === "modalClosed") onClose?.();
-      if (message.type === "paymentStarted") onPaymentStarted?.();
-      if (message.type === "paymentCompleted") onPaymentCompleted?.();
+      if (message.type === "ready") {
+        setReadiness((s) => applyFrameReady(s));
+        return;
+      }
+      if (message.type === "modalOpened") {
+        onOpen?.();
+        return;
+      }
+      if (message.type === "modalClosed") {
+        onClose?.();
+        return;
+      }
+      if (message.type === "paymentStarted") {
+        onPaymentStarted?.();
+        return;
+      }
+      if (message.type === "paymentCompleted") {
+        onPaymentCompleted?.();
+        return;
+      }
       if (message.type === "contentHeightChanged") {
-        setHeight(message.payload.height);
-        setStatus("loaded");
+        setReadiness((s) => applyFrameHeight(s, message.payload.height));
       }
     };
     window.addEventListener("message", handleMessage);
     return () => window.removeEventListener("message", handleMessage);
   }, [onClose, onOpen, onPaymentCompleted, onPaymentStarted, src]);
 
-  // Fall back to the error card if the flow never reports content.
+  // Fall back to the error card if the flow never becomes revealable.
   useEffect(() => {
-    if (status !== "loading") return;
-    const id = setTimeout(() => setStatus("error"), LOAD_TIMEOUT_MS);
+    if (readiness.status !== "loading") return;
+    const id = setTimeout(
+      () => setReadiness((s) => markFrameError(s)),
+      LOAD_TIMEOUT_MS,
+    );
     return () => clearTimeout(id);
-  }, [status]);
+  }, [readiness.status, src]);
 
   // Enable the height transition one frame after the surface first appears, so
   // its reveal snaps to the first height instead of animating down to it.
   useEffect(() => {
-    if (status !== "loaded" || animateHeight) return;
+    if (readiness.status !== "loaded" || animateHeight) return;
     const id = requestAnimationFrame(() => setAnimateHeight(true));
     return () => cancelAnimationFrame(id);
-  }, [status, animateHeight]);
+  }, [readiness.status, animateHeight]);
 
   if (!mounted || !src) return null;
 
+  const { height, status } = readiness;
   const surfaceTransition = animateHeight
     ? "height 0.2s ease-in-out, opacity 0.2s ease-in-out"
     : "opacity 0.2s ease-in-out";
