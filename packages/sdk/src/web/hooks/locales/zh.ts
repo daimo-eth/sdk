@@ -51,6 +51,7 @@ export const zh: typeof en = {
   oneTimeAddress: "一次性地址",
   amount: "金额",
   expiresIn: "剩余时间：",
+  minutes: (min: number) => `${min}分钟`,
 
   // WalletAmountPage
   enterAmount: "输入金额",

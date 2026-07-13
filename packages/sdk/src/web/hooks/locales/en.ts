@@ -49,6 +49,7 @@ export const en = {
   oneTimeAddress: "One-Time Address",
   amount: "Amount",
   expiresIn: "Expires in:",
+  minutes: (min: number) => `${min} min`,
 
   // WalletAmountPage
   enterAmount: "Enter Amount",
