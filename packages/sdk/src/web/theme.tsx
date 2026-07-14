@@ -21,7 +21,10 @@ export function useDaimoThemeReady(url: string | undefined): boolean {
   const [readyUrl, setReadyUrl] = useState<string>();
 
   useEffect(() => {
-    if (url == null) return;
+    if (url == null) {
+      setReadyUrl(undefined);
+      return;
+    }
 
     const link = document.createElement("link");
     link.rel = "stylesheet";
