@@ -51,6 +51,7 @@ export const pt: typeof en = {
   oneTimeAddress: "Endereço de uso único",
   amount: "Valor",
   expiresIn: "Expira em:",
+  minutes: (min: number) => `${min} min`,
 
   // WalletAmountPage
   enterAmount: "Inserir valor",

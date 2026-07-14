@@ -51,6 +51,7 @@ export const ja: typeof en = {
   oneTimeAddress: "ワンタイムアドレス",
   amount: "金額",
   expiresIn: "残り時間：",
+  minutes: (min: number) => `${min}分`,
 
   // WalletAmountPage
   enterAmount: "金額を入力",

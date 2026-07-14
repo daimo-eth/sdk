@@ -21,6 +21,18 @@ export function useCountdown(expiresAt: number, defaultS: number) {
   return { remainingS, isExpired: hasExpiry && remainingS === 0 };
 }
 
+/** Above this remaining time, show whole minutes instead of mm:ss. */
+const SHOW_SECONDS_BELOW_S = 5 * 60;
+
+function formatRemaining(remainingS: number): string {
+  if (remainingS > SHOW_SECONDS_BELOW_S) {
+    return t.minutes(Math.floor(remainingS / 60));
+  }
+  const m = `${Math.floor(remainingS / 60)}`.padStart(2, "0");
+  const s = `${remainingS % 60}`.padStart(2, "0");
+  return `${m}:${s}`;
+}
+
 export function Countdown({
   remainingS,
   isExpired,
@@ -30,9 +42,6 @@ export function Countdown({
   isExpired: boolean;
   totalS: number;
 }) {
-  const m = `${Math.floor(remainingS / 60)}`.padStart(2, "0");
-  const s = `${remainingS % 60}`.padStart(2, "0");
-
   return (
     <div className="daimo-flex daimo-flex-col daimo-items-center daimo-gap-1">
       <span className="daimo-text-sm daimo-text-[var(--daimo-text)]">
@@ -46,7 +55,7 @@ export function Countdown({
             color: isExpired ? "var(--daimo-error)" : "var(--daimo-text)",
           }}
         >
-          {isExpired ? t.expired : `${m}:${s}`}
+          {isExpired ? t.expired : formatRemaining(remainingS)}
         </span>
       </div>
     </div>
