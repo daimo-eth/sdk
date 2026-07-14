@@ -51,6 +51,7 @@ export const ko: typeof en = {
   oneTimeAddress: "일회용 주소",
   amount: "금액",
   expiresIn: "남은 시간:",
+  minutes: (min: number) => `${min}분`,
 
   // WalletAmountPage
   enterAmount: "금액 입력",
