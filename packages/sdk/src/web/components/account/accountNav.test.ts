@@ -61,7 +61,7 @@ describe("getAccountPaymentAdvanceTarget", () => {
     expect(getAccountPaymentEntryTarget("pix")).toBe("account-payment");
     for (const platform of ALL_PLATFORMS) {
       expect(getAccountPaymentAdvanceTarget("pix", platform)).toBe(
-        "account-pix",
+        "account-request-to-pay",
       );
     }
   });

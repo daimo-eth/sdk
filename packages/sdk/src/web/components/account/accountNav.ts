@@ -30,7 +30,7 @@ export function getDepositResumeTarget(
  * - interac: two-step amount entry → bank picker (desktop) or deeplink (mobile)
  * - ach/sepa/jpyc/ars: two-step amount entry → transfer details
  * - apple_pay: single unified amount+Apple Pay page (Coinbase Headless)
- * - pix: amount entry → PIX QR/code page
+ * - pix: amount entry → expiring request-to-pay page
  */
 export function getAccountPaymentEntryTarget(rail: AccountRail) {
   switch (rail) {
@@ -72,6 +72,6 @@ export function getAccountPaymentAdvanceTarget(
       // Never used — apple_pay skips account-payment entirely.
       return "account-apple-pay" as const;
     case "pix":
-      return "account-pix" as const;
+      return "account-request-to-pay" as const;
   }
 }

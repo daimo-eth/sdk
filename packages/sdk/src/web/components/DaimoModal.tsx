@@ -78,7 +78,7 @@ import { AccountEnrollmentPage } from "./account/AccountEnrollmentPage.js";
 import { AccountOtpPage } from "./account/AccountOtpPage.js";
 import { AccountPhonePage } from "./account/AccountPhonePage.js";
 import { AccountPhoneOtpPage } from "./account/AccountPhoneOtpPage.js";
-import { AccountPixPage } from "./account/AccountPixPage.js";
+import { AccountRequestToPayPage } from "./account/AccountRequestToPayPage.js";
 import { AccountPaymentPage } from "./account/AccountPaymentPage.js";
 import { AccountProviderOtpPage } from "./account/AccountProviderOtpPage.js";
 import { AccountStatusPage } from "./account/AccountStatusPage.js";
@@ -576,7 +576,7 @@ function DaimoModalInner({
       !nav.topEntry ||
       (nav.topEntry.type === "choose-option" && !nav.canGoBack) ||
       nav.topEntry.type === "account-bank-details" ||
-      nav.topEntry.type === "account-pix"
+      nav.topEntry.type === "account-request-to-pay"
     );
     content = renderEntry(nav.topEntry, {
       session,
@@ -1005,13 +1005,14 @@ function renderEntry(
           onAdvance={() => ctx.onAccountAdvance("account-status")}
         />
       );
-    case "account-pix": {
+    case "account-request-to-pay": {
       const accountNode = findNode(entry.nodeId, ctx.session.navTree);
       return (
-        <AccountPixPage
+        <AccountRequestToPayPage
           sessionId={ctx.session.sessionId}
           clientSecret={ctx.session.clientSecret}
           baseUrl={ctx.session.baseUrl}
+          rail={entry.rail}
           icon={accountNode?.type === "Fiat" ? accountNode.icon : undefined}
           onAdvance={(deposit) =>
             ctx.onAccountAdvance("account-status", {

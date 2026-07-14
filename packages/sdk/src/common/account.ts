@@ -418,12 +418,15 @@ export type DepositPaymentInfo =
       fields: DepositPaymentField[];
     })
   | (DepositConstraints & {
-      flow: "pix";
+      flow: "request-to-pay";
+      title: string;
       instructions: string;
-      brCode: string;
-      /** BRLA amount the routing permit must authorize. */
+      code: string;
+      copyLabel: string;
+      expiredMessage: string;
+      /** Token amount the routing authorization must cover. */
       purchaseAmount: string;
-      /** ISO-8601 expiration returned by the PIX provider. */
+      /** ISO-8601 expiration returned by the provider. */
       expiresAt: string;
     })
   | (DepositConstraints & {

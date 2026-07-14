@@ -117,7 +117,7 @@ export type NavEntry =
   | ({ type: "account-canada-bank-picker" } & AccountNavBase)
   | ({ type: "account-interac-confirm" } & AccountNavBase)
   | ({ type: "account-bank-details" } & AccountNavBase)
-  | ({ type: "account-pix" } & AccountNavBase)
+  | ({ type: "account-request-to-pay" } & AccountNavBase)
   | ({ type: "account-apple-pay" } & AccountNavBase)
   | ({ type: "account-stripe-onramp" } & AccountNavBase)
   | ({ type: "account-deeplink" } & AccountNavBase)

@@ -248,10 +248,10 @@ async function createSignedDraftDeposit({
     depositAmount,
   });
   if (preview.payment === null) return preview;
-  const signedAmount =
-    preview.payment.flow === "wallet-pay-widget"
-      ? preview.payment.purchaseAmount
-      : depositAmount;
+  const signedAmount = getAuthorizedDepositAmount(
+    preview.payment,
+    depositAmount,
+  );
   return signAndUpsertDeposit({
     client,
     accountFlow,
@@ -260,4 +260,18 @@ async function createSignedDraftDeposit({
     depositAmount,
     authorizedAmount: signedAmount,
   });
+}
+
+/** Return the exact server-quoted amount covered by routing signatures. */
+export function getAuthorizedDepositAmount(
+  payment: object,
+  depositAmount: string,
+): string {
+  if (
+    "purchaseAmount" in payment &&
+    typeof payment.purchaseAmount === "string"
+  ) {
+    return payment.purchaseAmount;
+  }
+  return depositAmount;
 }

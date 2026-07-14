@@ -44,7 +44,7 @@ export function resolvePixRetryNavTarget(
   const { nextAction } = state.account;
 
   if (nextAction === "ready_for_payment") {
-    return { type: "account-pix", nodeId, rail, autoNav };
+    return { type: "account-request-to-pay", nodeId, rail, autoNav };
   }
 
   if (nextAction === "enrollment") {

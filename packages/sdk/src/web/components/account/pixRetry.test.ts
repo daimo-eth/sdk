@@ -68,14 +68,14 @@ function readyAccount(): GetAccountResponse {
 }
 
 describe("resolvePixRetryNavTarget", () => {
-  test("ready_for_payment opens account-pix directly", () => {
+  test("ready_for_payment opens request-to-pay directly", () => {
     expect(
       resolvePixRetryNavTarget(
         { hasAuth: true, account: readyAccount() },
         { nodeId: NODE_ID },
       ),
     ).toEqual({
-      type: "account-pix",
+      type: "account-request-to-pay",
       nodeId: NODE_ID,
       rail: "pix",
       autoNav: true,
@@ -210,7 +210,7 @@ describe("runPixRetryFlow", () => {
       ok: true,
       response,
       nav: {
-        type: "account-pix",
+        type: "account-request-to-pay",
         nodeId: NODE_ID,
         rail: "pix",
         autoNav: true,

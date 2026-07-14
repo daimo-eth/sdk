@@ -1,20 +1,24 @@
+import { t } from "../../hooks/locale.js";
 import { SecondaryButton } from "../buttons.js";
 import { ExpiredIcon } from "../icons.js";
-import { t } from "../../hooks/locale.js";
 import { ContactSupportButton } from "../shared.js";
 
-type AccountPixExpiredContentProps = {
+type AccountRequestToPayExpiredContentProps = {
   sessionId: string;
+  message: string;
+  supportSubject: string;
   onRetry: () => void | Promise<void>;
   isRetrying?: boolean;
 };
 
-/** Expired PIX ticket recovery: message, retry, and support. */
-export function AccountPixExpiredContent({
+/** Recovery UI for an expired one-time payment request. */
+export function AccountRequestToPayExpiredContent({
   sessionId,
+  message,
+  supportSubject,
   onRetry,
   isRetrying = false,
-}: AccountPixExpiredContentProps) {
+}: AccountRequestToPayExpiredContentProps) {
   return (
     <div className="daimo-flex daimo-flex-col daimo-items-center daimo-gap-6">
       <div
@@ -24,13 +28,13 @@ export function AccountPixExpiredContent({
         <ExpiredIcon />
       </div>
       <p className="daimo-text-center daimo-text-sm daimo-leading-relaxed daimo-text-[var(--daimo-text-secondary)]">
-        {t.accountPixExpired}
+        {message}
       </p>
       <SecondaryButton onClick={onRetry} disabled={isRetrying}>
         {t.tryAgain}
       </SecondaryButton>
       <ContactSupportButton
-        subject="Expired PIX code"
+        subject={supportSubject}
         info={{ sessionId }}
       />
     </div>

@@ -11,7 +11,7 @@ import { useDepositPoller } from "../../hooks/useDepositPoller.js";
 import { ConfirmationSpinner } from "../ConfirmationSpinner.js";
 import { ErrorPage } from "../ErrorPage.js";
 import { CenteredContent, PageHeader, ShowReceiptButton } from "../shared.js";
-import { AccountPixExpiredContent } from "./AccountPixExpiredContent.js";
+import { AccountRequestToPayExpiredContent } from "./AccountRequestToPayExpiredContent.js";
 import { shouldShowPixExpiredRecovery } from "./accountPixExpired.js";
 
 type AccountStatusPageProps = {
@@ -94,8 +94,10 @@ export function AccountStatusPage({
       <div className="daimo-flex daimo-flex-col daimo-flex-1 daimo-min-h-0">
         <PageHeader title={t.expired} />
         <CenteredContent>
-          <AccountPixExpiredContent
+          <AccountRequestToPayExpiredContent
             sessionId={sessionId}
+            message={t.accountPixExpired}
+            supportSubject="Expired PIX code"
             onRetry={handlePixRetry}
             isRetrying={isRetrying || fiatAmount == null}
           />
