@@ -38,6 +38,7 @@ export const es: typeof en = {
   oneTimeAddress: "Dirección de uso único",
   amount: "Monto",
   expiresIn: "Expira en:",
+  minutes: (min: number) => `${min} min`,
   enterAmount: "Ingresar monto",
   max: "Máx",
   balance: "Saldo:",
