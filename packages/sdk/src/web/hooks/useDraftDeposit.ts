@@ -12,7 +12,7 @@ import {
   useSessionDepositState,
 } from "./useAccountFlow.js";
 import { formatUserError } from "./formatUserError.js";
-import { t } from "./locale.js";
+import { getLocale, t } from "./locale.js";
 
 type UseDraftDepositArgs = {
   client: DaimoClient;
@@ -196,6 +196,7 @@ export async function signAndUpsertDeposit({
       sessionId,
       rail,
       depositAmount,
+      locale: getLocale(),
       deliverySig,
       deliverySigData: deliverySignData,
       routingSig,
@@ -228,6 +229,7 @@ async function upsertPlainDraftDeposit({
       sessionId,
       rail,
       depositAmount,
+      locale: getLocale(),
     },
     { bearerToken: token },
   );

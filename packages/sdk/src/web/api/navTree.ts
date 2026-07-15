@@ -1,5 +1,8 @@
 import type { Address } from "viem";
-import type { AccountRail } from "../../common/account.js";
+import type {
+  AccountRail,
+  DepositPaymentInteraction,
+} from "../../common/account.js";
 import type { ExchangeId } from "../../common/api.js";
 import type { SessionPublicInfo } from "../../common/session.js";
 
@@ -129,6 +132,8 @@ export type NavNodeConnectedWallet = NavNodeCommon & {
 export type NavNodeFiat = NavNodeCommon & {
   type: "Fiat";
   fiatMethod: AccountRail;
+  /** Semantic entry flow. Optional only while old servers remain supported. */
+  paymentInteraction?: DepositPaymentInteraction;
   icon?: string;
   kycRequirement?: NavNodeKycRequirement;
 };

@@ -2,6 +2,7 @@ import type {
   AccountDepositStatus,
   AccountEnrollmentUpdateApplePayEnhancedVerification,
   AccountRail,
+  DepositPaymentInteraction,
 } from "../../common/account.js";
 import type { NavNode, SessionWithNav } from "../api/navTree.js";
 import type { WalletPaymentOption } from "../api/walletTypes.js";
@@ -11,6 +12,7 @@ export type { SessionWithNav };
 type AccountNavBase = {
   nodeId: string;
   rail: AccountRail;
+  paymentInteraction: DepositPaymentInteraction;
   autoNav?: boolean;
 };
 
@@ -113,11 +115,11 @@ export type NavEntry =
       type: "account-enrollment-update";
       update: AccountEnrollmentUpdateApplePayEnhancedVerification;
     } & AccountNavBase)
-  | ({ type: "account-payment" } & AccountNavBase)
-  | ({ type: "account-canada-bank-picker" } & AccountNavBase)
-  | ({ type: "account-interac-confirm" } & AccountNavBase)
-  | ({ type: "account-bank-details" } & AccountNavBase)
-  | ({ type: "account-apple-pay" } & AccountNavBase)
+  | ({ type: "account-amount" } & AccountNavBase)
+  | ({ type: "account-institution-picker" } & AccountNavBase)
+  | ({ type: "account-institution-review" } & AccountNavBase)
+  | ({ type: "account-payment-instructions" } & AccountNavBase)
+  | ({ type: "account-wallet-pay" } & AccountNavBase)
   | ({ type: "account-stripe-onramp" } & AccountNavBase)
   | ({ type: "account-deeplink" } & AccountNavBase)
   | ({

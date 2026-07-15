@@ -353,6 +353,39 @@ export type DepositPaymentField = {
   emphasized?: boolean;
 };
 
+/** Closed semantic vocabulary shared by pre-create navigation and payment info. */
+export const depositPaymentInteractions = [
+  "bank-picker",
+  "bank-transfer",
+  "directions",
+  "wallet-pay-widget",
+] as const;
+export type DepositPaymentInteraction =
+  (typeof depositPaymentInteractions)[number];
+
+/** Server-owned copy and actions for an institution-picker payment surface. */
+export type DepositInstitutionPaymentUi = {
+  picker: {
+    title: string;
+    searchPlaceholder: string;
+    otherInstitutionsLabel: string;
+  };
+  review: {
+    title: string;
+    description: string;
+    fields: DepositPaymentField[];
+    institutionLabel: string;
+    openInstitutionLabel: string;
+    openFallbackLabel: string;
+  };
+  waiting: {
+    title: string;
+    instructions: string;
+    openInstitutionLabel: string;
+    openFallbackLabel: string;
+  };
+};
+
 export type DepositPaymentStep = {
   title: string;
   description: string;
@@ -406,25 +439,29 @@ export type DepositPaymentOnchainTransfer = {
  */
 export type DepositPaymentInfo =
   | (DepositConstraints & {
-      flow: "bank-picker";
+      flow: Extract<DepositPaymentInteraction, "bank-picker">;
       instructions: string;
       institutions: DepositInstitution[];
       qrUrl: string | null;
+      /** Added by interaction-driven servers; absent only for compatibility. */
+      institutionPaymentUi?: DepositInstitutionPaymentUi;
+      /** Provider-defined fallback action; old servers only return `qrUrl`. */
+      fallbackDeeplink?: DepositDeeplink;
     })
   | (DepositConstraints & {
-      flow: "bank-transfer";
+      flow: Extract<DepositPaymentInteraction, "bank-transfer">;
       instructions: string;
       fields: DepositPaymentField[];
     })
   | (DepositConstraints & {
-      flow: "directions";
+      flow: Extract<DepositPaymentInteraction, "directions">;
       instructions: string;
       steps: DepositPaymentStep[];
       onchainTransfer: DepositPaymentOnchainTransfer;
       reference?: DepositPaymentReference;
     })
   | (DepositConstraints & {
-      flow: "wallet-pay-widget";
+      flow: Extract<DepositPaymentInteraction, "wallet-pay-widget">;
       instructions: string;
       paymentLinkUrl: string;
       paymentLinkKind: "apple_pay" | "google_pay";

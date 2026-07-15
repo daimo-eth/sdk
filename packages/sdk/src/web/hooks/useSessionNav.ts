@@ -29,10 +29,11 @@ import {
   getAccountPaymentEntryTarget,
   getDepositResumeTarget,
 } from "../components/account/accountNav.js";
+import { getNodePaymentInteraction } from "../components/account/accountPaymentCompatibility.js";
 import { detectPlatform, isDesktop, type DaimoPlatform } from "../platform.js";
 import {
+  interactionRequiresPopup,
   isFramed,
-  railRequiresPopup,
 } from "../components/account/fiatPopup.js";
 import { pruneCompletedAccountAuth } from "./accountAuthNav.js";
 import { useDaimoClient } from "./DaimoClientContext.js";
@@ -386,9 +387,16 @@ export function useSessionNav(
       options?: { popupRequired?: boolean },
     ) => {
       const rail = node.fiatMethod;
+      const paymentInteraction = getNodePaymentInteraction(node);
       setStack((prev) => [
         ...prev,
-        { type: "account-loading", nodeId, rail, autoNav },
+        {
+          type: "account-loading",
+          nodeId,
+          rail,
+          paymentInteraction,
+          autoNav,
+        },
       ]);
 
       const replaceLoading = (entry: NavEntry) => {
@@ -412,6 +420,7 @@ export function useSessionNav(
             type: resumeType,
             nodeId,
             rail,
+            paymentInteraction,
             autoNav,
             initialStatus: deposit.status,
           });
@@ -423,7 +432,13 @@ export function useSessionNav(
       }
 
       if (options?.popupRequired) {
-        replaceLoading({ type: "fiat-popup", nodeId, rail, autoNav });
+        replaceLoading({
+          type: "fiat-popup",
+          nodeId,
+          rail,
+          paymentInteraction,
+          autoNav,
+        });
         return;
       }
 
@@ -432,6 +447,7 @@ export function useSessionNav(
           type: "account-error",
           nodeId,
           rail,
+          paymentInteraction,
           autoNav,
           message: "account deposit is not available for this session.",
         });
@@ -461,8 +477,14 @@ export function useSessionNav(
           if (result.nextAction === "ready_for_payment") {
             // Some rails skip the amount-first step and go straight to a
             // unified payment page.
-            const entryType = getAccountPaymentEntryTarget(rail);
-            replaceLoading({ type: entryType, nodeId, rail, autoNav });
+            const entryType = getAccountPaymentEntryTarget(paymentInteraction);
+            replaceLoading({
+              type: entryType,
+              nodeId,
+              rail,
+              paymentInteraction,
+              autoNav,
+            });
             return;
           }
           if (result.nextAction === "enrollment") {
@@ -470,6 +492,7 @@ export function useSessionNav(
               type: "account-enrollment",
               nodeId,
               rail,
+              paymentInteraction,
               autoNav,
             });
             return;
@@ -479,6 +502,7 @@ export function useSessionNav(
               type: "account-enrollment-update",
               nodeId,
               rail,
+              paymentInteraction,
               autoNav,
               update: result.enrollmentUpdate,
             });
@@ -492,13 +516,25 @@ export function useSessionNav(
         accountFlow.setEmail(accountAuth.email);
         const sent = await accountFlow.sendOtp(accountAuth.email);
         if (sent) {
-          replaceLoading({ type: "account-otp", nodeId, rail, autoNav });
+          replaceLoading({
+            type: "account-otp",
+            nodeId,
+            rail,
+            paymentInteraction,
+            autoNav,
+          });
           return;
         }
       }
 
       // New user or no email hint — start from email
-      replaceLoading({ type: "account-email", nodeId, rail, autoNav });
+      replaceLoading({
+        type: "account-email",
+        nodeId,
+        rail,
+        paymentInteraction,
+        autoNav,
+      });
     },
     [accountAuth, accountFlow, client, session.clientSecret, session.sessionId],
   );
@@ -638,7 +674,7 @@ export function useSessionNav(
       if (targetNode.type === "Fiat") {
         const popupRequired =
           enableFiatPopup &&
-          railRequiresPopup(targetNode.fiatMethod) &&
+          interactionRequiresPopup(getNodePaymentInteraction(targetNode)) &&
           isFramed();
         handleAccountNavigate(nodeId, targetNode, autoNav, { popupRequired });
         return;
@@ -1076,14 +1112,17 @@ export function useSessionNav(
   /** Advance account flow to the next screen, preserving nodeId + rail. */
   const handleAccountAdvance = useCallback(
     (nextType: AccountNavEntry["type"]) => {
-      const { nodeId, rail } = accountEntry(topEntry);
+      const { nodeId, rail, paymentInteraction } = accountEntry(topEntry);
 
       const pushPhoneEntry = (
         type: "account-loading" | "account-phone" | "account-phone-otp",
       ) => {
         setStack((prev) => {
           const nextStack = pruneCompletedAccountAuth(prev, type);
-          return [...nextStack, { type, nodeId, rail } as NavEntry];
+          return [
+            ...nextStack,
+            { type, nodeId, rail, paymentInteraction } as NavEntry,
+          ];
         });
       };
 
@@ -1105,17 +1144,21 @@ export function useSessionNav(
 
       setStack((prev) => {
         const nextStack = pruneCompletedAccountAuth(prev, nextType);
-        return [...nextStack, { type: nextType, nodeId, rail } as NavEntry];
+        return [
+          ...nextStack,
+          { type: nextType, nodeId, rail, paymentInteraction } as NavEntry,
+        ];
       });
     },
     [accountAuth, accountFlow, topEntry],
   );
 
   const handleAccountLogout = useCallback(() => {
-    const { nodeId, rail, autoNav } = accountEntry(topEntry);
+    const { nodeId, rail, paymentInteraction, autoNav } =
+      accountEntry(topEntry);
     setStack((prev) => [
       ...prev.filter((entry) => !isSameAccountRailEntry(entry, nodeId, rail)),
-      { type: "account-email", nodeId, rail, autoNav },
+      { type: "account-email", nodeId, rail, paymentInteraction, autoNav },
     ]);
   }, [topEntry]);
 
