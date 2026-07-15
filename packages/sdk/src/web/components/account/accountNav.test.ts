@@ -2,13 +2,21 @@ import { describe, expect, test } from "vitest";
 
 import type {
   AccountDepositStatus,
-  AccountRail,
+  DepositPaymentInfo,
+  DepositPaymentInteraction,
 } from "../../../common/account.js";
+import type { NavNodeFiat } from "../../api/navTree.js";
 import type { DaimoPlatform } from "../../platform.js";
 import {
   getAccountPaymentAdvanceTarget,
+  getAccountPaymentEntryTarget,
   getDepositResumeTarget,
+  isPaymentInteractionCompatible,
 } from "./accountNav.js";
+import {
+  getInstitutionPaymentContract,
+  getNodePaymentInteraction,
+} from "./accountPaymentCompatibility.js";
 
 const ALL_PLATFORMS: DaimoPlatform[] = [
   "desktop",
@@ -18,47 +26,115 @@ const ALL_PLATFORMS: DaimoPlatform[] = [
   "other",
 ];
 
-describe("getAccountPaymentAdvanceTarget", () => {
-  test("interac shows the bank picker on desktop", () => {
-    expect(getAccountPaymentAdvanceTarget("interac", "desktop")).toBe(
-      "account-canada-bank-picker",
+const ALL_INTERACTIONS: DepositPaymentInteraction[] = [
+  "bank-picker",
+  "bank-transfer",
+  "directions",
+  "wallet-pay-widget",
+];
+
+describe("interaction-driven account navigation", () => {
+  test("wallet pay keeps combined entry while other interactions enter amount", () => {
+    expect(getAccountPaymentEntryTarget("wallet-pay-widget")).toBe(
+      "account-wallet-pay",
     );
-    // isDesktop() treats "other" as desktop.
-    expect(getAccountPaymentAdvanceTarget("interac", "other")).toBe(
-      "account-canada-bank-picker",
-    );
+    for (const interaction of [
+      "bank-picker",
+      "bank-transfer",
+      "directions",
+    ] as const) {
+      expect(getAccountPaymentEntryTarget(interaction)).toBe("account-amount");
+    }
   });
 
-  test("interac reviews before opening interac on mobile", () => {
+  test("institution picker preserves desktop and mobile choreography", () => {
+    expect(getAccountPaymentAdvanceTarget("bank-picker", "desktop")).toBe(
+      "account-institution-picker",
+    );
+    expect(getAccountPaymentAdvanceTarget("bank-picker", "other")).toBe(
+      "account-institution-picker",
+    );
     for (const platform of ["mobile", "ios", "android"] as const) {
-      expect(getAccountPaymentAdvanceTarget("interac", platform)).toBe(
-        "account-interac-confirm",
+      expect(getAccountPaymentAdvanceTarget("bank-picker", platform)).toBe(
+        "account-institution-review",
       );
     }
   });
 
-  test("bank-details rails are unaffected by platform", () => {
-    const rails: AccountRail[] = ["ach", "sepa", "jpyc", "ars"];
-    for (const rail of rails) {
+  test("every non-picker interaction has a platform-independent renderer", () => {
+    const expected = {
+      "bank-transfer": "account-payment-instructions",
+      directions: "account-payment-instructions",
+      "wallet-pay-widget": "account-wallet-pay",
+    } as const;
+    for (const [interaction, target] of Object.entries(expected)) {
       for (const platform of ALL_PLATFORMS) {
-        expect(getAccountPaymentAdvanceTarget(rail, platform)).toBe(
-          "account-bank-details",
+        expect(
+          getAccountPaymentAdvanceTarget(
+            interaction as keyof typeof expected,
+            platform,
+          ),
+        ).toBe(target);
+      }
+    }
+  });
+
+  test("actual payment flow must match the advertised interaction", () => {
+    for (const advertised of ALL_INTERACTIONS) {
+      for (const actual of ALL_INTERACTIONS) {
+        const payment = { flow: actual } as DepositPaymentInfo;
+        expect(isPaymentInteractionCompatible(advertised, payment)).toBe(
+          advertised === actual,
         );
       }
     }
   });
 
-  test("apple_pay is unaffected by platform", () => {
-    for (const platform of ALL_PLATFORMS) {
-      expect(getAccountPaymentAdvanceTarget("apple_pay", platform)).toBe(
-        "account-apple-pay",
-      );
-    }
+  test("uses server interaction without consulting the rail", () => {
+    const node = makeFiatNode("ach", "wallet-pay-widget");
+    expect(getNodePaymentInteraction(node)).toBe("wallet-pay-widget");
+  });
+
+  test("isolates temporary old-server rail fallback", () => {
+    expect(getNodePaymentInteraction(makeFiatNode("interac"))).toBe(
+      "bank-picker",
+    );
+    expect(getNodePaymentInteraction(makeFiatNode("apple_pay"))).toBe(
+      "wallet-pay-widget",
+    );
+    expect(getNodePaymentInteraction(makeFiatNode("ach"))).toBe(
+      "bank-transfer",
+    );
+    expect(getNodePaymentInteraction(makeFiatNode("sepa"))).toBe(
+      "bank-transfer",
+    );
+    expect(getNodePaymentInteraction(makeFiatNode("jpyc"))).toBe("directions");
+    expect(getNodePaymentInteraction(makeFiatNode("ars"))).toBe(
+      "bank-transfer",
+    );
+  });
+
+  test("isolates old bank-picker payload normalization", () => {
+    const payment = {
+      flow: "bank-picker",
+      currency: { code: "CAD", symbol: "CA$" },
+      qrUrl: "https://example.com/accept?rID=legacy-reference",
+    } as const;
+
+    const contract = getInstitutionPaymentContract(payment, "25.00");
+    expect(contract.ui.review.fields).toContainEqual({
+      key: "reference",
+      label: "Request reference",
+      value: "legacy-reference",
+    });
+    expect(contract.fallbackDeeplink).toEqual({
+      type: "redirect",
+      url: payment.qrUrl,
+    });
   });
 });
 
 describe("getDepositResumeTarget", () => {
-  // Exhaustive: adding a deposit status must force a decision here.
   const ALL_STATUSES: AccountDepositStatus[] = [
     "initiated",
     "awaiting_payment",
@@ -82,7 +158,7 @@ describe("getDepositResumeTarget", () => {
     }
   });
 
-  test("pre-payment deposits re-enter the normal flow", () => {
+  test("pre-payment deposits re-enter the interaction flow", () => {
     expect(getDepositResumeTarget("initiated")).toBeNull();
     expect(getDepositResumeTarget("awaiting_payment")).toBeNull();
   });
@@ -94,3 +170,16 @@ describe("getDepositResumeTarget", () => {
     }
   });
 });
+
+function makeFiatNode(
+  fiatMethod: NavNodeFiat["fiatMethod"],
+  paymentInteraction?: DepositPaymentInteraction,
+): NavNodeFiat {
+  return {
+    type: "Fiat",
+    id: `Fiat-${fiatMethod}`,
+    title: fiatMethod,
+    fiatMethod,
+    paymentInteraction,
+  };
+}

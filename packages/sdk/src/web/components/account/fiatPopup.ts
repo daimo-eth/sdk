@@ -1,18 +1,18 @@
-import type { AccountRail } from "../../../common/account.js";
+import type { DepositPaymentInteraction } from "../../../common/account.js";
 
 /**
- * Fiat rails that must run in a top-level daimo.com window when the checkout
- * is framed. Apple Pay merchant validation checks the top-level domain, so
- * it cannot run inside an iframe on a partner site.
+ * Wallet-pay widgets must run in a top-level daimo.com window when checkout is
+ * framed. Merchant validation checks the top-level domain, so the interaction
+ * cannot run inside an iframe on a partner site.
  */
-const FIAT_POPUP_RAILS: ReadonlySet<AccountRail> = new Set(["apple_pay"]);
-
 export const FIAT_POPUP_WINDOW_NAME = "daimo-pay-popup";
 
 export const FIAT_POPUP_FEATURES = "popup=yes,width=420,height=760";
 
-export function railRequiresPopup(rail: AccountRail): boolean {
-  return FIAT_POPUP_RAILS.has(rail);
+export function interactionRequiresPopup(
+  interaction: DepositPaymentInteraction,
+): boolean {
+  return interaction === "wallet-pay-widget";
 }
 
 /**

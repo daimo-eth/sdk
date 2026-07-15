@@ -11,6 +11,7 @@ import type {
   AccountRail,
   DepositConstraints,
   DepositPaymentInfo,
+  DepositPaymentInteraction,
 } from "../../../common/account.js";
 import { isSafariBrowser } from "../../platform.js";
 import { useDaimoClient } from "../../hooks/DaimoClientContext.js";
@@ -22,6 +23,7 @@ import { formatFixedAmount } from "../../formatAmount.js";
 import { AmountInput, PageHeader, useAmountInput } from "../shared.js";
 import { AccountEnrollmentUpdatePage } from "./AccountEnrollmentUpdatePage.js";
 import { useCoinbaseApplePayWidget } from "./useCoinbaseApplePayWidget.js";
+import { isPaymentInteractionCompatible } from "./accountNav.js";
 
 type ShellRect = {
   left: number;
@@ -30,8 +32,9 @@ type ShellRect = {
   height: number;
 };
 
-type AccountApplePayPageProps = {
+type AccountWalletPayPageProps = {
   rail: AccountRail;
+  paymentInteraction: DepositPaymentInteraction;
   sessionId: string;
   clientSecret: string;
   actionVerb: string;
@@ -58,15 +61,16 @@ const APPLE_PAY_COLLAPSED_CROP_Y = 6;
  * `useApplePaySandbox=true`, but Coinbase may still require the current host
  * to be allowlisted for the iframe to load.
  */
-export function AccountApplePayPage({
+export function AccountWalletPayPage({
   rail,
+  paymentInteraction,
   sessionId,
   clientSecret,
   actionVerb,
   initialAmount,
   onBack,
   onAdvance,
-}: AccountApplePayPageProps) {
+}: AccountWalletPayPageProps) {
   const client = useDaimoClient();
   const { accountFlow, depositState } = useSessionDepositState(sessionId);
   const didAdvanceRef = useRef(false);
@@ -95,7 +99,7 @@ export function AccountApplePayPage({
         setConstraints(result);
       } catch (err) {
         constraintsFetchedRef.current = false;
-        console.error("[apple-pay] failed to fetch constraints:", err);
+        console.error("[wallet-pay] failed to fetch constraints:", err);
       }
     })();
   }, [accountFlow, client, sessionId, rail]);
@@ -129,11 +133,16 @@ export function AccountApplePayPage({
     enabled: isValid,
     draftMode: "signed",
   });
-  const startedPayment =
-    hasStartedDeposit && matchesAmount ? depositState.payment : null;
-  const payment: DepositPaymentInfo | null = startedPayment ?? draftPayment;
+  const candidatePayment: DepositPaymentInfo | null =
+    hasStartedDeposit && matchesAmount ? depositState.payment : draftPayment;
+  const contractMismatch =
+    candidatePayment != null &&
+    !isPaymentInteractionCompatible(paymentInteraction, candidatePayment);
+  const payment: DepositPaymentInfo | null = contractMismatch
+    ? null
+    : candidatePayment;
   const enrollmentUpdate =
-    !startedPayment &&
+    !hasStartedDeposit &&
     draftEnrollmentUpdate?.type === "apple_pay_enhanced_verification"
       ? draftEnrollmentUpdate
       : null;
@@ -157,7 +166,7 @@ export function AccountApplePayPage({
         refresh: true,
       });
     } catch (err) {
-      console.error("[apple-pay] refreshDeposit failed:", err);
+      console.error("[wallet-pay] refreshDeposit failed:", err);
     }
   }, [client, sessionId, clientSecret]);
   const {
@@ -173,7 +182,8 @@ export function AccountApplePayPage({
     paymentLinkUrl: rawPaymentLinkUrl,
   });
   const isExpanded = allowExpandedView && iframeExpanded;
-  const isPaymentUnavailable = draftError != null || widgetError != null;
+  const isPaymentUnavailable =
+    contractMismatch || draftError != null || widgetError != null;
   const paymentLinkUrl = isPaymentUnavailable ? null : rawPaymentLinkUrl;
 
   useEffect(() => {
@@ -362,7 +372,7 @@ export function AccountApplePayPage({
                 key={paymentLinkUrl}
                 ref={iframeRef}
                 src={paymentLinkUrl}
-                title="Apple Pay Checkout"
+                title={`${getWalletPayName(payment)} Checkout`}
                 allow="payment"
                 sandbox="allow-scripts allow-same-origin"
                 referrerPolicy="no-referrer"
@@ -378,7 +388,10 @@ export function AccountApplePayPage({
 
   return (
     <div className="daimo-relative daimo-isolate daimo-flex daimo-flex-col daimo-flex-1 daimo-min-h-0">
-      <PageHeader title={`${actionVerb} with Apple Pay`} onBack={onBack} />
+      <PageHeader
+        title={`${actionVerb} with ${getWalletPayName(payment)}`}
+        onBack={onBack}
+      />
 
       {/* Amount + fee/receive summary. Hidden once the Apple Pay sheet expands
           so only the iframe (QR) shows; kept mounted to preserve state. */}
@@ -447,10 +460,10 @@ export function AccountApplePayPage({
                     pointerEvents: "none",
                   }}
                 >
-                  <ApplePayPlaceholderButton
+                  <WalletPayPlaceholderButton
                     disabled={false}
                     loading
-                    label="Preparing Apple Pay"
+                    label={`Preparing ${getWalletPayName(payment)}`}
                     height={collapsedShellHeight}
                     radius={collapsedShellRadius}
                   />
@@ -459,16 +472,16 @@ export function AccountApplePayPage({
               {iframeLayer}
             </>
           ) : (
-            <ApplePayPlaceholderButton
+            <WalletPayPlaceholderButton
               disabled={isPaymentUnavailable || !isValid || isCreating}
               loading={!isPaymentUnavailable && isValid && isCreating}
               label={
                 isPaymentUnavailable
-                  ? t.applePayUnavailable
+                  ? `${getWalletPayName(payment)} unavailable`
                   : isValid
                     ? isCreating
-                      ? "Preparing Apple Pay"
-                      : "Apple Pay Ready"
+                      ? `Preparing ${getWalletPayName(payment)}`
+                      : `${getWalletPayName(payment)} Ready`
                     : "Enter amount to continue"
               }
               height={collapsedShellHeight}
@@ -492,7 +505,7 @@ function parseAmountBound(value: string | undefined): number | null {
  * step feels native to the modal instead of dropping in third-party chrome
  * immediately.
  */
-function ApplePayPlaceholderButton({
+function WalletPayPlaceholderButton({
   disabled,
   loading,
   label,
@@ -547,6 +560,16 @@ function ApplePayPlaceholderButton({
       {content}
     </button>
   );
+}
+
+function getWalletPayName(payment: DepositPaymentInfo | null): string {
+  if (payment?.flow !== "wallet-pay-widget") return "Wallet Pay";
+  switch (payment.paymentLinkKind) {
+    case "apple_pay":
+      return "Apple Pay";
+    case "google_pay":
+      return "Google Pay";
+  }
 }
 
 function Spinner() {

@@ -64,20 +64,20 @@ import { EmbeddedContainer, ModalContainer } from "./containers.js";
 import { DeeplinkPage } from "./DeeplinkPage.js";
 import { ExchangePage } from "./ExchangePage.js";
 import { ExpiredPage } from "./ExpiredPage.js";
-import { AccountBankDetailsPage } from "./account/AccountBankDetailsPage.js";
-import { AccountCanadaBankPickerPage } from "./account/AccountBankPickerPage.js";
+import { AccountPaymentInstructionsPage } from "./account/AccountBankDetailsPage.js";
+import { AccountInstitutionPickerPage } from "./account/AccountBankPickerPage.js";
 import { AccountEnrollmentUpdatePage } from "./account/AccountEnrollmentUpdatePage.js";
 import { AccountCreatingWalletPage } from "./account/AccountCreatingWalletPage.js";
 import { AccountDeeplinkPage } from "./account/AccountDeeplinkPage.js";
-import { AccountInteracConfirmPage } from "./account/AccountInteracConfirmPage.js";
-import { AccountApplePayPage } from "./account/AccountApplePayPage.js";
+import { AccountInstitutionReviewPage } from "./account/AccountInteracConfirmPage.js";
+import { AccountWalletPayPage } from "./account/AccountApplePayPage.js";
 import { FiatPopupPage } from "./account/FiatPopupPage.js";
 import { AccountEmailPage } from "./account/AccountEmailPage.js";
 import { AccountEnrollmentPage } from "./account/AccountEnrollmentPage.js";
 import { AccountOtpPage } from "./account/AccountOtpPage.js";
 import { AccountPhonePage } from "./account/AccountPhonePage.js";
 import { AccountPhoneOtpPage } from "./account/AccountPhoneOtpPage.js";
-import { AccountPaymentPage } from "./account/AccountPaymentPage.js";
+import { AccountAmountPage } from "./account/AccountPaymentPage.js";
 import { AccountProviderOtpPage } from "./account/AccountProviderOtpPage.js";
 import { AccountStatusPage } from "./account/AccountStatusPage.js";
 import {
@@ -575,7 +575,7 @@ function DaimoModalInner({
     showFooterSpacer = !(
       !nav.topEntry ||
       (nav.topEntry.type === "choose-option" && !nav.canGoBack) ||
-      nav.topEntry.type === "account-bank-details"
+      nav.topEntry.type === "account-payment-instructions"
     );
     content = renderEntry(nav.topEntry, {
       session,
@@ -877,7 +877,9 @@ function renderEntry(
           platform={ctx.platform}
           onBack={ctx.onBack}
           onReady={() =>
-            ctx.onAccountAdvance(getAccountPaymentEntryTarget(entry.rail))
+            ctx.onAccountAdvance(
+              getAccountPaymentEntryTarget(entry.paymentInteraction),
+            )
           }
           onPhoneRequired={() => ctx.onAccountAdvance("account-phone")}
           onProviderOtpRequired={() =>
@@ -915,42 +917,47 @@ function renderEntry(
           sessionId={ctx.session.sessionId}
           onBack={ctx.canGoBack ? ctx.onBack : null}
           onReady={() =>
-            ctx.onAccountAdvance(getAccountPaymentEntryTarget(entry.rail))
+            ctx.onAccountAdvance(
+              getAccountPaymentEntryTarget(entry.paymentInteraction),
+            )
           }
         />
       );
-    case "account-payment": {
+    case "account-amount": {
       const advanceTarget = getAccountPaymentAdvanceTarget(
-        entry.rail,
+        entry.paymentInteraction,
         ctx.platform,
       );
       return (
-        <AccountPaymentPage
+        <AccountAmountPage
           rail={entry.rail}
+          paymentInteraction={entry.paymentInteraction}
           sessionId={ctx.session.sessionId}
           initialAmount={ctx.session.destination.amountUnits}
           platform={ctx.platform}
           baseUrl={ctx.session.baseUrl}
-          startDepositOnAdvance={advanceTarget === "account-interac-confirm"}
+          startDepositOnAdvance={advanceTarget === "account-institution-review"}
           onBack={ctx.canGoBack ? ctx.onBack : null}
           onAdvance={() => ctx.onAccountAdvance(advanceTarget)}
         />
       );
     }
-    case "account-canada-bank-picker":
+    case "account-institution-picker":
       return (
-        <AccountCanadaBankPickerPage
+        <AccountInstitutionPickerPage
           rail={entry.rail}
+          paymentInteraction={entry.paymentInteraction}
           sessionId={ctx.session.sessionId}
           onBack={null}
-          onSelect={() => ctx.onAccountAdvance("account-interac-confirm")}
+          onSelect={() => ctx.onAccountAdvance("account-institution-review")}
         />
       );
-    case "account-interac-confirm": {
+    case "account-institution-review": {
       const accountNode = findNode(entry.nodeId, ctx.session.navTree);
       return (
-        <AccountInteracConfirmPage
+        <AccountInstitutionReviewPage
           sessionId={ctx.session.sessionId}
+          paymentInteraction={entry.paymentInteraction}
           baseUrl={ctx.session.baseUrl}
           platform={ctx.platform}
           icon={accountNode?.type === "Fiat" ? accountNode.icon : undefined}
@@ -959,10 +966,11 @@ function renderEntry(
         />
       );
     }
-    case "account-apple-pay":
+    case "account-wallet-pay":
       return (
-        <AccountApplePayPage
+        <AccountWalletPayPage
           rail={entry.rail}
+          paymentInteraction={entry.paymentInteraction}
           sessionId={ctx.session.sessionId}
           clientSecret={ctx.session.clientSecret}
           actionVerb={ctx.displayVerb}
@@ -971,10 +979,11 @@ function renderEntry(
           onAdvance={() => ctx.onAccountAdvance("account-status")}
         />
       );
-    case "account-bank-details":
+    case "account-payment-instructions":
       return (
-        <AccountBankDetailsPage
+        <AccountPaymentInstructionsPage
           rail={entry.rail}
+          paymentInteraction={entry.paymentInteraction}
           sessionId={ctx.session.sessionId}
           clientSecret={ctx.session.clientSecret}
           baseUrl={ctx.session.baseUrl}
@@ -987,6 +996,7 @@ function renderEntry(
       return (
         <AccountDeeplinkPage
           sessionId={ctx.session.sessionId}
+          paymentInteraction={entry.paymentInteraction}
           clientSecret={ctx.session.clientSecret}
           baseUrl={ctx.session.baseUrl}
           platform={ctx.platform}

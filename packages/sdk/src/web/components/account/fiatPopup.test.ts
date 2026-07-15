@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { buildFiatPopupUrl, railRequiresPopup } from "./fiatPopup.js";
+import { buildFiatPopupUrl, interactionRequiresPopup } from "./fiatPopup.js";
 
 describe("buildFiatPopupUrl", () => {
   it("swaps embed layout for popup params, preserving session context", () => {
@@ -31,10 +31,11 @@ describe("buildFiatPopupUrl", () => {
   });
 });
 
-describe("railRequiresPopup", () => {
-  it("requires popup for apple_pay only", () => {
-    expect(railRequiresPopup("apple_pay")).toBe(true);
-    expect(railRequiresPopup("ach")).toBe(false);
-    expect(railRequiresPopup("interac")).toBe(false);
+describe("interactionRequiresPopup", () => {
+  it("requires popup for wallet-pay widgets only", () => {
+    expect(interactionRequiresPopup("wallet-pay-widget")).toBe(true);
+    expect(interactionRequiresPopup("bank-transfer")).toBe(false);
+    expect(interactionRequiresPopup("bank-picker")).toBe(false);
+    expect(interactionRequiresPopup("directions")).toBe(false);
   });
 });

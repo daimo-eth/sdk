@@ -2,6 +2,7 @@ import { useEffect, useState, type KeyboardEvent } from "react";
 import type {
   AccountRail,
   DepositPaymentInfo,
+  DepositPaymentInteraction,
   DepositPaymentReference,
   DepositPaymentStep,
 } from "../../../common/account.js";
@@ -26,9 +27,11 @@ import {
 import { DepositAddressContent } from "../WaitingDepositAddressPage.js";
 import { PageHeader, resolveIconUrl } from "../shared.js";
 import { Skeleton } from "../Skeleton.js";
+import { isPaymentInteractionCompatible } from "./accountNav.js";
 
-type AccountBankDetailsPageProps = {
+type AccountPaymentInstructionsPageProps = {
   rail: AccountRail;
+  paymentInteraction: DepositPaymentInteraction;
   sessionId: string;
   clientSecret: string;
   baseUrl: string;
@@ -95,14 +98,15 @@ function formatFiatAmount(
  * buttons. Used when the provider returns direct transfer instructions instead
  * of selectable institutions. Polls deposit status and auto-advances.
  */
-export function AccountBankDetailsPage({
+export function AccountPaymentInstructionsPage({
   rail,
+  paymentInteraction,
   sessionId,
   clientSecret,
   baseUrl,
   onBack,
   onAdvance,
-}: AccountBankDetailsPageProps) {
+}: AccountPaymentInstructionsPageProps) {
   const client = useDaimoClient();
   const accountFlow = useAccountFlow();
   const { depositState, setDepositState } = useSessionDepositState(sessionId);
@@ -130,16 +134,17 @@ export function AccountBankDetailsPage({
     enabled: depositAmount !== "",
     draftMode: "signed",
   });
-  const startedPayment =
-    depositState?.kind === "started" &&
-    isTransferInstructionFlow(depositState.payment)
-      ? depositState.payment
-      : null;
+  const candidatePayment =
+    depositState?.kind === "started" ? depositState.payment : draftedPayment;
+  const contractMismatch =
+    candidatePayment != null &&
+    !isPaymentInteractionCompatible(paymentInteraction, candidatePayment);
   const payment =
-    startedPayment ??
-    (draftedPayment && isTransferInstructionFlow(draftedPayment)
-      ? draftedPayment
-      : null);
+    !contractMismatch &&
+    candidatePayment &&
+    isTransferInstructionFlow(candidatePayment)
+      ? candidatePayment
+      : null;
   const instructions = payment?.instructions ?? "";
   const bankTransferFields =
     payment?.flow === "bank-transfer"
@@ -200,10 +205,11 @@ export function AccountBankDetailsPage({
     },
   });
 
-  if (draftError) {
+  const paymentError = contractMismatch ? t.errorDepositFailed : draftError;
+  if (paymentError) {
     return (
       <ErrorPage
-        message={draftError}
+        message={paymentError}
         retryText={t.tryAgain}
         onRetry={retryDraft}
       />

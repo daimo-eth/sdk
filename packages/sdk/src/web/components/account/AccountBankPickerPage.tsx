@@ -3,6 +3,7 @@ import { useCallback, useMemo, useState } from "react";
 import type {
   AccountRail,
   DepositInstitution,
+  DepositPaymentInteraction,
 } from "../../../common/account.js";
 import { useDaimoClient } from "../../hooks/DaimoClientContext.js";
 import { formatUserError } from "../../hooks/formatUserError.js";
@@ -18,9 +19,12 @@ import {
 import { ErrorPage } from "../ErrorPage.js";
 import { Skeleton } from "../Skeleton.js";
 import { PageHeader, ScrollContent, TextInput } from "../shared.js";
+import { isPaymentInteractionCompatible } from "./accountNav.js";
+import { getInstitutionPaymentContract } from "./accountPaymentCompatibility.js";
 
-type AccountCanadaBankPickerPageProps = {
+type AccountInstitutionPickerPageProps = {
   rail: AccountRail;
+  paymentInteraction: DepositPaymentInteraction;
   sessionId: string;
   onBack?: (() => void) | null;
   onSelect: () => void;
@@ -31,12 +35,13 @@ type AccountCanadaBankPickerPageProps = {
  * On bank click: writes signatures, opens the institution deeplink, advances
  * to the deeplink page.
  */
-export function AccountCanadaBankPickerPage({
+export function AccountInstitutionPickerPage({
   rail,
+  paymentInteraction,
   sessionId,
   onBack,
   onSelect,
-}: AccountCanadaBankPickerPageProps) {
+}: AccountInstitutionPickerPageProps) {
   const client = useDaimoClient();
   const accountFlow = useAccountFlow();
   const { depositState, setDepositState } = useSessionDepositState(sessionId);
@@ -59,14 +64,18 @@ export function AccountCanadaBankPickerPage({
     draftMode: "plain",
   });
 
-  const startedPayment =
-    depositState?.kind === "started" &&
-    depositState.payment.flow === "bank-picker"
-      ? depositState.payment
-      : null;
+  const candidatePayment =
+    depositState?.kind === "started" ? depositState.payment : draftPayment;
+  const contractMismatch =
+    candidatePayment != null &&
+    !isPaymentInteractionCompatible(paymentInteraction, candidatePayment);
   const payment =
-    startedPayment ??
-    (draftPayment?.flow === "bank-picker" ? draftPayment : null);
+    !contractMismatch && candidatePayment?.flow === "bank-picker"
+      ? candidatePayment
+      : null;
+  const paymentContract = payment
+    ? getInstitutionPaymentContract(payment, depositAmount)
+    : null;
   const institutions: DepositInstitution[] = payment?.institutions ?? [];
   const isLoadingInstitutions = isCreating || payment == null;
   const query = search.toLowerCase();
@@ -115,6 +124,10 @@ export function AccountCanadaBankPickerPage({
           rail,
           depositAmount,
         });
+        if (!isPaymentInteractionCompatible(paymentInteraction, payment)) {
+          setStartError(t.errorDepositFailed);
+          return;
+        }
         setDepositState({
           depositAmount,
           kind: "started",
@@ -133,13 +146,16 @@ export function AccountCanadaBankPickerPage({
       client,
       depositAmount,
       onSelect,
+      paymentInteraction,
       rail,
       sessionId,
       setDepositState,
     ],
   );
 
-  const error = startError ?? draftError;
+  const error = contractMismatch
+    ? t.errorDepositFailed
+    : (startError ?? draftError);
 
   if (error) {
     return (
@@ -153,7 +169,10 @@ export function AccountCanadaBankPickerPage({
 
   return (
     <div className="daimo-flex daimo-flex-col daimo-flex-1 daimo-min-h-0">
-      <PageHeader title={t.accountSelectBank} onBack={onBack} />
+      <PageHeader
+        title={paymentContract?.ui.picker.title ?? t.accountSelectBank}
+        onBack={onBack}
+      />
 
       <ScrollContent>
         <div className="daimo-px-6 daimo-pt-3">
@@ -161,7 +180,10 @@ export function AccountCanadaBankPickerPage({
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder={t.accountSearchInstitutions}
+            placeholder={
+              paymentContract?.ui.picker.searchPlaceholder ??
+              t.accountSearchInstitutions
+            }
           />
         </div>
 
@@ -188,7 +210,8 @@ export function AccountCanadaBankPickerPage({
         {!isLoadingInstitutions && filteredOther.length > 0 && (
           <div className="daimo-px-6 daimo-pb-3 daimo-flex daimo-flex-col">
             <p className="daimo-text-xs daimo-text-[var(--daimo-text-muted)] daimo-mb-2">
-              {t.accountOtherInstitutions}
+              {paymentContract?.ui.picker.otherInstitutionsLabel ??
+                t.accountOtherInstitutions}
             </p>
             {filteredOther.map((inst) => (
               <InstitutionRow
