@@ -43,10 +43,12 @@ export function getInstitutionPaymentContract(
   ui: DepositInstitutionPaymentUi;
   fallbackDeeplink: DepositDeeplink | null;
 } {
-  if (payment.institutionPaymentUi && payment.fallbackDeeplink) {
+  if (payment.institutionPaymentUi) {
     return {
       ui: payment.institutionPaymentUi,
-      fallbackDeeplink: payment.fallbackDeeplink,
+      fallbackDeeplink:
+        payment.fallbackDeeplink ??
+        (payment.qrUrl ? { type: "redirect", url: payment.qrUrl } : null),
     };
   }
 

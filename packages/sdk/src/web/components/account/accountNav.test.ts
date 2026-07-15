@@ -132,6 +132,43 @@ describe("interaction-driven account navigation", () => {
       url: payment.qrUrl,
     });
   });
+
+  test("preserves server-owned UI when only the fallback action is absent", () => {
+    const institutionPaymentUi = {
+      picker: {
+        title: "Choose an institution",
+        searchPlaceholder: "Search institutions",
+        otherInstitutionsLabel: "More institutions",
+      },
+      review: {
+        title: "Review payment request",
+        description: "Review the request in your institution.",
+        fields: [{ key: "reference", label: "Reference", value: "abc-123" }],
+        institutionLabel: "Institution",
+        openInstitutionLabel: "Open",
+        openFallbackLabel: "Open request",
+      },
+      waiting: {
+        title: "Complete payment",
+        instructions: "Approve the request in your institution.",
+        openInstitutionLabel: "Open",
+        openFallbackLabel: "Open request",
+      },
+    };
+    const payment = {
+      flow: "bank-picker",
+      currency: { code: "USD", symbol: "$" },
+      qrUrl: "https://example.com/request/abc-123",
+      institutionPaymentUi,
+    } as const;
+
+    const contract = getInstitutionPaymentContract(payment, "25.00");
+    expect(contract.ui).toBe(institutionPaymentUi);
+    expect(contract.fallbackDeeplink).toEqual({
+      type: "redirect",
+      url: payment.qrUrl,
+    });
+  });
 });
 
 describe("getDepositResumeTarget", () => {
