@@ -728,6 +728,7 @@ function renderEntry(
           node={rootNode as NavNodeChooseOption}
           injectedWallets={ctx.injectedWallets}
           connectedAddress={ctx.walletFlow.connectedAddress}
+          actionVerb={ctx.displayVerb}
           onNavigate={ctx.onNavigate}
           onBack={null}
           baseUrl={ctx.session.baseUrl}
@@ -764,6 +765,7 @@ function renderEntry(
           node={node}
           injectedWallets={ctx.injectedWallets}
           connectedAddress={ctx.walletFlow.connectedAddress}
+          actionVerb={ctx.displayVerb}
           onNavigate={ctx.onNavigate}
           onBack={ctx.canGoBack ? ctx.onBack : null}
           baseUrl={ctx.session.baseUrl}
