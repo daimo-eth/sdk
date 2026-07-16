@@ -19,8 +19,7 @@ import {
 const PAYMENT = {
   flow: "request-to-pay",
   currency: { code: "BRL", symbol: "R$" },
-  minAmount: "10.00",
-  maxAmount: "50000.00",
+  amountRange: { min: "10.00", max: "50000.00" },
   destinationToken: {
     ...baseUSDC,
     usd: 1,

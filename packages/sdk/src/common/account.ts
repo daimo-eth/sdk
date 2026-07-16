@@ -257,8 +257,10 @@ export type CreateAccountResponse = {
 /** GET /v1/internal/account/deposit/constraints response. */
 export type DepositConstraints = {
   currency: { code: string; symbol: string };
-  minAmount: string;
-  maxAmount: string;
+  /** Static per-deposit amount bounds in fiat units. */
+  amountRange: { min: string; max: string };
+  /** Dynamic rail/account quotas with remaining capacity. */
+  usageLimits?: DepositLimit[];
   /**
    * Destination stablecoin for this rail.
    */
@@ -267,6 +269,40 @@ export type DepositConstraints = {
   icon: { logoURI: string; alt: string };
   /** Rail-specific badge (rendered over the destination token icon). */
   badge: { logoURI: string; alt: string };
+};
+
+export type DepositLimitUnit = "fiat" | "count";
+
+export type DepositLimitPeriod =
+  | "transaction"
+  | "day"
+  | "week"
+  | "month"
+  | "lifetime";
+
+export type DepositLimitUpgradeStatus =
+  | "available"
+  | "retry"
+  | "pending"
+  | "complete"
+  | "unavailable";
+
+export type DepositLimit = {
+  /** Stable machine key, e.g. "amount.weekly". */
+  key: string;
+  label: string;
+  unit: DepositLimitUnit;
+  /** Limit in display units, or null when unbounded. */
+  limit: string | null;
+  /** Remaining amount/count in display units, or null when unbounded. */
+  remaining: string | null;
+  period?: DepositLimitPeriod;
+  currency?: { code: string; symbol: string };
+  checkedAt?: string;
+  upgrade?: {
+    status: DepositLimitUpgradeStatus;
+    fields?: string[];
+  };
 };
 
 /** Deposit status progression. */

@@ -25,6 +25,7 @@ import { AccountEnrollmentUpdatePage } from "./AccountEnrollmentUpdatePage.js";
 import { useCoinbaseApplePayWidget } from "./useCoinbaseApplePayWidget.js";
 import { isPaymentInteractionCompatible } from "./accountNav.js";
 import { getWalletPayName } from "./walletPayName.js";
+import { getWalletPayLimitDetails } from "./walletPayDetails.js";
 
 type ShellRect = {
   left: number;
@@ -105,8 +106,8 @@ export function AccountWalletPayPage({
     })();
   }, [accountFlow, client, sessionId, rail]);
 
-  const minimum = parseAmountBound(constraints?.minAmount) ?? 5;
-  const maximum = parseAmountBound(constraints?.maxAmount) ?? 500;
+  const minimum = parseAmountBound(constraints?.amountRange.min) ?? 5;
+  const maximum = parseAmountBound(constraints?.amountRange.max) ?? 500;
   const currencySymbol = constraints?.currency.symbol ?? "$";
 
   // --- Amount entry + staged createDeposit ---
@@ -277,6 +278,17 @@ export function AccountWalletPayPage({
     payment?.flow === "wallet-pay-widget"
       ? (payment.receiveUnits ?? payment.purchaseAmount)
       : null;
+  const usageLimits =
+    payment?.flow === "wallet-pay-widget"
+      ? (payment.usageLimits ?? constraints?.usageLimits)
+      : constraints?.usageLimits;
+  const limitDetails = getWalletPayLimitDetails(usageLimits, currencySymbol);
+  const limitSummary = [
+    limitDetails.weeklyRemaining,
+    limitDetails.depositCountRemaining,
+  ]
+    .filter((detail): detail is string => detail != null)
+    .join(" · ");
   const collapsedShellWidth = Math.min(
     buttonShellWidth,
     APPLE_PAY_SHELL_MAX_WIDTH,
@@ -408,7 +420,7 @@ export function AccountWalletPayPage({
           minimum={minimum}
           maximum={maximum}
           currencySymbol={currencySymbol}
-          defaultLabel=""
+          defaultLabel="Debit cards only"
           initialValue={initialAmountValue}
           disabled={hasStartedDeposit}
           onSubmit={() => {
@@ -439,6 +451,14 @@ export function AccountWalletPayPage({
                   : `${currencySymbol}${formatFixedAmount(0)}`}
             </span>
           </div>
+          {limitSummary && (
+            <div className="daimo-mt-3 daimo-pt-3 daimo-border-t daimo-border-[var(--daimo-border)] daimo-flex daimo-items-center daimo-justify-between daimo-gap-4 daimo-text-[var(--daimo-text-muted)]">
+              <span className="daimo-shrink-0">Left this week</span>
+              <span className="daimo-min-w-0 daimo-text-right daimo-tabular-nums">
+                {limitSummary}
+              </span>
+            </div>
+          )}
         </div>
       </div>
 
