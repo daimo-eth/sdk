@@ -180,11 +180,11 @@ export function AccountAmountPage({
           <TokenAmountEntry
             token={constraints.destinationToken}
             minimumUsd={
-              parseFloat(constraints.minAmount) *
+              parseFloat(constraints.amountRange.min) *
               constraints.destinationToken.usd
             }
             maximumUsd={
-              parseFloat(constraints.maxAmount) *
+              parseFloat(constraints.amountRange.max) *
               constraints.destinationToken.usd
             }
             nativeDisplay={{

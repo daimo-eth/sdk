@@ -216,7 +216,9 @@ export function AmountInput({
           }}
         />
       </div>
-      <p className={`${labelClass} daimo-min-h-[24px]`}>{label}</p>
+      <p className={`${labelClass} daimo-min-h-[24px] daimo-tabular-nums`}>
+        {label}
+      </p>
     </div>
   );
 }
