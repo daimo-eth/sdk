@@ -24,6 +24,7 @@ import { AmountInput, PageHeader, useAmountInput } from "../shared.js";
 import { AccountEnrollmentUpdatePage } from "./AccountEnrollmentUpdatePage.js";
 import { useCoinbaseApplePayWidget } from "./useCoinbaseApplePayWidget.js";
 import { isPaymentInteractionCompatible } from "./accountNav.js";
+import { getWalletPayName } from "./walletPayName.js";
 
 type ShellRect = {
   left: number;
@@ -141,6 +142,10 @@ export function AccountWalletPayPage({
   const payment: DepositPaymentInfo | null = contractMismatch
     ? null
     : candidatePayment;
+  const walletPayName = getWalletPayName(
+    rail,
+    payment?.flow === "wallet-pay-widget" ? payment.paymentLinkKind : null,
+  );
   const enrollmentUpdate =
     !hasStartedDeposit &&
     draftEnrollmentUpdate?.type === "apple_pay_enhanced_verification"
@@ -372,7 +377,7 @@ export function AccountWalletPayPage({
                 key={paymentLinkUrl}
                 ref={iframeRef}
                 src={paymentLinkUrl}
-                title={`${getWalletPayName(payment)} Checkout`}
+                title={`${walletPayName} Checkout`}
                 allow="payment"
                 sandbox="allow-scripts allow-same-origin"
                 referrerPolicy="no-referrer"
@@ -389,7 +394,7 @@ export function AccountWalletPayPage({
   return (
     <div className="daimo-relative daimo-isolate daimo-flex daimo-flex-col daimo-flex-1 daimo-min-h-0">
       <PageHeader
-        title={`${actionVerb} with ${getWalletPayName(payment)}`}
+        title={`${actionVerb} with ${walletPayName}`}
         onBack={onBack}
       />
 
@@ -463,7 +468,7 @@ export function AccountWalletPayPage({
                   <WalletPayPlaceholderButton
                     disabled={false}
                     loading
-                    label={`Preparing ${getWalletPayName(payment)}`}
+                    label={`Preparing ${walletPayName}`}
                     height={collapsedShellHeight}
                     radius={collapsedShellRadius}
                   />
@@ -477,11 +482,11 @@ export function AccountWalletPayPage({
               loading={!isPaymentUnavailable && isValid && isCreating}
               label={
                 isPaymentUnavailable
-                  ? `${getWalletPayName(payment)} unavailable`
+                  ? `${walletPayName} unavailable`
                   : isValid
                     ? isCreating
-                      ? `Preparing ${getWalletPayName(payment)}`
-                      : `${getWalletPayName(payment)} Ready`
+                      ? `Preparing ${walletPayName}`
+                      : `${walletPayName} Ready`
                     : "Enter amount to continue"
               }
               height={collapsedShellHeight}
@@ -560,16 +565,6 @@ function WalletPayPlaceholderButton({
       {content}
     </button>
   );
-}
-
-function getWalletPayName(payment: DepositPaymentInfo | null): string {
-  if (payment?.flow !== "wallet-pay-widget") return "Wallet Pay";
-  switch (payment.paymentLinkKind) {
-    case "apple_pay":
-      return "Apple Pay";
-    case "google_pay":
-      return "Google Pay";
-  }
 }
 
 function Spinner() {
