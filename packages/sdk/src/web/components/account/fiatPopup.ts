@@ -12,7 +12,15 @@ export const FIAT_POPUP_FEATURES = "popup=yes,width=420,height=760";
 export function interactionRequiresPopup(
   interaction: DepositPaymentInteraction,
 ): boolean {
-  return interaction === "wallet-pay-widget";
+  switch (interaction) {
+    case "wallet-pay-widget":
+      return true;
+    case "bank-picker":
+    case "bank-transfer":
+    case "directions":
+    case "request-to-pay":
+      return false;
+  }
 }
 
 /**

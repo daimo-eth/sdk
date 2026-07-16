@@ -37,5 +37,6 @@ describe("interactionRequiresPopup", () => {
     expect(interactionRequiresPopup("bank-transfer")).toBe(false);
     expect(interactionRequiresPopup("bank-picker")).toBe(false);
     expect(interactionRequiresPopup("directions")).toBe(false);
+    expect(interactionRequiresPopup("request-to-pay")).toBe(false);
   });
 });

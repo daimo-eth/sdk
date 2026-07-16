@@ -5,20 +5,30 @@ import { t } from "../hooks/locale.js";
 export function useCountdown(expiresAt: number, defaultS: number) {
   const hasExpiry = expiresAt > 0;
   const [remainingS, setRemainingS] = useState(() =>
-    hasExpiry
-      ? Math.max(0, Math.floor(expiresAt - Date.now() / 1000))
-      : defaultS,
+    hasExpiry ? getRemainingSeconds(expiresAt) : defaultS,
   );
 
   useEffect(() => {
     if (!hasExpiry) return;
-    const interval = setInterval(() => {
-      setRemainingS(Math.max(0, Math.floor(expiresAt - Date.now() / 1000)));
-    }, 1000);
-    return () => clearInterval(interval);
+    const update = () => setRemainingS(getRemainingSeconds(expiresAt));
+    update();
+    const interval = setInterval(update, 1000);
+    document.addEventListener("visibilitychange", update);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", update);
+    };
   }, [expiresAt, hasExpiry]);
 
   return { remainingS, isExpired: hasExpiry && remainingS === 0 };
+}
+
+/** Derive remaining time from the absolute wall clock; never extend expiry. */
+export function getRemainingSeconds(
+  expiresAt: number,
+  nowMs = Date.now(),
+): number {
+  return Math.max(0, Math.floor(expiresAt - nowMs / 1000));
 }
 
 /** Above this remaining time, show whole minutes instead of mm:ss. */
@@ -40,15 +50,23 @@ export function Countdown({
 }: {
   remainingS: number;
   isExpired: boolean;
-  totalS: number;
+  /** Omit when the server did not provide the request's total lifetime. */
+  totalS?: number;
 }) {
   return (
-    <div className="daimo-flex daimo-flex-col daimo-items-center daimo-gap-1">
+    <div
+      className="daimo-flex daimo-flex-col daimo-items-center daimo-gap-1"
+      role="status"
+      aria-live="polite"
+      aria-atomic="true"
+    >
       <span className="daimo-text-sm daimo-text-[var(--daimo-text)]">
         {isExpired ? t.expired : t.expiresIn}
       </span>
       <div className="daimo-flex daimo-items-center daimo-gap-2">
-        <CircleTimer remainingS={remainingS} totalS={totalS} />
+        {totalS != null && (
+          <CircleTimer remainingS={remainingS} totalS={totalS} />
+        )}
         <span
           className="daimo-font-semibold daimo-tabular-nums"
           style={{

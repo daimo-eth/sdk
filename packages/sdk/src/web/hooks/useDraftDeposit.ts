@@ -13,6 +13,10 @@ import {
 } from "./useAccountFlow.js";
 import { formatUserError } from "./formatUserError.js";
 import { getLocale, t } from "./locale.js";
+import {
+  getAuthorizedRoutingAmount,
+  isExpiredRequestToPay,
+} from "../components/account/accountPaymentCompatibility.js";
 
 type UseDraftDepositArgs = {
   client: DaimoClient;
@@ -250,10 +254,13 @@ async function createSignedDraftDeposit({
     depositAmount,
   });
   if (preview.payment === null) return preview;
-  const signedAmount =
-    preview.payment.flow === "wallet-pay-widget"
-      ? preview.payment.purchaseAmount
-      : depositAmount;
+  if (isExpiredRequestToPay(preview.payment)) {
+    return preview;
+  }
+  const signedAmount = getAuthorizedRoutingAmount(
+    preview.payment,
+    depositAmount,
+  );
   return signAndUpsertDeposit({
     client,
     accountFlow,

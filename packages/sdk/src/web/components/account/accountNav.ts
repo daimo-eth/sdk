@@ -12,18 +12,28 @@ import { isDesktop, type DaimoPlatform } from "../../platform.js";
  */
 export function getDepositResumeTarget(
   status: AccountDepositStatus,
+  interaction?: DepositPaymentInteraction,
 ): "account-status" | null {
   switch (status) {
     case "payment_received":
     case "token_delivered":
     case "completed":
     case "failed":
-    case "expired":
       return "account-status";
+    case "expired":
+      return interaction === "request-to-pay" ? null : "account-status";
     case "initiated":
     case "awaiting_payment":
       return null;
   }
+}
+
+/** Expired interactive requests recover on their own semantic surface. */
+export function shouldRecoverExpiredPayment(
+  status: AccountDepositStatus,
+  interaction: DepositPaymentInteraction,
+): boolean {
+  return status === "expired" && interaction === "request-to-pay";
 }
 
 /**
@@ -40,6 +50,7 @@ export function getAccountPaymentEntryTarget(
     case "bank-picker":
     case "bank-transfer":
     case "directions":
+    case "request-to-pay":
       return "account-amount" as const;
   }
 }
@@ -61,6 +72,8 @@ export function getAccountPaymentAdvanceTarget(
     case "bank-transfer":
     case "directions":
       return "account-payment-instructions" as const;
+    case "request-to-pay":
+      return "account-request-to-pay" as const;
     case "wallet-pay-widget":
       return "account-wallet-pay" as const;
   }
