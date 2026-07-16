@@ -19,6 +19,7 @@ type ChooseOptionPageProps = {
   node: NavNodeChooseOption;
   injectedWallets?: InjectedWallet[];
   connectedAddress?: string | null;
+  actionVerb?: string;
   onNavigate: (nodeId: string) => void;
   onBack: (() => void) | null;
   baseUrl: string;
@@ -28,6 +29,7 @@ export function ChooseOptionPage({
   node,
   injectedWallets = [],
   connectedAddress,
+  actionVerb,
   onNavigate,
   onBack,
   baseUrl,
@@ -42,10 +44,9 @@ export function ChooseOptionPage({
         const walletIcon = injectedWallets[0].info.icon;
         if (walletIcon) updated = { ...updated, icon: walletIcon };
       }
-      if (connectedAddress) {
-        const verb = node.title.split(" ")[0] || "Pay";
+      if (connectedAddress && actionVerb) {
         const short = `${connectedAddress.slice(0, 6)}...${connectedAddress.slice(-4)}`;
-        updated = { ...updated, label: `${verb} with ${short}` };
+        updated = { ...updated, label: `${actionVerb} with ${short}` };
       }
       return updated;
     });
