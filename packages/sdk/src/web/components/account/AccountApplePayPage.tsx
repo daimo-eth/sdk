@@ -2,6 +2,7 @@ import {
   type CSSProperties,
   useCallback,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
 } from "react";
@@ -164,6 +165,26 @@ export function AccountWalletPayPage({
   const [buttonShellWidth, setButtonShellWidth] = useState(
     APPLE_PAY_SHELL_MAX_WIDTH,
   );
+  const updateButtonShellMetrics = useCallback(() => {
+    const el = buttonShellRef.current;
+    if (!el) return;
+
+    const rect = el.getBoundingClientRect();
+    if (rect.width <= 0 || rect.height <= 0) return;
+
+    const nextRect = {
+      left: rect.left,
+      top: rect.top,
+      width: rect.width,
+      height: rect.height,
+    };
+    setButtonShellWidth((current) =>
+      current === nextRect.width ? current : nextRect.width,
+    );
+    setButtonShellRect((current) =>
+      current && shellRectsEqual(current, nextRect) ? current : nextRect,
+    );
+  }, []);
   const refreshFromServer = useCallback(async () => {
     try {
       await client.account.getDeposit({
@@ -196,6 +217,12 @@ export function AccountWalletPayPage({
     setMounted(true);
   }, []);
 
+  // The iframe is portaled to the document body. Re-measure before paint when
+  // async content (such as limits) moves its in-flow shell.
+  useLayoutEffect(() => {
+    updateButtonShellMetrics();
+  });
+
   useEffect(() => {
     if (!isValid) {
       didAdvanceRef.current = false;
@@ -211,36 +238,26 @@ export function AccountWalletPayPage({
     const el = buttonShellRef.current;
     if (!el) return;
 
-    const updateShellMetrics = () => {
-      const rect = el.getBoundingClientRect();
-      if (rect.width <= 0 || rect.height <= 0) return;
-      setButtonShellWidth(rect.width);
-      setButtonShellRect({
-        left: rect.left,
-        top: rect.top,
-        width: rect.width,
-        height: rect.height,
-      });
-    };
-
-    updateShellMetrics();
-    window.addEventListener("resize", updateShellMetrics);
-    window.addEventListener("scroll", updateShellMetrics, true);
+    const modal = el.closest(".daimo-modal-content");
+    updateButtonShellMetrics();
+    window.addEventListener("resize", updateButtonShellMetrics);
+    window.addEventListener("scroll", updateButtonShellMetrics, true);
 
     if (typeof ResizeObserver === "undefined") {
       return () => {
-        window.removeEventListener("resize", updateShellMetrics);
-        window.removeEventListener("scroll", updateShellMetrics, true);
+        window.removeEventListener("resize", updateButtonShellMetrics);
+        window.removeEventListener("scroll", updateButtonShellMetrics, true);
       };
     }
-    const observer = new ResizeObserver(updateShellMetrics);
+    const observer = new ResizeObserver(updateButtonShellMetrics);
     observer.observe(el);
+    if (modal) observer.observe(modal);
     return () => {
       observer.disconnect();
-      window.removeEventListener("resize", updateShellMetrics);
-      window.removeEventListener("scroll", updateShellMetrics, true);
+      window.removeEventListener("resize", updateButtonShellMetrics);
+      window.removeEventListener("scroll", updateButtonShellMetrics, true);
     };
-  }, []);
+  }, [updateButtonShellMetrics]);
 
   useDepositPoller({
     client,
@@ -463,7 +480,7 @@ export function AccountWalletPayPage({
       </div>
 
       {/* Apple Pay button area — iframe when ready, custom placeholder until then */}
-      <div className="daimo-flex-1 daimo-min-h-0 daimo-px-4 daimo-pb-6 daimo-flex daimo-flex-col daimo-items-center daimo-justify-end">
+      <div className="daimo-flex-1 daimo-min-h-0 daimo-px-4 daimo-pt-2 daimo-pb-6 daimo-flex daimo-flex-col daimo-items-center daimo-justify-end">
         <div
           ref={buttonShellRef}
           className="daimo-relative daimo-w-full daimo-overflow-hidden"
@@ -523,6 +540,15 @@ function parseAmountBound(value: string | undefined): number | null {
   if (value == null) return null;
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : null;
+}
+
+function shellRectsEqual(a: ShellRect, b: ShellRect): boolean {
+  return (
+    a.left === b.left &&
+    a.top === b.top &&
+    a.width === b.width &&
+    a.height === b.height
+  );
 }
 
 /**
