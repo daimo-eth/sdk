@@ -12,6 +12,7 @@ import {
   getAccountPaymentEntryTarget,
   getDepositResumeTarget,
   isPaymentInteractionCompatible,
+  shouldRecoverExpiredPayment,
 } from "./accountNav.js";
 import {
   getInstitutionPaymentContract,
@@ -30,6 +31,7 @@ const ALL_INTERACTIONS: DepositPaymentInteraction[] = [
   "bank-picker",
   "bank-transfer",
   "directions",
+  "request-to-pay",
   "wallet-pay-widget",
 ];
 
@@ -42,6 +44,7 @@ describe("interaction-driven account navigation", () => {
       "bank-picker",
       "bank-transfer",
       "directions",
+      "request-to-pay",
     ] as const) {
       expect(getAccountPaymentEntryTarget(interaction)).toBe("account-amount");
     }
@@ -65,6 +68,7 @@ describe("interaction-driven account navigation", () => {
     const expected = {
       "bank-transfer": "account-payment-instructions",
       directions: "account-payment-instructions",
+      "request-to-pay": "account-request-to-pay",
       "wallet-pay-widget": "account-wallet-pay",
     } as const;
     for (const [interaction, target] of Object.entries(expected)) {
@@ -198,6 +202,16 @@ describe("getDepositResumeTarget", () => {
   test("pre-payment deposits re-enter the interaction flow", () => {
     expect(getDepositResumeTarget("initiated")).toBeNull();
     expect(getDepositResumeTarget("awaiting_payment")).toBeNull();
+  });
+
+  test("expired request-to-pay re-enters interaction recovery", () => {
+    expect(getDepositResumeTarget("expired", "request-to-pay")).toBeNull();
+    expect(shouldRecoverExpiredPayment("expired", "request-to-pay")).toBe(
+      true,
+    );
+    expect(shouldRecoverExpiredPayment("expired", "bank-transfer")).toBe(
+      false,
+    );
   });
 
   test("every status has a decision", () => {

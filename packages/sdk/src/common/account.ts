@@ -358,6 +358,7 @@ export const depositPaymentInteractions = [
   "bank-picker",
   "bank-transfer",
   "directions",
+  "request-to-pay",
   "wallet-pay-widget",
 ] as const;
 export type DepositPaymentInteraction =
@@ -384,6 +385,23 @@ export type DepositInstitutionPaymentUi = {
     openInstitutionLabel: string;
     openFallbackLabel: string;
   };
+};
+
+/** Server-owned semantic copy for an expiring request-to-pay surface. */
+export type DepositRequestToPayUi = {
+  title: string;
+  codeLabel: string;
+  actionLabel: string;
+  actionCompletedLabel: string;
+  expiredTitle: string;
+  expiredInstructions: string;
+  retryLabel: string;
+  retryingLabel: string;
+};
+
+/** Closed recovery behavior for an expired request-to-pay interaction. */
+export type DepositRequestToPayRetry = {
+  type: "recreate-session";
 };
 
 export type DepositPaymentStep = {
@@ -435,6 +453,7 @@ export type DepositPaymentOnchainTransfer = {
 /**
  * Server-provided payment flow configuration.
  * - `bank-picker`: user picks an institution, then continues in their bank flow
+ * - `request-to-pay`: user pays an exact expiring fiat request by QR or code
  * - `wallet-pay-widget`: user completes payment in an embedded wallet-pay widget
  */
 export type DepositPaymentInfo =
@@ -459,6 +478,23 @@ export type DepositPaymentInfo =
       steps: DepositPaymentStep[];
       onchainTransfer: DepositPaymentOnchainTransfer;
       reference?: DepositPaymentReference;
+    })
+  | (DepositConstraints & {
+      flow: Extract<DepositPaymentInteraction, "request-to-pay">;
+      ui: DepositRequestToPayUi;
+      instructions: string;
+      /** Exact fiat amount to pay, in decimal fiat units (F). */
+      payableAmount: string;
+      /** Opaque provider payment code. Render only in the active payment view. */
+      paymentCode: string;
+      /** Absolute request expiry as Unix seconds. No client default applies. */
+      expiresAt: number;
+      /**
+       * Expected destination-token settlement in token units (S). Routing
+       * signatures must authorize exactly this amount, never payableAmount.
+       */
+      expectedSettlementAmount: string;
+      retry: DepositRequestToPayRetry;
     })
   | (DepositConstraints & {
       flow: Extract<DepositPaymentInteraction, "wallet-pay-widget">;

@@ -6,6 +6,7 @@ import {
   useState,
 } from "react";
 import type { Address } from "viem";
+import type { AccountDepositStatus } from "../../common/account.js";
 import { tron } from "../../common/chain.js";
 import { isSessionTerminal } from "../../common/session.js";
 import type {
@@ -80,6 +81,7 @@ import { AccountPhoneOtpPage } from "./account/AccountPhoneOtpPage.js";
 import { AccountAmountPage } from "./account/AccountPaymentPage.js";
 import { AccountProviderOtpPage } from "./account/AccountProviderOtpPage.js";
 import { AccountStatusPage } from "./account/AccountStatusPage.js";
+import { AccountRequestToPayPage } from "./account/AccountRequestToPayPage.js";
 import {
   getAccountPaymentAdvanceTarget,
   getAccountPaymentEntryTarget,
@@ -586,6 +588,7 @@ function DaimoModalInner({
       onAmountContinue: nav.handleAmountContinue,
       onRetry: nav.handleRetry,
       onRefresh: nav.handleRefresh,
+      onAccountSessionRecreate: nav.handleAccountSessionRecreate,
       injectedWallets,
       isLoadingWallets,
       platform: resolvedPlatform,
@@ -685,6 +688,7 @@ type RenderContext = {
   onAmountContinue: (amountUsd: number) => void;
   onRetry: () => void;
   onRefresh: () => Promise<void>;
+  onAccountSessionRecreate: (depositAmount: string) => Promise<void>;
   injectedWallets: InjectedWallet[];
   isLoadingWallets: boolean;
   platform: DaimoPlatform;
@@ -704,7 +708,10 @@ type RenderContext = {
   };
   onWalletSelectToken: (token: WalletPaymentOption) => void;
   onWalletSending: (token: WalletPaymentOption, amountUsd: number) => void;
-  onAccountAdvance: (nextType: AccountNavEntry["type"]) => void;
+  onAccountAdvance: (
+    nextType: AccountNavEntry["type"],
+    options?: { initialStatus?: AccountDepositStatus },
+  ) => void;
   setModalCloseVisible: (show: boolean) => void;
 };
 
@@ -942,6 +949,21 @@ function renderEntry(
         />
       );
     }
+    case "account-request-to-pay":
+      return (
+        <AccountRequestToPayPage
+          sessionId={ctx.session.sessionId}
+          clientSecret={ctx.session.clientSecret}
+          rail={entry.rail}
+          resumePayment={entry.resumePayment ?? false}
+          onAdvance={(deposit) =>
+            ctx.onAccountAdvance("account-status", {
+              initialStatus: deposit.status,
+            })
+          }
+          onRetry={ctx.onAccountSessionRecreate}
+        />
+      );
     case "account-institution-picker":
       return (
         <AccountInstitutionPickerPage
