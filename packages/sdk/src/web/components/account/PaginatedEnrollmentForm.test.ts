@@ -1,7 +1,10 @@
 import type { EnrollmentFormField } from "../../../common/account.js";
 import { describe, expect, test } from "vitest";
 
-import { updateFormValuesForChange } from "./PaginatedEnrollmentForm.js";
+import {
+  dependentFieldKeys,
+  updateFormValuesForChange,
+} from "./PaginatedEnrollmentForm.js";
 
 const fields: EnrollmentFormField[] = [
   {
@@ -25,6 +28,17 @@ const fields: EnrollmentFormField[] = [
       "CO.AN": [{ value: "5001", label: "5001" }],
     },
   },
+  {
+    key: "neighborhood",
+    type: "dependent-select",
+    label: "Neighborhood",
+    required: true,
+    dependsOn: "municipality",
+    optionsByValue: {
+      "11001": [{ value: "chapinero", label: "Chapinero" }],
+      "5001": [{ value: "poblado", label: "El Poblado" }],
+    },
+  },
 ];
 
 describe("dependent enrollment form selects", () => {
@@ -32,21 +46,44 @@ describe("dependent enrollment form selects", () => {
     expect(
       updateFormValuesForChange(
         fields,
-        { department: "CO.DC", municipality: "11001" },
+        {
+          department: "CO.DC",
+          municipality: "11001",
+          neighborhood: "chapinero",
+        },
         "department",
         "CO.AN",
       ),
-    ).toEqual({ department: "CO.AN", municipality: "" });
+    ).toEqual({
+      department: "CO.AN",
+      municipality: "",
+      neighborhood: "",
+    });
   });
 
   test("preserves a child selection when it remains valid", () => {
     expect(
       updateFormValuesForChange(
         fields,
-        { department: "CO.DC", municipality: "11001" },
+        {
+          department: "CO.DC",
+          municipality: "11001",
+          neighborhood: "chapinero",
+        },
         "department",
         "CO.DC",
       ),
-    ).toEqual({ department: "CO.DC", municipality: "11001" });
+    ).toEqual({
+      department: "CO.DC",
+      municipality: "11001",
+      neighborhood: "chapinero",
+    });
+  });
+
+  test("finds transitive fields whose errors must be cleared", () => {
+    expect(dependentFieldKeys(fields, "department")).toEqual([
+      "municipality",
+      "neighborhood",
+    ]);
   });
 });

@@ -65,12 +65,7 @@ export function PaginatedEnrollmentForm({
     setFieldErrors((current) => {
       const clearedKeys = new Set([
         key,
-        ...form.fields
-          .filter(
-            (field) =>
-              field.type === "dependent-select" && field.dependsOn === key,
-          )
-          .map((field) => field.key),
+        ...dependentFieldKeys(form.fields, key),
         "_form",
       ]);
       return Object.fromEntries(
@@ -416,19 +411,69 @@ export function updateFormValuesForChange(
   value: EnrollmentFormValue,
 ): Record<string, EnrollmentFormValue> {
   const next = { ...current, [key]: value };
-  for (const field of fields) {
-    if (field.type !== "dependent-select" || field.dependsOn !== key) continue;
-    const options =
-      typeof value === "string" ? (field.optionsByValue[value] ?? []) : [];
-    const selected = next[field.key];
-    if (
-      typeof selected !== "string" ||
-      !options.some((option) => option.value === selected)
-    ) {
-      next[field.key] = "";
+  const pendingKeys = [key];
+  const expandedKeys = new Set([key]);
+
+  while (pendingKeys.length > 0) {
+    const changedKey = pendingKeys.shift();
+    if (changedKey == null) break;
+
+    for (const field of fields) {
+      if (field.type !== "dependent-select" || field.dependsOn !== changedKey) {
+        continue;
+      }
+
+      const dependency = next[changedKey];
+      const options =
+        typeof dependency === "string"
+          ? (field.optionsByValue[dependency] ?? [])
+          : [];
+      const selected = next[field.key];
+      const selectionIsValid =
+        typeof selected === "string" &&
+        options.some((option) => option.value === selected);
+      const shouldExpand = !expandedKeys.has(field.key);
+
+      if (!selectionIsValid && selected !== "") {
+        next[field.key] = "";
+        pendingKeys.push(field.key);
+      } else if (shouldExpand) {
+        pendingKeys.push(field.key);
+      }
+      expandedKeys.add(field.key);
     }
   }
   return next;
+}
+
+/** Returns all transitive dependent fields, tolerating malformed cycles. */
+export function dependentFieldKeys(
+  fields: EnrollmentFormField[],
+  key: string,
+): string[] {
+  const dependentKeys: string[] = [];
+  const pendingKeys = [key];
+  const seenKeys = new Set([key]);
+
+  while (pendingKeys.length > 0) {
+    const parentKey = pendingKeys.shift();
+    if (parentKey == null) break;
+
+    for (const field of fields) {
+      if (
+        field.type !== "dependent-select" ||
+        field.dependsOn !== parentKey ||
+        seenKeys.has(field.key)
+      ) {
+        continue;
+      }
+      seenKeys.add(field.key);
+      dependentKeys.push(field.key);
+      pendingKeys.push(field.key);
+    }
+  }
+
+  return dependentKeys;
 }
 
 function validateFields(
