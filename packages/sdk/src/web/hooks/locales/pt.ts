@@ -129,7 +129,7 @@ export const pt: typeof en = {
   accountVerify: "Verificar",
   accountPhone: "Verifique seu telefone",
   accountPhoneDesc:
-    "Enviaremos um código de 6 dígitos por SMS para verificar seu número.",
+    "Enviaremos um código de 6 dígitos por SMS. Use um número de celular dos EUA; números VoIP não são aceitos.",
   accountSubmit: "Enviar",
   accountFieldRequired: "Obrigatório",
   accountBooleanYes: "Sim",

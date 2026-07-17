@@ -128,7 +128,8 @@ export const ja: typeof en = {
   accountResendCode: "コードを再送信",
   accountVerify: "確認",
   accountPhone: "電話番号の確認",
-  accountPhoneDesc: "6桁の確認コードをSMSでお送りします。",
+  accountPhoneDesc:
+    "6桁の確認コードをSMSでお送りします。米国の携帯電話番号を使用してください。VoIP番号はご利用いただけません。",
   accountSubmit: "送信",
   accountFieldRequired: "必須",
   accountBooleanYes: "はい",

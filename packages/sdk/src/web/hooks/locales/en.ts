@@ -125,7 +125,8 @@ export const en = {
   accountResendCode: "Resend code",
   accountVerify: "Verify",
   accountPhone: "Verify your phone",
-  accountPhoneDesc: "We'll text you a 6-digit code to verify your number.",
+  accountPhoneDesc:
+    "We'll text you a 6-digit code. Use a US mobile number—VoIP numbers aren't supported.",
   accountSubmit: "Submit",
   accountFieldRequired: "Required",
   accountBooleanYes: "Yes",

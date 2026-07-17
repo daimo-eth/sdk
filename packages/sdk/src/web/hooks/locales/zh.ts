@@ -125,7 +125,8 @@ export const zh: typeof en = {
   accountResendCode: "重新发送验证码",
   accountVerify: "验证",
   accountPhone: "验证您的手机号",
-  accountPhoneDesc: "我们将发送6位验证码以验证您的手机号。",
+  accountPhoneDesc:
+    "我们将发送6位验证码。请使用美国手机号码；不支持 VoIP 号码。",
   accountSubmit: "提交",
   accountFieldRequired: "必填",
   accountBooleanYes: "是",

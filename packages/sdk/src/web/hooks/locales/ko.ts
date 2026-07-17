@@ -128,7 +128,8 @@ export const ko: typeof en = {
   accountResendCode: "코드 재전송",
   accountVerify: "인증",
   accountPhone: "전화번호 인증",
-  accountPhoneDesc: "6자리 인증 코드를 문자로 보내드립니다.",
+  accountPhoneDesc:
+    "6자리 인증 코드를 문자로 보내드립니다. 미국 휴대전화 번호를 사용해 주세요. VoIP 번호는 지원되지 않습니다.",
   accountSubmit: "제출",
   accountFieldRequired: "필수",
   accountBooleanYes: "예",

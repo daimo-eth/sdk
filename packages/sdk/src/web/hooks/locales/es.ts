@@ -98,7 +98,7 @@ export const es: typeof en = {
   accountVerify: "Verificar",
   accountPhone: "Verifica tu teléfono",
   accountPhoneDesc:
-    "Te enviaremos un código de 6 dígitos para verificar tu número.",
+    "Te enviaremos un código de 6 dígitos. Usa un número móvil de EE. UU.; no se admiten números VoIP.",
   accountSubmit: "Enviar",
   accountFieldRequired: "Obligatorio",
   accountBooleanYes: "Sí",
