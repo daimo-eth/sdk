@@ -126,11 +126,18 @@ describe("interaction-driven account navigation", () => {
     } as const;
 
     const contract = getInstitutionPaymentContract(payment, "25.00");
-    expect(contract.ui.review.fields).toContainEqual({
-      key: "reference",
-      label: "Request reference",
-      value: "legacy-reference",
-    });
+    expect(contract.ui.review.fields).toEqual([
+      { key: "sender", label: "Sender", value: "PayTrie AB Inc" },
+      { key: "amount", label: "Amount", value: "CA$25.00 CAD" },
+    ]);
+    expect(contract.ui.review.fieldsAfterInstitution).toEqual([
+      {
+        key: "processing_time",
+        label: "Processing time",
+        value: "5–30 min",
+      },
+    ]);
+    expect(contract.ui.waiting.instructions).toContain("5–30 min");
     expect(contract.fallbackDeeplink).toEqual({
       type: "redirect",
       url: payment.qrUrl,

@@ -143,11 +143,14 @@ export const ko: typeof en = {
     "은행에는 이 입금의 캐나다 Interac 결제 파트너인 PayTrie AB Inc의 요청으로 표시됩니다.",
   accountInteracConfirmAmount: "금액",
   accountInteracConfirmSender: "보낸 사람",
-  accountInteracConfirmReference: "요청 참조 번호",
   accountInteracConfirmBank: "은행",
+  accountInteracConfirmProcessingTime: "처리 시간",
   accountInteracConfirmOpenInterac: "Interac 열기",
-  accountInteracWaitingInstructions: (amount: string) =>
-    `은행에서 PayTrie AB Inc의 ${amount} 요청을 승인하세요. PayTrie는 이 입금의 캐나다 Interac 결제 파트너입니다. 승인 후 이체가 도착하는 데 몇 분이 걸릴 수 있습니다. 정상적인 과정입니다. 이 페이지를 열어 두면 자동으로 계속 진행합니다.`,
+  accountInteracWaitingInstructions: (
+    amount: string,
+    processingTime: string,
+  ) =>
+    `은행에서 PayTrie AB Inc의 ${amount} 요청을 승인하세요. PayTrie는 이 입금의 캐나다 Interac 결제 파트너입니다. 승인 후 이체가 도착하는 데 ${processingTime}이 걸릴 수 있습니다. 정상적인 과정입니다. 이 페이지를 열어 두면 자동으로 계속 진행합니다.`,
   accountBankDetails: "이체 정보",
   accountDirections: "안내",
   accountDirectionsStep: (current: number, total: number) =>

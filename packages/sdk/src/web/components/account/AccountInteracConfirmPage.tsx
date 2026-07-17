@@ -108,6 +108,13 @@ export function AccountInstitutionReviewPage({
                 value={selectedInstitution.name}
               />
             )}
+            {paymentContract.ui.review.fieldsAfterInstitution?.map((field) => (
+              <ConfirmRow
+                key={field.key}
+                label={field.label}
+                value={field.value}
+              />
+            ))}
           </div>
 
           <PrimaryButton

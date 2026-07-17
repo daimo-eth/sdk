@@ -412,6 +412,8 @@ export type DepositInstitutionPaymentUi = {
     description: string;
     fields: DepositPaymentField[];
     institutionLabel: string;
+    /** Optional fields rendered after the client-selected institution. */
+    fieldsAfterInstitution?: DepositPaymentField[];
     openInstitutionLabel: string;
     openFallbackLabel: string;
   };

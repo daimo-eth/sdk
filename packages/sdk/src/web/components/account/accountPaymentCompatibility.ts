@@ -12,6 +12,8 @@ type BankPickerPayment = Pick<
   "flow" | "currency" | "qrUrl" | "institutionPaymentUi" | "fallbackDeeplink"
 >;
 
+const INTERAC_PROCESSING_TIME = "5–30 min";
+
 export type RequestToPayPayment = Extract<
   DepositPaymentInfo,
   { flow: "request-to-pay" }
@@ -58,7 +60,6 @@ export function getInstitutionPaymentContract(
   }
 
   const amount = `${payment.currency.symbol}${depositAmount} ${payment.currency.code}`;
-  const reference = getLegacyRequestReference(payment.qrUrl);
   return {
     ui: {
       picker: {
@@ -71,32 +72,33 @@ export function getInstitutionPaymentContract(
         description: t.accountInteracConfirmDesc,
         fields: [
           {
-            key: "amount",
-            label: t.accountInteracConfirmAmount,
-            value: amount,
-          },
-          {
             key: "sender",
             label: t.accountInteracConfirmSender,
             value: "PayTrie AB Inc",
           },
-          ...(reference
-            ? [
-                {
-                  key: "reference",
-                  label: t.accountInteracConfirmReference,
-                  value: reference,
-                },
-              ]
-            : []),
+          {
+            key: "amount",
+            label: t.accountInteracConfirmAmount,
+            value: amount,
+          },
         ],
         institutionLabel: t.accountInteracConfirmBank,
+        fieldsAfterInstitution: [
+          {
+            key: "processing_time",
+            label: t.accountInteracConfirmProcessingTime,
+            value: INTERAC_PROCESSING_TIME,
+          },
+        ],
         openInstitutionLabel: t.open,
         openFallbackLabel: t.accountInteracConfirmOpenInterac,
       },
       waiting: {
         title: t.accountBankTransfer,
-        instructions: t.accountInteracWaitingInstructions(amount),
+        instructions: t.accountInteracWaitingInstructions(
+          amount,
+          INTERAC_PROCESSING_TIME,
+        ),
         openInstitutionLabel: t.open,
         openFallbackLabel: t.accountInteracConfirmOpenInterac,
       },
@@ -171,17 +173,6 @@ export function isExpiredRequestToPay(
 ): boolean {
   const contract = getRequestToPayContract(payment);
   return contract != null && contract.expiresAt <= nowSeconds;
-}
-
-function getLegacyRequestReference(qrUrl: string | null): string | null {
-  if (!qrUrl) return null;
-  try {
-    const url = new URL(qrUrl, "https://payment.invalid");
-    const reference = url.searchParams.get("rID");
-    return reference && reference.length > 0 ? reference : null;
-  } catch {
-    return null;
-  }
 }
 
 function isNonEmptyString(value: unknown): value is string {
