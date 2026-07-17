@@ -34,6 +34,15 @@ export type LegacyEnrollmentCopy = {
   };
 };
 
+/** Loads once per authenticated session/rail target, independent of render callbacks. */
+export function shouldLoadEnrollmentTarget(args: {
+  loadedTarget: string | null;
+  target: string;
+  canLoad: boolean;
+}): boolean {
+  return args.canLoad && args.loadedTarget !== args.target;
+}
+
 /**
  * The generic route is primary. The legacy branch exists only for servers
  * deployed before the additive HTTP facade and can be removed after one full
