@@ -17,6 +17,7 @@ import {
   enrollmentPollingDelay,
   isEnrollmentResponseCurrent,
   loadEnrollmentStep,
+  shouldLoadEnrollmentTarget,
   submitEnrollmentStep,
   toLegacyEnrollmentInteraction,
   type EnrollmentStep,
@@ -552,6 +553,44 @@ describe("stale enrollment response guards", () => {
       isEnrollmentResponseCurrent({
         ...current,
         currentInteraction: "generic:active",
+      }),
+    ).toBe(false);
+  });
+});
+
+describe("enrollment target loading", () => {
+  test("does not reset the same target after unrelated parent renders", () => {
+    const target = "session:ach";
+
+    expect(
+      shouldLoadEnrollmentTarget({
+        loadedTarget: null,
+        target,
+        canLoad: true,
+      }),
+    ).toBe(true);
+    expect(
+      shouldLoadEnrollmentTarget({
+        loadedTarget: target,
+        target,
+        canLoad: true,
+      }),
+    ).toBe(false);
+    expect(
+      shouldLoadEnrollmentTarget({
+        loadedTarget: target,
+        target: "other:ach",
+        canLoad: true,
+      }),
+    ).toBe(true);
+  });
+
+  test("waits for authentication before marking the target loaded", () => {
+    expect(
+      shouldLoadEnrollmentTarget({
+        loadedTarget: null,
+        target: "session:sepa",
+        canLoad: false,
       }),
     ).toBe(false);
   });

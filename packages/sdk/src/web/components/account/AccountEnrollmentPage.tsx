@@ -44,6 +44,7 @@ import {
   isEnrollmentResponseCurrent,
   type LegacyEnrollmentCopy,
   loadEnrollmentStep,
+  shouldLoadEnrollmentTarget,
   submitEnrollmentStep,
 } from "./enrollmentProtocol.js";
 import { getKycRequirement, KycIndicator } from "./kycRequirement.js";
@@ -82,7 +83,12 @@ export function AccountEnrollmentPage({
   const targetRef = useRef(target);
   const stepRef = useRef<EnrollmentStep | null>(null);
   const mountedRef = useRef(true);
+  const loadedTargetRef = useRef<string | null>(null);
+  const onReadyRef = useRef(onReady);
+  const onPhoneRequiredRef = useRef(onPhoneRequired);
   targetRef.current = target;
+  onReadyRef.current = onReady;
+  onPhoneRequiredRef.current = onPhoneRequired;
 
   useEffect(() => {
     mountedRef.current = true;
@@ -92,26 +98,23 @@ export function AccountEnrollmentPage({
     };
   }, []);
 
-  const applyStep = useCallback(
-    (result: EnrollmentStep) => {
-      stepRef.current = result;
-      setStep(result);
-      setIsLoading(false);
-      setErrorMessage(null);
+  const applyStep = useCallback((result: EnrollmentStep) => {
+    stepRef.current = result;
+    setStep(result);
+    setIsLoading(false);
+    setErrorMessage(null);
 
-      switch (enrollmentNavigationEffect(result.interaction)) {
-        case "ready":
-          onReady();
-          return;
-        case "phone":
-          onPhoneRequired();
-          return;
-        case "render":
-          return;
-      }
-    },
-    [onPhoneRequired, onReady],
-  );
+    switch (enrollmentNavigationEffect(result.interaction)) {
+      case "ready":
+        onReadyRef.current();
+        return;
+      case "phone":
+        onPhoneRequiredRef.current();
+        return;
+      case "render":
+        return;
+    }
+  }, []);
 
   const runRequest = useCallback(
     async (
@@ -206,17 +209,27 @@ export function AccountEnrollmentPage({
     [client, getAccessToken, legacyCopy, rail, runRequest],
   );
 
+  const refreshEnrollmentRef = useRef(refreshEnrollment);
+  refreshEnrollmentRef.current = refreshEnrollment;
+
   useEffect(() => {
+    if (
+      !shouldLoadEnrollmentTarget({
+        loadedTarget: loadedTargetRef.current,
+        target,
+        canLoad: getAccessToken != null,
+      })
+    ) {
+      return;
+    }
+    loadedTargetRef.current = target;
     latestRequestRef.current += 1;
     stepRef.current = null;
     setStep(null);
     setErrorMessage(null);
     setIsLoading(true);
-    void refreshEnrollment();
-    return () => {
-      latestRequestRef.current += 1;
-    };
-  }, [target, refreshEnrollment]);
+    void refreshEnrollmentRef.current();
+  }, [getAccessToken, target]);
 
   useEffect(() => {
     if (!step) return;
@@ -224,10 +237,10 @@ export function AccountEnrollmentPage({
     if (delayMs == null) return;
     const expectedInteraction = enrollmentInteractionIdentity(step);
     const timeout = window.setTimeout(() => {
-      void refreshEnrollment(expectedInteraction);
+      void refreshEnrollmentRef.current(expectedInteraction);
     }, delayMs);
     return () => window.clearTimeout(timeout);
-  }, [refreshEnrollment, step]);
+  }, [step]);
 
   if (isLoading) {
     return (
