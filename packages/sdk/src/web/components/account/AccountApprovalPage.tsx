@@ -57,6 +57,7 @@ export function AccountApprovalPage({
   const [hasOpened, setHasOpened] = useState(false);
   const [isRetrying, setIsRetrying] = useState(false);
   const [retryError, setRetryError] = useState<string | null>(null);
+  const draftConfig = getApprovalDraftConfig(resumePayment, depositAmount);
   const {
     payment: draftedPayment,
     error,
@@ -67,8 +68,7 @@ export function AccountApprovalPage({
     sessionId,
     rail,
     depositAmount,
-    enabled: resumePayment && depositAmount !== "",
-    draftMode: "plain",
+    ...draftConfig,
   });
   const candidatePayment =
     depositState?.kind === "started" ? depositState.payment : draftedPayment;
@@ -185,6 +185,17 @@ export function AccountApprovalPage({
       </CenteredContent>
     </div>
   );
+}
+
+/** Fresh approval entry signs and starts; resume only replays provider info. */
+export function getApprovalDraftConfig(
+  resumePayment: boolean,
+  depositAmount: string,
+): { enabled: boolean; draftMode: "plain" | "signed" } {
+  return {
+    enabled: depositAmount !== "",
+    draftMode: resumePayment ? "plain" : "signed",
+  };
 }
 
 export function ApprovalActiveContent({

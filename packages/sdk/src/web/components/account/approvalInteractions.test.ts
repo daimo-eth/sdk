@@ -8,6 +8,7 @@ import { baseUSDC } from "../../../common/token.js";
 import {
   ApprovalActiveContent,
   ApprovalExpiredContent,
+  getApprovalDraftConfig,
   getApprovalActionLabel,
 } from "./AccountApprovalPage.js";
 import {
@@ -148,6 +149,21 @@ describe("institution selection contract", () => {
 });
 
 describe("approval contracts", () => {
+  test("starts fresh approvals signed and resumes existing approvals plainly", () => {
+    expect(getApprovalDraftConfig(false, "105.00")).toEqual({
+      enabled: true,
+      draftMode: "signed",
+    });
+    expect(getApprovalDraftConfig(true, "105.00")).toEqual({
+      enabled: true,
+      draftMode: "plain",
+    });
+    expect(getApprovalDraftConfig(false, "")).toEqual({
+      enabled: false,
+      draftMode: "signed",
+    });
+  });
+
   test("keeps hosted return, reopen, polling, expiry, and settlement explicit", () => {
     expect(getApprovalContract(HOSTED_APPROVAL)).not.toBeNull();
     expect(getApprovalActionLabel(HOSTED_APPROVAL, false)).toBe(
