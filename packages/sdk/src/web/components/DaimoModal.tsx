@@ -47,6 +47,7 @@ import { usePaymentCallbacks } from "../hooks/usePaymentCallbacks.js";
 import { useSessionNav } from "../hooks/useSessionNav.js";
 import { useSessionPolling } from "../hooks/useSessionPolling.js";
 import { AccountFlowProvider } from "./account/AccountFlowProvider.js";
+import { AccountApprovalPage } from "./account/AccountApprovalPage.js";
 
 import {
   useInjectedWallets,
@@ -79,6 +80,7 @@ import { AccountOtpPage } from "./account/AccountOtpPage.js";
 import { AccountPhonePage } from "./account/AccountPhonePage.js";
 import { AccountPhoneOtpPage } from "./account/AccountPhoneOtpPage.js";
 import { AccountAmountPage } from "./account/AccountPaymentPage.js";
+import { AccountPaymentResumePage } from "./account/AccountPaymentResumePage.js";
 import { AccountStatusPage } from "./account/AccountStatusPage.js";
 import { AccountRequestToPayPage } from "./account/AccountRequestToPayPage.js";
 import {
@@ -954,14 +956,50 @@ function renderEntry(
           onRetry={ctx.onAccountSessionRecreate}
         />
       );
+    case "account-approval":
+      return (
+        <AccountApprovalPage
+          sessionId={ctx.session.sessionId}
+          clientSecret={ctx.session.clientSecret}
+          rail={entry.rail}
+          platform={ctx.platform}
+          resumePayment={entry.resumePayment ?? false}
+          onAdvance={(deposit) =>
+            ctx.onAccountAdvance("account-status", {
+              initialStatus: deposit.status,
+            })
+          }
+          onRetry={ctx.onAccountSessionRecreate}
+        />
+      );
+    case "account-payment-resume":
+      return (
+        <AccountPaymentResumePage
+          sessionId={ctx.session.sessionId}
+          rail={entry.rail}
+          onReady={(payment) =>
+            ctx.onAccountAdvance(
+              getAccountPaymentAdvanceTarget(payment.flow, ctx.platform),
+            )
+          }
+        />
+      );
     case "account-institution-picker":
       return (
         <AccountInstitutionPickerPage
           rail={entry.rail}
           paymentInteraction={entry.paymentInteraction}
           sessionId={ctx.session.sessionId}
-          onBack={null}
-          onSelect={() => ctx.onAccountAdvance("account-institution-review")}
+          onBack={
+            entry.paymentInteraction === "institution-picker" && ctx.canGoBack
+              ? ctx.onBack
+              : null
+          }
+          onSelect={(payment) =>
+            ctx.onAccountAdvance(
+              getAccountPaymentAdvanceTarget(payment.flow, ctx.platform),
+            )
+          }
         />
       );
     case "account-institution-review": {

@@ -509,12 +509,34 @@ export function useSessionNav(
                 kind: "idle",
               });
               replaceLoading({
-                type: "account-request-to-pay",
+                type: "account-payment-resume",
                 nodeId,
                 rail,
                 paymentInteraction,
                 autoNav,
-                resumePayment: true,
+              });
+              return;
+            }
+
+            if (
+              existingDeposit &&
+              (existingDeposit.status === "initiated" ||
+                existingDeposit.status === "awaiting_payment") &&
+              (paymentInteraction === "request-to-pay" ||
+                paymentInteraction === "institution-picker" ||
+                paymentInteraction === "hosted-approval" ||
+                paymentInteraction === "external-app-approval")
+            ) {
+              accountFlow.setDepositState(session.sessionId, {
+                depositAmount: existingDeposit.fiatAmount,
+                kind: "idle",
+              });
+              replaceLoading({
+                type: "account-payment-resume",
+                nodeId,
+                rail,
+                paymentInteraction,
+                autoNav,
               });
               return;
             }

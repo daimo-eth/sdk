@@ -715,8 +715,8 @@ export type DepositDeeplink =
       formFields: Record<string, string>;
     };
 
-/** A financial institution the user can pay through. */
-export type DepositInstitution = {
+/** One opaque institution option from a server-owned pre-create catalog. */
+export type DepositInstitutionCatalogEntry = {
   /** Stable institution identifier. Server must always provide this. */
   id: string;
   name: string;
@@ -724,6 +724,10 @@ export type DepositInstitution = {
   logoURI: string | null;
   /** When true, shown as a prominent tile (vs. text-only list item). */
   featured?: boolean;
+};
+
+/** A financial institution the user can pay through after provider creation. */
+export type DepositInstitution = DepositInstitutionCatalogEntry & {
   deeplink: DepositDeeplink;
 };
 
@@ -739,6 +743,9 @@ export const depositPaymentInteractions = [
   "bank-picker",
   "bank-transfer",
   "directions",
+  "external-app-approval",
+  "hosted-approval",
+  "institution-picker",
   "request-to-pay",
   "wallet-pay-widget",
 ] as const;
@@ -747,11 +754,7 @@ export type DepositPaymentInteraction =
 
 /** Server-owned copy and actions for an institution-picker payment surface. */
 export type DepositInstitutionPaymentUi = {
-  picker: {
-    title: string;
-    searchPlaceholder: string;
-    otherInstitutionsLabel: string;
-  };
+  picker: DepositInstitutionPickerUi;
   review: {
     title: string;
     description: string;
@@ -770,6 +773,30 @@ export type DepositInstitutionPaymentUi = {
   };
 };
 
+/** Server-owned copy for a required pre-create institution selection. */
+export type DepositInstitutionPickerUi = {
+  title: string;
+  searchPlaceholder: string;
+  otherInstitutionsLabel: string;
+};
+
+/** Opaque action binding issued with one exact institution catalog. */
+export type DepositPreCreateAction = {
+  id: string;
+  revision: string;
+  inputKind: "institution";
+  catalogRevision: string;
+};
+
+/** Typed user input submitted with the signed provider-create attempt. */
+export type DepositPreCreatePaymentInput = {
+  kind: "institution";
+  actionId: string;
+  revision: string;
+  catalogRevision: string;
+  institutionId: string;
+};
+
 /** Server-owned semantic copy for an expiring request-to-pay surface. */
 export type DepositRequestToPayUi = {
   title: string;
@@ -785,6 +812,38 @@ export type DepositRequestToPayUi = {
 /** Closed recovery behavior for an expired request-to-pay interaction. */
 export type DepositRequestToPayRetry = {
   type: "recreate-session";
+};
+
+export type DepositApprovalPolling = {
+  type: "poll";
+  delayMs: number;
+};
+
+export type DepositHostedApprovalUi = {
+  title: string;
+  instructions: string;
+  openLabel: string;
+  reopenLabel: string;
+  expiredTitle: string;
+  expiredInstructions: string;
+  retryLabel: string;
+  retryingLabel: string;
+};
+
+export type DepositExternalAppApprovalUi = {
+  title: string;
+  instructions: string;
+  destinationLabel: string;
+  expiredTitle: string;
+  expiredInstructions: string;
+  retryLabel: string;
+  retryingLabel: string;
+};
+
+export type DepositExternalApprovalAction = {
+  type: "open-url";
+  url: string;
+  label: string;
 };
 
 export type DepositPaymentStep = {
@@ -836,6 +895,9 @@ export type DepositPaymentOnchainTransfer = {
 /**
  * Server-provided payment flow configuration.
  * - `bank-picker`: user picks an institution, then continues in their bank flow
+ * - `institution-picker`: user chooses an opaque institution before creation
+ * - `hosted-approval`: user approves through a provider-hosted URL
+ * - `external-app-approval`: user approves in an external app, optionally linked
  * - `request-to-pay`: user pays an exact expiring fiat request by QR or code
  * - `wallet-pay-widget`: user completes payment in an embedded wallet-pay widget
  */
@@ -861,6 +923,42 @@ export type DepositPaymentInfo =
       steps: DepositPaymentStep[];
       onchainTransfer: DepositPaymentOnchainTransfer;
       reference?: DepositPaymentReference;
+    })
+  | (DepositConstraints & {
+      flow: Extract<DepositPaymentInteraction, "institution-picker">;
+      instructions: string;
+      institutions: DepositInstitutionCatalogEntry[];
+      ui: DepositInstitutionPickerUi;
+      /** Exact fiat amount the user will approve, in decimal fiat units (F). */
+      payableAmount: string;
+      /** Exact settlement-token amount covered by routing signatures (S). */
+      expectedSettlementAmount: string;
+      action: DepositPreCreateAction;
+    })
+  | (DepositConstraints & {
+      flow: Extract<DepositPaymentInteraction, "hosted-approval">;
+      ui: DepositHostedApprovalUi;
+      /** Absolute provider-hosted approval URL. */
+      approvalUrl: string;
+      payableAmount: string;
+      expectedSettlementAmount: string;
+      expiresAt: number;
+      returnBehavior: { type: "poll" };
+      reopen: { type: "same-url" };
+      polling: DepositApprovalPolling;
+      retry: DepositRequestToPayRetry;
+    })
+  | (DepositConstraints & {
+      flow: Extract<DepositPaymentInteraction, "external-app-approval">;
+      ui: DepositExternalAppApprovalUi;
+      payableAmount: string;
+      expectedSettlementAmount: string;
+      /** Display-safe masked phone, handle, or destination. */
+      maskedDestination: string;
+      action?: DepositExternalApprovalAction;
+      expiresAt: number;
+      polling: DepositApprovalPolling;
+      retry: DepositRequestToPayRetry;
     })
   | (DepositConstraints & {
       flow: Extract<DepositPaymentInteraction, "request-to-pay">;

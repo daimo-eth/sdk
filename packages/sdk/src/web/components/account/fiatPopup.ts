@@ -18,6 +18,9 @@ export function interactionRequiresPopup(
     case "bank-picker":
     case "bank-transfer":
     case "directions":
+    case "external-app-approval":
+    case "hosted-approval":
+    case "institution-picker":
     case "request-to-pay":
       return false;
   }

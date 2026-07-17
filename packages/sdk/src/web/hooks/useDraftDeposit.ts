@@ -6,6 +6,7 @@ import type {
   AccountRail,
   CreateDepositResponse,
   DepositPaymentInfo,
+  DepositPreCreatePaymentInput,
 } from "../../common/account.js";
 import {
   type AccountFlowState,
@@ -169,6 +170,7 @@ type SignAndUpsertDepositArgs = {
   sessionId: string;
   depositAmount: string;
   authorizedAmount?: string;
+  paymentInput?: DepositPreCreatePaymentInput;
   rail: AccountRail;
 };
 
@@ -178,6 +180,7 @@ export async function signAndUpsertDeposit({
   sessionId,
   depositAmount,
   authorizedAmount,
+  paymentInput,
   rail,
 }: SignAndUpsertDepositArgs): Promise<CreateDepositResponse> {
   const token = await accountFlow.getAccessToken();
@@ -205,6 +208,7 @@ export async function signAndUpsertDeposit({
       deliverySigData: deliverySignData,
       routingSig,
       routingSigData: routingSignData,
+      paymentInput,
     },
     auth,
   );
@@ -254,6 +258,7 @@ async function createSignedDraftDeposit({
     depositAmount,
   });
   if (preview.payment === null) return preview;
+  if (preview.payment.flow === "institution-picker") return preview;
   if (isExpiredRequestToPay(preview.payment)) {
     return preview;
   }
