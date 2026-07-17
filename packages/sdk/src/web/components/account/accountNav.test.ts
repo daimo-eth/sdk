@@ -11,6 +11,7 @@ import {
   getAccountPaymentAdvanceTarget,
   getAccountPaymentEntryTarget,
   getDepositResumeTarget,
+  getInstitutionSelectionAdvanceTarget,
   isPaymentInteractionCompatible,
   shouldRecoverExpiredPayment,
 } from "./accountNav.js";
@@ -31,6 +32,9 @@ const ALL_INTERACTIONS: DepositPaymentInteraction[] = [
   "bank-picker",
   "bank-transfer",
   "directions",
+  "external-app-approval",
+  "hosted-approval",
+  "institution-picker",
   "request-to-pay",
   "wallet-pay-widget",
 ];
@@ -44,6 +48,9 @@ describe("interaction-driven account navigation", () => {
       "bank-picker",
       "bank-transfer",
       "directions",
+      "external-app-approval",
+      "hosted-approval",
+      "institution-picker",
       "request-to-pay",
     ] as const) {
       expect(getAccountPaymentEntryTarget(interaction)).toBe("account-amount");
@@ -64,10 +71,24 @@ describe("interaction-driven account navigation", () => {
     }
   });
 
+  test("legacy selection advances to review instead of re-entering the picker", () => {
+    for (const platform of ALL_PLATFORMS) {
+      expect(
+        getInstitutionSelectionAdvanceTarget("bank-picker", platform),
+      ).toBe("account-institution-review");
+      expect(
+        getInstitutionSelectionAdvanceTarget("hosted-approval", platform),
+      ).toBe("account-approval");
+    }
+  });
+
   test("every non-picker interaction has a platform-independent renderer", () => {
     const expected = {
       "bank-transfer": "account-payment-instructions",
       directions: "account-payment-instructions",
+      "external-app-approval": "account-approval",
+      "hosted-approval": "account-approval",
+      "institution-picker": "account-institution-picker",
       "request-to-pay": "account-request-to-pay",
       "wallet-pay-widget": "account-wallet-pay",
     } as const;
@@ -213,12 +234,16 @@ describe("getDepositResumeTarget", () => {
 
   test("expired request-to-pay re-enters interaction recovery", () => {
     expect(getDepositResumeTarget("expired", "request-to-pay")).toBeNull();
-    expect(shouldRecoverExpiredPayment("expired", "request-to-pay")).toBe(
-      true,
-    );
-    expect(shouldRecoverExpiredPayment("expired", "bank-transfer")).toBe(
-      false,
-    );
+    expect(shouldRecoverExpiredPayment("expired", "request-to-pay")).toBe(true);
+    expect(shouldRecoverExpiredPayment("expired", "bank-transfer")).toBe(false);
+    for (const interaction of [
+      "institution-picker",
+      "hosted-approval",
+      "external-app-approval",
+    ] as const) {
+      expect(getDepositResumeTarget("expired", interaction)).toBeNull();
+      expect(shouldRecoverExpiredPayment("expired", interaction)).toBe(true);
+    }
   });
 
   test("every status has a decision", () => {

@@ -115,6 +115,8 @@ export type NavEntry =
       update: AccountEnrollmentUpdateApplePayEnhancedVerification;
     } & AccountNavBase)
   | ({ type: "account-amount" } & AccountNavBase)
+  | ({ type: "account-approval"; resumePayment?: boolean } & AccountNavBase)
+  | ({ type: "account-payment-resume" } & AccountNavBase)
   | ({
       type: "account-request-to-pay";
       resumePayment?: boolean;

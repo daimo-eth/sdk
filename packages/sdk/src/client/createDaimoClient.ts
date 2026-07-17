@@ -3,6 +3,7 @@ import type {
   CreateAccountResponse,
   CreateDepositResponse,
   DepositConstraints,
+  DepositPreCreatePaymentInput,
   EnrollmentActionSubmitRequest,
   EnrollmentInteraction,
   EnrollmentOtpRequest,
@@ -61,6 +62,7 @@ export type UpsertDepositRequest = {
   deliverySigData?: Record<string, unknown>;
   routingSig?: string;
   routingSigData?: Record<string, unknown>;
+  paymentInput?: DepositPreCreatePaymentInput;
 };
 
 export type DaimoClient = {

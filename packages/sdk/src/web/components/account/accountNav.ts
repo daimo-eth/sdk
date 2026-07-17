@@ -21,7 +21,10 @@ export function getDepositResumeTarget(
     case "failed":
       return "account-status";
     case "expired":
-      return interaction === "request-to-pay" ? null : "account-status";
+      return interaction != null &&
+        shouldRecoverExpiredPayment(status, interaction)
+        ? null
+        : "account-status";
     case "initiated":
     case "awaiting_payment":
       return null;
@@ -33,7 +36,13 @@ export function shouldRecoverExpiredPayment(
   status: AccountDepositStatus,
   interaction: DepositPaymentInteraction,
 ): boolean {
-  return status === "expired" && interaction === "request-to-pay";
+  if (status !== "expired") return false;
+  return (
+    interaction === "request-to-pay" ||
+    interaction === "institution-picker" ||
+    interaction === "hosted-approval" ||
+    interaction === "external-app-approval"
+  );
 }
 
 /**
@@ -50,6 +59,9 @@ export function getAccountPaymentEntryTarget(
     case "bank-picker":
     case "bank-transfer":
     case "directions":
+    case "external-app-approval":
+    case "hosted-approval":
+    case "institution-picker":
     case "request-to-pay":
       return "account-amount" as const;
   }
@@ -63,6 +75,8 @@ export function getAccountPaymentAdvanceTarget(
   platform: DaimoPlatform,
 ) {
   switch (interaction) {
+    case "institution-picker":
+      return "account-institution-picker" as const;
     case "bank-picker":
       // JS-driven bank deeplinks (form-post popups, window.open) are
       // unreliable on mobile — skip the picker, then review before opening.
@@ -74,9 +88,23 @@ export function getAccountPaymentAdvanceTarget(
       return "account-payment-instructions" as const;
     case "request-to-pay":
       return "account-request-to-pay" as const;
+    case "hosted-approval":
+    case "external-app-approval":
+      return "account-approval" as const;
     case "wallet-pay-widget":
       return "account-wallet-pay" as const;
   }
+}
+
+/** Advance after institution selection without re-entering the legacy picker. */
+export function getInstitutionSelectionAdvanceTarget(
+  paymentFlow: DepositPaymentInteraction,
+  platform: DaimoPlatform,
+) {
+  if (paymentFlow === "bank-picker") {
+    return "account-institution-review" as const;
+  }
+  return getAccountPaymentAdvanceTarget(paymentFlow, platform);
 }
 
 /** Fail closed when server-advertised intent and actual instructions diverge. */

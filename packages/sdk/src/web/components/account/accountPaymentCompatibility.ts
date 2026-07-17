@@ -3,6 +3,7 @@ import type {
   DepositInstitutionPaymentUi,
   DepositPaymentInfo,
   DepositPaymentInteraction,
+  DepositPreCreatePaymentInput,
 } from "../../../common/account.js";
 import type { NavNodeFiat } from "../../api/navTree.js";
 import { t } from "../../hooks/locale.js";
@@ -17,6 +18,16 @@ const INTERAC_PROCESSING_TIME = "5–30 min";
 export type RequestToPayPayment = Extract<
   DepositPaymentInfo,
   { flow: "request-to-pay" }
+>;
+
+export type InstitutionPickerPayment = Extract<
+  DepositPaymentInfo,
+  { flow: "institution-picker" }
+>;
+
+export type ApprovalPayment = Extract<
+  DepositPaymentInfo,
+  { flow: "hosted-approval" | "external-app-approval" }
 >;
 
 /**
@@ -146,6 +157,138 @@ export function getRequestToPayContract(
   return payment;
 }
 
+/** Validate one exact pre-create institution catalog before rendering. */
+export function getInstitutionPickerContract(
+  payment: DepositPaymentInfo,
+): InstitutionPickerPayment | null {
+  if (payment.flow !== "institution-picker") return null;
+  if (!isPositiveDecimal(payment.payableAmount)) return null;
+  if (!isPositiveDecimal(payment.expectedSettlementAmount)) return null;
+  if (!isNonEmptyString(payment.instructions)) return null;
+  if (!isNonEmptyString(payment.currency?.code)) return null;
+  if (!isNonEmptyString(payment.currency?.symbol)) return null;
+  if (!isNonEmptyString(payment.destinationToken?.symbol)) return null;
+  if (!isInstitutionPickerUi(payment.ui)) return null;
+
+  const { action } = payment;
+  if (
+    !action ||
+    action.inputKind !== "institution" ||
+    !isNonEmptyString(action.id) ||
+    !isNonEmptyString(action.revision) ||
+    !isNonEmptyString(action.catalogRevision)
+  ) {
+    return null;
+  }
+
+  if (payment.institutions.length === 0) return null;
+  const ids = new Set<string>();
+  for (const institution of payment.institutions) {
+    if (
+      !isNonEmptyString(institution.id) ||
+      !isNonEmptyString(institution.name) ||
+      ids.has(institution.id)
+    ) {
+      return null;
+    }
+    ids.add(institution.id);
+  }
+  return payment;
+}
+
+/** Build the only typed client input accepted for an issued catalog action. */
+export function buildInstitutionPaymentInput(
+  payment: DepositPaymentInfo,
+  institutionId: string,
+): DepositPreCreatePaymentInput {
+  const contract = getInstitutionPickerContract(payment);
+  if (!contract) throw new Error("invalid institution-picker payment info");
+  if (!contract.institutions.some((item) => item.id === institutionId)) {
+    throw new Error("institution not in payment catalog");
+  }
+  return {
+    kind: "institution",
+    actionId: contract.action.id,
+    revision: contract.action.revision,
+    catalogRevision: contract.action.catalogRevision,
+    institutionId,
+  };
+}
+
+/** Validate hosted and passive external-app approval contracts. */
+export function getApprovalContract(
+  payment: DepositPaymentInfo,
+): ApprovalPayment | null {
+  if (
+    payment.flow !== "hosted-approval" &&
+    payment.flow !== "external-app-approval"
+  ) {
+    return null;
+  }
+  if (!isPositiveDecimal(payment.payableAmount)) return null;
+  if (!isPositiveDecimal(payment.expectedSettlementAmount)) return null;
+  if (!isNonEmptyString(payment.currency?.code)) return null;
+  if (!isNonEmptyString(payment.currency?.symbol)) return null;
+  if (!isNonEmptyString(payment.destinationToken?.symbol)) return null;
+  if (!Number.isSafeInteger(payment.expiresAt) || payment.expiresAt <= 0) {
+    return null;
+  }
+  if (
+    payment.polling?.type !== "poll" ||
+    !Number.isSafeInteger(payment.polling.delayMs) ||
+    payment.polling.delayMs <= 0 ||
+    payment.polling.delayMs > 60_000
+  ) {
+    return null;
+  }
+  if (payment.retry?.type !== "recreate-session") return null;
+
+  if (payment.flow === "hosted-approval") {
+    if (!isHttpsUrl(payment.approvalUrl)) return null;
+    if (payment.returnBehavior?.type !== "poll") return null;
+    if (payment.reopen?.type !== "same-url") return null;
+    if (
+      ![
+        payment.ui?.title,
+        payment.ui?.instructions,
+        payment.ui?.openLabel,
+        payment.ui?.reopenLabel,
+        payment.ui?.expiredTitle,
+        payment.ui?.expiredInstructions,
+        payment.ui?.retryLabel,
+        payment.ui?.retryingLabel,
+      ].every(isNonEmptyString)
+    ) {
+      return null;
+    }
+    return payment;
+  }
+
+  if (!isNonEmptyString(payment.maskedDestination)) return null;
+  if (
+    ![
+      payment.ui?.title,
+      payment.ui?.instructions,
+      payment.ui?.destinationLabel,
+      payment.ui?.expiredTitle,
+      payment.ui?.expiredInstructions,
+      payment.ui?.retryLabel,
+      payment.ui?.retryingLabel,
+    ].every(isNonEmptyString)
+  ) {
+    return null;
+  }
+  if (
+    payment.action &&
+    (payment.action.type !== "open-url" ||
+      !isSafeExternalUrl(payment.action.url) ||
+      !isNonEmptyString(payment.action.label))
+  ) {
+    return null;
+  }
+  return payment;
+}
+
 /** Select the token-units amount covered by the routing authorization. */
 export function getAuthorizedRoutingAmount(
   payment: DepositPaymentInfo,
@@ -159,11 +302,31 @@ export function getAuthorizedRoutingAmount(
     }
     case "wallet-pay-widget":
       return payment.purchaseAmount;
+    case "institution-picker": {
+      const contract = getInstitutionPickerContract(payment);
+      if (!contract) throw new Error("invalid institution-picker payment info");
+      return contract.expectedSettlementAmount;
+    }
+    case "hosted-approval":
+    case "external-app-approval": {
+      const contract = getApprovalContract(payment);
+      if (!contract) throw new Error("invalid approval payment info");
+      return contract.expectedSettlementAmount;
+    }
     case "bank-picker":
     case "bank-transfer":
     case "directions":
       return depositAmount;
   }
+}
+
+/** True only for a valid approval whose absolute server expiry has passed. */
+export function isExpiredApproval(
+  payment: DepositPaymentInfo,
+  nowSeconds = Math.floor(Date.now() / 1000),
+): boolean {
+  const contract = getApprovalContract(payment);
+  return contract != null && contract.expiresAt <= nowSeconds;
 }
 
 /** True only for a valid request whose absolute server expiry has passed. */
@@ -185,4 +348,31 @@ function isPositiveDecimal(value: unknown): value is string {
   }
   const amount = Number(value);
   return Number.isFinite(amount) && amount > 0;
+}
+
+function isInstitutionPickerUi(value: unknown): boolean {
+  if (value == null || typeof value !== "object") return false;
+  const ui = value as Record<string, unknown>;
+  return [ui.title, ui.searchPlaceholder, ui.otherInstitutionsLabel].every(
+    isNonEmptyString,
+  );
+}
+
+function isHttpsUrl(value: unknown): value is string {
+  if (!isNonEmptyString(value)) return false;
+  try {
+    return new URL(value).protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
+function isSafeExternalUrl(value: unknown): value is string {
+  if (!isNonEmptyString(value)) return false;
+  try {
+    const protocol = new URL(value).protocol.toLowerCase();
+    return !["data:", "file:", "javascript:", "vbscript:"].includes(protocol);
+  } catch {
+    return false;
+  }
 }
