@@ -11,6 +11,7 @@ import {
   getAccountPaymentAdvanceTarget,
   getAccountPaymentEntryTarget,
   getDepositResumeTarget,
+  getInstitutionSelectionAdvanceTarget,
   isPaymentInteractionCompatible,
   shouldRecoverExpiredPayment,
 } from "./accountNav.js";
@@ -67,6 +68,17 @@ describe("interaction-driven account navigation", () => {
       expect(getAccountPaymentAdvanceTarget("bank-picker", platform)).toBe(
         "account-institution-review",
       );
+    }
+  });
+
+  test("legacy selection advances to review instead of re-entering the picker", () => {
+    for (const platform of ALL_PLATFORMS) {
+      expect(
+        getInstitutionSelectionAdvanceTarget("bank-picker", platform),
+      ).toBe("account-institution-review");
+      expect(
+        getInstitutionSelectionAdvanceTarget("hosted-approval", platform),
+      ).toBe("account-approval");
     }
   });
 

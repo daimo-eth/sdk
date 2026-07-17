@@ -86,6 +86,7 @@ import { AccountRequestToPayPage } from "./account/AccountRequestToPayPage.js";
 import {
   getAccountPaymentAdvanceTarget,
   getAccountPaymentEntryTarget,
+  getInstitutionSelectionAdvanceTarget,
 } from "./account/accountNav.js";
 import { SelectAmountPage } from "./SelectAmountPage.js";
 import { SelectTokenPage } from "./SelectTokenPage.js";
@@ -997,7 +998,7 @@ function renderEntry(
           }
           onSelect={(payment) =>
             ctx.onAccountAdvance(
-              getAccountPaymentAdvanceTarget(payment.flow, ctx.platform),
+              getInstitutionSelectionAdvanceTarget(payment.flow, ctx.platform),
             )
           }
         />

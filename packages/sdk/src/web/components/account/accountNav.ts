@@ -96,6 +96,17 @@ export function getAccountPaymentAdvanceTarget(
   }
 }
 
+/** Advance after institution selection without re-entering the legacy picker. */
+export function getInstitutionSelectionAdvanceTarget(
+  paymentFlow: DepositPaymentInteraction,
+  platform: DaimoPlatform,
+) {
+  if (paymentFlow === "bank-picker") {
+    return "account-institution-review" as const;
+  }
+  return getAccountPaymentAdvanceTarget(paymentFlow, platform);
+}
+
 /** Fail closed when server-advertised intent and actual instructions diverge. */
 export function isPaymentInteractionCompatible(
   interaction: DepositPaymentInteraction,
