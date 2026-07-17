@@ -4,14 +4,14 @@ import { pruneCompletedAccountAuth } from "./accountAuthNav.js";
 import type { NavEntry } from "./types.js";
 
 const nodeId = "fiat";
-const rail = "ars";
+const rail = "apple_pay";
 const paymentInteraction = "bank-transfer";
 
 describe("account auth nav pruning", () => {
-  test("prunes stale provider otp after account enrollment completes", () => {
+  test("prunes stale phone otp after account enrollment completes", () => {
     const stack: NavEntry[] = [
       { type: "choose-option", nodeId: "root", autoNav: true },
-      { type: "account-provider-otp", nodeId, rail, paymentInteraction },
+      { type: "account-phone-otp", nodeId, rail, paymentInteraction },
       { type: "account-enrollment", nodeId, rail, paymentInteraction },
     ];
 
@@ -21,20 +21,9 @@ describe("account auth nav pruning", () => {
     ]);
   });
 
-  test("keeps auth entries when entering provider otp challenge", () => {
+  test("keeps auth entries when entering phone otp challenge", () => {
     const stack: NavEntry[] = [
       { type: "account-email", nodeId, rail, paymentInteraction },
-      { type: "account-enrollment", nodeId, rail, paymentInteraction },
-    ];
-
-    expect(pruneCompletedAccountAuth(stack, "account-provider-otp")).toBe(
-      stack,
-    );
-  });
-
-  test("keeps existing phone otp challenge behavior", () => {
-    const stack: NavEntry[] = [
-      { type: "account-phone", nodeId, rail, paymentInteraction },
       { type: "account-enrollment", nodeId, rail, paymentInteraction },
     ];
 

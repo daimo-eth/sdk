@@ -79,7 +79,6 @@ import { AccountOtpPage } from "./account/AccountOtpPage.js";
 import { AccountPhonePage } from "./account/AccountPhonePage.js";
 import { AccountPhoneOtpPage } from "./account/AccountPhoneOtpPage.js";
 import { AccountAmountPage } from "./account/AccountPaymentPage.js";
-import { AccountProviderOtpPage } from "./account/AccountProviderOtpPage.js";
 import { AccountStatusPage } from "./account/AccountStatusPage.js";
 import { AccountRequestToPayPage } from "./account/AccountRequestToPayPage.js";
 import {
@@ -891,9 +890,6 @@ function renderEntry(
             )
           }
           onPhoneRequired={() => ctx.onAccountAdvance("account-phone")}
-          onProviderOtpRequired={() =>
-            ctx.onAccountAdvance("account-provider-otp")
-          }
         />
       );
     }
@@ -907,14 +903,6 @@ function renderEntry(
     case "account-phone-otp":
       return (
         <AccountPhoneOtpPage
-          rail={entry.rail}
-          onBack={ctx.onBack}
-          onVerified={() => ctx.onAccountAdvance("account-enrollment")}
-        />
-      );
-    case "account-provider-otp":
-      return (
-        <AccountProviderOtpPage
           onBack={ctx.onBack}
           onVerified={() => ctx.onAccountAdvance("account-enrollment")}
         />

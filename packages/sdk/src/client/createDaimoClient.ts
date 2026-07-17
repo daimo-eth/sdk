@@ -3,6 +3,8 @@ import type {
   CreateAccountResponse,
   CreateDepositResponse,
   DepositConstraints,
+  EnrollmentActionSubmitRequest,
+  EnrollmentInteraction,
   EnrollmentOtpRequest,
   EnrollmentOtpResendRequest,
   EnrollmentFormSubmitRequest,
@@ -13,6 +15,10 @@ import type {
   GetDepositResponse,
   RoutingSignDataResponse,
   StartEnrollmentRequest,
+} from "../common/account.js";
+import {
+  zEnrollmentActionSubmitRequest,
+  zEnrollmentInteraction,
 } from "../common/account.js";
 import type {
   CheckSessionRequest,
@@ -79,6 +85,16 @@ export type DaimoClient = {
       input: StartEnrollmentRequest,
       auth: BearerAuth,
     ): Promise<EnrollmentResponse>;
+    /** Get the next versioned, provider-agnostic enrollment interaction. */
+    getEnrollmentInteraction(
+      input: { rail: AccountRail; locale?: string },
+      auth: BearerAuth,
+    ): Promise<EnrollmentInteraction>;
+    /** Submit one opaque interaction action and receive the next interaction. */
+    submitEnrollmentAction(
+      input: EnrollmentActionSubmitRequest,
+      auth: BearerAuth,
+    ): Promise<EnrollmentInteraction>;
     /** Submit a provider-owned OTP for account enrollment. */
     submitEnrollmentOtp(
       input: EnrollmentOtpRequest,
@@ -211,6 +227,28 @@ export function createDaimoClient(config: TransportConfig): DaimoClient {
           body: input,
           headers: authHeaders(auth),
         });
+      },
+      async getEnrollmentInteraction(input, auth) {
+        const result = await transport.request<unknown>({
+          method: "POST",
+          path: "/v1/internal/account/enrollment/interaction",
+          body: { ...input, locale: input.locale ?? getLocale() },
+          headers: authHeaders(auth),
+        });
+        return zEnrollmentInteraction.parse(result);
+      },
+      async submitEnrollmentAction(input, auth) {
+        const body = zEnrollmentActionSubmitRequest.parse({
+          ...input,
+          locale: input.locale ?? getLocale(),
+        });
+        const result = await transport.request<unknown>({
+          method: "POST",
+          path: "/v1/internal/account/enrollment/action",
+          body,
+          headers: authHeaders(auth),
+        });
+        return zEnrollmentInteraction.parse(result);
       },
       submitEnrollmentOtp(input, auth) {
         return transport.request<EnrollmentResponse>({

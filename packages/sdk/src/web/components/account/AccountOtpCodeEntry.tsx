@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { t } from "../../hooks/locale.js";
 import { useAccountFlow } from "../../hooks/useAccountFlow.js";
@@ -12,6 +12,7 @@ type AccountOtpCodeEntryProps = {
   title?: string;
   message?: React.ReactNode;
   invalidMessage?: string;
+  resendDelayMs?: number;
   onBack: () => void;
   onVerified: () => void;
   onVerify: (code: string) => Promise<OtpVerifyOutcome>;
@@ -29,6 +30,7 @@ export function AccountOtpCodeEntry({
   title,
   message,
   invalidMessage,
+  resendDelayMs = 0,
   onBack,
   onVerified,
   onVerify,
@@ -38,7 +40,19 @@ export function AccountOtpCodeEntry({
   const [digits, setDigits] = useState<string[]>(Array(OTP_LENGTH).fill(""));
   const [status, setStatus] = useState<OtpStatus>("idle");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [canResend, setCanResend] = useState(resendDelayMs === 0);
+  const [resendVersion, setResendVersion] = useState(0);
   const inputRef = useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    if (resendDelayMs === 0) {
+      setCanResend(true);
+      return;
+    }
+    setCanResend(false);
+    const timeout = window.setTimeout(() => setCanResend(true), resendDelayMs);
+    return () => window.clearTimeout(timeout);
+  }, [resendDelayMs, resendVersion]);
 
   const code = digits.join("");
   const isComplete = code.length === OTP_LENGTH;
@@ -104,11 +118,17 @@ export function AccountOtpCodeEntry({
   );
 
   const handleResend = useCallback(async () => {
+    if (!canResend || busy) return;
+    setCanResend(false);
     setDigits(Array(OTP_LENGTH).fill(""));
     setStatus("idle");
-    await onResend();
-    inputRef.current?.focus();
-  }, [onResend]);
+    try {
+      await onResend();
+    } finally {
+      setResendVersion((version) => version + 1);
+      inputRef.current?.focus();
+    }
+  }, [busy, canResend, onResend, resendDelayMs]);
 
   const focusInputEnd = useCallback(() => {
     const input = inputRef.current;
@@ -160,7 +180,10 @@ export function AccountOtpCodeEntry({
 
         {account?.authError && <ErrorMessage message={account.authError} />}
 
-        <SecondaryLinkButton onClick={handleResend} disabled={busy}>
+        <SecondaryLinkButton
+          onClick={handleResend}
+          disabled={busy || !canResend}
+        >
           {t.accountResendCode}
         </SecondaryLinkButton>
       </CenteredContent>
