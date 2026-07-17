@@ -65,6 +65,37 @@ const hosted = {
 } as const satisfies EnrollmentInteraction;
 
 describe("legacy enrollment compatibility", () => {
+  test("parses provider-agnostic dependent form options", () => {
+    const interaction = zEnrollmentInteraction.parse({
+      version: 1,
+      kind: "form",
+      polling: { status: "none" },
+      action: { id: "ea1_form", revision: "1" },
+      form: {
+        ...form,
+        fields: [
+          {
+            key: "municipality",
+            type: "dependent-select",
+            label: "Municipality",
+            required: true,
+            dependsOn: "department",
+            optionsByValue: {
+              "CO.DC": [{ value: "11001", label: "11001" }],
+            },
+          },
+        ],
+      },
+    });
+
+    expect(interaction.kind).toBe("form");
+    if (interaction.kind !== "form") return;
+    expect(interaction.form.fields[0]).toMatchObject({
+      type: "dependent-select",
+      dependsOn: "department",
+    });
+  });
+
   test.each<{
     response: EnrollmentResponse;
     kind: EnrollmentInteraction["kind"];

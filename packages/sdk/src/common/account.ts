@@ -66,6 +66,18 @@ export type EnrollmentFormSelectField = {
   options: { value: string; label: string }[];
 };
 
+export type EnrollmentFormDependentSelectField = {
+  key: string;
+  type: "dependent-select";
+  label: string;
+  required: boolean;
+  description?: string;
+  placeholder?: string;
+  defaultValue?: string;
+  dependsOn: string;
+  optionsByValue: Record<string, { value: string; label: string }[]>;
+};
+
 export type EnrollmentFormDateField = {
   key: string;
   type: "date";
@@ -90,6 +102,7 @@ export type EnrollmentFormBooleanField = {
 export type EnrollmentFormField =
   | EnrollmentFormTextField
   | EnrollmentFormSelectField
+  | EnrollmentFormDependentSelectField
   | EnrollmentFormDateField
   | EnrollmentFormBooleanField;
 
@@ -352,6 +365,27 @@ const zEnrollmentFormField = z.discriminatedUnion("type", [
         })
         .strict()
         .optional(),
+    })
+    .strict(),
+  z
+    .object({
+      key: z.string(),
+      type: z.literal("dependent-select"),
+      label: z.string(),
+      required: z.boolean(),
+      description: z.string().optional(),
+      placeholder: z.string().optional(),
+      defaultValue: z.string().optional(),
+      dependsOn: z.string().min(1).max(64),
+      optionsByValue: z
+        .record(
+          z.string(),
+          z
+            .array(z.object({ value: z.string(), label: z.string() }).strict())
+            .min(1)
+            .max(256),
+        )
+        .refine((options) => Object.keys(options).length <= 256),
     })
     .strict(),
   z
