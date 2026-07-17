@@ -108,7 +108,6 @@ export type NavEntry =
   | ({ type: "account-otp" } & AccountNavBase)
   | ({ type: "account-phone" } & AccountNavBase)
   | ({ type: "account-phone-otp" } & AccountNavBase)
-  | ({ type: "account-provider-otp" } & AccountNavBase)
   | ({ type: "account-creating-wallet" } & AccountNavBase)
   | ({ type: "account-enrollment" } & AccountNavBase)
   | ({
