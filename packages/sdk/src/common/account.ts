@@ -15,6 +15,7 @@ export const zAccountRail = z.enum([
   "apple_pay",
   "jpyc",
   "ars",
+  "breb",
 ]);
 export type AccountRail = z.infer<typeof zAccountRail>;
 
@@ -950,6 +951,11 @@ export type DepositPaymentInfo =
       flow: Extract<DepositPaymentInteraction, "bank-transfer">;
       instructions: string;
       fields: DepositPaymentField[];
+      /** Present while provider-owned transfer instructions are not ready yet. */
+      instructionReadiness?: {
+        status: "pending";
+        pollIntervalMs: number;
+      };
     })
   | (DepositConstraints & {
       flow: Extract<DepositPaymentInteraction, "directions">;

@@ -50,6 +50,8 @@ export function getNodePaymentInteraction(
       return "bank-transfer";
     case "jpyc":
       return "directions";
+    default:
+      throw new Error("payment interaction unavailable");
   }
 }
 
