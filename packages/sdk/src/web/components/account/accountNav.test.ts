@@ -137,6 +137,9 @@ describe("interaction-driven account navigation", () => {
     expect(getNodePaymentInteraction(makeFiatNode("ars"))).toBe(
       "bank-transfer",
     );
+    expect(() => getNodePaymentInteraction(makeFiatNode("pse"))).toThrow(
+      "payment interaction unavailable",
+    );
   });
 
   test("isolates old bank-picker payload normalization", () => {
