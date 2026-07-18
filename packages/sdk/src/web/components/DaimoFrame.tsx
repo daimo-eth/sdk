@@ -17,6 +17,7 @@ import {
   markFrameError,
 } from "../../common/frameReadiness.js";
 import type { DaimoModalEventHandlers } from "../hooks/types.js";
+import { useMediaQuery } from "../hooks/useMediaQuery.js";
 import {
   DAIMO_FRAME_PARENT_ORIGIN_PARAM,
   parseDaimoFrameMessage,
@@ -37,7 +38,10 @@ const CSS_ABSOLUTE = "absolute" as const;
 
 // Fixed scrim: dims the viewport, and on iOS 26 its background is what Safari
 // samples to tint the safe-area strips dark (an `absolute` scrim is not
-// sampled). Also positions the sheet at the bottom, clear of the home bar.
+// sampled). The sheet sits at the bottom (clear of the home bar) on narrow
+// viewports and is centered on wide ones — `alignItems` is set at render time
+// (matching DaimoModal's `items-end sm:items-center`), since inline styles
+// can't express media queries.
 const scrimStyle: CSSProperties = {
   position: CSS_FIXED,
   inset: 0,
@@ -45,7 +49,6 @@ const scrimStyle: CSSProperties = {
   background: "rgba(0, 0, 0, 0.5)",
   display: "flex",
   justifyContent: "center",
-  alignItems: "flex-end",
   padding: 12,
   paddingBottom: "calc(12px + env(safe-area-inset-bottom))",
 };
@@ -201,6 +204,8 @@ export function DaimoFrame({
   // doesn't animate from INITIAL_HEIGHT down to the first measured (skeleton)
   // height. Only later growth (skeleton -> content) animates.
   const [animateHeight, setAnimateHeight] = useState(false);
+  // Same breakpoint as DaimoModal's `sm:` (bottom sheet -> centered dialog).
+  const centered = useMediaQuery("(min-width: 640px)");
 
   // Portals require a DOM target, so only render after mount (client-only).
   useEffect(() => {
@@ -308,7 +313,10 @@ export function DaimoFrame({
   }
 
   return createPortal(
-    <div onClick={() => onClose?.()} style={scrimStyle}>
+    <div
+      onClick={() => onClose?.()}
+      style={{ ...scrimStyle, alignItems: centered ? "center" : "flex-end" }}
+    >
       {status === "error" ? (
         <DaimoFrameError sessionId={sessionId} onClose={onClose} />
       ) : (
