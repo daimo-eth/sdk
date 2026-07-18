@@ -19,6 +19,7 @@ import {
   markFrameError,
 } from "../common/frameReadiness.js";
 import { parseDaimoFrameMessage } from "../common/frameMessages.js";
+import { SDK_VERSION } from "../version.js";
 
 const INITIAL_HEIGHT = 420;
 /** Show the error fallback if the WebView reports no content within this. */
@@ -294,6 +295,7 @@ function getFrameSrc(origin: string, sessionId: string, clientSecret: string) {
     `session=${encodeURIComponent(sessionId)}`,
     `cs=${encodeURIComponent(clientSecret)}`,
     "layout=embed",
+    `sdkVersion=${SDK_VERSION}`,
     // Ask the hosted flow to render its own close button (embed normally hides
     // it, assuming host chrome). We have no chrome, so the flow owns dismissal.
     "close=1",

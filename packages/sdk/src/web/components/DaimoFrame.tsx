@@ -16,6 +16,7 @@ import {
   createFrameReadiness,
   markFrameError,
 } from "../../common/frameReadiness.js";
+import { SDK_VERSION } from "../../version.js";
 import type { DaimoModalEventHandlers } from "../hooks/types.js";
 import { useMediaQuery } from "../hooks/useMediaQuery.js";
 import {
@@ -346,6 +347,7 @@ function getFrameSrc(
     session: sessionId,
     cs: clientSecret,
     layout: "embed",
+    sdkVersion: SDK_VERSION,
     [DAIMO_FRAME_PARENT_ORIGIN_PARAM]: parentOrigin,
   });
   return `${base}/webview?${params.toString()}`;
