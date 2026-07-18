@@ -1,4 +1,4 @@
-import { useEffect, useState, type KeyboardEvent } from "react";
+import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import type {
   AccountRail,
   DepositPaymentInfo,
@@ -145,6 +145,12 @@ export function AccountPaymentInstructionsPage({
     isTransferInstructionFlow(candidatePayment)
       ? candidatePayment
       : null;
+  const retryDraftRef = useRef(retryDraft);
+  retryDraftRef.current = retryDraft;
+  const instructionPollIntervalMs =
+    payment?.flow === "bank-transfer"
+      ? payment.instructionReadiness?.pollIntervalMs
+      : undefined;
   const instructions = payment?.instructions ?? "";
   const bankTransferFields =
     payment?.flow === "bank-transfer"
@@ -176,6 +182,12 @@ export function AccountPaymentInstructionsPage({
 
   useEffect(() => {
     if (!payment || !depositAmount || !currentDepositId) return;
+    if (
+      payment.flow === "bank-transfer" &&
+      payment.instructionReadiness?.status === "pending"
+    ) {
+      return;
+    }
     if (depositState?.kind === "started") return;
     setDepositState({
       depositAmount,
@@ -190,6 +202,14 @@ export function AccountPaymentInstructionsPage({
     payment,
     setDepositState,
   ]);
+
+  useEffect(() => {
+    if (!instructionPollIntervalMs) return;
+    const timer = window.setTimeout(() => {
+      retryDraftRef.current();
+    }, instructionPollIntervalMs);
+    return () => window.clearTimeout(timer);
+  }, [instructionPollIntervalMs]);
 
   useDepositPoller({
     client,
