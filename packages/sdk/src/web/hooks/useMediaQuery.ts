@@ -1,9 +1,6 @@
 import { useCallback, useSyncExternalStore } from "react";
 
-/**
- * True when `query` matches, tracking changes (resize, rotation, zoom).
- * False during SSR, so servers render the mobile variant.
- */
+/** True when `query` matches; false during SSR. */
 export function useMediaQuery(query: string): boolean {
   const subscribe = useCallback(
     (onChange: () => void) => {

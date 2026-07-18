@@ -38,10 +38,8 @@ const CSS_ABSOLUTE = "absolute" as const;
 
 // Fixed scrim: dims the viewport, and on iOS 26 its background is what Safari
 // samples to tint the safe-area strips dark (an `absolute` scrim is not
-// sampled). The sheet sits at the bottom (clear of the home bar) on narrow
-// viewports and is centered on wide ones — `alignItems` is set at render time
-// (matching DaimoModal's `items-end sm:items-center`), since inline styles
-// can't express media queries.
+// sampled). `alignItems` (bottom sheet vs centered) is set at render time —
+// inline styles can't express media queries.
 const scrimStyle: CSSProperties = {
   position: CSS_FIXED,
   inset: 0,
@@ -204,7 +202,7 @@ export function DaimoFrame({
   // doesn't animate from INITIAL_HEIGHT down to the first measured (skeleton)
   // height. Only later growth (skeleton -> content) animates.
   const [animateHeight, setAnimateHeight] = useState(false);
-  // Same breakpoint as DaimoModal's `sm:` (bottom sheet -> centered dialog).
+  // DaimoModal's `sm:` breakpoint: bottom sheet below, centered dialog above.
   const centered = useMediaQuery("(min-width: 640px)");
 
   // Portals require a DOM target, so only render after mount (client-only).
