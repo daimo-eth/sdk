@@ -885,6 +885,7 @@ function renderEntry(
         <AccountEnrollmentPage
           node={node}
           sessionId={ctx.session.sessionId}
+          clientSecret={ctx.session.clientSecret}
           platform={ctx.platform}
           onBack={ctx.onBack}
           onReady={() =>

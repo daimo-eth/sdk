@@ -160,6 +160,12 @@ export function AccountPaymentInstructionsPage({
           emphasized: field.emphasized === true,
         }))
       : parseInstructions(instructions);
+  const bankTransferDetails = bankTransferFields.filter(
+    (field) => field.label,
+  );
+  const bankTransferNotes = bankTransferFields.filter(
+    (field) => !field.label,
+  );
   const directionsPayment = payment?.flow === "directions" ? payment : null;
   const directionsLocale = getLocale();
   const bankTransferAmount =
@@ -299,29 +305,33 @@ export function AccountPaymentInstructionsPage({
           />
         </div>
       ) : (
-        <div className="daimo-flex daimo-flex-col daimo-gap-2 daimo-px-6 daimo-pt-4 daimo-pb-12">
+        <div className="daimo-flex daimo-flex-col daimo-px-6 daimo-pt-4 daimo-pb-12">
           <div className="daimo-flex daimo-flex-col daimo-gap-2">
-            {bankTransferFields.map((field, i) =>
-              field.label ? (
-                <FieldRow
-                  key={i}
-                  label={field.label}
-                  value={field.value}
-                  emphasized={field.emphasized}
+            {bankTransferDetails.map((field, i) => (
+              <FieldRow
+                key={i}
+                label={field.label}
+                value={field.value}
+                emphasized={field.emphasized}
+              />
+            ))}
+          </div>
+          <div className="daimo-mx-auto daimo-mt-8 daimo-flex daimo-max-w-xs daimo-flex-col daimo-items-center daimo-text-center daimo-text-sm daimo-leading-relaxed daimo-text-[var(--daimo-text-secondary)]">
+            <p>{t.accountBankDetailsAutoDetect(bankTransferAmount)}</p>
+            {bankTransferNotes.length > 0 && (
+              <>
+                <div
+                  aria-hidden="true"
+                  className="daimo-my-4 daimo-h-px daimo-w-10 daimo-bg-[var(--daimo-border)]"
                 />
-              ) : (
-                <p
-                  key={i}
-                  className="daimo-text-sm daimo-text-[var(--daimo-text-secondary)] daimo-leading-relaxed daimo-pb-2"
-                >
-                  {field.value}
-                </p>
-              ),
+                <div className="daimo-flex daimo-flex-col daimo-gap-2">
+                  {bankTransferNotes.map((field, i) => (
+                    <p key={i}>{field.value}</p>
+                  ))}
+                </div>
+              </>
             )}
           </div>
-          <p className="daimo-mx-auto daimo-mt-10 daimo-max-w-xs daimo-text-center daimo-text-sm daimo-leading-relaxed daimo-text-[var(--daimo-text-secondary)]">
-            {t.accountBankDetailsAutoDetect(bankTransferAmount)}
-          </p>
         </div>
       )}
     </div>
@@ -630,7 +640,7 @@ function DirectionsReferenceLink({
   );
 }
 
-/** A single labeled field with a copy button. Memo fields are highlighted. */
+/** A single labeled field with a copy button. Memo fields use warning styling. */
 function FieldRow({
   label,
   value,
@@ -642,7 +652,6 @@ function FieldRow({
 }) {
   const { copy, copied } = useCopyToClipboard();
   const memo = isMemoField(label);
-  const highlight = memo || emphasized === true;
 
   return (
     <div
@@ -651,7 +660,7 @@ function FieldRow({
         backgroundColor: memo
           ? "var(--daimo-warning-light, var(--daimo-surface-secondary))"
           : "var(--daimo-surface-secondary)",
-        border: highlight ? "1px solid var(--daimo-warning, #f59e0b)" : "none",
+        border: memo ? "1px solid var(--daimo-warning, #f59e0b)" : "none",
       }}
     >
       <div className="daimo-flex daimo-flex-col daimo-min-w-0 daimo-flex-1">
@@ -659,7 +668,7 @@ function FieldRow({
           {label}
         </span>
         <span
-          className={`daimo-text-sm daimo-break-all ${highlight ? "daimo-font-semibold" : ""}`}
+          className={`daimo-text-sm daimo-break-all ${emphasized || memo ? "daimo-font-semibold" : ""}`}
           style={{ color: "var(--daimo-text)" }}
         >
           {value}
@@ -676,7 +685,7 @@ function FieldRow({
       <button
         type="button"
         onClick={() => copy(value)}
-        className="daimo-shrink-0 daimo-p-1.5 daimo-rounded-[var(--daimo-radius-sm)] hover:daimo-bg-[var(--daimo-surface-hover)] daimo-transition-colors"
+        className="daimo-flex daimo-h-11 daimo-w-11 daimo-shrink-0 daimo-touch-action-manipulation daimo-items-center daimo-justify-center daimo-rounded-[var(--daimo-radius-sm)] daimo-transition-[background-color] daimo-duration-100 daimo-ease hover:[@media(hover:hover)]:daimo-bg-[var(--daimo-surface-hover)]"
         aria-label={copied ? t.accountBankDetailsCopied : `Copy ${label}`}
       >
         <CopyIcon size={16} copied={copied} />

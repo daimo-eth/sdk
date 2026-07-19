@@ -56,6 +56,7 @@ import {
 type AccountEnrollmentPageProps = {
   node: NavNodeFiat;
   sessionId: string;
+  clientSecret: string;
   platform: DaimoPlatform;
   onBack: () => void;
   onReady: () => void;
@@ -65,6 +66,7 @@ type AccountEnrollmentPageProps = {
 export function AccountEnrollmentPage({
   node,
   sessionId,
+  clientSecret,
   platform,
   onBack,
   onReady,
@@ -94,7 +96,6 @@ export function AccountEnrollmentPage({
     mountedRef.current = true;
     return () => {
       mountedRef.current = false;
-      latestRequestRef.current += 1;
     };
   }, []);
 
@@ -253,6 +254,7 @@ export function AccountEnrollmentPage({
       <ErrorPage
         message={errorMessage}
         sessionId={sessionId}
+        clientSecret={clientSecret}
         retryText={t.tryAgain}
         onRetry={() => void refreshEnrollment()}
       />
@@ -337,6 +339,7 @@ export function AccountEnrollmentPage({
         <ErrorPage
           message={interaction.reason}
           sessionId={sessionId}
+          clientSecret={clientSecret}
           retryText={t.tryAgain}
           onRetry={() =>
             void submitAction(step, interaction.action.id, { kind: "retry" })
@@ -373,6 +376,7 @@ export function AccountEnrollmentPage({
         <ErrorPage
           message={interaction.message}
           sessionId={sessionId}
+          clientSecret={clientSecret}
           retryText={t.tryAgain}
           onRetry={
             interaction.retryable && retryAction
