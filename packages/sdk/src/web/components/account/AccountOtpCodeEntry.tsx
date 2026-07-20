@@ -37,9 +37,10 @@ export function AccountOtpCodeEntry({
   onResend,
 }: AccountOtpCodeEntryProps) {
   const account = useAccountFlow();
-  const [digits, setDigits] = useState<string[]>(Array(OTP_LENGTH).fill(""));
+  const [code, setCode] = useState("");
   const [status, setStatus] = useState<OtpStatus>("idle");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isFocused, setIsFocused] = useState(false);
   const [canResend, setCanResend] = useState(resendDelayMs === 0);
   const [resendVersion, setResendVersion] = useState(0);
   const inputRef = useRef<HTMLInputElement | null>(null);
@@ -54,7 +55,7 @@ export function AccountOtpCodeEntry({
     return () => window.clearTimeout(timeout);
   }, [resendDelayMs, resendVersion]);
 
-  const code = digits.join("");
+  const digits = codeToDigits(code);
   const isComplete = code.length === OTP_LENGTH;
   const busy = status !== "idle" || isSubmitting || !!account?.isLoggingIn;
 
@@ -77,7 +78,7 @@ export function AccountOtpCodeEntry({
         }
         setStatus("error");
         window.setTimeout(() => {
-          setDigits(Array(OTP_LENGTH).fill(""));
+          setCode("");
           setStatus("idle");
           inputRef.current?.focus();
         }, ERROR_DELAY_MS);
@@ -91,8 +92,7 @@ export function AccountOtpCodeEntry({
       if (busy) return;
       if (account?.authError) account.setAuthError(null);
       const nextCode = normalizeOtpCode(value);
-      const next = codeToDigits(nextCode);
-      setDigits(next);
+      setCode(nextCode);
       if (nextCode.length === OTP_LENGTH) handleVerify(nextCode);
     },
     [account, handleVerify, busy],
@@ -110,9 +110,11 @@ export function AccountOtpCodeEntry({
   );
 
   const handlePaste = useCallback(
-    (e: React.ClipboardEvent) => {
+    (e: React.ClipboardEvent<HTMLInputElement>) => {
+      const pastedCode = normalizeOtpCode(e.clipboardData.getData("text"));
+      if (pastedCode.length !== OTP_LENGTH) return;
       e.preventDefault();
-      handleCodeValue(e.clipboardData.getData("text"));
+      handleCodeValue(pastedCode);
     },
     [handleCodeValue],
   );
@@ -120,7 +122,7 @@ export function AccountOtpCodeEntry({
   const handleResend = useCallback(async () => {
     if (!canResend || busy) return;
     setCanResend(false);
-    setDigits(Array(OTP_LENGTH).fill(""));
+    setCode("");
     setStatus("idle");
     try {
       await onResend();
@@ -149,29 +151,45 @@ export function AccountOtpCodeEntry({
           )}
         </p>
 
-        <div className="daimo-relative daimo-flex daimo-justify-center daimo-rounded-[var(--daimo-radius-sm)] focus-within:daimo-ring-2 focus-within:daimo-ring-[var(--daimo-accent)] daimo-transition-shadow">
+        <div className="daimo-relative daimo-flex daimo-justify-center daimo-rounded-[var(--daimo-radius-sm)]">
           <input
             ref={inputRef}
             type="text"
+            name="one-time-code"
             inputMode="numeric"
+            enterKeyHint="done"
             autoComplete="one-time-code"
-            maxLength={OTP_LENGTH}
+            autoCapitalize="none"
+            autoCorrect="off"
+            spellCheck={false}
+            pattern="[0-9]*"
             value={code}
             disabled={busy}
             aria-label={t.accountOtp}
+            aria-invalid={status === "error" || !!account?.authError}
             onChange={(e) => handleCodeValue(e.target.value)}
             onKeyDown={handleKeyDown}
             onPaste={handlePaste}
-            onFocus={focusInputEnd}
+            onFocus={() => {
+              setIsFocused(true);
+              focusInputEnd();
+            }}
+            onBlur={() => setIsFocused(false)}
             autoFocus
-            className="daimo-absolute daimo-inset-0 daimo-z-10 daimo-w-full daimo-h-full daimo-opacity-0 daimo-cursor-text disabled:daimo-cursor-default"
+            className="daimo-absolute daimo-inset-0 daimo-z-10 daimo-m-0 daimo-h-full daimo-w-full daimo-appearance-none daimo-touch-manipulation daimo-rounded-[var(--daimo-radius-sm)] daimo-border-0 daimo-bg-transparent daimo-p-0 daimo-text-base daimo-text-transparent daimo-caret-transparent daimo-outline-none daimo-shadow-none daimo-cursor-text disabled:daimo-cursor-default"
           />
           <div
             aria-hidden="true"
             className={`daimo-flex daimo-gap-2 daimo-justify-center ${status === "error" ? "daimo-otp-shake" : ""}`}
           >
             {digits.map((digit, i) => (
-              <div key={i} className={otpCellClass(status)}>
+              <div
+                key={i}
+                className={otpCellClass(
+                  status,
+                  isFocused && i === Math.min(code.length, OTP_LENGTH - 1),
+                )}
+              >
                 {digit}
               </div>
             ))}
@@ -201,19 +219,22 @@ export function AccountOtpCodeEntry({
 }
 
 const OTP_CELL_BASE =
-  "daimo-w-10 daimo-h-12 daimo-flex daimo-items-center daimo-justify-center daimo-text-center daimo-text-xl daimo-font-semibold daimo-rounded-[var(--daimo-radius-sm)] daimo-border-none daimo-outline-none daimo-transition-all daimo-caret-[var(--daimo-accent)]";
+  "daimo-w-10 daimo-h-12 daimo-flex daimo-items-center daimo-justify-center daimo-text-center daimo-text-xl daimo-font-semibold daimo-rounded-[var(--daimo-radius-sm)] daimo-border-none daimo-outline-none";
 
-function otpCellClass(status: OtpStatus): string {
+function otpCellClass(status: OtpStatus, isActive: boolean): string {
   if (status === "success") {
     return `${OTP_CELL_BASE} daimo-bg-[var(--daimo-brand-green-light)] daimo-text-[var(--daimo-brand-green)] daimo-ring-2 daimo-ring-[var(--daimo-brand-green)]`;
   }
   if (status === "error") {
     return `${OTP_CELL_BASE} daimo-bg-[var(--daimo-error-light)] daimo-text-[var(--daimo-error)] daimo-ring-2 daimo-ring-[var(--daimo-error)]`;
   }
-  return `${OTP_CELL_BASE} daimo-bg-[var(--daimo-surface-secondary)] daimo-text-[var(--daimo-text)]`;
+  const focusClass = isActive
+    ? " daimo-ring-2 daimo-ring-[var(--daimo-accent)]"
+    : "";
+  return `${OTP_CELL_BASE} daimo-bg-[var(--daimo-surface-secondary)] daimo-text-[var(--daimo-text)]${focusClass}`;
 }
 
-function normalizeOtpCode(value: string): string {
+export function normalizeOtpCode(value: string): string {
   return value.replace(/\D/g, "").slice(0, OTP_LENGTH);
 }
 
