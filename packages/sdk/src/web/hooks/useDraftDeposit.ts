@@ -187,11 +187,24 @@ export async function signAndUpsertDeposit({
   if (!token) throw new Error("not authenticated");
   const auth = { bearerToken: token };
   const signedAmount = authorizedAmount ?? depositAmount;
-  const { routingSignData, deliverySignData } =
-    await client.account.prepareDeposit(
-      { sessionId, rail, depositAmount: signedAmount },
+  const authorization = await client.account.prepareDeposit(
+    { sessionId, rail, depositAmount: signedAmount, authorizationVersion: 2 },
+    auth,
+  );
+  if (authorization.kind === "direct") {
+    return client.account.upsertDeposit(
+      {
+        sessionId,
+        rail,
+        depositAmount,
+        locale: getLocale(),
+        authorizationVersion: 2,
+        paymentInput,
+      },
       auth,
     );
+  }
+  const { routingSignData, deliverySignData } = authorization;
   const routingSig = await accountFlow.signTypedData({
     ...routingSignData,
   });
@@ -204,6 +217,7 @@ export async function signAndUpsertDeposit({
       rail,
       depositAmount,
       locale: getLocale(),
+      authorizationVersion: 2,
       deliverySig,
       deliverySigData: deliverySignData,
       routingSig,
@@ -238,6 +252,7 @@ async function upsertPlainDraftDeposit({
       rail,
       depositAmount,
       locale: getLocale(),
+      authorizationVersion: 2,
     },
     { bearerToken: token },
   );

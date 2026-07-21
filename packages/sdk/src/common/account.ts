@@ -723,13 +723,25 @@ export type EIP712TypedData = Record<string, unknown> & {
   message: Record<string, unknown>;
 };
 
-/** POST /v1/internal/account/deposit/prepare response. */
-export type RoutingSignDataResponse = {
+/** Typed-data authorization for a wallet -> deposit-address delivery. */
+export type SignatureDepositAuthorization = {
+  kind: "signatures";
   /** Typed data for the on-chain routing authorization (relayer permission). */
   routingSignData: EIP712TypedData;
   /** Typed data for the delivery commitment (destination chain/token/amount). */
   deliverySignData: EIP712TypedData;
 };
+
+/** Normalized authorization required to start an account deposit. */
+export type DepositAuthorizationResponse =
+  | { kind: "direct" }
+  | SignatureDepositAuthorization;
+
+/** Legacy wire response returned by servers before authorization protocol v2. */
+export type RoutingSignDataResponse = Omit<
+  SignatureDepositAuthorization,
+  "kind"
+>;
 
 /**
  * Discriminated union for deposit deeplink strategies.
