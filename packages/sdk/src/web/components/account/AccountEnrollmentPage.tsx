@@ -2,15 +2,14 @@ import {
   type ReactNode,
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from "react";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
 
 import type {
-  EnrollmentForm,
-  AccountLegalName,
+  EnrollmentActionInput,
+  EnrollmentInteraction,
   EnrollmentResponse,
   MtPelerinEnrollmentRequest,
 } from "../../../common/account.js";
@@ -26,6 +25,7 @@ import {
   SecondaryButton,
 } from "../buttons.js";
 import { ErrorPage } from "../ErrorPage.js";
+import { DaimoTextField } from "../formFields.js";
 import { CheckIcon, ErrorIcon } from "../icons.js";
 import { Skeleton, SkeletonText } from "../Skeleton.js";
 import {
@@ -33,12 +33,23 @@ import {
   ContactSupportButton,
   PageHeader,
 } from "../shared.js";
-import { DaimoFormField, DaimoTextField } from "../formFields.js";
 import {
-  AccountKycInfoPage,
-  AccountKycInfoSkeleton,
-} from "./AccountKycInfoPage.js";
-import { type LegalNameFormValues, zLegalNameForm } from "./formSchemas.js";
+  AccountOtpCodeEntry,
+  type OtpVerifyOutcome,
+} from "./AccountOtpCodeEntry.js";
+import {
+  enrollmentInteractionIdentity,
+  enrollmentFormActionInput,
+  enrollmentHostedReturnTiming,
+  enrollmentNavigationEffect,
+  enrollmentPollingDelay,
+  type EnrollmentStep,
+  isEnrollmentResponseCurrent,
+  type LegacyEnrollmentCopy,
+  loadEnrollmentStep,
+  shouldLoadEnrollmentTarget,
+  submitEnrollmentStep,
+} from "./enrollmentProtocol.js";
 import { getKycRequirement, KycIndicator } from "./kycRequirement.js";
 import {
   PaginatedEnrollmentForm,
@@ -48,102 +59,385 @@ import {
 type AccountEnrollmentPageProps = {
   node: NavNodeFiat;
   sessionId: string;
+  clientSecret: string;
   platform: DaimoPlatform;
   onBack: () => void;
   onReady: () => void;
-  /** Called when enrollment requires a phone OTP (e.g. Coinbase Headless). */
   onPhoneRequired: () => void;
-  /** Called when enrollment requires a provider-owned OTP. */
-  onProviderOtpRequired: () => void;
 };
-
-/** Actions that should trigger polling — the state is still advancing. */
-const POLLING_ACTIONS = new Set([
-  "kyc_required",
-  "kyc_retry",
-  "kyc_pending_review",
-  "hosted_agreement_required",
-  "hosted_kyc_required",
-  "provider_pending",
-]);
 
 export function AccountEnrollmentPage({
   node,
+  ...props
+}: AccountEnrollmentPageProps) {
+  return node.fiatMethod === "chf" ? (
+    <MtPelerinEnrollmentPage node={node} {...props} />
+  ) : (
+    <GenericAccountEnrollmentPage node={node} {...props} />
+  );
+}
+
+function GenericAccountEnrollmentPage({
+  node,
   sessionId,
+  clientSecret,
   platform,
   onBack,
   onReady,
   onPhoneRequired,
-  onProviderOtpRequired,
 }: AccountEnrollmentPageProps) {
   const rail = node.fiatMethod;
-  const requiresLegalNameBeforeEnrollment = rail === "ach" || rail === "sepa";
+  const target = `${sessionId}:${rail}`;
   const account = useAccountFlow();
-  const setProviderOtp = account?.setProviderOtp;
+  const getAccessToken = account?.getAccessToken;
+  const client = useDaimoClient();
+  const legacyCopy = useMemo(() => getLegacyCopy(platform), [platform]);
+  const [step, setStep] = useState<EnrollmentStep | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const latestRequestRef = useRef(0);
+  const targetRef = useRef(target);
+  const stepRef = useRef<EnrollmentStep | null>(null);
+  const mountedRef = useRef(true);
+  const loadedTargetRef = useRef<string | null>(null);
+  const onReadyRef = useRef(onReady);
+  const onPhoneRequiredRef = useRef(onPhoneRequired);
+  targetRef.current = target;
+  onReadyRef.current = onReady;
+  onPhoneRequiredRef.current = onPhoneRequired;
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
+  const applyStep = useCallback((result: EnrollmentStep) => {
+    stepRef.current = result;
+    setStep(result);
+    setIsLoading(false);
+    setErrorMessage(null);
+
+    switch (enrollmentNavigationEffect(result.interaction)) {
+      case "ready":
+        onReadyRef.current();
+        return;
+      case "phone":
+        onPhoneRequiredRef.current();
+        return;
+      case "render":
+        return;
+    }
+  }, []);
+
+  const runRequest = useCallback(
+    async (
+      request: () => Promise<EnrollmentStep>,
+      expectedInteraction: string | null,
+    ): Promise<EnrollmentStep | null> => {
+      const requestId = ++latestRequestRef.current;
+      const requestTarget = targetRef.current;
+
+      let result: EnrollmentStep;
+      try {
+        result = await request();
+      } catch {
+        if (
+          mountedRef.current &&
+          isEnrollmentResponseCurrent({
+            requestId,
+            latestRequestId: latestRequestRef.current,
+            requestTarget,
+            currentTarget: targetRef.current,
+            expectedInteraction,
+            currentInteraction: enrollmentInteractionIdentity(stepRef.current),
+          })
+        ) {
+          setIsLoading(false);
+          setErrorMessage(t.errorGeneric);
+        }
+        return null;
+      }
+
+      if (
+        !mountedRef.current ||
+        !isEnrollmentResponseCurrent({
+          requestId,
+          latestRequestId: latestRequestRef.current,
+          requestTarget,
+          currentTarget: targetRef.current,
+          expectedInteraction,
+          currentInteraction: enrollmentInteractionIdentity(stepRef.current),
+        })
+      ) {
+        return null;
+      }
+
+      applyStep(result);
+      return result;
+    },
+    [applyStep],
+  );
+
+  const refreshEnrollment = useCallback(
+    async (expectedInteraction: string | null = null) => {
+      if (!getAccessToken) return null;
+      return runRequest(async () => {
+        const token = await getAccessToken();
+        if (!token) throw new Error("not authenticated");
+        return loadEnrollmentStep({
+          client,
+          rail,
+          locale: getLocale(),
+          auth: { bearerToken: token },
+          legacyCopy,
+        });
+      }, expectedInteraction);
+    },
+    [client, getAccessToken, legacyCopy, rail, runRequest],
+  );
+
+  const submitAction = useCallback(
+    async (
+      source: EnrollmentStep,
+      actionId: string,
+      input: EnrollmentActionInput,
+    ) => {
+      if (!getAccessToken) return null;
+      const expectedInteraction = enrollmentInteractionIdentity(source);
+      return runRequest(async () => {
+        const token = await getAccessToken();
+        if (!token) throw new Error("not authenticated");
+        return submitEnrollmentStep({
+          client,
+          rail,
+          locale: getLocale(),
+          auth: { bearerToken: token },
+          step: source,
+          actionId,
+          input,
+          legacyCopy,
+        });
+      }, expectedInteraction);
+    },
+    [client, getAccessToken, legacyCopy, rail, runRequest],
+  );
+
+  const refreshEnrollmentRef = useRef(refreshEnrollment);
+  refreshEnrollmentRef.current = refreshEnrollment;
+
+  useEffect(() => {
+    if (
+      !shouldLoadEnrollmentTarget({
+        loadedTarget: loadedTargetRef.current,
+        target,
+        canLoad: getAccessToken != null,
+      })
+    ) {
+      return;
+    }
+    loadedTargetRef.current = target;
+    latestRequestRef.current += 1;
+    stepRef.current = null;
+    setStep(null);
+    setErrorMessage(null);
+    setIsLoading(true);
+    void refreshEnrollmentRef.current();
+  }, [getAccessToken, target]);
+
+  useEffect(() => {
+    if (!step) return;
+    const delayMs = enrollmentPollingDelay(step.interaction);
+    if (delayMs == null) return;
+    const expectedInteraction = enrollmentInteractionIdentity(step);
+    const timeout = window.setTimeout(() => {
+      void refreshEnrollmentRef.current(expectedInteraction);
+    }, delayMs);
+    return () => window.clearTimeout(timeout);
+  }, [step]);
+
+  if (isLoading) {
+    return (
+      <EnrollmentWaiting title={t.loading} label={t.loading} onBack={onBack} />
+    );
+  }
+
+  if (errorMessage) {
+    return (
+      <ErrorPage
+        message={errorMessage}
+        sessionId={sessionId}
+        clientSecret={clientSecret}
+        retryText={t.tryAgain}
+        onRetry={() => void refreshEnrollment()}
+      />
+    );
+  }
+
+  if (!step) return null;
+  const interaction = step.interaction;
+
+  switch (interaction.kind) {
+    case "form":
+      return (
+        <AccountEnrollmentFormPage
+          key={enrollmentInteractionIdentity(step)}
+          interaction={interaction}
+          onBack={onBack}
+          onSubmit={(actionId, input) => submitAction(step, actionId, input)}
+        />
+      );
+    case "otp":
+      return (
+        <EnrollmentOtpPage
+          key={enrollmentInteractionIdentity(step)}
+          interaction={interaction}
+          onBack={onBack}
+          onSubmit={(actionId, input) => submitAction(step, actionId, input)}
+        />
+      );
+    case "account-phone-verification":
+      return <EnrollmentWaiting title={t.accountPhone} onBack={onBack} />;
+    case "hosted":
+      return (
+        <EnrollmentHostedActionPage
+          key={enrollmentInteractionIdentity(step)}
+          node={node}
+          platform={platform}
+          url={interaction.url}
+          title={interaction.copy.title}
+          description={interaction.copy.description}
+          actionLabel={interaction.copy.openExternalLabel}
+          purpose={interaction.purpose}
+          autoSubmitDelayMs={interaction.returnBehavior.autoSubmitDelayMs}
+          onBack={onBack}
+          onReturn={() =>
+            submitAction(step, interaction.returnBehavior.action.id, {
+              kind: "continue",
+            })
+          }
+        />
+      );
+    case "wait":
+      return interaction.reason === "review" ? (
+        <EnrollmentReviewSubmitted
+          title={t.accountEnrollmentPending}
+          message={t.accountEnrollmentPendingDesc}
+          onBack={onBack}
+        />
+      ) : (
+        <EnrollmentWaiting
+          title={t.accountProviderPending}
+          label={t.accountProviderPendingDesc}
+          onBack={onBack}
+        />
+      );
+    case "retry":
+      return interaction.link ? (
+        <EnrollmentHostedActionPage
+          key={enrollmentInteractionIdentity(step)}
+          node={node}
+          platform={platform}
+          url={interaction.link.url}
+          title={interaction.link.copy.title}
+          description={`${interaction.reason}\n\n${interaction.link.copy.description}`}
+          actionLabel={interaction.link.copy.openExternalLabel}
+          purpose="identity-verification"
+          onBack={onBack}
+          onReturn={() =>
+            submitAction(step, interaction.action.id, { kind: "retry" })
+          }
+        />
+      ) : (
+        <ErrorPage
+          message={interaction.reason}
+          sessionId={sessionId}
+          clientSecret={clientSecret}
+          retryText={t.tryAgain}
+          onRetry={() =>
+            void submitAction(step, interaction.action.id, { kind: "retry" })
+          }
+        />
+      );
+    case "rejection":
+      return (
+        <EnrollmentTerminal
+          title={t.accountEnrollmentRejected}
+          message={interaction.reason}
+          sessionId={sessionId}
+        />
+      );
+    case "ineligible":
+      return (
+        <EnrollmentIneligible
+          message={interaction.reason}
+          sessionId={sessionId}
+          onBack={onBack}
+        />
+      );
+    case "suspended":
+      return (
+        <EnrollmentTerminal
+          title={t.accountSuspended}
+          message={interaction.reason}
+          sessionId={sessionId}
+        />
+      );
+    case "error": {
+      const retryAction = interaction.retryAction;
+      return (
+        <ErrorPage
+          message={interaction.message}
+          sessionId={sessionId}
+          clientSecret={clientSecret}
+          retryText={t.tryAgain}
+          onRetry={
+            interaction.retryable && retryAction
+              ? () =>
+                  void submitAction(step, retryAction.id, {
+                    kind: "retry",
+                  })
+              : undefined
+          }
+          hideRetry={!interaction.retryable || !retryAction}
+        />
+      );
+    }
+    case "active":
+      return null;
+  }
+}
+
+function MtPelerinEnrollmentPage({
+  sessionId,
+  clientSecret,
+  onBack,
+  onReady,
+  onPhoneRequired,
+}: AccountEnrollmentPageProps) {
+  const account = useAccountFlow();
   const client = useDaimoClient();
   const [response, setResponse] = useState<EnrollmentResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [kycAccepted, setKycAccepted] = useState(false);
-  const [legalName, setLegalName] = useState<AccountLegalName | null>(null);
-  const [mtPelerinBusy, setMtPelerinBusy] = useState(false);
-  const started = useRef(false);
-  const responseRef = useRef<EnrollmentResponse | null>(null);
-  const readyTimeoutRef = useRef<number | null>(null);
+  const busyRef = useRef(false);
+  const [isBusy, setIsBusy] = useState(false);
 
-  const applyEnrollmentResult = useCallback(
-    (
-      result: EnrollmentResponse,
-      previousAction?: EnrollmentResponse["action"],
-    ) => {
-      if (
-        previousAction === "hosted_agreement_required" &&
-        result.action === "active"
-      ) {
-        const pending: EnrollmentResponse = { action: "provider_pending" };
-        responseRef.current = pending;
-        setResponse(pending);
-        if (readyTimeoutRef.current != null) {
-          window.clearTimeout(readyTimeoutRef.current);
-        }
-        readyTimeoutRef.current = window.setTimeout(() => {
-          responseRef.current = result;
-          setResponse(result);
-          onReady();
-        }, 900);
-        return;
-      }
-
-      if (result.action === "active") {
-        responseRef.current = result;
-        setResponse(result);
-        onReady();
-      } else if (result.action === "phone_required") {
-        // Coinbase Headless has no KYC — phone OTP is the only step.
-        // Navigate to the phone entry screen; the server will flip to "active"
-        // once we return from phone verification.
-        responseRef.current = result;
-        setResponse(result);
-        onPhoneRequired();
-      } else if (
-        result.action === "provider_otp_required" &&
-        rail !== "chf"
-      ) {
-        responseRef.current = result;
-        setResponse(result);
-        setProviderOtp?.(result);
-        onProviderOtpRequired();
-      } else {
-        responseRef.current = result;
-        setResponse(result);
-      }
+  const applyResult = useCallback(
+    (result: EnrollmentResponse) => {
+      setResponse(result);
+      setIsLoading(false);
+      if (result.action === "active") onReady();
+      if (result.action === "phone_required") onPhoneRequired();
     },
-    [onReady, onPhoneRequired, onProviderOtpRequired, rail, setProviderOtp],
+    [onPhoneRequired, onReady],
   );
 
-  const continueMtPelerin = useCallback(
+  const continueEnrollment = useCallback(
     async (input: MtPelerinEnrollmentRequest) => {
-      if (!account) return;
-      setMtPelerinBusy(true);
+      if (!account || busyRef.current) return;
+      busyRef.current = true;
+      setIsBusy(true);
       try {
         const token = await account.getAccessToken();
         if (!token) throw new Error("not authenticated");
@@ -161,103 +455,56 @@ export function AccountEnrollmentPage({
             { bearerToken: token },
           );
         }
-        applyEnrollmentResult(result.enrollment);
-      } catch (err) {
-        console.error("[enrollment] mtpelerin connection failed:", err);
-        applyEnrollmentResult({
+        applyResult(result.enrollment);
+      } catch {
+        applyResult({
           action: "error",
           message: "We couldn’t connect your Daimo wallet.",
           retryable: true,
         });
       } finally {
-        setMtPelerinBusy(false);
+        busyRef.current = false;
+        setIsBusy(false);
       }
     },
-    [account, applyEnrollmentResult, client],
+    [account, applyResult, client],
   );
 
-  const fetchEnrollment = useCallback(async () => {
-    if (!account) return;
-    const isInitial = responseRef.current == null;
-    const previousAction = responseRef.current?.action;
-    if (isInitial) setIsLoading(true);
-
-    let result: EnrollmentResponse | null;
+  const refreshEnrollment = useCallback(async () => {
+    if (!account || busyRef.current) return;
+    busyRef.current = true;
     try {
-      result = await account.startEnrollment(client, {
-        rail,
-        ...(legalName ? { legalName } : {}),
-      });
-    } catch (err) {
-      console.error("[enrollment] fetch failed:", err);
-      result = { action: "error", message: t.errorGeneric, retryable: true };
-    }
-
-    if (isInitial) setIsLoading(false);
-    if (!result) return;
-    applyEnrollmentResult(result, previousAction);
-  }, [account, applyEnrollmentResult, client, legalName, rail]);
-
-  // Initial fetch
-  useEffect(() => {
-    if (started.current) return;
-    if (requiresLegalNameBeforeEnrollment && legalName == null) return;
-    started.current = true;
-    fetchEnrollment();
-  }, [requiresLegalNameBeforeEnrollment, fetchEnrollment, legalName]);
-
-  // Poll while the state is still advancing
-  useEffect(() => {
-    if (!response || !POLLING_ACTIONS.has(response.action)) return;
-    if (rail === "chf" && response.action === "provider_pending") {
-      void continueMtPelerin({ action: "resume", locale: getLocale() });
-      return;
-    }
-    const interval = setInterval(fetchEnrollment, 2000);
-    return () => clearInterval(interval);
-  }, [response?.action, continueMtPelerin, fetchEnrollment, rail]);
-
-  useEffect(() => {
-    return () => {
-      if (readyTimeoutRef.current != null) {
-        window.clearTimeout(readyTimeoutRef.current);
-      }
-    };
-  }, []);
-
-  // --- Render ---
-
-  if (requiresLegalNameBeforeEnrollment && legalName == null) {
-    if (!kycAccepted) {
-      return (
-        <AccountKycInfoPage
-          node={node}
-          onContinue={() => setKycAccepted(true)}
-          onBack={onBack}
-        />
+      const token = await account.getAccessToken();
+      if (!token) throw new Error("not authenticated");
+      const result = await client.account.startEnrollment(
+        { rail: "chf", locale: getLocale() },
+        { bearerToken: token },
       );
+      applyResult(result);
+    } catch {
+      applyResult({
+        action: "error",
+        message: t.errorGeneric,
+        retryable: true,
+      });
+    } finally {
+      busyRef.current = false;
     }
-    return (
-      <AccountLegalNamePage
-        onBack={() => setKycAccepted(false)}
-        onSubmit={(name) => {
-          setLegalName(name);
-        }}
-      />
-    );
-  }
+  }, [account, applyResult, client]);
 
-  if (isLoading) {
-    return rail === "apple_pay" ? (
-      <PhoneEntrySkeleton onBack={onBack} />
-    ) : (
-      <AccountKycInfoSkeleton node={node} onBack={onBack} />
-    );
-  }
+  useEffect(() => {
+    void refreshEnrollment();
+  }, [refreshEnrollment]);
 
-  if (!response) return null;
+  useEffect(() => {
+    if (response?.action !== "provider_pending") return;
+    const interval = window.setInterval(() => {
+      void continueEnrollment({ action: "resume", locale: getLocale() });
+    }, 2_000);
+    return () => window.clearInterval(interval);
+  }, [continueEnrollment, response?.action]);
 
-  if (mtPelerinBusy) {
+  if (isLoading || isBusy) {
     return (
       <EnrollmentWaiting
         title="Mt Pelerin"
@@ -267,155 +514,15 @@ export function AccountEnrollmentPage({
     );
   }
 
+  if (!response) return null;
+
   switch (response.action) {
-    case "kyc_required":
-      if (!kycAccepted) {
-        return (
-          <AccountKycInfoPage
-            node={node}
-            onContinue={() => setKycAccepted(true)}
-            onBack={onBack}
-          />
-        );
-      }
-      return (
-        <HostedEnrollmentPage
-          node={node}
-          step={response}
-          platform={platform}
-          onBack={() => setKycAccepted(false)}
-        />
-      );
-
-    case "kyc_retry":
-      return (
-        <HostedEnrollmentPage
-          node={node}
-          step={response}
-          platform={platform}
-          onBack={onBack}
-        />
-      );
-
-    case "kyc_pending_review":
-      return (
-        <EnrollmentReviewSubmitted
-          title={t.accountEnrollmentPending}
-          message={t.accountEnrollmentPendingDesc}
-          onBack={onBack}
-        />
-      );
-
-    case "enrollment_form_required":
-      return (
-        <AccountEnrollmentFormPage
-          form={response.form}
-          onBack={onBack}
-          onSubmitted={(result) =>
-            applyEnrollmentResult(result, response.action)
-          }
-        />
-      );
-
-    case "hosted_kyc_required":
-      return (
-        <HostedEnrollmentPage
-          node={node}
-          step={response}
-          platform={platform}
-          onBack={onBack}
-        />
-      );
-
-    case "hosted_agreement_required":
-      return (
-        <HostedEnrollmentPage
-          node={node}
-          step={response}
-          platform={platform}
-          onBack={onBack}
-        />
-      );
-
-    case "provider_pending":
-      return (
-        <EnrollmentWaiting
-          title={t.accountProviderPending}
-          label={t.accountProviderPendingDesc}
-        />
-      );
-
-    case "kyc_rejected_final":
-      return (
-        <EnrollmentTerminal
-          title={t.accountEnrollmentRejected}
-          message={response.reason}
-          sessionId={sessionId}
-        />
-      );
-
-    case "not_eligible":
-      return (
-        <EnrollmentIneligible
-          message={response.reason}
-          sessionId={sessionId}
-          onBack={onBack}
-        />
-      );
-
-    case "suspended":
-      return (
-        <EnrollmentTerminal
-          title={t.accountSuspended}
-          message={response.reason}
-          sessionId={sessionId}
-        />
-      );
-
-    case "error":
-      return (
-        <ErrorPage
-          message={response.message}
-          sessionId={sessionId}
-          retryText={t.tryAgain}
-          onRetry={response.retryable ? fetchEnrollment : undefined}
-          hideRetry={!response.retryable}
-        />
-      );
-
-    case "phone_required":
-      // Navigation is triggered in fetchEnrollment; render a waiting state
-      // here to avoid flicker until the modal pushes the phone screen.
-      return <PhoneEntrySkeleton onBack={onBack} />;
-
-    case "provider_otp_required":
-      if (rail === "chf") {
-        return (
-          <MtPelerinTextEntry
-            title="Enter your SMS code"
-            description={response.copy.message}
-            inputMode="numeric"
-            maxLength={6}
-            submitLabel="Verify code"
-            onBack={onBack}
-            onSubmit={(code) =>
-              continueMtPelerin({
-                action: "submit_otp",
-                code,
-                locale: getLocale(),
-              })
-            }
-          />
-        );
-      }
-      return <PhoneEntrySkeleton onBack={onBack} />;
-
     case "provider_account_choice_required":
       return (
         <MtPelerinAccountChoice
           onBack={onBack}
           onChoose={(choice) =>
-            continueMtPelerin({
+            continueEnrollment({
               action: "choose_account",
               choice,
               locale: getLocale(),
@@ -423,7 +530,6 @@ export function AccountEnrollmentPage({
           }
         />
       );
-
     case "provider_phone_required":
       return (
         <MtPelerinTextEntry
@@ -433,11 +539,28 @@ export function AccountEnrollmentPage({
           submitLabel="Send SMS code"
           onBack={onBack}
           onSubmit={(phone) =>
-            continueMtPelerin({ action: "start_phone", phone })
+            continueEnrollment({ action: "start_phone", phone })
           }
         />
       );
-
+    case "provider_otp_required":
+      return (
+        <MtPelerinTextEntry
+          title={response.copy.title}
+          description={response.copy.message}
+          inputMode="numeric"
+          maxLength={6}
+          submitLabel="Verify code"
+          onBack={onBack}
+          onSubmit={(code) =>
+            continueEnrollment({
+              action: "submit_otp",
+              code,
+              locale: getLocale(),
+            })
+          }
+        />
+      );
     case "provider_email_required":
       return (
         <MtPelerinTextEntry
@@ -448,7 +571,7 @@ export function AccountEnrollmentPage({
           submitLabel="Continue"
           onBack={onBack}
           onSubmit={(email) =>
-            continueMtPelerin({
+            continueEnrollment({
               action: "submit_email",
               email,
               locale: getLocale(),
@@ -456,7 +579,6 @@ export function AccountEnrollmentPage({
           }
         />
       );
-
     case "mtpelerin_kyc":
       return (
         <EnrollmentIneligible
@@ -465,11 +587,48 @@ export function AccountEnrollmentPage({
           onBack={onBack}
         />
       );
-
+    case "provider_pending":
+      return (
+        <EnrollmentWaiting
+          title={t.accountProviderPending}
+          label={t.accountProviderPendingDesc}
+          onBack={onBack}
+        />
+      );
+    case "phone_required":
+      return <EnrollmentWaiting title={t.accountPhone} onBack={onBack} />;
+    case "suspended":
+      return (
+        <EnrollmentTerminal
+          title={t.accountSuspended}
+          message={response.reason}
+          sessionId={sessionId}
+        />
+      );
+    case "error":
+      return (
+        <ErrorPage
+          message={response.message}
+          sessionId={sessionId}
+          clientSecret={clientSecret}
+          retryText={t.tryAgain}
+          onRetry={
+            response.retryable ? () => void refreshEnrollment() : undefined
+          }
+          hideRetry={!response.retryable}
+        />
+      );
     case "active":
       return null;
     default:
-      return assertUnreachable(response);
+      return (
+        <ErrorPage
+          message={t.errorGeneric}
+          sessionId={sessionId}
+          clientSecret={clientSecret}
+          hideRetry
+        />
+      );
   }
 }
 
@@ -557,158 +716,224 @@ function MtPelerinTextEntry({
   );
 }
 
-// --- Sub-components ---
-
 function AccountEnrollmentFormPage({
-  form,
+  interaction,
   onBack,
-  onSubmitted,
+  onSubmit,
 }: {
-  form: EnrollmentForm;
+  interaction: Extract<EnrollmentInteraction, { kind: "form" }>;
   onBack: () => void;
-  onSubmitted: (response: EnrollmentResponse) => void;
+  onSubmit: EnrollmentActionSubmitter;
 }) {
-  const account = useAccountFlow();
-  const client = useDaimoClient();
-
   const submitForm = async (
     values: Record<string, string | boolean>,
   ): Promise<PaginatedEnrollmentFormSubmitResult> => {
-    if (!account) {
-      return { ok: false, fieldErrors: { _form: t.errorConnectionLost } };
-    }
-    const token = await account.getAccessToken();
-    if (!token) {
-      return { ok: false, fieldErrors: { _form: t.errorConnectionLost } };
-    }
-
+    let input: Extract<EnrollmentActionInput, { kind: "form" }>;
     try {
-      const result = await client.account.submitEnrollmentForm(
-        {
-          formId: form.id,
-          revision: form.revision,
-          values,
-          locale: getLocale(),
-        },
-        { bearerToken: token },
-      );
-      onSubmitted(result);
-      return { ok: true };
-    } catch (err) {
-      console.error("[enrollment] form submit failed:", err);
+      input = enrollmentFormActionInput(interaction, values);
+    } catch {
       return { ok: false, fieldErrors: { _form: t.errorGeneric } };
     }
+    const result = await onSubmit(interaction.action.id, input);
+    if (!result) {
+      return { ok: false, fieldErrors: { _form: t.errorGeneric } };
+    }
+    if (result.interaction.kind === "form") {
+      return {
+        ok: false,
+        fieldErrors: result.interaction.form.fieldErrors ?? {
+          _form: t.errorGeneric,
+        },
+      };
+    }
+    return { ok: true };
   };
 
   return (
     <PaginatedEnrollmentForm
-      form={form}
+      form={interaction.form}
       onBack={onBack}
       onSubmit={submitForm}
     />
   );
 }
 
-function AccountLegalNamePage({
+function EnrollmentOtpPage({
+  interaction,
   onBack,
   onSubmit,
 }: {
+  interaction: Extract<EnrollmentInteraction, { kind: "otp" }>;
   onBack: () => void;
-  onSubmit: (name: AccountLegalName) => void;
+  onSubmit: EnrollmentActionSubmitter;
 }) {
-  const {
-    formState: { errors, isValid },
-    handleSubmit,
-    register,
-  } = useForm<LegalNameFormValues>({
-    resolver: zodResolver(zLegalNameForm),
-    mode: "onChange",
-    defaultValues: { firstName: "", lastName: "" },
-  });
+  const handleVerify = async (code: string): Promise<OtpVerifyOutcome> => {
+    const result = await onSubmit(interaction.submitAction.id, {
+      kind: "otp",
+      code,
+    });
+    if (!result) return { ok: false, msg: t.errorGeneric };
+    if (result.interaction.kind === "otp") {
+      return {
+        ok: false,
+        msg: result.interaction.copy.invalidMessage,
+      };
+    }
+    return { ok: true };
+  };
+
+  const handleResend = async () => {
+    await onSubmit(interaction.resend.action.id, { kind: "resend-otp" });
+  };
 
   return (
-    <div className="daimo-flex daimo-flex-col daimo-flex-1 daimo-min-h-0">
-      <PageHeader title={t.accountLegalNameTitle} onBack={onBack} />
-
-      <form
-        className="daimo-flex daimo-flex-col daimo-flex-1 daimo-min-h-0"
-        onSubmit={handleSubmit(onSubmit)}
-      >
-        <CenteredContent>
-          <div className="daimo-flex daimo-w-full daimo-max-w-xs daimo-flex-col daimo-gap-4">
-            <p className="daimo-text-center daimo-text-sm daimo-leading-relaxed daimo-text-[var(--daimo-text-secondary)]">
-              {t.accountLegalNameDesc}
-            </p>
-
-            <div className="daimo-flex daimo-flex-col daimo-gap-3">
-              <DaimoFormField
-                label={t.accountLegalNameFirst}
-                error={errors.firstName?.message}
-              >
-                {({ id, describedBy, invalid }) => (
-                  <DaimoTextField
-                    {...register("firstName")}
-                    id={id}
-                    type="text"
-                    aria-describedby={describedBy}
-                    invalid={invalid}
-                    autoComplete="given-name"
-                    autoFocus
-                    className="daimo-px-4 daimo-py-3"
-                  />
-                )}
-              </DaimoFormField>
-
-              <DaimoFormField
-                label={t.accountLegalNameLast}
-                error={errors.lastName?.message}
-              >
-                {({ id, describedBy, invalid }) => (
-                  <DaimoTextField
-                    {...register("lastName")}
-                    id={id}
-                    type="text"
-                    aria-describedby={describedBy}
-                    invalid={invalid}
-                    autoComplete="family-name"
-                    className="daimo-px-4 daimo-py-3"
-                  />
-                )}
-              </DaimoFormField>
-            </div>
-          </div>
-        </CenteredContent>
-
-        <div className="daimo-px-6 daimo-pb-6 daimo-flex daimo-flex-col daimo-items-center">
-          <PrimaryButton type="submit" disabled={!isValid}>
-            {t.continue}
-          </PrimaryButton>
-        </div>
-      </form>
-    </div>
+    <AccountOtpCodeEntry
+      destination={interaction.destination}
+      title={interaction.copy.title}
+      message={interaction.copy.message}
+      invalidMessage={interaction.copy.invalidMessage}
+      resendDelayMs={interaction.resend.delayMs}
+      onBack={onBack}
+      onVerified={() => undefined}
+      onVerify={handleVerify}
+      onResend={handleResend}
+    />
   );
 }
 
-function PhoneEntrySkeleton({ onBack }: { onBack: () => void }) {
+type EnrollmentActionSubmitter = (
+  actionId: string,
+  input: EnrollmentActionInput,
+) => Promise<EnrollmentStep | null>;
+
+function EnrollmentHostedActionPage({
+  node,
+  platform,
+  url,
+  title,
+  description,
+  actionLabel,
+  purpose,
+  autoSubmitDelayMs,
+  onBack,
+  onReturn,
+}: {
+  node: NavNodeFiat;
+  platform: DaimoPlatform;
+  url: string;
+  title: string;
+  description: string;
+  actionLabel: string;
+  purpose: "identity-verification" | "agreement";
+  autoSubmitDelayMs?: number;
+  onBack: () => void;
+  onReturn: () => Promise<EnrollmentStep | null>;
+}) {
+  const cleanupRef = useRef<() => void>(() => undefined);
+  const returnSubmittedRef = useRef(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => () => cleanupRef.current(), []);
+
+  const submitReturn = useCallback(() => {
+    if (returnSubmittedRef.current) return;
+    returnSubmittedRef.current = true;
+    cleanupRef.current();
+    setIsSubmitting(true);
+    void onReturn().finally(() => setIsSubmitting(false));
+  }, [onReturn]);
+
+  const openHostedStep = useCallback(() => {
+    cleanupRef.current();
+    returnSubmittedRef.current = false;
+    openExternalUrl(
+      url,
+      platform,
+      purpose === "agreement" ? "daimo-agreement" : "daimo-verification",
+      "width=500,height=760",
+    );
+
+    const timing = enrollmentHostedReturnTiming(autoSubmitDelayMs);
+    if (timing.kind === "auto") {
+      setIsSubmitting(true);
+      const timeout = window.setTimeout(submitReturn, timing.delayMs);
+      cleanupRef.current = () => window.clearTimeout(timeout);
+      return;
+    }
+
+    let armed = false;
+    const armTimeout = window.setTimeout(() => {
+      armed = true;
+    }, 0);
+    const handleReturn = () => {
+      if (!armed || document.visibilityState === "hidden") return;
+      submitReturn();
+    };
+    window.addEventListener("focus", handleReturn);
+    window.addEventListener("pageshow", handleReturn);
+    document.addEventListener("visibilitychange", handleReturn);
+    cleanupRef.current = () => {
+      window.clearTimeout(armTimeout);
+      window.removeEventListener("focus", handleReturn);
+      window.removeEventListener("pageshow", handleReturn);
+      document.removeEventListener("visibilitychange", handleReturn);
+    };
+  }, [autoSubmitDelayMs, platform, purpose, submitReturn, url]);
+
   return (
-    <div
-      className="daimo-flex daimo-flex-col daimo-flex-1 daimo-min-h-0"
-      aria-busy="true"
-      aria-label={t.loading}
-    >
-      <PageHeader title={t.accountPhone} onBack={onBack} />
+    <EnrollmentExternalActionPage
+      title={title}
+      description={description}
+      actionLabel={isSubmitting ? t.loading : actionLabel}
+      icon={
+        purpose === "identity-verification" ? (
+          <KycIndicator
+            requirement={getKycRequirement(node.kycRequirement)}
+            size="xl"
+            variant="badge"
+          />
+        ) : null
+      }
+      onBack={onBack}
+      onOpen={openHostedStep}
+      disabled={isSubmitting}
+    />
+  );
+}
 
+function EnrollmentExternalActionPage({
+  title,
+  description,
+  actionLabel,
+  icon,
+  onBack,
+  onOpen,
+  disabled,
+}: {
+  title: string;
+  description: string;
+  actionLabel: string;
+  icon: ReactNode;
+  onBack: () => void;
+  onOpen: () => void;
+  disabled: boolean;
+}) {
+  return (
+    <div className="daimo-flex daimo-flex-col daimo-flex-1 daimo-min-h-0">
+      <PageHeader title={title} onBack={onBack} />
       <CenteredContent>
-        <Skeleton
-          className="daimo-h-4 daimo-w-full daimo-max-w-[300px]"
-          rounded="sm"
-        />
-        <Skeleton className="daimo-h-[56px] daimo-w-full daimo-max-w-xs" />
+        {icon}
+        <p className="daimo-text-[var(--daimo-text-secondary)] daimo-text-center daimo-max-w-xs daimo-text-sm daimo-whitespace-pre-line">
+          {description}
+        </p>
+        <PrimaryButton
+          onClick={onOpen}
+          disabled={disabled}
+          icon={<ExternalLinkIcon size={16} />}
+        >
+          {actionLabel}
+        </PrimaryButton>
       </CenteredContent>
-
-      <div className="daimo-px-6 daimo-pb-6 daimo-flex daimo-flex-col daimo-items-center">
-        <Skeleton className="daimo-h-[54px] daimo-w-full daimo-max-w-xs" />
-      </div>
     </div>
   );
 }
@@ -774,7 +999,6 @@ function EnrollmentIneligible({
   );
 }
 
-/** Terminal error — specific title, error icon, message, and support link. */
 function EnrollmentTerminal({
   title,
   message,
@@ -844,7 +1068,6 @@ function EnrollmentReviewSubmitted({
   );
 }
 
-/** Waiting view — stable skeleton placeholders for advancing account states. */
 function EnrollmentWaiting({
   title,
   label,
@@ -861,6 +1084,7 @@ function EnrollmentWaiting({
         <div
           className="daimo-flex daimo-w-full daimo-max-w-[260px] daimo-flex-col daimo-items-center daimo-gap-4"
           aria-busy="true"
+          aria-live="polite"
           aria-label={label ?? t.loading}
         >
           <Skeleton className="daimo-h-14 daimo-w-14" rounded="full" />
@@ -874,141 +1098,21 @@ function EnrollmentWaiting({
   );
 }
 
-type ExternalEnrollmentStep = Extract<
-  EnrollmentResponse,
-  {
-    action:
-      | "kyc_required"
-      | "kyc_retry"
-      | "hosted_agreement_required"
-      | "hosted_kyc_required";
-  }
->;
-
-/** Hosted enrollment step. Polling drives completion. */
-function HostedEnrollmentPage({
-  node,
-  step,
-  platform,
-  onBack,
-}: {
-  node: NavNodeFiat;
-  step: ExternalEnrollmentStep;
-  platform: DaimoPlatform;
-  onBack: () => void;
-}) {
-  const isKyc = step.action !== "hosted_agreement_required";
-  const openHostedStep = useCallback(() => {
-    openExternalUrl(
-      step.url,
-      platform,
-      externalWindowName(step),
-      "width=500,height=760",
-    );
-  }, [platform, step]);
-
-  return (
-    <EnrollmentExternalActionPage
-      title={externalActionTitle(step)}
-      description={externalActionDescription(step, platform)}
-      actionLabel={externalActionLabel(step)}
-      icon={
-        isKyc ? (
-          <KycIndicator
-            requirement={getKycRequirement(node.kycRequirement)}
-            size="xl"
-            variant="badge"
-          />
-        ) : null
-      }
-      onBack={onBack}
-      onOpen={openHostedStep}
-    />
-  );
-}
-
-function EnrollmentExternalActionPage({
-  title,
-  description,
-  actionLabel,
-  icon,
-  onBack,
-  onOpen,
-}: {
-  title: string;
-  description: string;
-  actionLabel: string;
-  icon: ReactNode;
-  onBack: () => void;
-  onOpen: () => void;
-}) {
-  return (
-    <div className="daimo-flex daimo-flex-col daimo-flex-1 daimo-min-h-0">
-      <PageHeader title={title} onBack={onBack} />
-
-      <CenteredContent>
-        {icon}
-
-        <p className="daimo-text-[var(--daimo-text-secondary)] daimo-text-center daimo-max-w-xs daimo-text-sm daimo-whitespace-pre-line">
-          {description}
-        </p>
-
-        <PrimaryButton onClick={onOpen} icon={<ExternalLinkIcon size={16} />}>
-          {actionLabel}
-        </PrimaryButton>
-      </CenteredContent>
-    </div>
-  );
-}
-
-/** Whether this hosted step is the partner liveness check (vs general KYC). */
-function isLivenessStep(step: ExternalEnrollmentStep): boolean {
-  return step.action === "hosted_kyc_required";
-}
-
-function externalActionTitle(step: ExternalEnrollmentStep): string {
-  if (step.title) return step.title;
-  return isLivenessStep(step)
-    ? t.accountHostedLivenessTitle
-    : t.accountHostedKycTitle;
-}
-
-function externalActionDescription(
-  step: ExternalEnrollmentStep,
-  platform: DaimoPlatform,
-): string {
-  if (step.action === "hosted_agreement_required") {
-    const handoff = isDesktop(platform)
-      ? t.accountHostedActionDesktopSuffix
-      : t.accountHostedActionMobileSuffix;
-    return `${step.description} ${handoff}`;
-  }
-
-  if (step.description) return step.description;
-
-  const base = isLivenessStep(step)
-    ? t.accountHostedLivenessDesc
-    : isDesktop(platform)
-      ? t.accountHostedKycDesktopDesc
-      : t.accountHostedKycMobileDesc;
-
-  if (step.action === "kyc_retry") {
-    return `${step.reason}\n\n${base}`;
-  }
-  return base;
-}
-
-function externalActionLabel(step: ExternalEnrollmentStep): string {
-  if (step.openExternalLabel) return step.openExternalLabel;
-  return isLivenessStep(step)
-    ? t.accountHostedLivenessCta
-    : t.accountHostedKycCta;
-}
-
-function externalWindowName(step: ExternalEnrollmentStep): string {
-  return step.action === "hosted_agreement_required"
-    ? "daimo-terms"
-    : "daimo-verification";
+function getLegacyCopy(platform: DaimoPlatform): LegacyEnrollmentCopy {
+  return {
+    verification: {
+      title: t.accountHostedKycTitle,
+      description: isDesktop(platform)
+        ? t.accountHostedKycDesktopDesc
+        : t.accountHostedKycMobileDesc,
+      openExternalLabel: t.accountHostedKycCta,
+    },
+    liveness: {
+      title: t.accountHostedLivenessTitle,
+      description: t.accountHostedLivenessDesc,
+      openExternalLabel: t.accountHostedLivenessCta,
+    },
+  };
 }
 
 function openExternalUrl(
@@ -1017,12 +1121,6 @@ function openExternalUrl(
   target: string,
   features: string,
 ): Window | null {
-  if (isDesktop(platform)) {
-    return window.open(url, target, features);
-  }
+  if (isDesktop(platform)) return window.open(url, target, features);
   return window.open(url, "_blank");
-}
-
-function assertUnreachable(value: never): never {
-  throw new Error(`unhandled enrollment response: ${JSON.stringify(value)}`);
 }

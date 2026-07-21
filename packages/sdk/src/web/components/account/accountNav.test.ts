@@ -2,13 +2,23 @@ import { describe, expect, test } from "vitest";
 
 import type {
   AccountDepositStatus,
-  AccountRail,
+  DepositPaymentInfo,
+  DepositPaymentInteraction,
 } from "../../../common/account.js";
+import type { NavNodeFiat } from "../../api/navTree.js";
 import type { DaimoPlatform } from "../../platform.js";
 import {
   getAccountPaymentAdvanceTarget,
+  getAccountPaymentEntryTarget,
   getDepositResumeTarget,
+  getInstitutionSelectionAdvanceTarget,
+  isPaymentInteractionCompatible,
+  shouldRecoverExpiredPayment,
 } from "./accountNav.js";
+import {
+  getInstitutionPaymentContract,
+  getNodePaymentInteraction,
+} from "./accountPaymentCompatibility.js";
 
 const ALL_PLATFORMS: DaimoPlatform[] = [
   "desktop",
@@ -18,47 +28,182 @@ const ALL_PLATFORMS: DaimoPlatform[] = [
   "other",
 ];
 
-describe("getAccountPaymentAdvanceTarget", () => {
-  test("interac shows the bank picker on desktop", () => {
-    expect(getAccountPaymentAdvanceTarget("interac", "desktop")).toBe(
-      "account-canada-bank-picker",
+const ALL_INTERACTIONS: DepositPaymentInteraction[] = [
+  "bank-picker",
+  "bank-transfer",
+  "directions",
+  "external-app-approval",
+  "hosted-approval",
+  "institution-picker",
+  "request-to-pay",
+  "wallet-pay-widget",
+];
+
+describe("interaction-driven account navigation", () => {
+  test("wallet pay keeps combined entry while other interactions enter amount", () => {
+    expect(getAccountPaymentEntryTarget("wallet-pay-widget")).toBe(
+      "account-wallet-pay",
     );
-    // isDesktop() treats "other" as desktop.
-    expect(getAccountPaymentAdvanceTarget("interac", "other")).toBe(
-      "account-canada-bank-picker",
-    );
+    for (const interaction of [
+      "bank-picker",
+      "bank-transfer",
+      "directions",
+      "external-app-approval",
+      "hosted-approval",
+      "institution-picker",
+      "request-to-pay",
+    ] as const) {
+      expect(getAccountPaymentEntryTarget(interaction)).toBe("account-amount");
+    }
   });
 
-  test("interac reviews before opening interac on mobile", () => {
+  test("institution picker preserves desktop and mobile choreography", () => {
+    expect(getAccountPaymentAdvanceTarget("bank-picker", "desktop")).toBe(
+      "account-institution-picker",
+    );
+    expect(getAccountPaymentAdvanceTarget("bank-picker", "other")).toBe(
+      "account-institution-picker",
+    );
     for (const platform of ["mobile", "ios", "android"] as const) {
-      expect(getAccountPaymentAdvanceTarget("interac", platform)).toBe(
-        "account-interac-confirm",
+      expect(getAccountPaymentAdvanceTarget("bank-picker", platform)).toBe(
+        "account-institution-review",
       );
     }
   });
 
-  test("bank-details rails are unaffected by platform", () => {
-    const rails: AccountRail[] = ["ach", "sepa", "jpyc", "ars"];
-    for (const rail of rails) {
+  test("legacy selection advances to review instead of re-entering the picker", () => {
+    for (const platform of ALL_PLATFORMS) {
+      expect(
+        getInstitutionSelectionAdvanceTarget("bank-picker", platform),
+      ).toBe("account-institution-review");
+      expect(
+        getInstitutionSelectionAdvanceTarget("hosted-approval", platform),
+      ).toBe("account-approval");
+    }
+  });
+
+  test("every non-picker interaction has a platform-independent renderer", () => {
+    const expected = {
+      "bank-transfer": "account-payment-instructions",
+      directions: "account-payment-instructions",
+      "external-app-approval": "account-approval",
+      "hosted-approval": "account-approval",
+      "institution-picker": "account-institution-picker",
+      "request-to-pay": "account-request-to-pay",
+      "wallet-pay-widget": "account-wallet-pay",
+    } as const;
+    for (const [interaction, target] of Object.entries(expected)) {
       for (const platform of ALL_PLATFORMS) {
-        expect(getAccountPaymentAdvanceTarget(rail, platform)).toBe(
-          "account-bank-details",
+        expect(
+          getAccountPaymentAdvanceTarget(
+            interaction as keyof typeof expected,
+            platform,
+          ),
+        ).toBe(target);
+      }
+    }
+  });
+
+  test("actual payment flow must match the advertised interaction", () => {
+    for (const advertised of ALL_INTERACTIONS) {
+      for (const actual of ALL_INTERACTIONS) {
+        const payment = { flow: actual } as DepositPaymentInfo;
+        expect(isPaymentInteractionCompatible(advertised, payment)).toBe(
+          advertised === actual,
         );
       }
     }
   });
 
-  test("apple_pay is unaffected by platform", () => {
-    for (const platform of ALL_PLATFORMS) {
-      expect(getAccountPaymentAdvanceTarget("apple_pay", platform)).toBe(
-        "account-apple-pay",
-      );
-    }
+  test("uses server interaction without consulting the rail", () => {
+    const node = makeFiatNode("ach", "wallet-pay-widget");
+    expect(getNodePaymentInteraction(node)).toBe("wallet-pay-widget");
+  });
+
+  test("isolates temporary old-server rail fallback", () => {
+    expect(getNodePaymentInteraction(makeFiatNode("interac"))).toBe(
+      "bank-picker",
+    );
+    expect(getNodePaymentInteraction(makeFiatNode("apple_pay"))).toBe(
+      "wallet-pay-widget",
+    );
+    expect(getNodePaymentInteraction(makeFiatNode("ach"))).toBe(
+      "bank-transfer",
+    );
+    expect(getNodePaymentInteraction(makeFiatNode("sepa"))).toBe(
+      "bank-transfer",
+    );
+    expect(getNodePaymentInteraction(makeFiatNode("jpyc"))).toBe("directions");
+    expect(getNodePaymentInteraction(makeFiatNode("ars"))).toBe(
+      "bank-transfer",
+    );
+  });
+
+  test("isolates old bank-picker payload normalization", () => {
+    const payment = {
+      flow: "bank-picker",
+      currency: { code: "CAD", symbol: "CA$" },
+      qrUrl: "https://example.com/accept?rID=legacy-reference",
+    } as const;
+
+    const contract = getInstitutionPaymentContract(payment, "25.00");
+    expect(contract.ui.review.fields).toEqual([
+      { key: "sender", label: "Sender", value: "PayTrie AB Inc" },
+      { key: "amount", label: "Amount", value: "CA$25.00 CAD" },
+    ]);
+    expect(contract.ui.review.fieldsAfterInstitution).toEqual([
+      {
+        key: "processing_time",
+        label: "Processing time",
+        value: "5–30 min",
+      },
+    ]);
+    expect(contract.ui.waiting.instructions).toContain("5–30 min");
+    expect(contract.fallbackDeeplink).toEqual({
+      type: "redirect",
+      url: payment.qrUrl,
+    });
+  });
+
+  test("preserves server-owned UI when only the fallback action is absent", () => {
+    const institutionPaymentUi = {
+      picker: {
+        title: "Choose an institution",
+        searchPlaceholder: "Search institutions",
+        otherInstitutionsLabel: "More institutions",
+      },
+      review: {
+        title: "Review payment request",
+        description: "Review the request in your institution.",
+        fields: [{ key: "reference", label: "Reference", value: "abc-123" }],
+        institutionLabel: "Institution",
+        openInstitutionLabel: "Open",
+        openFallbackLabel: "Open request",
+      },
+      waiting: {
+        title: "Complete payment",
+        instructions: "Approve the request in your institution.",
+        openInstitutionLabel: "Open",
+        openFallbackLabel: "Open request",
+      },
+    };
+    const payment = {
+      flow: "bank-picker",
+      currency: { code: "USD", symbol: "$" },
+      qrUrl: "https://example.com/request/abc-123",
+      institutionPaymentUi,
+    } as const;
+
+    const contract = getInstitutionPaymentContract(payment, "25.00");
+    expect(contract.ui).toBe(institutionPaymentUi);
+    expect(contract.fallbackDeeplink).toEqual({
+      type: "redirect",
+      url: payment.qrUrl,
+    });
   });
 });
 
 describe("getDepositResumeTarget", () => {
-  // Exhaustive: adding a deposit status must force a decision here.
   const ALL_STATUSES: AccountDepositStatus[] = [
     "initiated",
     "awaiting_payment",
@@ -82,9 +227,23 @@ describe("getDepositResumeTarget", () => {
     }
   });
 
-  test("pre-payment deposits re-enter the normal flow", () => {
+  test("pre-payment deposits re-enter the interaction flow", () => {
     expect(getDepositResumeTarget("initiated")).toBeNull();
     expect(getDepositResumeTarget("awaiting_payment")).toBeNull();
+  });
+
+  test("expired request-to-pay re-enters interaction recovery", () => {
+    expect(getDepositResumeTarget("expired", "request-to-pay")).toBeNull();
+    expect(shouldRecoverExpiredPayment("expired", "request-to-pay")).toBe(true);
+    expect(shouldRecoverExpiredPayment("expired", "bank-transfer")).toBe(false);
+    for (const interaction of [
+      "institution-picker",
+      "hosted-approval",
+      "external-app-approval",
+    ] as const) {
+      expect(getDepositResumeTarget("expired", interaction)).toBeNull();
+      expect(shouldRecoverExpiredPayment("expired", interaction)).toBe(true);
+    }
   });
 
   test("every status has a decision", () => {
@@ -94,3 +253,16 @@ describe("getDepositResumeTarget", () => {
     }
   });
 });
+
+function makeFiatNode(
+  fiatMethod: NavNodeFiat["fiatMethod"],
+  paymentInteraction?: DepositPaymentInteraction,
+): NavNodeFiat {
+  return {
+    type: "Fiat",
+    id: `Fiat-${fiatMethod}`,
+    title: fiatMethod,
+    fiatMethod,
+    paymentInteraction,
+  };
+}

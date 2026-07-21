@@ -23,8 +23,7 @@ type AccountPhonePageProps = {
 };
 
 /**
- * Phone entry step for Coinbase Headless enrollment. Keeps the field to a
- * single line like email entry, but formats the US number as the user types.
+ * Phone entry for the semantic account-phone-verification interaction.
  */
 export function AccountPhonePage({ onBack, onOtpSent }: AccountPhonePageProps) {
   const account = useAccountFlow();

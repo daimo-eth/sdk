@@ -12,7 +12,14 @@ import {
 import { WebView, type WebViewMessageEvent } from "react-native-webview";
 
 import { DAIMO_BASE_URL, DAIMO_SUPPORT_EMAIL } from "../common/constants.js";
+import {
+  applyFrameHeight,
+  applyFrameReady,
+  createFrameReadiness,
+  markFrameError,
+} from "../common/frameReadiness.js";
 import { parseDaimoFrameMessage } from "../common/frameMessages.js";
+import { SDK_VERSION } from "../version.js";
 
 const INITIAL_HEIGHT = 420;
 /** Show the error fallback if the WebView reports no content within this. */
@@ -81,8 +88,9 @@ export type DaimoFrameRNProps = {
  * `DaimoFrameRN` loads `/webview` in content-only (`embed`) mode and sizes the
  * WebView to the height the content reports over the `postMessage` bridge. No
  * wallet libraries or app providers required. The surface stays hidden until
- * the flow's first content arrives; if nothing loads within
- * {@link LOAD_TIMEOUT_MS}, a dismissable error card is shown instead.
+ * the flow reports both `ready` (theme resolved) and a positive content height;
+ * if nothing loads within {@link LOAD_TIMEOUT_MS}, a dismissable error card
+ * is shown instead.
  *
  * Apple Pay, wallet deeplinks, and hosted fiat providers cannot run inside the
  * message-bridged WebView (WKWebView disables Apple Pay JS once scripts are
@@ -112,18 +120,28 @@ export function DaimoFrameRN({
   onOpenExternalUrl,
   borderRadius = DEFAULT_BORDER_RADIUS,
 }: DaimoFrameRNProps) {
-  const [height, setHeight] = useState(INITIAL_HEIGHT);
-  const [status, setStatus] = useState<"loading" | "loaded" | "error">(
-    "loading",
+  const [readiness, setReadiness] = useState(() =>
+    createFrameReadiness(INITIAL_HEIGHT),
   );
   const [keyboardHeight, setKeyboardHeight] = useState(0);
 
-  // Fall back to the error card if the flow never reports content.
+  const origin = normalizeOrigin(baseUrl);
+  const src = getFrameSrc(origin, sessionId, clientSecret);
+
+  // New session / frame URL: hide again until the next ready + height pair.
   useEffect(() => {
-    if (status !== "loading") return;
-    const id = setTimeout(() => setStatus("error"), LOAD_TIMEOUT_MS);
+    setReadiness(createFrameReadiness(INITIAL_HEIGHT));
+  }, [src]);
+
+  // Fall back to the error card if the flow never becomes revealable.
+  useEffect(() => {
+    if (readiness.status !== "loading") return;
+    const id = setTimeout(
+      () => setReadiness((s) => markFrameError(s)),
+      LOAD_TIMEOUT_MS,
+    );
     return () => clearTimeout(id);
-  }, [status]);
+  }, [readiness.status, src]);
 
   // Lift the modal sheet above the on-screen keyboard. Inputs live inside the
   // WebView, but iOS/Android still raise the system keyboard and fire these
@@ -148,9 +166,6 @@ export function DaimoFrameRN({
     return () => subs.forEach((s) => s.remove());
   }, [layout]);
 
-  const origin = normalizeOrigin(baseUrl);
-  const src = getFrameSrc(origin, sessionId, clientSecret);
-
   const openExternal = (url: string) => {
     if (onOpenExternalUrl) return onOpenExternalUrl(url);
     Linking.openURL(url).catch(() => {});
@@ -170,8 +185,9 @@ export function DaimoFrameRN({
 
     switch (message.type) {
       case "ready":
+        setReadiness((s) => applyFrameReady(s));
+        break;
       case "modalOpened":
-        setStatus("loaded");
         onOpen?.();
         break;
       case "modalClosed":
@@ -184,8 +200,7 @@ export function DaimoFrameRN({
         onPaymentCompleted?.();
         break;
       case "contentHeightChanged":
-        setHeight(message.payload.height);
-        setStatus("loaded");
+        setReadiness((s) => applyFrameHeight(s, message.payload.height));
         break;
     }
   };
@@ -210,6 +225,8 @@ export function DaimoFrameRN({
     openExternal(event.nativeEvent.targetUrl);
   };
 
+  const { height, status } = readiness;
+
   const webView = (
     <WebView
       source={{ uri: src }}
@@ -217,7 +234,7 @@ export function DaimoFrameRN({
       onMessage={handleMessage}
       onShouldStartLoadWithRequest={handleShouldStart}
       onOpenWindow={handleOpenWindow}
-      onError={() => setStatus("error")}
+      onError={() => setReadiness((s) => markFrameError(s))}
       scrollEnabled={layout === "modal"}
       javaScriptEnabled
       domStorageEnabled
@@ -278,6 +295,7 @@ function getFrameSrc(origin: string, sessionId: string, clientSecret: string) {
     `session=${encodeURIComponent(sessionId)}`,
     `cs=${encodeURIComponent(clientSecret)}`,
     "layout=embed",
+    `sdkVersion=${SDK_VERSION}`,
     // Ask the hosted flow to render its own close button (embed normally hides
     // it, assuming host chrome). We have no chrome, so the flow owns dismissal.
     "close=1",

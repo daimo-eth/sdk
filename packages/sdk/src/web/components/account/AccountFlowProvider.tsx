@@ -8,6 +8,7 @@ import {
   PrivyProvider,
   useLoginWithEmail,
   usePrivy,
+  useSendTransaction,
   useSignMessage,
   useWallets,
 } from "@privy-io/react-auth";
@@ -83,8 +84,9 @@ function PrivyConsumer({
     usePrivy();
   const { sendCode: rawSendCode, loginWithCode: rawLoginWithCode } =
     useLoginWithEmail();
-  const { wallets, ready: walletsReady } = useWallets();
+  const { sendTransaction: rawSendTransaction } = useSendTransaction();
   const { signMessage: rawSignMessage } = useSignMessage();
+  const { wallets, ready: walletsReady } = useWallets();
 
   const sendCode = useCallback(
     async (email: string) => {
@@ -149,6 +151,25 @@ function PrivyConsumer({
     [rawSignMessage, signingWallet, walletAddress],
   );
 
+  const sendSponsoredTransaction = useCallback(
+    async (transaction: {
+      chainId: number;
+      to: `0x${string}`;
+      data?: `0x${string}`;
+      value?: bigint;
+    }): Promise<`0x${string}`> => {
+      if (!signingWallet || !walletAddress) {
+        throw new Error("no canonical embedded wallet");
+      }
+      const { hash } = await rawSendTransaction(transaction, {
+        address: walletAddress,
+        sponsor: true,
+      });
+      return hash;
+    },
+    [rawSendTransaction, signingWallet, walletAddress],
+  );
+
   const hooks = useMemo(
     () => ({
       sendCode,
@@ -157,6 +178,7 @@ function PrivyConsumer({
       getAccessToken,
       signTypedData,
       signMessage,
+      sendSponsoredTransaction,
       logout,
       ready,
       authenticated,
@@ -180,6 +202,7 @@ function PrivyConsumer({
       getAccessToken,
       signTypedData,
       signMessage,
+      sendSponsoredTransaction,
       logout,
     ],
   );

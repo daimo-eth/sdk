@@ -6,6 +6,7 @@ import {
   useState,
 } from "react";
 import type { Address } from "viem";
+import type { AccountDepositStatus } from "../../common/account.js";
 import { tron } from "../../common/chain.js";
 import { isSessionTerminal } from "../../common/session.js";
 import type {
@@ -46,6 +47,7 @@ import { usePaymentCallbacks } from "../hooks/usePaymentCallbacks.js";
 import { useSessionNav } from "../hooks/useSessionNav.js";
 import { useSessionPolling } from "../hooks/useSessionPolling.js";
 import { AccountFlowProvider } from "./account/AccountFlowProvider.js";
+import { AccountApprovalPage } from "./account/AccountApprovalPage.js";
 
 import {
   useInjectedWallets,
@@ -64,25 +66,27 @@ import { EmbeddedContainer, ModalContainer } from "./containers.js";
 import { DeeplinkPage } from "./DeeplinkPage.js";
 import { ExchangePage } from "./ExchangePage.js";
 import { ExpiredPage } from "./ExpiredPage.js";
-import { AccountBankDetailsPage } from "./account/AccountBankDetailsPage.js";
-import { AccountCanadaBankPickerPage } from "./account/AccountBankPickerPage.js";
+import { AccountPaymentInstructionsPage } from "./account/AccountBankDetailsPage.js";
+import { AccountInstitutionPickerPage } from "./account/AccountBankPickerPage.js";
 import { AccountEnrollmentUpdatePage } from "./account/AccountEnrollmentUpdatePage.js";
 import { AccountCreatingWalletPage } from "./account/AccountCreatingWalletPage.js";
 import { AccountDeeplinkPage } from "./account/AccountDeeplinkPage.js";
-import { AccountInteracConfirmPage } from "./account/AccountInteracConfirmPage.js";
-import { AccountApplePayPage } from "./account/AccountApplePayPage.js";
+import { AccountInstitutionReviewPage } from "./account/AccountInteracConfirmPage.js";
+import { AccountWalletPayPage } from "./account/AccountApplePayPage.js";
 import { FiatPopupPage } from "./account/FiatPopupPage.js";
 import { AccountEmailPage } from "./account/AccountEmailPage.js";
 import { AccountEnrollmentPage } from "./account/AccountEnrollmentPage.js";
 import { AccountOtpPage } from "./account/AccountOtpPage.js";
 import { AccountPhonePage } from "./account/AccountPhonePage.js";
 import { AccountPhoneOtpPage } from "./account/AccountPhoneOtpPage.js";
-import { AccountPaymentPage } from "./account/AccountPaymentPage.js";
-import { AccountProviderOtpPage } from "./account/AccountProviderOtpPage.js";
+import { AccountAmountPage } from "./account/AccountPaymentPage.js";
+import { AccountPaymentResumePage } from "./account/AccountPaymentResumePage.js";
 import { AccountStatusPage } from "./account/AccountStatusPage.js";
+import { AccountRequestToPayPage } from "./account/AccountRequestToPayPage.js";
 import {
   getAccountPaymentAdvanceTarget,
   getAccountPaymentEntryTarget,
+  getInstitutionSelectionAdvanceTarget,
 } from "./account/accountNav.js";
 import { SelectAmountPage } from "./SelectAmountPage.js";
 import { SelectTokenPage } from "./SelectTokenPage.js";
@@ -254,16 +258,18 @@ export function DaimoModal(props: DaimoModalProps) {
 
   if (!isOpen) return null;
 
-  // While the session and theme load, embedded mode renders a sized skeleton
-  // instead of nothing, so the host iframe reports a non-zero height on its
-  // first paint. Otherwise the surrounding bubble has no height to show and
-  // stays hidden until the full content arrives (or the load timeout fires).
+  // While the session and theme load, embedded mode reserves a sized skeleton
+  // so the host iframe reports a non-zero height early — but keeps it
+  // `visibility: hidden` so default (unthemed) colors never paint. Reveal once
+  // the session and org stylesheet are ready.
   if (loaded == null || !themeReady) {
     if (!embedded) return null;
     return (
-      <EmbeddedContainer showFooterSpacer={false} themeMode={props.themeMode}>
-        <SkeletonContent rowCount={3} showFooter={false} />
-      </EmbeddedContainer>
+      <div style={{ visibility: "hidden" }}>
+        <EmbeddedContainer showFooterSpacer={false} themeMode={props.themeMode}>
+          <SkeletonContent rowCount={3} showFooter={false} />
+        </EmbeddedContainer>
+      </div>
     );
   }
 
@@ -573,7 +579,7 @@ function DaimoModalInner({
     showFooterSpacer = !(
       !nav.topEntry ||
       (nav.topEntry.type === "choose-option" && !nav.canGoBack) ||
-      nav.topEntry.type === "account-bank-details"
+      nav.topEntry.type === "account-payment-instructions"
     );
     content = renderEntry(nav.topEntry, {
       session,
@@ -584,6 +590,7 @@ function DaimoModalInner({
       onAmountContinue: nav.handleAmountContinue,
       onRetry: nav.handleRetry,
       onRefresh: nav.handleRefresh,
+      onAccountSessionRecreate: nav.handleAccountSessionRecreate,
       injectedWallets,
       isLoadingWallets,
       platform: resolvedPlatform,
@@ -683,6 +690,7 @@ type RenderContext = {
   onAmountContinue: (amountUsd: number) => void;
   onRetry: () => void;
   onRefresh: () => Promise<void>;
+  onAccountSessionRecreate: (depositAmount: string) => Promise<void>;
   injectedWallets: InjectedWallet[];
   isLoadingWallets: boolean;
   platform: DaimoPlatform;
@@ -702,7 +710,10 @@ type RenderContext = {
   };
   onWalletSelectToken: (token: WalletPaymentOption) => void;
   onWalletSending: (token: WalletPaymentOption, amountUsd: number) => void;
-  onAccountAdvance: (nextType: AccountNavEntry["type"]) => void;
+  onAccountAdvance: (
+    nextType: AccountNavEntry["type"],
+    options?: { initialStatus?: AccountDepositStatus },
+  ) => void;
   setModalCloseVisible: (show: boolean) => void;
 };
 
@@ -719,6 +730,7 @@ function renderEntry(
           node={rootNode as NavNodeChooseOption}
           injectedWallets={ctx.injectedWallets}
           connectedAddress={ctx.walletFlow.connectedAddress}
+          actionVerb={ctx.displayVerb}
           onNavigate={ctx.onNavigate}
           onBack={null}
           baseUrl={ctx.session.baseUrl}
@@ -755,6 +767,7 @@ function renderEntry(
           node={node}
           injectedWallets={ctx.injectedWallets}
           connectedAddress={ctx.walletFlow.connectedAddress}
+          actionVerb={ctx.displayVerb}
           onNavigate={ctx.onNavigate}
           onBack={ctx.canGoBack ? ctx.onBack : null}
           baseUrl={ctx.session.baseUrl}
@@ -872,15 +885,15 @@ function renderEntry(
         <AccountEnrollmentPage
           node={node}
           sessionId={ctx.session.sessionId}
+          clientSecret={ctx.session.clientSecret}
           platform={ctx.platform}
           onBack={ctx.onBack}
           onReady={() =>
-            ctx.onAccountAdvance(getAccountPaymentEntryTarget(entry.rail))
+            ctx.onAccountAdvance(
+              getAccountPaymentEntryTarget(entry.paymentInteraction),
+            )
           }
           onPhoneRequired={() => ctx.onAccountAdvance("account-phone")}
-          onProviderOtpRequired={() =>
-            ctx.onAccountAdvance("account-provider-otp")
-          }
         />
       );
     }
@@ -894,14 +907,6 @@ function renderEntry(
     case "account-phone-otp":
       return (
         <AccountPhoneOtpPage
-          rail={entry.rail}
-          onBack={ctx.onBack}
-          onVerified={() => ctx.onAccountAdvance("account-enrollment")}
-        />
-      );
-    case "account-provider-otp":
-      return (
-        <AccountProviderOtpPage
           onBack={ctx.onBack}
           onVerified={() => ctx.onAccountAdvance("account-enrollment")}
         />
@@ -913,42 +918,98 @@ function renderEntry(
           sessionId={ctx.session.sessionId}
           onBack={ctx.canGoBack ? ctx.onBack : null}
           onReady={() =>
-            ctx.onAccountAdvance(getAccountPaymentEntryTarget(entry.rail))
+            ctx.onAccountAdvance(
+              getAccountPaymentEntryTarget(entry.paymentInteraction),
+            )
           }
         />
       );
-    case "account-payment": {
+    case "account-amount": {
       const advanceTarget = getAccountPaymentAdvanceTarget(
-        entry.rail,
+        entry.paymentInteraction,
         ctx.platform,
       );
       return (
-        <AccountPaymentPage
+        <AccountAmountPage
           rail={entry.rail}
+          paymentInteraction={entry.paymentInteraction}
           sessionId={ctx.session.sessionId}
           initialAmount={ctx.session.destination.amountUnits}
           platform={ctx.platform}
           baseUrl={ctx.session.baseUrl}
-          startDepositOnAdvance={advanceTarget === "account-interac-confirm"}
+          startDepositOnAdvance={advanceTarget === "account-institution-review"}
           onBack={ctx.canGoBack ? ctx.onBack : null}
           onAdvance={() => ctx.onAccountAdvance(advanceTarget)}
         />
       );
     }
-    case "account-canada-bank-picker":
+    case "account-request-to-pay":
       return (
-        <AccountCanadaBankPickerPage
-          rail={entry.rail}
+        <AccountRequestToPayPage
           sessionId={ctx.session.sessionId}
-          onBack={null}
-          onSelect={() => ctx.onAccountAdvance("account-interac-confirm")}
+          clientSecret={ctx.session.clientSecret}
+          rail={entry.rail}
+          resumePayment={entry.resumePayment ?? false}
+          onAdvance={(deposit) =>
+            ctx.onAccountAdvance("account-status", {
+              initialStatus: deposit.status,
+            })
+          }
+          onRetry={ctx.onAccountSessionRecreate}
         />
       );
-    case "account-interac-confirm": {
+    case "account-approval":
+      return (
+        <AccountApprovalPage
+          sessionId={ctx.session.sessionId}
+          clientSecret={ctx.session.clientSecret}
+          rail={entry.rail}
+          platform={ctx.platform}
+          resumePayment={entry.resumePayment ?? false}
+          onAdvance={(deposit) =>
+            ctx.onAccountAdvance("account-status", {
+              initialStatus: deposit.status,
+            })
+          }
+          onRetry={ctx.onAccountSessionRecreate}
+        />
+      );
+    case "account-payment-resume":
+      return (
+        <AccountPaymentResumePage
+          sessionId={ctx.session.sessionId}
+          rail={entry.rail}
+          onReady={(payment) =>
+            ctx.onAccountAdvance(
+              getAccountPaymentAdvanceTarget(payment.flow, ctx.platform),
+            )
+          }
+        />
+      );
+    case "account-institution-picker":
+      return (
+        <AccountInstitutionPickerPage
+          rail={entry.rail}
+          paymentInteraction={entry.paymentInteraction}
+          sessionId={ctx.session.sessionId}
+          onBack={
+            entry.paymentInteraction === "institution-picker" && ctx.canGoBack
+              ? ctx.onBack
+              : null
+          }
+          onSelect={(payment) =>
+            ctx.onAccountAdvance(
+              getInstitutionSelectionAdvanceTarget(payment.flow, ctx.platform),
+            )
+          }
+        />
+      );
+    case "account-institution-review": {
       const accountNode = findNode(entry.nodeId, ctx.session.navTree);
       return (
-        <AccountInteracConfirmPage
+        <AccountInstitutionReviewPage
           sessionId={ctx.session.sessionId}
+          paymentInteraction={entry.paymentInteraction}
           baseUrl={ctx.session.baseUrl}
           platform={ctx.platform}
           icon={accountNode?.type === "Fiat" ? accountNode.icon : undefined}
@@ -957,10 +1018,11 @@ function renderEntry(
         />
       );
     }
-    case "account-apple-pay":
+    case "account-wallet-pay":
       return (
-        <AccountApplePayPage
+        <AccountWalletPayPage
           rail={entry.rail}
+          paymentInteraction={entry.paymentInteraction}
           sessionId={ctx.session.sessionId}
           clientSecret={ctx.session.clientSecret}
           actionVerb={ctx.displayVerb}
@@ -969,10 +1031,11 @@ function renderEntry(
           onAdvance={() => ctx.onAccountAdvance("account-status")}
         />
       );
-    case "account-bank-details":
+    case "account-payment-instructions":
       return (
-        <AccountBankDetailsPage
+        <AccountPaymentInstructionsPage
           rail={entry.rail}
+          paymentInteraction={entry.paymentInteraction}
           sessionId={ctx.session.sessionId}
           clientSecret={ctx.session.clientSecret}
           baseUrl={ctx.session.baseUrl}
@@ -985,6 +1048,7 @@ function renderEntry(
       return (
         <AccountDeeplinkPage
           sessionId={ctx.session.sessionId}
+          paymentInteraction={entry.paymentInteraction}
           clientSecret={ctx.session.clientSecret}
           baseUrl={ctx.session.baseUrl}
           platform={ctx.platform}

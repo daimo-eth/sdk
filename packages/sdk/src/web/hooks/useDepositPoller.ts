@@ -48,5 +48,5 @@ export function useDepositPoller(opts: {
       stoppedRef.current = true;
       clearInterval(timer);
     };
-  }, [client, sessionId, clientSecret]); // stable deps only
+  }, [client, sessionId, clientSecret, intervalMs]); // stable deps only
 }

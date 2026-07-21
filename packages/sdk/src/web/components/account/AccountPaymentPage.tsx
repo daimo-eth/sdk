@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type {
   AccountRail,
   DepositConstraints,
+  DepositPaymentInteraction,
 } from "../../../common/account.js";
 import { useDaimoClient } from "../../hooks/DaimoClientContext.js";
 import { formatUserError } from "../../hooks/formatUserError.js";
@@ -20,9 +21,11 @@ import {
   TokenAmountEntry,
   type TokenAmountEntryValue,
 } from "../TokenAmountEntry.js";
+import { isPaymentInteractionCompatible } from "./accountNav.js";
 
 type AccountPaymentPageProps = {
   rail: AccountRail;
+  paymentInteraction: DepositPaymentInteraction;
   sessionId: string;
   initialAmount?: string;
   platform: DaimoPlatform;
@@ -37,8 +40,9 @@ type AccountPaymentPageProps = {
  * When `startDepositOnAdvance` is set (interac on mobile, where the bank
  * picker is skipped), signs + upserts the deposit before advancing.
  */
-export function AccountPaymentPage({
+export function AccountAmountPage({
   rail,
+  paymentInteraction,
   sessionId,
   initialAmount,
   platform,
@@ -124,7 +128,11 @@ export function AccountPaymentPage({
           });
           // The deeplink page has no actionable UI without a qrUrl to open;
           // treat a missing one as a failure rather than advancing to it.
-          if (payment.flow !== "bank-picker" || payment.qrUrl == null) {
+          if (
+            !isPaymentInteractionCompatible(paymentInteraction, payment) ||
+            payment.flow !== "bank-picker" ||
+            payment.qrUrl == null
+          ) {
             setStartError(t.errorDepositFailed);
             return;
           }
@@ -149,6 +157,7 @@ export function AccountPaymentPage({
       depositState,
       isStarting,
       onAdvance,
+      paymentInteraction,
       rail,
       sessionId,
       setDepositState,
@@ -157,7 +166,8 @@ export function AccountPaymentPage({
   );
   const initialAmountUsd =
     depositState?.depositAmount != null
-      ? parseFloat(depositState.depositAmount) * (constraints?.destinationToken.usd ?? 1)
+      ? parseFloat(depositState.depositAmount) *
+        (constraints?.destinationToken.usd ?? 1)
       : initialAmount != null
         ? parseFloat(initialAmount)
         : undefined;
@@ -170,11 +180,11 @@ export function AccountPaymentPage({
           <TokenAmountEntry
             token={constraints.destinationToken}
             minimumUsd={
-              parseFloat(constraints.minAmount) *
+              parseFloat(constraints.amountRange.min) *
               constraints.destinationToken.usd
             }
             maximumUsd={
-              parseFloat(constraints.maxAmount) *
+              parseFloat(constraints.amountRange.max) *
               constraints.destinationToken.usd
             }
             nativeDisplay={{

@@ -125,7 +125,8 @@ export const zh: typeof en = {
   accountResendCode: "重新发送验证码",
   accountVerify: "验证",
   accountPhone: "验证您的手机号",
-  accountPhoneDesc: "我们将发送6位验证码以验证您的手机号。",
+  accountPhoneDesc:
+    "我们将发送6位验证码。请使用美国手机号码；不支持 VoIP 号码。",
   accountSubmit: "提交",
   accountFieldRequired: "必填",
   accountBooleanYes: "是",
@@ -139,11 +140,14 @@ export const zh: typeof en = {
     "您的银行会显示来自 PayTrie AB Inc 的请求，它是本次存款在加拿大的 Interac 支付合作伙伴。",
   accountInteracConfirmAmount: "金额",
   accountInteracConfirmSender: "发送方",
-  accountInteracConfirmReference: "请求参考号",
   accountInteracConfirmBank: "银行",
+  accountInteracConfirmProcessingTime: "处理时间",
   accountInteracConfirmOpenInterac: "打开 Interac",
-  accountInteracWaitingInstructions: (amount: string) =>
-    `请在您的银行批准来自 PayTrie AB Inc 的 ${amount} 请求。PayTrie 是本次存款在加拿大的 Interac 支付合作伙伴。批准后，转账可能需要几分钟才会到账。这是正常情况；请保持此页面打开，它会自动继续。`,
+  accountInteracWaitingInstructions: (
+    amount: string,
+    processingTime: string,
+  ) =>
+    `请在您的银行批准来自 PayTrie AB Inc 的 ${amount} 请求。PayTrie 是本次存款在加拿大的 Interac 支付合作伙伴。批准后，转账可能需要 ${processingTime} 才会到账。这是正常情况；请保持此页面打开，它会自动继续。`,
   accountBankDetails: "转账详情",
   accountDirections: "操作指南",
   accountDirectionsStep: (current: number, total: number) =>

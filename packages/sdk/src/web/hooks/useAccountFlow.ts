@@ -10,17 +10,9 @@ import type {
   AccountEnrollmentUpdate,
   AccountRail,
   DepositPaymentInfo,
-  EnrollmentResponse,
   GetAccountResponse,
-  StartEnrollmentRequest,
 } from "../../common/account.js";
 import type { DaimoClient } from "../../client/createDaimoClient.js";
-import { getLocale } from "./locale.js";
-
-type ProviderOtpResponse = Extract<
-  EnrollmentResponse,
-  { action: "provider_otp_required" }
->;
 
 /** Auth-provider hooks registered by AccountFlowProvider. */
 export type PrivyHooks = {
@@ -30,6 +22,12 @@ export type PrivyHooks = {
   getAccessToken: () => Promise<string | null>;
   signTypedData: (typedData: Record<string, unknown>) => Promise<string>;
   signMessage: (message: string) => Promise<string>;
+  sendSponsoredTransaction: (transaction: {
+    chainId: number;
+    to: `0x${string}`;
+    data?: `0x${string}`;
+    value?: bigint;
+  }) => Promise<`0x${string}`>;
   logout: () => Promise<void>;
   ready: boolean;
   authenticated: boolean;
@@ -84,18 +82,16 @@ export type AccountFlowState = {
   isAuthenticated: boolean;
   authError: string | null;
   setAuthError: (error: string | null) => void;
-  providerOtp: ProviderOtpResponse | null;
-  setProviderOtp: (response: ProviderOtpResponse | null) => void;
 
   sendOtp: (email?: string) => Promise<boolean>;
   verifyOtp: (code: string) => Promise<boolean>;
 
-  /** Send a Daimo-owned phone OTP for Apple Pay enrollment. */
+  /** Send a Daimo-owned phone OTP for an enrollment interaction. */
   sendPhoneOtp: (
     phoneNumber: string | undefined,
     client: DaimoClient,
   ) => Promise<boolean>;
-  /** Verify a Daimo-owned phone OTP code for Apple Pay enrollment. */
+  /** Verify a Daimo-owned phone OTP code for an enrollment interaction. */
   verifyPhoneOtp: (code: string, client: DaimoClient) => Promise<boolean>;
   isCreatingWallet: boolean;
   walletAddress: string | null;
@@ -104,6 +100,7 @@ export type AccountFlowState = {
   getAccessToken: () => Promise<string | null>;
   signTypedData: (typedData: Record<string, unknown>) => Promise<string>;
   signMessage: (message: string) => Promise<string>;
+  sendSponsoredTransaction: PrivyHooks["sendSponsoredTransaction"];
 
   getDepositState: (sessionId: string) => DepositState | null;
   setDepositState: (sessionId: string, state: DepositStateInput) => void;
@@ -119,10 +116,6 @@ export type AccountFlowState = {
     session: SessionContext,
     target: { rail: AccountRail },
   ) => Promise<GetAccountResponse | null>;
-  startEnrollment: (
-    client: DaimoClient,
-    target: StartEnrollmentRequest,
-  ) => Promise<EnrollmentResponse | null>;
   logout: () => Promise<void>;
 
   /** Wait for auth state to finish restoring. Resolves immediately if ready. */
@@ -168,9 +161,6 @@ export function useAccountFlowState(): AccountFlowState {
   const [isReady, setIsReady] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
-  const [providerOtp, setProviderOtp] = useState<ProviderOtpResponse | null>(
-    null,
-  );
   const [isCreatingWallet, setIsCreatingWallet] = useState(false);
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
   const [storedDepositState, setStoredDepositState] =
@@ -381,6 +371,16 @@ export function useAccountFlowState(): AccountFlowState {
     return privyRef.current.signMessage(message);
   }, []);
 
+  const sendSponsoredTransaction = useCallback(
+    async (
+      transaction: Parameters<PrivyHooks["sendSponsoredTransaction"]>[0],
+    ): Promise<`0x${string}`> => {
+      if (!privyRef.current) throw new Error("privy not initialized");
+      return privyRef.current.sendSponsoredTransaction(transaction);
+    },
+    [],
+  );
+
   const getDepositState = useCallback(
     (sessionId: string): DepositState | null => {
       if (storedDepositState?.sessionId !== sessionId) return null;
@@ -432,21 +432,6 @@ export function useAccountFlowState(): AccountFlowState {
     [getAccessToken],
   );
 
-  const startEnrollment = useCallback(
-    async (
-      client: DaimoClient,
-      target: StartEnrollmentRequest,
-    ): Promise<EnrollmentResponse | null> => {
-      const token = await getAccessToken();
-      if (!token) return null;
-      return client.account.startEnrollment(
-        { ...target, locale: target.locale ?? getLocale() },
-        { bearerToken: token },
-      );
-    },
-    [getAccessToken],
-  );
-
   const logout = useCallback(async () => {
     try {
       await privyRef.current?.logout();
@@ -458,7 +443,6 @@ export function useAccountFlowState(): AccountFlowState {
     setEmail("");
     setPhoneNumber("");
     setAuthError(null);
-    setProviderOtp(null);
     setStoredDepositState(null);
   }, []);
 
@@ -472,8 +456,6 @@ export function useAccountFlowState(): AccountFlowState {
     isAuthenticated,
     authError,
     setAuthError,
-    providerOtp,
-    setProviderOtp,
     sendOtp,
     verifyOtp,
     sendPhoneOtp,
@@ -484,12 +466,12 @@ export function useAccountFlowState(): AccountFlowState {
     getAccessToken,
     signTypedData,
     signMessage,
+    sendSponsoredTransaction,
     getDepositState,
     setDepositState,
     clearDepositState,
     createAccount,
     getAccount,
-    startEnrollment,
     logout,
     waitForReady,
     registerPrivy,

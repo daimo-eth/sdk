@@ -234,6 +234,17 @@ export const baseWARS: Token = token({
     "https://assets.coingecko.com/coins/images/70846/large/world_logos_wars_logo_3.png?1764176749",
 });
 
+export const baseWCOP: Token = token({
+  chainId: base.chainId,
+  token: getAddress("0x8a1D45e102e886510e891d2Ec656a708991e2D76"),
+  decimals: 18,
+  fiatISO: "COP",
+  name: "Peso Colombiano",
+  symbol: "wCOP",
+  logoURI:
+    "https://coin-images.coingecko.com/coins/images/70887/large/wcop_logo_1.png?1764394538",
+});
+
 /** Frankencoin's canonical bridged ZCHF deployment on Base. */
 export const baseZCHF: Token = token({
   chainId: base.chainId,
@@ -255,6 +266,7 @@ const baseTokens: Token[] = [
   baseDAI,
   baseUSDT,
   baseWARS,
+  baseWCOP,
   baseZCHF,
 ];
 

@@ -3,6 +3,10 @@ import type {
   CreateAccountResponse,
   CreateDepositResponse,
   DepositConstraints,
+  DepositAuthorizationResponse,
+  DepositPreCreatePaymentInput,
+  EnrollmentActionSubmitRequest,
+  EnrollmentInteraction,
   EnrollmentOtpRequest,
   EnrollmentOtpResendRequest,
   EnrollmentFormSubmitRequest,
@@ -15,6 +19,10 @@ import type {
   StartEnrollmentRequest,
   MtPelerinEnrollmentRequest,
   MtPelerinEnrollmentResult,
+} from "../common/account.js";
+import {
+  zEnrollmentActionSubmitRequest,
+  zEnrollmentInteraction,
 } from "../common/account.js";
 import type {
   CheckSessionRequest,
@@ -53,10 +61,12 @@ export type UpsertDepositRequest = {
   depositAmount: string;
   rail: AccountRail;
   locale?: string;
+  authorizationVersion?: 2;
   deliverySig?: string;
   deliverySigData?: Record<string, unknown>;
   routingSig?: string;
   routingSigData?: Record<string, unknown>;
+  paymentInput?: DepositPreCreatePaymentInput;
 };
 
 export type DaimoClient = {
@@ -81,8 +91,17 @@ export type DaimoClient = {
       input: StartEnrollmentRequest,
       auth: BearerAuth,
     ): Promise<EnrollmentResponse>;
-    /** Continue Mt Pelerin enrollment. Signature challenges are consumed by
-     * the Account flow and must never be rendered as enrollment copy. */
+    /** Get the next versioned, provider-agnostic enrollment interaction. */
+    getEnrollmentInteraction(
+      input: { rail: AccountRail; locale?: string },
+      auth: BearerAuth,
+    ): Promise<EnrollmentInteraction>;
+    /** Submit one opaque interaction action and receive the next interaction. */
+    submitEnrollmentAction(
+      input: EnrollmentActionSubmitRequest,
+      auth: BearerAuth,
+    ): Promise<EnrollmentInteraction>;
+    /** Continue Mt Pelerin enrollment and return any wallet-signature challenge. */
     continueMtPelerinEnrollment(
       input: MtPelerinEnrollmentRequest,
       auth: BearerAuth,
@@ -137,9 +156,10 @@ export type DaimoClient = {
       params: {
         sessionId: string;
         depositAmount: string;
+        authorizationVersion?: 2;
       } & AccountRailTarget,
       auth: BearerAuth,
-    ): Promise<RoutingSignDataResponse>;
+    ): Promise<DepositAuthorizationResponse>;
     /** Poll deposit status. No auth required — uses clientSecret. */
     getDeposit(params: {
       sessionId: string;
@@ -219,6 +239,28 @@ export function createDaimoClient(config: TransportConfig): DaimoClient {
           body: input,
           headers: authHeaders(auth),
         });
+      },
+      async getEnrollmentInteraction(input, auth) {
+        const result = await transport.request<unknown>({
+          method: "POST",
+          path: "/v1/internal/account/enrollment/interaction",
+          body: { ...input, locale: input.locale ?? getLocale() },
+          headers: authHeaders(auth),
+        });
+        return zEnrollmentInteraction.parse(result);
+      },
+      async submitEnrollmentAction(input, auth) {
+        const body = zEnrollmentActionSubmitRequest.parse({
+          ...input,
+          locale: input.locale ?? getLocale(),
+        });
+        const result = await transport.request<unknown>({
+          method: "POST",
+          path: "/v1/internal/account/enrollment/action",
+          body,
+          headers: authHeaders(auth),
+        });
+        return zEnrollmentInteraction.parse(result);
       },
       continueMtPelerinEnrollment(input, auth) {
         return transport.request<MtPelerinEnrollmentResult>({
@@ -303,16 +345,23 @@ export function createDaimoClient(config: TransportConfig): DaimoClient {
         });
       },
       prepareDeposit(params, auth) {
-        return transport.request<RoutingSignDataResponse>({
-          method: "POST",
-          path: "/v1/internal/account/deposit/prepare",
-          body: {
-            sessionId: params.sessionId,
-            depositAmount: params.depositAmount,
-            rail: params.rail,
-          },
-          headers: authHeaders(auth),
-        });
+        return transport
+          .request<RoutingSignDataResponse | DepositAuthorizationResponse>({
+            method: "POST",
+            path: "/v1/internal/account/deposit/prepare",
+            body: {
+              sessionId: params.sessionId,
+              depositAmount: params.depositAmount,
+              rail: params.rail,
+              authorizationVersion: params.authorizationVersion,
+            },
+            headers: authHeaders(auth),
+          })
+          .then((response) =>
+            "kind" in response
+              ? response
+              : { kind: "signatures" as const, ...response },
+          );
       },
       getDeposit(params) {
         return transport.request<GetDepositResponse>({
