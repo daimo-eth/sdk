@@ -59,11 +59,20 @@ export function PaginatedEnrollmentForm({
   const hasMultiplePages = pages.length > 1;
 
   const setFieldValue = (key: string, value: EnrollmentFormValue) => {
-    setValues((current) => ({ ...current, [key]: value }));
+    setValues((current) =>
+      updateFormValuesForChange(form.fields, current, key, value),
+    );
     setFieldErrors((current) => {
-      if (current[key] == null && current._form == null) return current;
-      const { [key]: _removed, _form: _form, ...rest } = current;
-      return rest;
+      const clearedKeys = new Set([
+        key,
+        ...dependentFieldKeys(form.fields, key),
+        "_form",
+      ]);
+      return Object.fromEntries(
+        Object.entries(current).filter(
+          ([errorKey]) => !clearedKeys.has(errorKey),
+        ),
+      );
     });
   };
 
@@ -148,6 +157,7 @@ export function PaginatedEnrollmentForm({
                   key={field.key}
                   field={field}
                   value={values[field.key]}
+                  values={values}
                   error={fieldErrors[field.key]}
                   onChange={(value) => setFieldValue(field.key, value)}
                 />
@@ -175,11 +185,13 @@ export function PaginatedEnrollmentForm({
 function EnrollmentFormFieldControl({
   field,
   value,
+  values,
   error,
   onChange,
 }: {
   field: EnrollmentFormField;
   value: EnrollmentFormValue | undefined;
+  values: Record<string, EnrollmentFormValue>;
   error?: string;
   onChange: (value: EnrollmentFormValue) => void;
 }) {
@@ -238,6 +250,41 @@ function EnrollmentFormFieldControl({
           )}
         </DaimoFormField>
       );
+    case "dependent-select": {
+      const dependency = values[field.dependsOn];
+      const options =
+        typeof dependency === "string"
+          ? (field.optionsByValue[dependency] ?? [])
+          : [];
+      return (
+        <DaimoFormField
+          label={field.label}
+          description={field.description}
+          error={error}
+        >
+          {({ id, describedBy, invalid }) => (
+            <select
+              id={id}
+              value={typeof value === "string" ? value : ""}
+              disabled={options.length === 0}
+              aria-describedby={describedBy}
+              aria-invalid={invalid || undefined}
+              onChange={(event) => onChange(event.target.value)}
+              className={`${baseSelectClass} disabled:daimo-opacity-60 ${invalid ? "daimo-ring-1 daimo-ring-[var(--daimo-error)]" : ""}`}
+            >
+              <option value="" disabled>
+                {field.placeholder ?? field.label}
+              </option>
+              {options.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          )}
+        </DaimoFormField>
+      );
+    }
     case "date":
       return (
         <DaimoFormField
@@ -277,7 +324,10 @@ function EnrollmentFormFieldControl({
                 className={`daimo-grid daimo-grid-cols-2 daimo-gap-2 ${invalid ? "daimo-rounded-[var(--daimo-radius-md)] daimo-ring-1 daimo-ring-[var(--daimo-error)]" : ""}`}
               >
                 {[
-                  { value: true, label: field.trueLabel ?? t.accountBooleanYes },
+                  {
+                    value: true,
+                    label: field.trueLabel ?? t.accountBooleanYes,
+                  },
                   {
                     value: false,
                     label: field.falseLabel ?? t.accountBooleanNo,
@@ -354,6 +404,78 @@ function initialFieldValue(field: EnrollmentFormField): EnrollmentFormValue {
   return field.required ? "" : false;
 }
 
+export function updateFormValuesForChange(
+  fields: EnrollmentFormField[],
+  current: Record<string, EnrollmentFormValue>,
+  key: string,
+  value: EnrollmentFormValue,
+): Record<string, EnrollmentFormValue> {
+  const next = { ...current, [key]: value };
+  const pendingKeys = [key];
+  const expandedKeys = new Set([key]);
+
+  while (pendingKeys.length > 0) {
+    const changedKey = pendingKeys.shift();
+    if (changedKey == null) break;
+
+    for (const field of fields) {
+      if (field.type !== "dependent-select" || field.dependsOn !== changedKey) {
+        continue;
+      }
+
+      const dependency = next[changedKey];
+      const options =
+        typeof dependency === "string"
+          ? (field.optionsByValue[dependency] ?? [])
+          : [];
+      const selected = next[field.key];
+      const selectionIsValid =
+        typeof selected === "string" &&
+        options.some((option) => option.value === selected);
+      const shouldExpand = !expandedKeys.has(field.key);
+
+      if (!selectionIsValid && selected !== "") {
+        next[field.key] = "";
+        pendingKeys.push(field.key);
+      } else if (shouldExpand) {
+        pendingKeys.push(field.key);
+      }
+      expandedKeys.add(field.key);
+    }
+  }
+  return next;
+}
+
+/** Returns all transitive dependent fields, tolerating malformed cycles. */
+export function dependentFieldKeys(
+  fields: EnrollmentFormField[],
+  key: string,
+): string[] {
+  const dependentKeys: string[] = [];
+  const pendingKeys = [key];
+  const seenKeys = new Set([key]);
+
+  while (pendingKeys.length > 0) {
+    const parentKey = pendingKeys.shift();
+    if (parentKey == null) break;
+
+    for (const field of fields) {
+      if (
+        field.type !== "dependent-select" ||
+        field.dependsOn !== parentKey ||
+        seenKeys.has(field.key)
+      ) {
+        continue;
+      }
+      seenKeys.add(field.key);
+      dependentKeys.push(field.key);
+      pendingKeys.push(field.key);
+    }
+  }
+
+  return dependentKeys;
+}
+
 function validateFields(
   fields: EnrollmentFormField[],
   values: Record<string, EnrollmentFormValue>,
@@ -393,7 +515,10 @@ function formatTextFieldValue(
   return value;
 }
 
-function parseTextFieldValue(field: EnrollmentFormField, value: string): string {
+function parseTextFieldValue(
+  field: EnrollmentFormField,
+  value: string,
+): string {
   if (field.type === "text" && field.mask) {
     return parseMaskedText(
       value,

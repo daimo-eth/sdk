@@ -125,7 +125,8 @@ export const en = {
   accountResendCode: "Resend code",
   accountVerify: "Verify",
   accountPhone: "Verify your phone",
-  accountPhoneDesc: "We'll text you a 6-digit code to verify your number.",
+  accountPhoneDesc:
+    "We'll text you a 6-digit code. Use a US mobile number—VoIP numbers aren't supported.",
   accountSubmit: "Submit",
   accountFieldRequired: "Required",
   accountBooleanYes: "Yes",
@@ -139,14 +140,15 @@ export const en = {
     "Your bank will show a request from PayTrie AB Inc, the Canadian Interac payment partner for this deposit.",
   accountInteracConfirmAmount: "Amount",
   accountInteracConfirmSender: "Sender",
-  accountInteracConfirmReference: "Request reference",
   accountInteracConfirmBank: "Bank",
+  accountInteracConfirmProcessingTime: "Processing time",
   accountInteracConfirmOpenInterac: "Open Interac",
-  accountInteracWaitingInstructions: (amount: string) =>
-    `Approve the ${amount} request from PayTrie AB Inc in your bank. PayTrie is the Canadian Interac payment partner for this deposit. After approval, the transfer can take a few minutes to arrive. This is expected; keep this page open and it will continue automatically.`,
+  accountInteracWaitingInstructions: (
+    amount: string,
+    processingTime: string,
+  ) =>
+    `Approve the ${amount} request from PayTrie AB Inc in your bank. PayTrie is the Canadian Interac payment partner for this deposit. After approval, the transfer can take ${processingTime} to arrive. This is expected; keep this page open and it will continue automatically.`,
   accountBankDetails: "Transfer Details",
-  accountPixCopyCode: "Copy PIX code",
-  accountPixExpired: "This PIX code has expired",
   accountDirections: "Directions",
   accountDirectionsStep: (current: number, total: number) =>
     `Step ${current} of ${total}`,

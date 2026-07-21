@@ -1,13 +1,20 @@
-import { useState, type KeyboardEvent } from "react";
+import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import type {
   AccountRail,
   DepositPaymentInfo,
+  DepositPaymentInteraction,
   DepositPaymentReference,
   DepositPaymentStep,
 } from "../../../common/account.js";
+import { useDaimoClient } from "../../hooks/DaimoClientContext.js";
 import { getLocale, t } from "../../hooks/locale.js";
+import {
+  useAccountFlow,
+  useSessionDepositState,
+} from "../../hooks/useAccountFlow.js";
 import { useCopyToClipboard } from "../../hooks/useCopyToClipboard.js";
-import { useSignedDraftDepositLifecycle } from "../../hooks/useSignedDraftDepositLifecycle.js";
+import { useDepositPoller } from "../../hooks/useDepositPoller.js";
+import { useDraftDeposit } from "../../hooks/useDraftDeposit.js";
 import { ErrorPage } from "../ErrorPage.js";
 import {
   ChevronIcon,
@@ -20,9 +27,11 @@ import {
 import { DepositAddressContent } from "../WaitingDepositAddressPage.js";
 import { PageHeader, resolveIconUrl } from "../shared.js";
 import { Skeleton } from "../Skeleton.js";
+import { isPaymentInteractionCompatible } from "./accountNav.js";
 
-type AccountBankDetailsPageProps = {
+type AccountPaymentInstructionsPageProps = {
   rail: AccountRail;
+  paymentInteraction: DepositPaymentInteraction;
   sessionId: string;
   clientSecret: string;
   baseUrl: string;
@@ -89,30 +98,59 @@ function formatFiatAmount(
  * buttons. Used when the provider returns direct transfer instructions instead
  * of selectable institutions. Polls deposit status and auto-advances.
  */
-export function AccountBankDetailsPage({
+export function AccountPaymentInstructionsPage({
   rail,
+  paymentInteraction,
   sessionId,
   clientSecret,
   baseUrl,
   onBack,
   onAdvance,
-}: AccountBankDetailsPageProps) {
+}: AccountPaymentInstructionsPageProps) {
+  const client = useDaimoClient();
+  const accountFlow = useAccountFlow();
+  const { depositState, setDepositState } = useSessionDepositState(sessionId);
   const [directionsView, setDirectionsView] = useState<DirectionsView>({
     type: "steps",
     stepIndex: 0,
   });
+  const depositAmount = depositState?.depositAmount ?? "";
+  const currentDepositId =
+    depositState?.depositAmount === depositAmount &&
+    (depositState.kind === "drafted" || depositState.kind === "started")
+      ? depositState.depositId
+      : null;
   const {
-    depositAmount,
-    payment,
+    payment: draftedPayment,
+    isCreating,
     error: draftError,
     retry: retryDraft,
-  } = useSignedDraftDepositLifecycle({
+  } = useDraftDeposit({
+    client,
+    accountFlow,
     sessionId,
-    clientSecret,
     rail,
-    isPayment: isTransferInstructionFlow,
-    onAdvance,
+    depositAmount,
+    enabled: depositAmount !== "",
+    draftMode: "signed",
   });
+  const candidatePayment =
+    depositState?.kind === "started" ? depositState.payment : draftedPayment;
+  const contractMismatch =
+    candidatePayment != null &&
+    !isPaymentInteractionCompatible(paymentInteraction, candidatePayment);
+  const payment =
+    !contractMismatch &&
+    candidatePayment &&
+    isTransferInstructionFlow(candidatePayment)
+      ? candidatePayment
+      : null;
+  const retryDraftRef = useRef(retryDraft);
+  retryDraftRef.current = retryDraft;
+  const instructionPollIntervalMs =
+    payment?.flow === "bank-transfer"
+      ? payment.instructionReadiness?.pollIntervalMs
+      : undefined;
   const instructions = payment?.instructions ?? "";
   const bankTransferFields =
     payment?.flow === "bank-transfer"
@@ -122,6 +160,12 @@ export function AccountBankDetailsPage({
           emphasized: field.emphasized === true,
         }))
       : parseInstructions(instructions);
+  const bankTransferDetails = bankTransferFields.filter(
+    (field) => field.label,
+  );
+  const bankTransferNotes = bankTransferFields.filter(
+    (field) => !field.label,
+  );
   const directionsPayment = payment?.flow === "directions" ? payment : null;
   const directionsLocale = getLocale();
   const bankTransferAmount =
@@ -142,10 +186,56 @@ export function AccountBankDetailsPage({
       ? t.accountDirections
       : t.accountBankDetails;
 
-  if (draftError) {
+  useEffect(() => {
+    if (!payment || !depositAmount || !currentDepositId) return;
+    if (
+      payment.flow === "bank-transfer" &&
+      payment.instructionReadiness?.status === "pending"
+    ) {
+      return;
+    }
+    if (depositState?.kind === "started") return;
+    setDepositState({
+      depositAmount,
+      kind: "started",
+      depositId: currentDepositId,
+      payment,
+    });
+  }, [
+    currentDepositId,
+    depositAmount,
+    depositState?.kind,
+    payment,
+    setDepositState,
+  ]);
+
+  useEffect(() => {
+    if (!instructionPollIntervalMs) return;
+    const timer = window.setTimeout(() => {
+      retryDraftRef.current();
+    }, instructionPollIntervalMs);
+    return () => window.clearTimeout(timer);
+  }, [instructionPollIntervalMs]);
+
+  useDepositPoller({
+    client,
+    sessionId,
+    clientSecret,
+    onUpdate(deposit) {
+      if (
+        deposit.status !== "initiated" &&
+        deposit.status !== "awaiting_payment"
+      ) {
+        onAdvance();
+      }
+    },
+  });
+
+  const paymentError = contractMismatch ? t.errorDepositFailed : draftError;
+  if (paymentError) {
     return (
       <ErrorPage
-        message={draftError}
+        message={paymentError}
         retryText={t.tryAgain}
         onRetry={retryDraft}
       />
@@ -215,29 +305,33 @@ export function AccountBankDetailsPage({
           />
         </div>
       ) : (
-        <div className="daimo-flex daimo-flex-col daimo-gap-2 daimo-px-6 daimo-pt-4 daimo-pb-12">
+        <div className="daimo-flex daimo-flex-col daimo-px-6 daimo-pt-4 daimo-pb-12">
           <div className="daimo-flex daimo-flex-col daimo-gap-2">
-            {bankTransferFields.map((field, i) =>
-              field.label ? (
-                <FieldRow
-                  key={i}
-                  label={field.label}
-                  value={field.value}
-                  emphasized={field.emphasized}
+            {bankTransferDetails.map((field, i) => (
+              <FieldRow
+                key={i}
+                label={field.label}
+                value={field.value}
+                emphasized={field.emphasized}
+              />
+            ))}
+          </div>
+          <div className="daimo-mx-auto daimo-mt-8 daimo-flex daimo-max-w-xs daimo-flex-col daimo-items-center daimo-text-center daimo-text-sm daimo-leading-relaxed daimo-text-[var(--daimo-text-secondary)]">
+            <p>{t.accountBankDetailsAutoDetect(bankTransferAmount)}</p>
+            {bankTransferNotes.length > 0 && (
+              <>
+                <div
+                  aria-hidden="true"
+                  className="daimo-my-4 daimo-h-px daimo-w-10 daimo-bg-[var(--daimo-border)]"
                 />
-              ) : (
-                <p
-                  key={i}
-                  className="daimo-text-sm daimo-text-[var(--daimo-text-secondary)] daimo-leading-relaxed daimo-pb-2"
-                >
-                  {field.value}
-                </p>
-              ),
+                <div className="daimo-flex daimo-flex-col daimo-gap-2">
+                  {bankTransferNotes.map((field, i) => (
+                    <p key={i}>{field.value}</p>
+                  ))}
+                </div>
+              </>
             )}
           </div>
-          <p className="daimo-mx-auto daimo-mt-10 daimo-max-w-xs daimo-text-center daimo-text-sm daimo-leading-relaxed daimo-text-[var(--daimo-text-secondary)]">
-            {t.accountBankDetailsAutoDetect(bankTransferAmount)}
-          </p>
         </div>
       )}
     </div>
@@ -546,7 +640,7 @@ function DirectionsReferenceLink({
   );
 }
 
-/** A single labeled field with a copy button. Memo fields are highlighted. */
+/** A single labeled field with a copy button. Memo fields use warning styling. */
 function FieldRow({
   label,
   value,
@@ -558,7 +652,6 @@ function FieldRow({
 }) {
   const { copy, copied } = useCopyToClipboard();
   const memo = isMemoField(label);
-  const highlight = memo || emphasized === true;
 
   return (
     <div
@@ -567,7 +660,7 @@ function FieldRow({
         backgroundColor: memo
           ? "var(--daimo-warning-light, var(--daimo-surface-secondary))"
           : "var(--daimo-surface-secondary)",
-        border: highlight ? "1px solid var(--daimo-warning, #f59e0b)" : "none",
+        border: memo ? "1px solid var(--daimo-warning, #f59e0b)" : "none",
       }}
     >
       <div className="daimo-flex daimo-flex-col daimo-min-w-0 daimo-flex-1">
@@ -575,7 +668,7 @@ function FieldRow({
           {label}
         </span>
         <span
-          className={`daimo-text-sm daimo-break-all ${highlight ? "daimo-font-semibold" : ""}`}
+          className={`daimo-text-sm daimo-break-all ${emphasized || memo ? "daimo-font-semibold" : ""}`}
           style={{ color: "var(--daimo-text)" }}
         >
           {value}
@@ -592,7 +685,7 @@ function FieldRow({
       <button
         type="button"
         onClick={() => copy(value)}
-        className="daimo-shrink-0 daimo-p-1.5 daimo-rounded-[var(--daimo-radius-sm)] hover:daimo-bg-[var(--daimo-surface-hover)] daimo-transition-colors"
+        className="daimo-flex daimo-h-11 daimo-w-11 daimo-shrink-0 daimo-touch-action-manipulation daimo-items-center daimo-justify-center daimo-rounded-[var(--daimo-radius-sm)] daimo-transition-[background-color] daimo-duration-100 daimo-ease hover:[@media(hover:hover)]:daimo-bg-[var(--daimo-surface-hover)]"
         aria-label={copied ? t.accountBankDetailsCopied : `Copy ${label}`}
       >
         <CopyIcon size={16} copied={copied} />

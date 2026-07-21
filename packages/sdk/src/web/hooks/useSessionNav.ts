@@ -7,6 +7,7 @@ import {
   useState,
 } from "react";
 import type {
+  AccountDeposit,
   AccountDepositStatus,
   AccountRail,
 } from "../../common/account.js";
@@ -31,12 +32,17 @@ import type { WalletPaymentOption } from "../api/walletTypes.js";
 import {
   getAccountPaymentEntryTarget,
   getDepositResumeTarget,
+  shouldRecoverExpiredPayment,
 } from "../components/account/accountNav.js";
-import { runPixRetryFlow } from "../components/account/pixRetry.js";
+import { getNodePaymentInteraction } from "../components/account/accountPaymentCompatibility.js";
+import {
+  recreateAccountPaymentSession,
+  runAccountSessionRecreateOnce,
+} from "../components/account/accountSessionRecreate.js";
 import { detectPlatform, isDesktop, type DaimoPlatform } from "../platform.js";
 import {
+  interactionRequiresPopup,
   isFramed,
-  railRequiresPopup,
 } from "../components/account/fiatPopup.js";
 import { pruneCompletedAccountAuth } from "./accountAuthNav.js";
 import { useDaimoClient } from "./DaimoClientContext.js";
@@ -49,11 +55,6 @@ import { isUserRejection, type WalletFlowResult } from "./useWalletFlow.js";
 
 type NodeContext = { nodeId: string | null; nodeType: NavNodeType | null };
 type ExchangeNode = NavNodeExchange | NavNodeCashApp;
-type AccountAdvanceOptions = {
-  resumePayment?: boolean;
-  initialStatus?: AccountDepositStatus;
-  initialFiatAmount?: string;
-};
 
 type SessionNavResult = {
   stack: NavEntry[];
@@ -67,8 +68,7 @@ type SessionNavResult = {
   handleAmountContinue: (amountUsd: number) => void;
   handleRetry: () => void;
   handleRefresh: () => Promise<void>;
-  /** Recreate session and reopen PIX with the same deposit amount. */
-  handlePixRetry: (depositAmount: string) => Promise<void>;
+  handleAccountSessionRecreate: (depositAmount: string) => Promise<void>;
 
   handleInjectedWalletSelect: (wallet: InjectedWallet) => void;
   handleChainSelect: (chain: "evm" | "solana") => void;
@@ -80,7 +80,7 @@ type SessionNavResult = {
   /** Advance account flow to the next screen. */
   handleAccountAdvance: (
     nextType: AccountNavEntry["type"],
-    options?: AccountAdvanceOptions,
+    options?: { initialStatus?: AccountDepositStatus },
   ) => void;
   /** Reset the current account rail after logout. */
   handleAccountLogout: () => void;
@@ -168,7 +168,6 @@ export function useSessionNav(
   const logNavEvent = createNavLogger(client);
 
   const [stack, setStack] = useState<NavEntry[]>([]);
-  const autoNavRef = useRef<string | null>(null);
 
   const topEntry = stack.length > 0 ? stack[stack.length - 1] : null;
 
@@ -183,6 +182,11 @@ export function useSessionNav(
   const canGoBack = stack.length > 0 && stack.some((e) => !e.autoNav);
   const countryCode = options?.countryCode;
   const onRecreate = options?.onRecreate;
+  const accountRecreateRef = useRef<Promise<void> | null>(null);
+  const recreatedAmountRef = useRef<
+    { sessionId: string; depositAmount: string } | undefined
+  >(undefined);
+  const autoNavRef = useRef<string | null>(null);
 
   // ─── Async fetchers ─────────────────────────────────────────────────────
 
@@ -398,19 +402,19 @@ export function useSessionNav(
       nodeId: string,
       node: NavNodeFiat,
       autoNav: boolean,
-      options?: {
-        popupRequired?: boolean;
-        session?: { sessionId: string; clientSecret: string };
-      },
+      options?: { popupRequired?: boolean },
     ) => {
       const rail = node.fiatMethod;
-      const sessionCtx = options?.session ?? {
-        sessionId: session.sessionId,
-        clientSecret: session.clientSecret,
-      };
+      const paymentInteraction = getNodePaymentInteraction(node);
       setStack((prev) => [
         ...prev,
-        { type: "account-loading", nodeId, rail, autoNav },
+        {
+          type: "account-loading",
+          nodeId,
+          rail,
+          paymentInteraction,
+          autoNav,
+        },
       ]);
 
       const replaceLoading = (entry: NavEntry) => {
@@ -422,21 +426,25 @@ export function useSessionNav(
       // Resume: if this session already has a deposit past payment, jump
       // straight to the status screen. getDeposit is auth-free (clientSecret
       // only), so a finished deposit never shows a login screen.
+      let existingDeposit: AccountDeposit | null = null;
       try {
-        const { deposit } = await client.account.getDeposit({
-          sessionId: sessionCtx.sessionId,
-          clientSecret: sessionCtx.clientSecret,
+        const response = await client.account.getDeposit({
+          sessionId: session.sessionId,
+          clientSecret: session.clientSecret,
           refresh: true,
         });
-        const resumeType = deposit && getDepositResumeTarget(deposit.status);
-        if (deposit && resumeType) {
+        existingDeposit = response.deposit;
+        const resumeType =
+          existingDeposit &&
+          getDepositResumeTarget(existingDeposit.status, paymentInteraction);
+        if (existingDeposit && resumeType) {
           replaceLoading({
             type: resumeType,
             nodeId,
             rail,
+            paymentInteraction,
             autoNav,
-            initialStatus: deposit.status,
-            initialFiatAmount: deposit.fiatAmount,
+            initialStatus: existingDeposit.status,
           });
           return;
         }
@@ -446,7 +454,13 @@ export function useSessionNav(
       }
 
       if (options?.popupRequired) {
-        replaceLoading({ type: "fiat-popup", nodeId, rail, autoNav });
+        replaceLoading({
+          type: "fiat-popup",
+          nodeId,
+          rail,
+          paymentInteraction,
+          autoNav,
+        });
         return;
       }
 
@@ -455,6 +469,7 @@ export function useSessionNav(
           type: "account-error",
           nodeId,
           rail,
+          paymentInteraction,
           autoNav,
           message: "account deposit is not available for this session.",
         });
@@ -473,32 +488,92 @@ export function useSessionNav(
       // If user has an active Privy session, check their account status
       // to skip onboarding steps they've already completed.
       if (token) {
+        const sessionCtx = {
+          sessionId: session.sessionId,
+          clientSecret: session.clientSecret,
+        };
         const result = await accountFlow.getAccount(client, sessionCtx, {
           rail,
         });
         if (result) {
           if (result.nextAction === "ready_for_payment") {
-            // Some rails skip the amount-first step and go straight to a
-            // unified payment page.
-            const entryType = getAccountPaymentEntryTarget(rail);
-            replaceLoading({ type: entryType, nodeId, rail, autoNav });
-            return;
-          }
-          if (result.nextAction === "enrollment") {
-            if (rail === "pix") {
+            if (
+              existingDeposit &&
+              shouldRecoverExpiredPayment(
+                existingDeposit.status,
+                paymentInteraction,
+              )
+            ) {
+              accountFlow.setDepositState(session.sessionId, {
+                depositAmount: existingDeposit.fiatAmount,
+                kind: "idle",
+              });
               replaceLoading({
-                type: "account-payment",
+                type: "account-payment-resume",
                 nodeId,
                 rail,
+                paymentInteraction,
                 autoNav,
-                requireEnrollment: true,
               });
               return;
             }
+
+            if (
+              existingDeposit &&
+              (existingDeposit.status === "initiated" ||
+                existingDeposit.status === "awaiting_payment") &&
+              (paymentInteraction === "request-to-pay" ||
+                paymentInteraction === "institution-picker" ||
+                paymentInteraction === "hosted-approval" ||
+                paymentInteraction === "external-app-approval")
+            ) {
+              accountFlow.setDepositState(session.sessionId, {
+                depositAmount: existingDeposit.fiatAmount,
+                kind: "idle",
+              });
+              replaceLoading({
+                type: "account-payment-resume",
+                nodeId,
+                rail,
+                paymentInteraction,
+                autoNav,
+              });
+              return;
+            }
+
+            const recreatedAmount = recreatedAmountRef.current;
+            if (recreatedAmount?.sessionId === session.sessionId) {
+              recreatedAmountRef.current = undefined;
+              if (paymentInteraction === "request-to-pay") {
+                replaceLoading({
+                  type: "account-request-to-pay",
+                  nodeId,
+                  rail,
+                  paymentInteraction,
+                  autoNav,
+                });
+                return;
+              }
+            }
+
+            // Some rails skip the amount-first step and go straight to a
+            // unified payment page.
+            const entryType = getAccountPaymentEntryTarget(paymentInteraction);
+            replaceLoading({
+              type: entryType,
+              nodeId,
+              rail,
+              paymentInteraction,
+              autoNav,
+            });
+            return;
+          }
+          if (result.nextAction === "enrollment") {
             replaceLoading({
               type: "account-enrollment",
               nodeId,
               rail,
+              paymentInteraction,
               autoNav,
             });
             return;
@@ -508,6 +583,7 @@ export function useSessionNav(
               type: "account-enrollment-update",
               nodeId,
               rail,
+              paymentInteraction,
               autoNav,
               update: result.enrollmentUpdate,
             });
@@ -521,13 +597,25 @@ export function useSessionNav(
         accountFlow.setEmail(accountAuth.email);
         const sent = await accountFlow.sendOtp(accountAuth.email);
         if (sent) {
-          replaceLoading({ type: "account-otp", nodeId, rail, autoNav });
+          replaceLoading({
+            type: "account-otp",
+            nodeId,
+            rail,
+            paymentInteraction,
+            autoNav,
+          });
           return;
         }
       }
 
       // New user or no email hint — start from email
-      replaceLoading({ type: "account-email", nodeId, rail, autoNav });
+      replaceLoading({
+        type: "account-email",
+        nodeId,
+        rail,
+        paymentInteraction,
+        autoNav,
+      });
     },
     [accountAuth, accountFlow, client, session.clientSecret, session.sessionId],
   );
@@ -667,7 +755,7 @@ export function useSessionNav(
       if (targetNode.type === "Fiat") {
         const popupRequired =
           enableFiatPopup &&
-          railRequiresPopup(targetNode.fiatMethod) &&
+          interactionRequiresPopup(getNodePaymentInteraction(targetNode)) &&
           isFramed();
         handleAccountNavigate(nodeId, targetNode, autoNav, { popupRequired });
         return;
@@ -701,7 +789,6 @@ export function useSessionNav(
         if (
           top.type === "account-creating-wallet" ||
           top.type === "account-enrollment" ||
-          top.type === "account-provider-otp" ||
           top.type === "account-enrollment-update"
         ) {
           next.pop();
@@ -933,73 +1020,38 @@ export function useSessionNav(
     onRecreate,
   ]);
 
-  const handlePixRetry = useCallback(
+  const handleAccountSessionRecreate = useCallback(
     async (depositAmount: string) => {
-      const { nodeId, rail } = accountEntry(topEntry);
-      if (rail !== "pix") return;
-
-      logNavEvent(session.sessionId, session.clientSecret, {
-        ...getNodeCtx(),
-        action: "flow_refresh",
-      });
-
-      const result = await runPixRetryFlow({
-        depositAmount,
-        nodeId,
-        recreate: () =>
-          client.internal.sessions.recreate(
-            session.sessionId,
-            session.clientSecret,
-            { countryCode },
-          ),
-        waitForAuthReady: () =>
-          accountFlow?.waitForReady() ?? Promise.resolve(),
-        getAccessToken: () =>
-          accountFlow?.getAccessToken() ?? Promise.resolve(null),
-        getAccount: (sessionCtx) =>
-          accountFlow?.getAccount(client, sessionCtx, { rail: "pix" }) ??
-          Promise.resolve(null),
-        setDepositState: (sessionId, state) =>
-          accountFlow?.setDepositState(sessionId, state),
-      });
-
-      if (!result.ok) {
-        console.error("failed to recreate pix session");
-        return;
-      }
-
-      const { response, nav } = result;
-      autoNavRef.current = null;
-      setSession(response.session);
-      onRecreate?.(response);
-
-      if (nav === "normal-navigation") {
+      await runAccountSessionRecreateOnce(accountRecreateRef, async () => {
+        const response = await recreateAccountPaymentSession({
+          depositAmount,
+          recreate: () =>
+            client.internal.sessions.recreate(
+              session.sessionId,
+              session.clientSecret,
+              { countryCode },
+            ),
+          setDepositState: (sessionId, state) =>
+            accountFlow?.setDepositState(sessionId, state),
+        });
+        recreatedAmountRef.current = {
+          sessionId: response.session.sessionId,
+          depositAmount,
+        };
+        autoNavRef.current = null;
         setStack([]);
-        const node = findNode(nodeId, response.session.navTree);
-        if (node?.type === "Fiat") {
-          await handleAccountNavigate(nodeId, node, true, {
-            session: {
-              sessionId: response.session.sessionId,
-              clientSecret: response.session.clientSecret,
-            },
-          });
-        }
-        return;
-      }
-
-      setStack([nav]);
+        setSession(response.session);
+        onRecreate?.(response);
+      });
     },
     [
-      topEntry,
-      session.sessionId,
-      session.clientSecret,
-      countryCode,
-      getNodeCtx,
-      client,
       accountFlow,
-      setSession,
+      client,
+      countryCode,
       onRecreate,
-      handleAccountNavigate,
+      session.clientSecret,
+      session.sessionId,
+      setSession,
     ],
   );
 
@@ -1173,15 +1225,21 @@ export function useSessionNav(
 
   /** Advance account flow to the next screen, preserving nodeId + rail. */
   const handleAccountAdvance = useCallback(
-    (nextType: AccountNavEntry["type"], options?: AccountAdvanceOptions) => {
-      const { nodeId, rail } = accountEntry(topEntry);
+    (
+      nextType: AccountNavEntry["type"],
+      options?: { initialStatus?: AccountDepositStatus },
+    ) => {
+      const { nodeId, rail, paymentInteraction } = accountEntry(topEntry);
 
       const pushPhoneEntry = (
         type: "account-loading" | "account-phone" | "account-phone-otp",
       ) => {
         setStack((prev) => {
           const nextStack = pruneCompletedAccountAuth(prev, type);
-          return [...nextStack, { type, nodeId, rail } as NavEntry];
+          return [
+            ...nextStack,
+            { type, nodeId, rail, paymentInteraction } as NavEntry,
+          ];
         });
       };
 
@@ -1203,31 +1261,27 @@ export function useSessionNav(
 
       setStack((prev) => {
         const nextStack = pruneCompletedAccountAuth(prev, nextType);
-        const entry = {
-          type: nextType,
-          nodeId,
-          rail,
-          ...(nextType === "account-enrollment" && options?.resumePayment
-            ? { resumePayment: true }
-            : {}),
-          ...(nextType === "account-status" && options?.initialStatus
-            ? {
-                initialStatus: options.initialStatus,
-                initialFiatAmount: options.initialFiatAmount,
-              }
-            : {}),
-        } as NavEntry;
-        return [...nextStack, entry];
+        return [
+          ...nextStack,
+          {
+            type: nextType,
+            nodeId,
+            rail,
+            paymentInteraction,
+            ...options,
+          } as NavEntry,
+        ];
       });
     },
     [accountAuth, accountFlow, topEntry],
   );
 
   const handleAccountLogout = useCallback(() => {
-    const { nodeId, rail, autoNav } = accountEntry(topEntry);
+    const { nodeId, rail, paymentInteraction, autoNav } =
+      accountEntry(topEntry);
     setStack((prev) => [
       ...prev.filter((entry) => !isSameAccountRailEntry(entry, nodeId, rail)),
-      { type: "account-email", nodeId, rail, autoNav },
+      { type: "account-email", nodeId, rail, paymentInteraction, autoNav },
     ]);
   }, [topEntry]);
 
@@ -1243,7 +1297,7 @@ export function useSessionNav(
       handleAmountContinue,
       handleRetry,
       handleRefresh,
-      handlePixRetry,
+      handleAccountSessionRecreate,
       handleInjectedWalletSelect,
       handleChainSelect,
       handleShowMobileWallets,
@@ -1263,7 +1317,7 @@ export function useSessionNav(
       handleAmountContinue,
       handleRetry,
       handleRefresh,
-      handlePixRetry,
+      handleAccountSessionRecreate,
       handleInjectedWalletSelect,
       handleChainSelect,
       handleShowMobileWallets,

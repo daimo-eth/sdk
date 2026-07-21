@@ -5,150 +5,224 @@ import type {
   AccountRail,
   DepositPaymentInfo,
 } from "../../../common/account.js";
-import { t } from "../../hooks/locale.js";
+import { formatAmountInput } from "../../formatAmount.js";
+import { getLocale, t } from "../../hooks/locale.js";
 import { useCopyToClipboard } from "../../hooks/useCopyToClipboard.js";
-import { useSignedDraftDepositLifecycle } from "../../hooks/useSignedDraftDepositLifecycle.js";
-import { PrimaryButton } from "../buttons.js";
+import { useRequestToPayDeposit } from "../../hooks/useRequestToPayDeposit.js";
+import { PrimaryButton, SecondaryButton } from "../buttons.js";
 import { Countdown, useCountdown } from "../Countdown.js";
 import { ErrorPage } from "../ErrorPage.js";
-import { CopyIcon } from "../icons.js";
+import { CopyIcon, ExpiredIcon } from "../icons.js";
 import { QRCode } from "../QRCode.js";
-import { CenteredContent, PageHeader, resolveIconUrl } from "../shared.js";
+import { CenteredContent, PageHeader } from "../shared.js";
 import { Skeleton } from "../Skeleton.js";
-import { AccountRequestToPayExpiredContent } from "./AccountRequestToPayExpiredContent.js";
-
-const DEFAULT_REQUEST_LIFETIME_S = 10 * 60;
-
-type RequestToPayPayment = Extract<
-  DepositPaymentInfo,
-  { flow: "request-to-pay" }
->;
 
 type AccountRequestToPayPageProps = {
   sessionId: string;
   clientSecret: string;
-  baseUrl: string;
   rail: AccountRail;
-  icon?: string;
+  resumePayment: boolean;
   onAdvance: (deposit: AccountDeposit) => void;
   onRetry: (depositAmount: string) => Promise<void>;
 };
 
-/** Creates and renders an expiring QR/code payment request. */
+/** Generic renderer for one exact, expiring QR/code payment request. */
 export function AccountRequestToPayPage({
   sessionId,
   clientSecret,
-  baseUrl,
   rail,
-  icon,
+  resumePayment,
   onAdvance,
   onRetry,
 }: AccountRequestToPayPageProps) {
-  const { copy, copied } = useCopyToClipboard();
   const [isRetrying, setIsRetrying] = useState(false);
+  const [retryError, setRetryError] = useState<string | null>(null);
   const {
     depositAmount,
     payment,
-    error: draftError,
-    retry: retryDraft,
-  } = useSignedDraftDepositLifecycle({
+    providerExpired,
+    contractMismatch,
+    error,
+    retry,
+  } = useRequestToPayDeposit({
     sessionId,
     clientSecret,
     rail,
-    isPayment: isRequestToPayPayment,
+    resumePayment,
     onAdvance,
   });
-  const expiresAt = parseExpiry(payment?.expiresAt);
-  const { remainingS, isExpired } = useCountdown(
-    expiresAt,
-    DEFAULT_REQUEST_LIFETIME_S,
-  );
+  const expiresAt = payment?.expiresAt ?? 0;
+  const { remainingS, isExpired: clockExpired } = useCountdown(expiresAt, 0);
+  const isExpired = providerExpired || clockExpired;
 
   const handleRetry = useCallback(async () => {
-    if (!depositAmount || isRetrying) return;
+    if (!payment || !depositAmount || isRetrying) return;
     setIsRetrying(true);
+    setRetryError(null);
     try {
       await onRetry(depositAmount);
+    } catch {
+      setRetryError(t.errorDepositFailed);
     } finally {
       setIsRetrying(false);
     }
-  }, [depositAmount, isRetrying, onRetry]);
+  }, [depositAmount, isRetrying, onRetry, payment]);
 
-  if (draftError) {
-    return (
-      <ErrorPage
-        message={draftError}
-        retryText={t.tryAgain}
-        onRetry={retryDraft}
-      />
-    );
+  if (error) {
+    return <ErrorPage message={error} retryText={t.tryAgain} onRetry={retry} />;
   }
-
-  if (!depositAmount) {
+  if (!depositAmount || contractMismatch) {
     return <ErrorPage message={t.errorDepositFailed} hideRetry />;
   }
-
-  if (!payment) {
-    return <RequestSkeleton baseUrl={baseUrl} icon={icon} />;
-  }
+  if (!payment) return <RequestSkeleton />;
 
   return (
     <div className="daimo-flex daimo-flex-col daimo-flex-1 daimo-min-h-0">
-      <PageHeader title={payment.title} />
+      <PageHeader
+        title={isExpired ? payment.ui.expiredTitle : payment.ui.title}
+      />
       <CenteredContent>
         {isExpired ? (
-          <AccountRequestToPayExpiredContent
-            sessionId={sessionId}
-            message={payment.expiredMessage}
-            supportSubject={`Expired ${payment.title} code`}
-            onRetry={handleRetry}
+          <RequestToPayExpiredContent
+            payment={payment}
             isRetrying={isRetrying}
+            retryError={retryError}
+            onRetry={handleRetry}
           />
         ) : (
-          <div className="daimo-flex daimo-w-full daimo-max-w-xs daimo-flex-col daimo-items-center daimo-gap-5">
-            <div className="daimo-w-full daimo-max-w-[220px]">
-              <QRCode
-                value={payment.code}
-                placeholderDensity="long"
-                image={<RequestLogo baseUrl={baseUrl} icon={icon} />}
-              />
-            </div>
-            <p className="daimo-text-center daimo-text-sm daimo-leading-relaxed daimo-text-[var(--daimo-text-secondary)]">
-              {payment.instructions}
-            </p>
-            <PrimaryButton
-              onClick={() => copy(payment.code)}
-              icon={<CopyIcon size={16} copied={copied} />}
-            >
-              {copied ? t.accountBankDetailsCopied : payment.copyLabel}
-            </PrimaryButton>
-            <Countdown
-              remainingS={remainingS}
-              isExpired={isExpired}
-              totalS={DEFAULT_REQUEST_LIFETIME_S}
-            />
-          </div>
+          <RequestToPayActiveContent
+            payment={payment}
+            remainingS={remainingS}
+          />
         )}
       </CenteredContent>
     </div>
   );
 }
 
-function RequestSkeleton({ baseUrl, icon }: { baseUrl: string; icon?: string }) {
+export function RequestToPayExpiredContent({
+  payment,
+  isRetrying,
+  retryError,
+  onRetry,
+}: {
+  payment: Extract<DepositPaymentInfo, { flow: "request-to-pay" }>;
+  isRetrying: boolean;
+  retryError: string | null;
+  onRetry: () => void;
+}) {
+  return (
+    <div
+      className="daimo-flex daimo-flex-col daimo-items-center daimo-gap-6"
+      role="status"
+      aria-live="assertive"
+      aria-atomic="true"
+    >
+      <div
+        className="daimo-w-20 daimo-h-20 daimo-rounded-full daimo-flex daimo-items-center daimo-justify-center"
+        style={{ backgroundColor: "var(--daimo-error-light)" }}
+      >
+        <ExpiredIcon />
+      </div>
+      <p className="daimo-text-center daimo-text-sm daimo-leading-relaxed daimo-text-[var(--daimo-text-secondary)]">
+        {payment.ui.expiredInstructions}
+      </p>
+      <SecondaryButton onClick={onRetry} disabled={isRetrying}>
+        {isRetrying ? payment.ui.retryingLabel : payment.ui.retryLabel}
+      </SecondaryButton>
+      {retryError && (
+        <p className="daimo-text-center daimo-text-sm daimo-text-[var(--daimo-error)]">
+          {retryError}
+        </p>
+      )}
+    </div>
+  );
+}
+
+export function RequestToPayActiveContent({
+  payment,
+  remainingS,
+}: {
+  payment: Extract<DepositPaymentInfo, { flow: "request-to-pay" }>;
+  remainingS: number;
+}) {
+  const { copy, copied } = useCopyToClipboard();
+
+  return (
+    <div className="daimo-flex daimo-w-full daimo-max-w-xs daimo-flex-col daimo-items-center daimo-gap-5">
+      <div
+        className="daimo-w-full daimo-max-w-[220px]"
+        role="img"
+        aria-label={`${payment.ui.codeLabel} QR code`}
+      >
+        <QRCode value={payment.paymentCode} placeholderDensity="long" />
+      </div>
+      <p className="daimo-text-center daimo-text-sm daimo-leading-relaxed daimo-text-[var(--daimo-text-secondary)]">
+        {payment.instructions}
+      </p>
+      <div className="daimo-w-full daimo-rounded-[var(--daimo-radius-sm)] daimo-bg-[var(--daimo-surface-secondary)] daimo-p-4 daimo-text-center">
+        <p className="daimo-text-xs daimo-text-[var(--daimo-text-secondary)]">
+          {payment.ui.codeLabel}
+        </p>
+        <p className="daimo-mt-1 daimo-text-xl daimo-font-semibold daimo-tabular-nums">
+          {formatFiatAmount(
+            payment.payableAmount,
+            payment.currency.code,
+            payment.currency.symbol,
+          )}
+        </p>
+        <p
+          className="daimo-mt-1 daimo-text-xs daimo-text-[var(--daimo-text-secondary)]"
+          aria-label={`Expected settlement ${payment.expectedSettlementAmount} ${payment.destinationToken.symbol}`}
+        >
+          {formatAmountInput(payment.expectedSettlementAmount)}{" "}
+          {payment.destinationToken.symbol}
+        </p>
+      </div>
+      <PrimaryButton
+        onClick={() => copy(payment.paymentCode)}
+        icon={<CopyIcon size={16} copied={copied} />}
+      >
+        {copied ? payment.ui.actionCompletedLabel : payment.ui.actionLabel}
+      </PrimaryButton>
+      <Countdown remainingS={remainingS} isExpired={false} />
+    </div>
+  );
+}
+
+export function formatFiatAmount(
+  amount: string,
+  currencyCode: string,
+  currencySymbol: string,
+  locale = getLocale(),
+): string {
+  const value = Number(amount);
+  if (!Number.isFinite(value))
+    return `${currencySymbol}${amount} ${currencyCode}`;
+  try {
+    return new Intl.NumberFormat(locale, {
+      style: "currency",
+      currency: currencyCode,
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(value);
+  } catch {
+    return `${currencySymbol}${value.toFixed(2)} ${currencyCode}`;
+  }
+}
+
+function RequestSkeleton() {
   return (
     <div
       className="daimo-flex daimo-flex-col daimo-flex-1 daimo-min-h-0"
       aria-busy="true"
       aria-label={t.loading}
     >
-      <PageHeader title="Payment" />
+      <PageHeader title={t.loading} />
       <CenteredContent>
         <div className="daimo-flex daimo-w-full daimo-max-w-xs daimo-flex-col daimo-items-center daimo-gap-5">
           <div className="daimo-w-full daimo-max-w-[220px]">
-            <QRCode
-              placeholderDensity="long"
-              image={<RequestLogo baseUrl={baseUrl} icon={icon} />}
-            />
+            <QRCode placeholderDensity="long" />
           </div>
           <Skeleton className="daimo-h-4 daimo-w-64" rounded="sm" />
           <Skeleton className="daimo-h-12 daimo-w-full" rounded="lg" />
@@ -156,27 +230,4 @@ function RequestSkeleton({ baseUrl, icon }: { baseUrl: string; icon?: string }) 
       </CenteredContent>
     </div>
   );
-}
-
-function RequestLogo({ baseUrl, icon }: { baseUrl: string; icon?: string }) {
-  if (!icon) return null;
-  return (
-    <img
-      src={resolveIconUrl(icon, baseUrl)}
-      alt=""
-      className="daimo-h-full daimo-w-full daimo-object-contain"
-    />
-  );
-}
-
-function isRequestToPayPayment(
-  payment: DepositPaymentInfo,
-): payment is RequestToPayPayment {
-  return payment.flow === "request-to-pay";
-}
-
-function parseExpiry(value?: string): number {
-  if (!value) return 0;
-  const timestamp = Date.parse(value);
-  return Number.isFinite(timestamp) ? Math.floor(timestamp / 1000) : 0;
 }

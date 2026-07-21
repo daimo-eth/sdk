@@ -128,7 +128,8 @@ export const ja: typeof en = {
   accountResendCode: "コードを再送信",
   accountVerify: "確認",
   accountPhone: "電話番号の確認",
-  accountPhoneDesc: "6桁の確認コードをSMSでお送りします。",
+  accountPhoneDesc:
+    "6桁の確認コードをSMSでお送りします。米国の携帯電話番号を使用してください。VoIP番号はご利用いただけません。",
   accountSubmit: "送信",
   accountFieldRequired: "必須",
   accountBooleanYes: "はい",
@@ -142,14 +143,15 @@ export const ja: typeof en = {
     "銀行には、この入金のカナダ向けInterac決済パートナーであるPayTrie AB Incからのリクエストとして表示されます。",
   accountInteracConfirmAmount: "金額",
   accountInteracConfirmSender: "送信者",
-  accountInteracConfirmReference: "リクエスト参照番号",
   accountInteracConfirmBank: "銀行",
+  accountInteracConfirmProcessingTime: "処理時間",
   accountInteracConfirmOpenInterac: "Interacを開く",
-  accountInteracWaitingInstructions: (amount: string) =>
-    `銀行でPayTrie AB Incからの${amount}のリクエストを承認してください。PayTrieはこの入金のカナダ向けInterac決済パートナーです。承認後、送金が届くまで数分かかることがあります。これは通常の動作です。このページを開いたままにすると、自動的に続行します。`,
+  accountInteracWaitingInstructions: (
+    amount: string,
+    processingTime: string,
+  ) =>
+    `銀行でPayTrie AB Incからの${amount}のリクエストを承認してください。PayTrieはこの入金のカナダ向けInterac決済パートナーです。承認後、送金が届くまで${processingTime}かかることがあります。これは通常の動作です。このページを開いたままにすると、自動的に続行します。`,
   accountBankDetails: "振込詳細",
-  accountPixCopyCode: "PIXコードをコピー",
-  accountPixExpired: "このPIXコードの有効期限が切れました",
   accountDirections: "手順",
   accountDirectionsStep: (current: number, total: number) =>
     `ステップ ${current} / ${total}`,

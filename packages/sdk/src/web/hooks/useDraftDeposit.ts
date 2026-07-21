@@ -6,13 +6,18 @@ import type {
   AccountRail,
   CreateDepositResponse,
   DepositPaymentInfo,
+  DepositPreCreatePaymentInput,
 } from "../../common/account.js";
 import {
   type AccountFlowState,
   useSessionDepositState,
 } from "./useAccountFlow.js";
 import { formatUserError } from "./formatUserError.js";
-import { t } from "./locale.js";
+import { getLocale, t } from "./locale.js";
+import {
+  getAuthorizedRoutingAmount,
+  isExpiredRequestToPay,
+} from "../components/account/accountPaymentCompatibility.js";
 
 type UseDraftDepositArgs = {
   client: DaimoClient;
@@ -165,6 +170,7 @@ type SignAndUpsertDepositArgs = {
   sessionId: string;
   depositAmount: string;
   authorizedAmount?: string;
+  paymentInput?: DepositPreCreatePaymentInput;
   rail: AccountRail;
 };
 
@@ -174,17 +180,31 @@ export async function signAndUpsertDeposit({
   sessionId,
   depositAmount,
   authorizedAmount,
+  paymentInput,
   rail,
 }: SignAndUpsertDepositArgs): Promise<CreateDepositResponse> {
   const token = await accountFlow.getAccessToken();
   if (!token) throw new Error("not authenticated");
   const auth = { bearerToken: token };
   const signedAmount = authorizedAmount ?? depositAmount;
-  const { routingSignData, deliverySignData } =
-    await client.account.prepareDeposit(
-      { sessionId, rail, depositAmount: signedAmount },
+  const authorization = await client.account.prepareDeposit(
+    { sessionId, rail, depositAmount: signedAmount, authorizationVersion: 2 },
+    auth,
+  );
+  if (authorization.kind === "direct") {
+    return client.account.upsertDeposit(
+      {
+        sessionId,
+        rail,
+        depositAmount,
+        locale: getLocale(),
+        authorizationVersion: 2,
+        paymentInput,
+      },
       auth,
     );
+  }
+  const { routingSignData, deliverySignData } = authorization;
   const routingSig = await accountFlow.signTypedData({
     ...routingSignData,
   });
@@ -196,10 +216,13 @@ export async function signAndUpsertDeposit({
       sessionId,
       rail,
       depositAmount,
+      locale: getLocale(),
+      authorizationVersion: 2,
       deliverySig,
       deliverySigData: deliverySignData,
       routingSig,
       routingSigData: routingSignData,
+      paymentInput,
     },
     auth,
   );
@@ -228,6 +251,8 @@ async function upsertPlainDraftDeposit({
       sessionId,
       rail,
       depositAmount,
+      locale: getLocale(),
+      authorizationVersion: 2,
     },
     { bearerToken: token },
   );
@@ -248,7 +273,11 @@ async function createSignedDraftDeposit({
     depositAmount,
   });
   if (preview.payment === null) return preview;
-  const signedAmount = getAuthorizedDepositAmount(
+  if (preview.payment.flow === "institution-picker") return preview;
+  if (isExpiredRequestToPay(preview.payment)) {
+    return preview;
+  }
+  const signedAmount = getAuthorizedRoutingAmount(
     preview.payment,
     depositAmount,
   );
@@ -260,18 +289,4 @@ async function createSignedDraftDeposit({
     depositAmount,
     authorizedAmount: signedAmount,
   });
-}
-
-/** Return the exact server-quoted amount covered by routing signatures. */
-export function getAuthorizedDepositAmount(
-  payment: object,
-  depositAmount: string,
-): string {
-  if (
-    "purchaseAmount" in payment &&
-    typeof payment.purchaseAmount === "string"
-  ) {
-    return payment.purchaseAmount;
-  }
-  return depositAmount;
 }

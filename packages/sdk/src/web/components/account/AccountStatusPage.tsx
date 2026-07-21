@@ -1,9 +1,8 @@
-import { useCallback, useState } from "react";
+import { useState } from "react";
 
 import type {
   AccountDepositEta,
   AccountDepositStatus,
-  AccountRail,
 } from "../../../common/account.js";
 import { useDaimoClient } from "../../hooks/DaimoClientContext.js";
 import { t } from "../../hooks/locale.js";
@@ -11,19 +10,13 @@ import { useDepositPoller } from "../../hooks/useDepositPoller.js";
 import { ConfirmationSpinner } from "../ConfirmationSpinner.js";
 import { ErrorPage } from "../ErrorPage.js";
 import { CenteredContent, PageHeader, ShowReceiptButton } from "../shared.js";
-import { AccountRequestToPayExpiredContent } from "./AccountRequestToPayExpiredContent.js";
-import { shouldShowPixExpiredRecovery } from "./accountPixExpired.js";
 
 type AccountStatusPageProps = {
   sessionId: string;
   clientSecret: string;
   baseUrl: string;
-  rail: AccountRail;
   /** Known deposit status on mount (resume); avoids a wrong first paint. */
   initialStatus?: AccountDepositStatus;
-  /** Known deposit amount on mount; keeps recovery actions immediately ready. */
-  initialFiatAmount?: string;
-  onPixRetry?: (depositAmount: string) => Promise<void>;
 };
 
 const TERMINAL_STATUSES: AccountDepositStatus[] = [
@@ -50,20 +43,13 @@ export function AccountStatusPage({
   sessionId,
   clientSecret,
   baseUrl,
-  rail,
   initialStatus,
-  initialFiatAmount,
-  onPixRetry,
 }: AccountStatusPageProps) {
   const client = useDaimoClient();
   const [status, setStatus] = useState<AccountDepositStatus>(
     initialStatus ?? "payment_received",
   );
   const [eta, setEta] = useState<AccountDepositEta | null>(null);
-  const [fiatAmount, setFiatAmount] = useState<string | null>(
-    initialFiatAmount ?? null,
-  );
-  const [isRetrying, setIsRetrying] = useState(false);
 
   useDepositPoller({
     client,
@@ -72,39 +58,11 @@ export function AccountStatusPage({
     onUpdate: (deposit) => {
       setStatus(deposit.status);
       setEta(deposit.eta);
-      setFiatAmount(deposit.fiatAmount);
     },
     shouldStop: (deposit) => TERMINAL_STATUSES.includes(deposit.status),
   });
 
-  const handlePixRetry = useCallback(async () => {
-    if (!fiatAmount || !onPixRetry || isRetrying) return;
-    setIsRetrying(true);
-    try {
-      await onPixRetry(fiatAmount);
-    } finally {
-      setIsRetrying(false);
-    }
-  }, [fiatAmount, isRetrying, onPixRetry]);
-
   const isComplete = status === "completed";
-
-  if (shouldShowPixExpiredRecovery(status, rail)) {
-    return (
-      <div className="daimo-flex daimo-flex-col daimo-flex-1 daimo-min-h-0">
-        <PageHeader title={t.expired} />
-        <CenteredContent>
-          <AccountRequestToPayExpiredContent
-            sessionId={sessionId}
-            message={t.accountPixExpired}
-            supportSubject="Expired PIX code"
-            onRetry={handlePixRetry}
-            isRetrying={isRetrying || fiatAmount == null}
-          />
-        </CenteredContent>
-      </div>
-    );
-  }
 
   if (status === "failed" || status === "expired") {
     return (

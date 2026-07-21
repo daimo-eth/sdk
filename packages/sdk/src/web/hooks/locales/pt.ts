@@ -129,7 +129,7 @@ export const pt: typeof en = {
   accountVerify: "Verificar",
   accountPhone: "Verifique seu telefone",
   accountPhoneDesc:
-    "Enviaremos um código de 6 dígitos por SMS para verificar seu número.",
+    "Enviaremos um código de 6 dígitos por SMS. Use um número de celular dos EUA; números VoIP não são aceitos.",
   accountSubmit: "Enviar",
   accountFieldRequired: "Obrigatório",
   accountBooleanYes: "Sim",
@@ -143,14 +143,15 @@ export const pt: typeof en = {
     "Seu banco mostrará uma solicitação da PayTrie AB Inc, parceira canadense de Interac para este depósito.",
   accountInteracConfirmAmount: "Valor",
   accountInteracConfirmSender: "Remetente",
-  accountInteracConfirmReference: "Referência da solicitação",
   accountInteracConfirmBank: "Banco",
+  accountInteracConfirmProcessingTime: "Tempo de processamento",
   accountInteracConfirmOpenInterac: "Abrir Interac",
-  accountInteracWaitingInstructions: (amount: string) =>
-    `Aprove a solicitação de ${amount} da PayTrie AB Inc no seu banco. A PayTrie é a parceira canadense de Interac para este depósito. Depois da aprovação, a transferência pode levar alguns minutos para chegar. Isso é esperado; mantenha esta página aberta e ela continuará automaticamente.`,
+  accountInteracWaitingInstructions: (
+    amount: string,
+    processingTime: string,
+  ) =>
+    `Aprove a solicitação de ${amount} da PayTrie AB Inc no seu banco. A PayTrie é a parceira canadense de Interac para este depósito. Depois da aprovação, a transferência pode levar ${processingTime} para chegar. Isso é esperado; mantenha esta página aberta e ela continuará automaticamente.`,
   accountBankDetails: "Dados da transferência",
-  accountPixCopyCode: "Copiar código PIX",
-  accountPixExpired: "Este código PIX expirou",
   accountDirections: "Instruções",
   accountDirectionsStep: (current: number, total: number) =>
     `Etapa ${current} de ${total}`,

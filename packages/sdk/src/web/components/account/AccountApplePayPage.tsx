@@ -2,6 +2,7 @@ import {
   type CSSProperties,
   useCallback,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
 } from "react";
@@ -11,6 +12,7 @@ import type {
   AccountRail,
   DepositConstraints,
   DepositPaymentInfo,
+  DepositPaymentInteraction,
 } from "../../../common/account.js";
 import { isSafariBrowser } from "../../platform.js";
 import { useDaimoClient } from "../../hooks/DaimoClientContext.js";
@@ -22,6 +24,9 @@ import { formatFixedAmount } from "../../formatAmount.js";
 import { AmountInput, PageHeader, useAmountInput } from "../shared.js";
 import { AccountEnrollmentUpdatePage } from "./AccountEnrollmentUpdatePage.js";
 import { useCoinbaseApplePayWidget } from "./useCoinbaseApplePayWidget.js";
+import { isPaymentInteractionCompatible } from "./accountNav.js";
+import { getWalletPayName } from "./walletPayName.js";
+import { getWalletPayLimitDetails } from "./walletPayDetails.js";
 
 type ShellRect = {
   left: number;
@@ -30,8 +35,9 @@ type ShellRect = {
   height: number;
 };
 
-type AccountApplePayPageProps = {
+type AccountWalletPayPageProps = {
   rail: AccountRail;
+  paymentInteraction: DepositPaymentInteraction;
   sessionId: string;
   clientSecret: string;
   actionVerb: string;
@@ -58,15 +64,16 @@ const APPLE_PAY_COLLAPSED_CROP_Y = 6;
  * `useApplePaySandbox=true`, but Coinbase may still require the current host
  * to be allowlisted for the iframe to load.
  */
-export function AccountApplePayPage({
+export function AccountWalletPayPage({
   rail,
+  paymentInteraction,
   sessionId,
   clientSecret,
   actionVerb,
   initialAmount,
   onBack,
   onAdvance,
-}: AccountApplePayPageProps) {
+}: AccountWalletPayPageProps) {
   const client = useDaimoClient();
   const { accountFlow, depositState } = useSessionDepositState(sessionId);
   const didAdvanceRef = useRef(false);
@@ -95,13 +102,13 @@ export function AccountApplePayPage({
         setConstraints(result);
       } catch (err) {
         constraintsFetchedRef.current = false;
-        console.error("[apple-pay] failed to fetch constraints:", err);
+        console.error("[wallet-pay] failed to fetch constraints:", err);
       }
     })();
   }, [accountFlow, client, sessionId, rail]);
 
-  const minimum = parseAmountBound(constraints?.minAmount) ?? 5;
-  const maximum = parseAmountBound(constraints?.maxAmount) ?? 500;
+  const minimum = parseAmountBound(constraints?.amountRange.min) ?? 5;
+  const maximum = parseAmountBound(constraints?.amountRange.max) ?? 500;
   const currencySymbol = constraints?.currency.symbol ?? "$";
 
   // --- Amount entry + staged createDeposit ---
@@ -129,11 +136,20 @@ export function AccountApplePayPage({
     enabled: isValid,
     draftMode: "signed",
   });
-  const startedPayment =
-    hasStartedDeposit && matchesAmount ? depositState.payment : null;
-  const payment: DepositPaymentInfo | null = startedPayment ?? draftPayment;
+  const candidatePayment: DepositPaymentInfo | null =
+    hasStartedDeposit && matchesAmount ? depositState.payment : draftPayment;
+  const contractMismatch =
+    candidatePayment != null &&
+    !isPaymentInteractionCompatible(paymentInteraction, candidatePayment);
+  const payment: DepositPaymentInfo | null = contractMismatch
+    ? null
+    : candidatePayment;
+  const walletPayName = getWalletPayName(
+    rail,
+    payment?.flow === "wallet-pay-widget" ? payment.paymentLinkKind : null,
+  );
   const enrollmentUpdate =
-    !startedPayment &&
+    !hasStartedDeposit &&
     draftEnrollmentUpdate?.type === "apple_pay_enhanced_verification"
       ? draftEnrollmentUpdate
       : null;
@@ -149,6 +165,26 @@ export function AccountApplePayPage({
   const [buttonShellWidth, setButtonShellWidth] = useState(
     APPLE_PAY_SHELL_MAX_WIDTH,
   );
+  const updateButtonShellMetrics = useCallback(() => {
+    const el = buttonShellRef.current;
+    if (!el) return;
+
+    const rect = el.getBoundingClientRect();
+    if (rect.width <= 0 || rect.height <= 0) return;
+
+    const nextRect = {
+      left: rect.left,
+      top: rect.top,
+      width: rect.width,
+      height: rect.height,
+    };
+    setButtonShellWidth((current) =>
+      current === nextRect.width ? current : nextRect.width,
+    );
+    setButtonShellRect((current) =>
+      current && shellRectsEqual(current, nextRect) ? current : nextRect,
+    );
+  }, []);
   const refreshFromServer = useCallback(async () => {
     try {
       await client.account.getDeposit({
@@ -157,7 +193,7 @@ export function AccountApplePayPage({
         refresh: true,
       });
     } catch (err) {
-      console.error("[apple-pay] refreshDeposit failed:", err);
+      console.error("[wallet-pay] refreshDeposit failed:", err);
     }
   }, [client, sessionId, clientSecret]);
   const {
@@ -173,12 +209,19 @@ export function AccountApplePayPage({
     paymentLinkUrl: rawPaymentLinkUrl,
   });
   const isExpanded = allowExpandedView && iframeExpanded;
-  const isPaymentUnavailable = draftError != null || widgetError != null;
+  const isPaymentUnavailable =
+    contractMismatch || draftError != null || widgetError != null;
   const paymentLinkUrl = isPaymentUnavailable ? null : rawPaymentLinkUrl;
 
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  // The iframe is portaled to the document body. Re-measure before paint when
+  // async content (such as limits) moves its in-flow shell.
+  useLayoutEffect(() => {
+    updateButtonShellMetrics();
+  });
 
   useEffect(() => {
     if (!isValid) {
@@ -195,36 +238,26 @@ export function AccountApplePayPage({
     const el = buttonShellRef.current;
     if (!el) return;
 
-    const updateShellMetrics = () => {
-      const rect = el.getBoundingClientRect();
-      if (rect.width <= 0 || rect.height <= 0) return;
-      setButtonShellWidth(rect.width);
-      setButtonShellRect({
-        left: rect.left,
-        top: rect.top,
-        width: rect.width,
-        height: rect.height,
-      });
-    };
-
-    updateShellMetrics();
-    window.addEventListener("resize", updateShellMetrics);
-    window.addEventListener("scroll", updateShellMetrics, true);
+    const modal = el.closest(".daimo-modal-content");
+    updateButtonShellMetrics();
+    window.addEventListener("resize", updateButtonShellMetrics);
+    window.addEventListener("scroll", updateButtonShellMetrics, true);
 
     if (typeof ResizeObserver === "undefined") {
       return () => {
-        window.removeEventListener("resize", updateShellMetrics);
-        window.removeEventListener("scroll", updateShellMetrics, true);
+        window.removeEventListener("resize", updateButtonShellMetrics);
+        window.removeEventListener("scroll", updateButtonShellMetrics, true);
       };
     }
-    const observer = new ResizeObserver(updateShellMetrics);
+    const observer = new ResizeObserver(updateButtonShellMetrics);
     observer.observe(el);
+    if (modal) observer.observe(modal);
     return () => {
       observer.disconnect();
-      window.removeEventListener("resize", updateShellMetrics);
-      window.removeEventListener("scroll", updateShellMetrics, true);
+      window.removeEventListener("resize", updateButtonShellMetrics);
+      window.removeEventListener("scroll", updateButtonShellMetrics, true);
     };
-  }, []);
+  }, [updateButtonShellMetrics]);
 
   useDepositPoller({
     client,
@@ -262,6 +295,17 @@ export function AccountApplePayPage({
     payment?.flow === "wallet-pay-widget"
       ? (payment.receiveUnits ?? payment.purchaseAmount)
       : null;
+  const usageLimits =
+    payment?.flow === "wallet-pay-widget"
+      ? (payment.usageLimits ?? constraints?.usageLimits)
+      : constraints?.usageLimits;
+  const limitDetails = getWalletPayLimitDetails(usageLimits, currencySymbol);
+  const limitSummary = [
+    limitDetails.weeklyRemaining,
+    limitDetails.depositCountRemaining,
+  ]
+    .filter((detail): detail is string => detail != null)
+    .join(" · ");
   const collapsedShellWidth = Math.min(
     buttonShellWidth,
     APPLE_PAY_SHELL_MAX_WIDTH,
@@ -362,7 +406,7 @@ export function AccountApplePayPage({
                 key={paymentLinkUrl}
                 ref={iframeRef}
                 src={paymentLinkUrl}
-                title="Apple Pay Checkout"
+                title={`${walletPayName} Checkout`}
                 allow="payment"
                 sandbox="allow-scripts allow-same-origin"
                 referrerPolicy="no-referrer"
@@ -378,7 +422,10 @@ export function AccountApplePayPage({
 
   return (
     <div className="daimo-relative daimo-isolate daimo-flex daimo-flex-col daimo-flex-1 daimo-min-h-0">
-      <PageHeader title={`${actionVerb} with Apple Pay`} onBack={onBack} />
+      <PageHeader
+        title={`${actionVerb} with ${walletPayName}`}
+        onBack={onBack}
+      />
 
       {/* Amount + fee/receive summary. Hidden once the Apple Pay sheet expands
           so only the iframe (QR) shows; kept mounted to preserve state. */}
@@ -390,7 +437,7 @@ export function AccountApplePayPage({
           minimum={minimum}
           maximum={maximum}
           currencySymbol={currencySymbol}
-          defaultLabel=""
+          defaultLabel="Debit cards only"
           initialValue={initialAmountValue}
           disabled={hasStartedDeposit}
           onSubmit={() => {
@@ -421,11 +468,19 @@ export function AccountApplePayPage({
                   : `${currencySymbol}${formatFixedAmount(0)}`}
             </span>
           </div>
+          {limitSummary && (
+            <div className="daimo-mt-3 daimo-pt-3 daimo-border-t daimo-border-[var(--daimo-border)] daimo-flex daimo-items-center daimo-justify-between daimo-gap-4 daimo-text-[var(--daimo-text-muted)]">
+              <span className="daimo-shrink-0">Left this week</span>
+              <span className="daimo-min-w-0 daimo-text-right daimo-tabular-nums">
+                {limitSummary}
+              </span>
+            </div>
+          )}
         </div>
       </div>
 
       {/* Apple Pay button area — iframe when ready, custom placeholder until then */}
-      <div className="daimo-flex-1 daimo-min-h-0 daimo-px-4 daimo-pb-6 daimo-flex daimo-flex-col daimo-items-center daimo-justify-end">
+      <div className="daimo-flex-1 daimo-min-h-0 daimo-px-4 daimo-pt-2 daimo-pb-6 daimo-flex daimo-flex-col daimo-items-center daimo-justify-end">
         <div
           ref={buttonShellRef}
           className="daimo-relative daimo-w-full daimo-overflow-hidden"
@@ -447,10 +502,10 @@ export function AccountApplePayPage({
                     pointerEvents: "none",
                   }}
                 >
-                  <ApplePayPlaceholderButton
+                  <WalletPayPlaceholderButton
                     disabled={false}
                     loading
-                    label="Preparing Apple Pay"
+                    label={`Preparing ${walletPayName}`}
                     height={collapsedShellHeight}
                     radius={collapsedShellRadius}
                   />
@@ -459,16 +514,16 @@ export function AccountApplePayPage({
               {iframeLayer}
             </>
           ) : (
-            <ApplePayPlaceholderButton
+            <WalletPayPlaceholderButton
               disabled={isPaymentUnavailable || !isValid || isCreating}
               loading={!isPaymentUnavailable && isValid && isCreating}
               label={
                 isPaymentUnavailable
-                  ? t.applePayUnavailable
+                  ? `${walletPayName} unavailable`
                   : isValid
                     ? isCreating
-                      ? "Preparing Apple Pay"
-                      : "Apple Pay Ready"
+                      ? `Preparing ${walletPayName}`
+                      : `${walletPayName} Ready`
                     : "Enter amount to continue"
               }
               height={collapsedShellHeight}
@@ -487,12 +542,21 @@ function parseAmountBound(value: string | undefined): number | null {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
+function shellRectsEqual(a: ShellRect, b: ShellRect): boolean {
+  return (
+    a.left === b.left &&
+    a.top === b.top &&
+    a.width === b.width &&
+    a.height === b.height
+  );
+}
+
 /**
  * Daimo-owned CTA shown before the Coinbase iframe is ready so the Apple Pay
  * step feels native to the modal instead of dropping in third-party chrome
  * immediately.
  */
-function ApplePayPlaceholderButton({
+function WalletPayPlaceholderButton({
   disabled,
   loading,
   label,
