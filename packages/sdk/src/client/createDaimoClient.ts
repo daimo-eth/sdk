@@ -3,6 +3,7 @@ import type {
   CreateAccountResponse,
   CreateDepositResponse,
   DepositConstraints,
+  DepositAuthorizationResponse,
   DepositPreCreatePaymentInput,
   EnrollmentActionSubmitRequest,
   EnrollmentInteraction,
@@ -58,6 +59,7 @@ export type UpsertDepositRequest = {
   depositAmount: string;
   rail: AccountRail;
   locale?: string;
+  authorizationVersion?: 2;
   deliverySig?: string;
   deliverySigData?: Record<string, unknown>;
   routingSig?: string;
@@ -147,9 +149,10 @@ export type DaimoClient = {
       params: {
         sessionId: string;
         depositAmount: string;
+        authorizationVersion?: 2;
       } & AccountRailTarget,
       auth: BearerAuth,
-    ): Promise<RoutingSignDataResponse>;
+    ): Promise<DepositAuthorizationResponse>;
     /** Poll deposit status. No auth required — uses clientSecret. */
     getDeposit(params: {
       sessionId: string;
@@ -327,16 +330,23 @@ export function createDaimoClient(config: TransportConfig): DaimoClient {
         });
       },
       prepareDeposit(params, auth) {
-        return transport.request<RoutingSignDataResponse>({
-          method: "POST",
-          path: "/v1/internal/account/deposit/prepare",
-          body: {
-            sessionId: params.sessionId,
-            depositAmount: params.depositAmount,
-            rail: params.rail,
-          },
-          headers: authHeaders(auth),
-        });
+        return transport
+          .request<RoutingSignDataResponse | DepositAuthorizationResponse>({
+            method: "POST",
+            path: "/v1/internal/account/deposit/prepare",
+            body: {
+              sessionId: params.sessionId,
+              depositAmount: params.depositAmount,
+              rail: params.rail,
+              authorizationVersion: params.authorizationVersion,
+            },
+            headers: authHeaders(auth),
+          })
+          .then((response) =>
+            "kind" in response
+              ? response
+              : { kind: "signatures" as const, ...response },
+          );
       },
       getDeposit(params) {
         return transport.request<GetDepositResponse>({
