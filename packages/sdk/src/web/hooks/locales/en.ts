@@ -129,6 +129,7 @@ export const en = {
     "We'll text you a 6-digit code. Use a US mobile number—VoIP numbers aren't supported.",
   accountSubmit: "Submit",
   accountFieldRequired: "Required",
+  accountPhoneInvalid: "enter a valid phone number",
   accountBooleanYes: "Yes",
   accountBooleanNo: "No",
   accountSelectBank: "Select Bank",

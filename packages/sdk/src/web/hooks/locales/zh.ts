@@ -129,6 +129,7 @@ export const zh: typeof en = {
     "我们将发送6位验证码。请使用美国手机号码；不支持 VoIP 号码。",
   accountSubmit: "提交",
   accountFieldRequired: "必填",
+  accountPhoneInvalid: "请输入有效的电话号码",
   accountBooleanYes: "是",
   accountBooleanNo: "否",
   accountSelectBank: "选择银行",

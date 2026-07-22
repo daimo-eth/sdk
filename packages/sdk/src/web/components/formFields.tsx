@@ -1,13 +1,22 @@
 import {
   type ClipboardEvent,
+  type ElementType,
   forwardRef,
   type InputHTMLAttributes,
   type KeyboardEvent,
   type ReactNode,
+  type SelectHTMLAttributes,
   useCallback,
   useId,
   useRef,
 } from "react";
+import PhoneInput, {
+  type Country,
+  getCountryCallingCode,
+  isPossiblePhoneNumber,
+  isValidPhoneNumber,
+  parsePhoneNumber,
+} from "react-phone-number-input";
 
 import { TextInput } from "./shared.js";
 
@@ -98,6 +107,144 @@ export const DaimoTextField = forwardRef<
     />
   );
 });
+
+export type DaimoPhoneFieldProps = Omit<
+  InputHTMLAttributes<HTMLInputElement>,
+  "inputMode" | "maxLength" | "onChange" | "type" | "value"
+> & {
+  value: string;
+  defaultCountry?: Country;
+  invalid?: boolean;
+  onValueChange: (value: string) => void;
+};
+
+type PhoneCountryOption = {
+  value?: Country;
+  label: string;
+  divider?: boolean;
+};
+
+type PhoneCountrySelectProps = Omit<
+  SelectHTMLAttributes<HTMLSelectElement>,
+  "onChange" | "value"
+> & {
+  value?: Country;
+  options: PhoneCountryOption[];
+  onChange: (country?: Country) => void;
+  readOnly?: boolean;
+  iconComponent?: ElementType;
+};
+
+/** Country-aware input backed by react-phone-number-input. */
+export function DaimoPhoneField({
+  value,
+  defaultCountry,
+  invalid,
+  onValueChange,
+  className,
+  placeholder,
+  ...props
+}: DaimoPhoneFieldProps) {
+  return (
+    <PhoneInput
+      {...props}
+      value={value || undefined}
+      defaultCountry={defaultCountry}
+      addInternationalOption={false}
+      countrySelectComponent={DaimoPhoneCountrySelect}
+      limitMaxLength
+      placeholder={phonePlaceholder(placeholder, defaultCountry)}
+      aria-invalid={invalid || props["aria-invalid"] || undefined}
+      onChange={(nextValue) => onValueChange(nextValue ?? "")}
+      className={`daimo-flex daimo-h-12 daimo-w-full daimo-min-w-0 daimo-items-center daimo-overflow-hidden daimo-rounded-[var(--daimo-radius-md)] daimo-bg-[var(--daimo-surface-secondary)] daimo-transition-shadow focus-within:daimo-ring-2 focus-within:daimo-ring-[var(--daimo-accent)] ${invalid ? "daimo-ring-1 daimo-ring-[var(--daimo-error)]" : ""} ${className ?? ""}`}
+      numberInputProps={{
+        className:
+          "daimo-h-12 daimo-min-w-0 daimo-flex-1 daimo-border-none daimo-bg-transparent daimo-px-3 daimo-py-3 daimo-text-base daimo-text-[var(--daimo-text)] daimo-caret-[var(--daimo-accent)] daimo-outline-none daimo-ring-0 daimo-placeholder-[var(--daimo-placeholder)] focus:daimo-border-none focus:daimo-outline-none focus:daimo-ring-0 focus:daimo-shadow-none",
+        inputMode: "tel",
+      }}
+    />
+  );
+}
+
+/** International examples identify the country used for local-number entry. */
+export function inferPhoneCountry(example: string): Country | undefined {
+  return parsePhoneNumber(example)?.country;
+}
+
+export function isPossiblePhoneInput(
+  value: string,
+  defaultCountry?: Country,
+): boolean {
+  return isPossiblePhoneNumber(value, defaultCountry);
+}
+
+export function isValidPhoneInput(
+  value: string,
+  defaultCountry?: Country,
+): boolean {
+  return isValidPhoneNumber(value, defaultCountry);
+}
+
+function DaimoPhoneCountrySelect({
+  value,
+  options,
+  onChange,
+  disabled,
+  readOnly,
+  iconComponent: _iconComponent,
+  ...props
+}: PhoneCountrySelectProps) {
+  const selectedCallingCode = value ? `+${getCountryCallingCode(value)}` : "+";
+
+  return (
+    <div className="daimo-relative daimo-flex daimo-h-12 daimo-min-w-[96px] daimo-shrink-0 daimo-items-center daimo-justify-center daimo-gap-1.5 daimo-border-0 daimo-border-r daimo-border-solid daimo-border-[var(--daimo-border)] daimo-px-3 daimo-text-sm daimo-text-[var(--daimo-text)]">
+      <span aria-hidden="true" className="daimo-text-base daimo-leading-none">
+        {value ? countryFlag(value) : "🌐"}
+      </span>
+      <span aria-hidden="true" className="daimo-tabular-nums">
+        {selectedCallingCode}
+      </span>
+      <svg
+        aria-hidden="true"
+        width="10"
+        height="6"
+        viewBox="0 0 10 6"
+        fill="none"
+        className="daimo-shrink-0 daimo-text-[var(--daimo-text-secondary)]"
+      >
+        <path
+          d="m1 1 4 4 4-4"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+      <select
+        {...props}
+        value={value ?? ""}
+        disabled={disabled || readOnly}
+        onChange={(event) =>
+          onChange(
+            options.find((option) => option.value === event.target.value)
+              ?.value,
+          )
+        }
+        className="daimo-absolute daimo-inset-0 daimo-z-10 daimo-m-0 daimo-h-full daimo-w-full daimo-cursor-pointer daimo-appearance-none daimo-border-0 daimo-bg-transparent daimo-p-0 daimo-opacity-0 disabled:daimo-cursor-default"
+      >
+        {options.map((option) => (
+          <option
+            key={option.divider ? "divider" : (option.value ?? "international")}
+            value={option.value ?? ""}
+            disabled={option.divider}
+          >
+            {countryOptionLabel(option)}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
+}
 
 export type DaimoSegmentedNumberSegment = {
   id?: string;
@@ -220,4 +367,26 @@ export function DaimoSegmentedNumberField({
 
 function digitsOnly(value: string, maxLength: number): string {
   return value.replace(/\D/g, "").slice(0, maxLength);
+}
+
+function phonePlaceholder(
+  placeholder: string | undefined,
+  defaultCountry: Country | undefined,
+): string | undefined {
+  if (!placeholder) return placeholder;
+  return (
+    parsePhoneNumber(placeholder, defaultCountry)?.formatNational() ??
+    placeholder
+  );
+}
+
+function countryFlag(country: Country): string {
+  return String.fromCodePoint(
+    ...country.split("").map((character) => character.charCodeAt(0) + 127397),
+  );
+}
+
+function countryOptionLabel(option: PhoneCountryOption): string {
+  if (option.divider || !option.value) return option.label;
+  return `${countryFlag(option.value)} +${getCountryCallingCode(option.value)} ${option.label}`;
 }

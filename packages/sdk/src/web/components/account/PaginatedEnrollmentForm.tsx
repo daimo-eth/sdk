@@ -8,7 +8,14 @@ import type {
 } from "../../../common/account.js";
 import { t } from "../../hooks/locale.js";
 import { PrimaryButton } from "../buttons.js";
-import { DaimoFormField, DaimoTextField } from "../formFields.js";
+import {
+  DaimoFormField,
+  DaimoPhoneField,
+  DaimoTextField,
+  inferPhoneCountry,
+  isPossiblePhoneInput,
+  isValidPhoneInput,
+} from "../formFields.js";
 import { PageHeader } from "../shared.js";
 
 export type PaginatedEnrollmentFormSubmitResult =
@@ -45,6 +52,9 @@ export function PaginatedEnrollmentForm({
   const [pageIndex, setPageIndex] = useState(() =>
     firstErrorPageIndex(pages, form.fieldErrors ?? {}),
   );
+  const [validatedFieldKeys, setValidatedFieldKeys] = useState<Set<string>>(
+    () => new Set(),
+  );
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
@@ -52,27 +62,54 @@ export function PaginatedEnrollmentForm({
     setValues(initialFormValues(form));
     setFieldErrors(nextErrors);
     setPageIndex(firstErrorPageIndex(pages, nextErrors));
+    setValidatedFieldKeys(new Set());
   }, [form, pages]);
 
   const visibleFields = pages[pageIndex] ?? [];
   const isLastPage = pageIndex === pages.length - 1;
   const hasMultiplePages = pages.length > 1;
 
-  const setFieldValue = (key: string, value: EnrollmentFormValue) => {
+  const setFieldValue = (
+    field: EnrollmentFormField,
+    value: EnrollmentFormValue,
+  ) => {
+    const shouldValidate =
+      validatedFieldKeys.has(field.key) ||
+      shouldValidatePhoneOnEntry(field, value);
+    if (shouldValidate && !validatedFieldKeys.has(field.key)) {
+      setValidatedFieldKeys((current) => new Set(current).add(field.key));
+    }
     setValues((current) =>
-      updateFormValuesForChange(form.fields, current, key, value),
+      updateFormValuesForChange(form.fields, current, field.key, value),
     );
     setFieldErrors((current) => {
       const clearedKeys = new Set([
-        key,
-        ...dependentFieldKeys(form.fields, key),
+        field.key,
+        ...dependentFieldKeys(form.fields, field.key),
         "_form",
       ]);
-      return Object.fromEntries(
+      const next = Object.fromEntries(
         Object.entries(current).filter(
           ([errorKey]) => !clearedKeys.has(errorKey),
         ),
       );
+      const error = shouldValidate
+        ? validateEnrollmentField(field, value)
+        : undefined;
+      if (error) next[field.key] = error;
+      return next;
+    });
+  };
+
+  const validateFieldOnBlur = (field: EnrollmentFormField) => {
+    if (!isPhoneField(field)) return;
+    setValidatedFieldKeys((current) => new Set(current).add(field.key));
+    setFieldErrors((current) => {
+      const next = { ...current };
+      delete next[field.key];
+      const error = validateEnrollmentField(field, values[field.key]);
+      if (error) next[field.key] = error;
+      return next;
     });
   };
 
@@ -88,6 +125,7 @@ export function PaginatedEnrollmentForm({
     event.preventDefault();
 
     if (!isLastPage) {
+      markPhoneFieldsValidated(visibleFields, setValidatedFieldKeys);
       const pageErrors = validateFields(visibleFields, values);
       setFieldErrors((current) =>
         replaceErrorsForFields(current, visibleFields, pageErrors),
@@ -97,6 +135,7 @@ export function PaginatedEnrollmentForm({
       return;
     }
 
+    markPhoneFieldsValidated(form.fields, setValidatedFieldKeys);
     const nextErrors = validateFields(form.fields, values);
     setFieldErrors(nextErrors);
     if (Object.keys(nextErrors).length > 0) {
@@ -159,7 +198,8 @@ export function PaginatedEnrollmentForm({
                   value={values[field.key]}
                   values={values}
                   error={fieldErrors[field.key]}
-                  onChange={(value) => setFieldValue(field.key, value)}
+                  onChange={(value) => setFieldValue(field, value)}
+                  onBlur={() => validateFieldOnBlur(field)}
                 />
               ))}
             </div>
@@ -188,12 +228,14 @@ function EnrollmentFormFieldControl({
   values,
   error,
   onChange,
+  onBlur,
 }: {
   field: EnrollmentFormField;
   value: EnrollmentFormValue | undefined;
   values: Record<string, EnrollmentFormValue>;
   error?: string;
   onChange: (value: EnrollmentFormValue) => void;
+  onBlur: () => void;
 }) {
   switch (field.type) {
     case "text":
@@ -203,23 +245,40 @@ function EnrollmentFormFieldControl({
           description={field.description}
           error={error}
         >
-          {({ id, describedBy, invalid }) => (
-            <DaimoTextField
-              id={id}
-              type="text"
-              inputMode={field.inputMode}
-              autoComplete={field.autoComplete}
-              maxLength={formattedMaxLength(field)}
-              value={formatTextFieldValue(field, value)}
-              placeholder={field.placeholder}
-              aria-describedby={describedBy}
-              invalid={invalid}
-              onChange={(event) =>
-                onChange(parseTextFieldValue(field, event.target.value))
-              }
-              className="daimo-px-4 daimo-py-3"
-            />
-          )}
+          {({ id, describedBy, invalid }) => {
+            if (field.inputMode === "tel") {
+              return (
+                <DaimoPhoneField
+                  id={id}
+                  defaultCountry={phoneFieldCountry(field)}
+                  autoComplete={field.autoComplete}
+                  value={typeof value === "string" ? value : ""}
+                  placeholder={field.placeholder}
+                  aria-describedby={describedBy}
+                  invalid={invalid}
+                  onValueChange={onChange}
+                  onBlur={onBlur}
+                />
+              );
+            }
+            return (
+              <DaimoTextField
+                id={id}
+                type="text"
+                inputMode={field.inputMode}
+                autoComplete={field.autoComplete}
+                maxLength={formattedMaxLength(field)}
+                value={formatTextFieldValue(field, value)}
+                placeholder={field.placeholder}
+                aria-describedby={describedBy}
+                invalid={invalid}
+                onChange={(event) =>
+                  onChange(parseTextFieldValue(field, event.target.value))
+                }
+                className="daimo-px-4 daimo-py-3"
+              />
+            );
+          }}
         </DaimoFormField>
       );
     case "select":
@@ -482,22 +541,77 @@ function validateFields(
 ): Record<string, string> {
   const errors: Record<string, string> = {};
   for (const field of fields) {
-    if (!field.required) continue;
-    const value = values[field.key];
-    if (typeof value === "string" && value.trim() === "") {
-      errors[field.key] = t.accountFieldRequired;
-    } else if (
-      field.type === "boolean" &&
-      field.control !== "yes_no" &&
-      typeof value === "boolean" &&
-      !value
-    ) {
-      errors[field.key] = t.accountFieldRequired;
-    } else if (field.type === "boolean" && typeof value !== "boolean") {
-      errors[field.key] = t.accountFieldRequired;
-    }
+    const error = validateEnrollmentField(field, values[field.key]);
+    if (error) errors[field.key] = error;
   }
   return errors;
+}
+
+export function validateEnrollmentField(
+  field: EnrollmentFormField,
+  value: EnrollmentFormValue | undefined,
+): string | undefined {
+  if (field.required && typeof value === "string" && value.trim() === "") {
+    return t.accountFieldRequired;
+  }
+  if (
+    field.required &&
+    field.type === "boolean" &&
+    field.control !== "yes_no" &&
+    typeof value === "boolean" &&
+    !value
+  ) {
+    return t.accountFieldRequired;
+  }
+  if (
+    field.required &&
+    field.type === "boolean" &&
+    typeof value !== "boolean"
+  ) {
+    return t.accountFieldRequired;
+  }
+  if (
+    isPhoneField(field) &&
+    typeof value === "string" &&
+    value.trim() !== "" &&
+    !isValidPhoneInput(value, phoneFieldCountry(field))
+  ) {
+    return t.accountPhoneInvalid;
+  }
+  return undefined;
+}
+
+function shouldValidatePhoneOnEntry(
+  field: EnrollmentFormField,
+  value: EnrollmentFormValue,
+): boolean {
+  // Avoid showing an error while an incomplete number is still being entered.
+  return (
+    isPhoneField(field) &&
+    typeof value === "string" &&
+    isPossiblePhoneInput(value, phoneFieldCountry(field))
+  );
+}
+
+function phoneFieldCountry(
+  field: Extract<EnrollmentFormField, { type: "text" }>,
+) {
+  return inferPhoneCountry(field.placeholder ?? field.defaultValue ?? "");
+}
+
+function markPhoneFieldsValidated(
+  fields: EnrollmentFormField[],
+  setValidatedFieldKeys: React.Dispatch<React.SetStateAction<Set<string>>>,
+) {
+  const phoneKeys = fields.filter(isPhoneField).map((field) => field.key);
+  if (phoneKeys.length === 0) return;
+  setValidatedFieldKeys((current) => new Set([...current, ...phoneKeys]));
+}
+
+function isPhoneField(
+  field: EnrollmentFormField,
+): field is Extract<EnrollmentFormField, { type: "text" }> {
+  return field.type === "text" && field.inputMode === "tel";
 }
 
 function formattedMaxLength(field: EnrollmentFormField): number | undefined {

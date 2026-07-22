@@ -101,6 +101,7 @@ export const es: typeof en = {
     "Te enviaremos un código de 6 dígitos. Usa un número móvil de EE. UU.; no se admiten números VoIP.",
   accountSubmit: "Enviar",
   accountFieldRequired: "Obligatorio",
+  accountPhoneInvalid: "ingresa un número de teléfono válido",
   accountBooleanYes: "Sí",
   accountBooleanNo: "No",
   accountSelectBank: "Seleccionar banco",
