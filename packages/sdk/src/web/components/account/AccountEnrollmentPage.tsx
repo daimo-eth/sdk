@@ -253,6 +253,7 @@ export function AccountEnrollmentPage({
     return (
       <ErrorPage
         message={errorMessage}
+        onBack={onBack}
         sessionId={sessionId}
         clientSecret={clientSecret}
         retryText={t.tryAgain}
@@ -338,6 +339,7 @@ export function AccountEnrollmentPage({
       ) : (
         <ErrorPage
           message={interaction.reason}
+          onBack={onBack}
           sessionId={sessionId}
           clientSecret={clientSecret}
           retryText={t.tryAgain}
@@ -375,6 +377,7 @@ export function AccountEnrollmentPage({
       return (
         <ErrorPage
           message={interaction.message}
+          onBack={onBack}
           sessionId={sessionId}
           clientSecret={clientSecret}
           retryText={t.tryAgain}

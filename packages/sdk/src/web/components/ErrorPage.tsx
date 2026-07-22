@@ -18,6 +18,8 @@ function extractMessage(value: unknown): string {
 
 type ErrorPageProps = {
   message: unknown;
+  /** Optional navigation back to the previous modal page */
+  onBack?: () => void;
   /** Button text, defaults to "Reload" */
   retryText?: string;
   /** Retry callback, defaults to window.location.reload() */
@@ -42,6 +44,7 @@ type ErrorPageProps = {
  */
 export function ErrorPage({
   message,
+  onBack,
   retryText = t.reload,
   onRetry,
   supportSubject = t.error,
@@ -77,7 +80,7 @@ export function ErrorPage({
 
   return (
     <div className="daimo-flex daimo-flex-col daimo-flex-1 daimo-min-h-0">
-      <PageHeader title={t.error} />
+      <PageHeader title={t.error} onBack={onBack} />
       <div className="daimo-flex-1 daimo-flex daimo-flex-col daimo-items-center daimo-justify-center daimo-p-6 daimo-gap-6">
         {/* Error icon */}
         <div
