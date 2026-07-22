@@ -132,6 +132,7 @@ export const ko: typeof en = {
     "6자리 인증 코드를 문자로 보내드립니다. 미국 휴대전화 번호를 사용해 주세요. VoIP 번호는 지원되지 않습니다.",
   accountSubmit: "제출",
   accountFieldRequired: "필수",
+  accountPhoneInvalid: "유효한 전화번호를 입력해 주세요",
   accountBooleanYes: "예",
   accountBooleanNo: "아니요",
   accountSelectBank: "은행 선택",

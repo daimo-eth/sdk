@@ -4,6 +4,7 @@ import { describe, expect, test } from "vitest";
 import {
   dependentFieldKeys,
   updateFormValuesForChange,
+  validateEnrollmentField,
 } from "./PaginatedEnrollmentForm.js";
 
 const fields: EnrollmentFormField[] = [
@@ -85,5 +86,31 @@ describe("dependent enrollment form selects", () => {
       "municipality",
       "neighborhood",
     ]);
+  });
+});
+
+describe("enrollment phone validation", () => {
+  const phoneField: EnrollmentFormField = {
+    key: "phone",
+    type: "text",
+    label: "Phone",
+    required: true,
+    inputMode: "tel",
+    autoComplete: "tel",
+    maxLength: 40,
+    placeholder: "+57 300 111 2233",
+  };
+
+  test("accepts local and international Colombian numbers", () => {
+    expect(validateEnrollmentField(phoneField, "3001112233")).toBeUndefined();
+    expect(
+      validateEnrollmentField(phoneField, "+57 300 111 2233"),
+    ).toBeUndefined();
+  });
+
+  test("rejects a complete invalid number locally", () => {
+    expect(validateEnrollmentField(phoneField, "1234567890")).toBe(
+      "enter a valid phone number",
+    );
   });
 });

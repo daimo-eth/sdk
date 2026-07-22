@@ -132,6 +132,7 @@ export const ja: typeof en = {
     "6桁の確認コードをSMSでお送りします。米国の携帯電話番号を使用してください。VoIP番号はご利用いただけません。",
   accountSubmit: "送信",
   accountFieldRequired: "必須",
+  accountPhoneInvalid: "有効な電話番号を入力してください",
   accountBooleanYes: "はい",
   accountBooleanNo: "いいえ",
   accountSelectBank: "銀行を選択",

@@ -132,6 +132,7 @@ export const pt: typeof en = {
     "Enviaremos um código de 6 dígitos por SMS. Use um número de celular dos EUA; números VoIP não são aceitos.",
   accountSubmit: "Enviar",
   accountFieldRequired: "Obrigatório",
+  accountPhoneInvalid: "insira um número de telefone válido",
   accountBooleanYes: "Sim",
   accountBooleanNo: "Não",
   accountSelectBank: "Selecionar banco",
