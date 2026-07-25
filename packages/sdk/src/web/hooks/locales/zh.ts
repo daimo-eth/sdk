@@ -103,6 +103,8 @@ export const zh: typeof en = {
   accountOtpSentViaDaimo: (destination: string) =>
     `我们已通过 Daimo 向 ${destination} 发送验证码。`,
   accountCreatingWallet: "正在准备您的账户",
+  accountWalletConsent:
+    "验证即表示您授权 Daimo 为您创建自托管钱包、根据路由策略自动路由入金，并同意：",
   accountEnrollment: "账户设置",
   accountEnrollmentRetry: "重新提交文件",
   accountEnrollmentPending: "正在审核您的信息",
@@ -144,10 +146,7 @@ export const zh: typeof en = {
   accountInteracConfirmBank: "银行",
   accountInteracConfirmProcessingTime: "处理时间",
   accountInteracConfirmOpenInterac: "打开 Interac",
-  accountInteracWaitingInstructions: (
-    amount: string,
-    processingTime: string,
-  ) =>
+  accountInteracWaitingInstructions: (amount: string, processingTime: string) =>
     `请在您的银行批准来自 PayTrie AB Inc 的 ${amount} 请求。PayTrie 是本次存款在加拿大的 Interac 支付合作伙伴。批准后，转账可能需要 ${processingTime} 才会到账。这是正常情况；请保持此页面打开，它会自动继续。`,
   accountBankDetails: "转账详情",
   accountDirections: "操作指南",

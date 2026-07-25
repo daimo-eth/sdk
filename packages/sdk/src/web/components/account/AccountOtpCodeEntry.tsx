@@ -11,6 +11,7 @@ type AccountOtpCodeEntryProps = {
   destination: string;
   title?: string;
   message?: React.ReactNode;
+  consent?: React.ReactNode;
   invalidMessage?: string;
   resendDelayMs?: number;
   onBack: () => void;
@@ -29,6 +30,7 @@ export function AccountOtpCodeEntry({
   destination,
   title,
   message,
+  consent,
   invalidMessage,
   resendDelayMs = 0,
   onBack,
@@ -206,7 +208,8 @@ export function AccountOtpCodeEntry({
         </SecondaryLinkButton>
       </CenteredContent>
 
-      <div className="daimo-px-6 daimo-pb-6 daimo-flex daimo-flex-col daimo-items-center">
+      <div className="daimo-px-6 daimo-pb-6 daimo-flex daimo-flex-col daimo-items-center daimo-gap-3">
+        {consent}
         <PrimaryButton
           onClick={() => handleVerify()}
           disabled={!isComplete || busy}

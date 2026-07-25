@@ -16,6 +16,7 @@ import type {
   EnsureAccountWalletResponse,
   GetAccountResponse,
   GetDepositResponse,
+  PrivySignerEnrollment,
   RoutingSignDataResponse,
   StartEnrollmentRequest,
 } from "../common/account.js";
@@ -84,6 +85,11 @@ export type DaimoClient = {
       session: SessionContext,
       auth: BearerAuth,
     ): Promise<CreateAccountResponse>;
+    /** Refetch and persist signer enrollment for one exact Privy wallet. */
+    confirmPrivySignerEnrollment(
+      input: { walletId: string },
+      auth: BearerAuth,
+    ): Promise<{ enrollment: PrivySignerEnrollment }>;
     /**
      * Advance the account enrollment state machine after account auth or
      * provider-specific setup changes.
@@ -232,6 +238,14 @@ export function createDaimoClient(config: TransportConfig): DaimoClient {
           method: "POST",
           path: "/v1/internal/account",
           body: { ...input, ...session },
+          headers: authHeaders(auth),
+        });
+      },
+      confirmPrivySignerEnrollment(input, auth) {
+        return transport.request<{ enrollment: PrivySignerEnrollment }>({
+          method: "POST",
+          path: "/v1/internal/account/signer/confirm",
+          body: input,
           headers: authHeaders(auth),
         });
       },

@@ -9,12 +9,14 @@ import {
   useLoginWithEmail,
   usePrivy,
   useSendTransaction,
+  useSigners,
   useUser,
   useWallets,
 } from "@privy-io/react-auth";
 import { type ReactNode, useCallback, useEffect, useMemo } from "react";
 
 import type { DaimoClient } from "../../../client/createDaimoClient.js";
+import type { PrivySignerConfig } from "../../../common/account.js";
 import {
   AccountFlowContext,
   useAccountFlowState,
@@ -22,6 +24,7 @@ import {
 import {
   findCanonicalPrivyWallet,
   getCanonicalPrivyWalletAddress,
+  listPrivyEmbeddedWallets,
 } from "../../accountWallet.js";
 
 // EIP-6963 provider info for the announced embedded wallet: white Daimo
@@ -37,6 +40,8 @@ type AccountFlowProviderProps = {
   privyAppId: string;
   /** Client used to provision a wallet immediately after authentication. */
   walletProvisioningClient?: DaimoClient;
+  /** Pre-created Privy quorum and policy IDs for wallet-scoped enrollment. */
+  signerConfig?: PrivySignerConfig;
   /**
    * Announce the logged-in embedded wallet via EIP-6963 while true, so a
    * DaimoModal on the same page can offer it as a connected wallet. Used by
@@ -50,6 +55,7 @@ type AccountFlowProviderProps = {
 export function AccountFlowProvider({
   privyAppId,
   walletProvisioningClient,
+  signerConfig,
   announceEmbeddedWallet = false,
   children,
 }: AccountFlowProviderProps) {
@@ -69,6 +75,7 @@ export function AccountFlowProvider({
         <PrivyConsumer
           accountFlow={accountFlow}
           announceEmbeddedWallet={announceEmbeddedWallet}
+          signerConfig={signerConfig}
           walletProvisioningClient={walletProvisioningClient}
         />
         {children}
@@ -80,10 +87,12 @@ export function AccountFlowProvider({
 function PrivyConsumer({
   accountFlow,
   announceEmbeddedWallet,
+  signerConfig,
   walletProvisioningClient,
 }: {
   accountFlow: ReturnType<typeof useAccountFlowState>;
   announceEmbeddedWallet: boolean;
+  signerConfig?: PrivySignerConfig;
   walletProvisioningClient?: DaimoClient;
 }) {
   const { ready, authenticated, logout, getAccessToken, user } = usePrivy();
@@ -91,6 +100,7 @@ function PrivyConsumer({
   const { sendCode: rawSendCode, loginWithCode: rawLoginWithCode } =
     useLoginWithEmail();
   const { sendTransaction: rawSendTransaction } = useSendTransaction();
+  const { addSigners: rawAddSigners } = useSigners();
   const { wallets } = useWallets();
 
   const sendCode = useCallback(
@@ -112,9 +122,32 @@ function PrivyConsumer({
     linkedAccounts: user?.linkedAccounts ?? [],
     connectedWallets: wallets,
   });
+  const embeddedWallets = useMemo(
+    () => listPrivyEmbeddedWallets(user?.linkedAccounts ?? []),
+    [user?.linkedAccounts],
+  );
   const email = user?.email?.address ?? null;
   const phoneNumber = user?.phone?.number ?? null;
   const signingWallet = findCanonicalPrivyWallet(wallets, walletAddress);
+
+  const addSigners = useCallback(
+    async (args: {
+      walletAddress: `0x${string}`;
+      quorumId: string;
+      policyId: string;
+    }) => {
+      await rawAddSigners({
+        address: args.walletAddress,
+        signers: [
+          {
+            signerId: args.quorumId,
+            policyIds: [args.policyId],
+          },
+        ],
+      });
+    },
+    [rawAddSigners],
+  );
 
   const signTypedData = useCallback(
     async (typedData: Record<string, unknown>): Promise<string> => {
@@ -155,6 +188,7 @@ function PrivyConsumer({
       sendCode,
       loginWithCode,
       refreshUser,
+      addSigners,
       getAccessToken,
       signTypedData,
       sendSponsoredTransaction,
@@ -163,6 +197,8 @@ function PrivyConsumer({
       authenticated,
       email,
       walletAddress,
+      embeddedWallets,
+      signerConfig: signerConfig ?? null,
       phoneNumber,
     }),
     [
@@ -174,10 +210,13 @@ function PrivyConsumer({
       sendCode,
       loginWithCode,
       refreshUser,
+      addSigners,
       getAccessToken,
       signTypedData,
       sendSponsoredTransaction,
       logout,
+      embeddedWallets,
+      signerConfig,
     ],
   );
 

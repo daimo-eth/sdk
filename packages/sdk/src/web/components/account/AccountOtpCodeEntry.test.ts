@@ -6,6 +6,7 @@ import {
   AccountOtpCodeEntry,
   normalizeOtpCode,
 } from "./AccountOtpCodeEntry.js";
+import { AccountOtpPage } from "./AccountOtpPage.js";
 
 describe("OTP input semantics", () => {
   test("keeps a visible native input without a group focus ring", () => {
@@ -25,6 +26,20 @@ describe("OTP input semantics", () => {
     expect(markup).toContain("daimo-text-transparent");
     expect(markup).not.toContain("daimo-opacity-0");
     expect(markup).not.toContain("focus-within:daimo-ring-2");
+  });
+
+  test("shows wallet and routing consent on Account verification", () => {
+    const markup = renderToStaticMarkup(
+      createElement(AccountOtpPage, {
+        onBack: () => undefined,
+        onVerified: () => undefined,
+      }),
+    );
+
+    expect(markup).toContain("By verifying");
+    expect(markup).toContain("self-custodial wallet");
+    expect(markup).toContain("https://daimo.com/terms-of-use");
+    expect(markup).toContain("https://daimo.com/privacy");
   });
 });
 

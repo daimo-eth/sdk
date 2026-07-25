@@ -74,6 +74,8 @@ export const es: typeof en = {
   accountOtpSentViaDaimo: (destination: string) =>
     `Enviamos un código de verificación vía Daimo a ${destination}.`,
   accountCreatingWallet: "Preparando tu cuenta",
+  accountWalletConsent:
+    "Al verificar, autorizas a Daimo a crear una billetera de autocustodia para ti, enrutar depósitos automáticamente según su política de enrutamiento y aceptas:",
   accountEnrollment: "Configurar cuenta",
   accountEnrollmentRetry: "Reenviar documentos",
   accountEnrollmentPending: "Revisando tu información",
@@ -116,10 +118,7 @@ export const es: typeof en = {
   accountInteracConfirmBank: "Banco",
   accountInteracConfirmProcessingTime: "Tiempo de procesamiento",
   accountInteracConfirmOpenInterac: "Abrir Interac",
-  accountInteracWaitingInstructions: (
-    amount: string,
-    processingTime: string,
-  ) =>
+  accountInteracWaitingInstructions: (amount: string, processingTime: string) =>
     `Aprueba la solicitud de ${amount} de PayTrie AB Inc en tu banco. PayTrie es el socio canadiense de Interac para este depósito. Después de aprobarla, la transferencia puede tardar ${processingTime} en llegar. Esto es normal; mantén esta página abierta y continuará automáticamente.`,
   accountBankDetails: "Datos de transferencia",
   accountDirections: "Instrucciones",

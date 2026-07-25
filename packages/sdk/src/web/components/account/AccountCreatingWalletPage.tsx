@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import type { AccountRail } from "../../../common/account.js";
+import { prepareAccountSigner } from "../../accountSigner.js";
 import { t } from "../../hooks/locale.js";
 import { useAccountFlow } from "../../hooks/useAccountFlow.js";
 import { useDaimoClient } from "../../hooks/DaimoClientContext.js";
@@ -16,16 +18,18 @@ import {
 type AccountCreatingWalletPageProps = {
   sessionId: string;
   clientSecret: string;
+  rail: AccountRail;
   onDone: () => void;
 };
 
 /**
- * Auto-creates an embedded wallet via Privy, then creates an account.
+ * Ensures the canonical wallet and Account, then enrolls the configured signer.
  * Advances automatically — back button should skip this screen.
  */
 export function AccountCreatingWalletPage({
   sessionId,
   clientSecret,
+  rail,
   onDone,
 }: AccountCreatingWalletPageProps) {
   const account = useAccountFlow();
@@ -40,16 +44,35 @@ export function AccountCreatingWalletPage({
     setError(null);
     let stage: AccountSetupStage = "wallet_preparation";
     try {
-      const addr = await account.ensureWallet(client);
-      stage = "account_creation";
-      await account.createAccount(client, { sessionId, clientSecret }, addr);
+      const session = { sessionId, clientSecret };
+      await prepareAccountSigner({
+        authorizeSigner: true,
+        operations: {
+          embeddedWallets: account.embeddedWallets,
+          signerConfigured: account.signerConfig !== null,
+          getAccount: () => account.getAccount(client, session, { rail }),
+          ensureWallet: () => account.ensureWalletDetails(client),
+          createAccount: (walletAddress) => {
+            stage = "account_creation";
+            return account.createAccountResult(client, session, walletAddress);
+          },
+          authorizeWalletSigner: (wallet) =>
+            account.authorizeWalletSigner(client, wallet),
+          onEnrollmentUnavailable: (enrollment) => {
+            console.warn(
+              "[account-signer] automatic routing was not enabled:",
+              enrollment.error ?? enrollment.status,
+            );
+          },
+        },
+      });
       onDone();
     } catch (err) {
       setError(getAccountSetupFailure(stage, err));
     } finally {
       runningRef.current = false;
     }
-  }, [account, client, sessionId, clientSecret, onDone]);
+  }, [account, client, sessionId, clientSecret, rail, onDone]);
 
   useEffect(() => {
     if (!account || autoStartedRef.current) return;

@@ -295,6 +295,7 @@ export function DaimoModal(props: DaimoModalProps) {
     needsAccountProvider && accountAuth ? (
       <AccountFlowProvider
         privyAppId={accountAuth.privyAppId}
+        signerConfig={accountAuth.signerConfig}
         walletProvisioningClient={client}
       >
         {content}
@@ -878,6 +879,7 @@ function renderEntry(
         <AccountCreatingWalletPage
           sessionId={ctx.session.sessionId}
           clientSecret={ctx.session.clientSecret}
+          rail={entry.rail}
           onDone={() => ctx.onAccountAdvance("account-enrollment")}
         />
       );

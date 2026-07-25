@@ -12,10 +12,7 @@ type AccountOtpPageProps = {
   onVerified: () => void;
 };
 
-export function AccountOtpPage({
-  onBack,
-  onVerified,
-}: AccountOtpPageProps) {
+export function AccountOtpPage({ onBack, onVerified }: AccountOtpPageProps) {
   const account = useAccountFlow();
   const destination = account?.email ?? "";
 
@@ -38,10 +35,36 @@ export function AccountOtpPage({
       destination={destination}
       title={t.accountOtp}
       message={t.accountOtpSentViaDaimo(destination)}
+      consent={<AccountWalletConsent />}
       onBack={onBack}
       onVerified={onVerified}
       onVerify={handleVerify}
       onResend={handleResend}
     />
+  );
+}
+
+function AccountWalletConsent() {
+  return (
+    <p className="daimo-max-w-xs daimo-text-center daimo-text-xs daimo-leading-relaxed daimo-text-[var(--daimo-text-muted)]">
+      {t.accountWalletConsent}{" "}
+      <a
+        href="https://daimo.com/terms-of-use"
+        target="_blank"
+        rel="noreferrer"
+        className="daimo-underline daimo-underline-offset-2"
+      >
+        {t.accountTosTerms}
+      </a>
+      {" · "}
+      <a
+        href="https://daimo.com/privacy"
+        target="_blank"
+        rel="noreferrer"
+        className="daimo-underline daimo-underline-offset-2"
+      >
+        {t.accountTosPrivacy}
+      </a>
+    </p>
   );
 }
