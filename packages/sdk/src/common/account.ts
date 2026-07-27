@@ -634,6 +634,11 @@ export type CreateAccountResponse = {
   account: AccountInfo;
 };
 
+/** POST /v1/internal/account/wallet response. */
+export type EnsureAccountWalletResponse = {
+  walletAddress: Address;
+};
+
 /** GET /v1/internal/account/deposit/constraints response. */
 export type DepositConstraints = {
   currency: { code: string; symbol: string };

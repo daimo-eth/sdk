@@ -5,6 +5,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { getAddress } from "viem";
 
 import type {
   AccountEnrollmentUpdate,
@@ -14,11 +15,14 @@ import type {
 } from "../../common/account.js";
 import type { DaimoClient } from "../../client/createDaimoClient.js";
 
+const ACCOUNT_FLOW_READY_POLL_MS = 50;
+const ACCOUNT_FLOW_READY_TIMEOUT_MS = 15_000;
+
 /** Auth-provider hooks registered by AccountFlowProvider. */
 export type PrivyHooks = {
   sendCode: (email: string) => Promise<void>;
   loginWithCode: (code: string) => Promise<void>;
-  createWallet: () => Promise<{ address: string }>;
+  refreshUser: () => Promise<unknown>;
   getAccessToken: () => Promise<string | null>;
   signTypedData: (typedData: Record<string, unknown>) => Promise<string>;
   sendSponsoredTransaction: (transaction: {
@@ -32,8 +36,6 @@ export type PrivyHooks = {
   authenticated: boolean;
   email: string | null;
   walletAddress: string | null;
-  walletsReady: boolean;
-  hasEmbeddedWallet: boolean;
   phoneNumber: string | null;
 };
 
@@ -94,7 +96,7 @@ export type AccountFlowState = {
   verifyPhoneOtp: (code: string, client: DaimoClient) => Promise<boolean>;
   isCreatingWallet: boolean;
   walletAddress: string | null;
-  ensureWallet: () => Promise<string | null>;
+  ensureWallet: (client: DaimoClient) => Promise<string>;
 
   getAccessToken: () => Promise<string | null>;
   signTypedData: (typedData: Record<string, unknown>) => Promise<string>;
@@ -165,7 +167,7 @@ export function useAccountFlowState(): AccountFlowState {
     useState<DepositState | null>(null);
 
   const privyRef = useRef<PrivyHooks | null>(null);
-  const ensureWalletRef = useRef<Promise<string | null> | null>(null);
+  const ensureWalletRef = useRef<Promise<string> | null>(null);
 
   // PrivyConsumer calls registerPrivy on every Privy state change,
   // keeping our state in sync without polling.
@@ -188,25 +190,10 @@ export function useAccountFlowState(): AccountFlowState {
   }, []);
 
   const waitForReady = useCallback((): Promise<void> => {
-    if (privyRef.current?.ready) return Promise.resolve();
-    return new Promise((resolve) => {
-      const check = () => {
-        if (privyRef.current?.ready) resolve();
-        else setTimeout(check, 50);
-      };
-      check();
-    });
-  }, []);
-
-  const waitForWalletsReady = useCallback((): Promise<void> => {
-    if (privyRef.current?.walletsReady) return Promise.resolve();
-    return new Promise((resolve) => {
-      const check = () => {
-        if (privyRef.current?.walletsReady) resolve();
-        else setTimeout(check, 50);
-      };
-      check();
-    });
+    return waitForAccountFlowState(
+      () => privyRef.current?.ready === true,
+      "authentication initialization timed out",
+    );
   }, []);
 
   const getAccessToken = useCallback(async (): Promise<string | null> => {
@@ -324,37 +311,38 @@ export function useAccountFlowState(): AccountFlowState {
     [getAccessToken, phoneNumber, waitForReady],
   );
 
-  const ensureWallet = useCallback((): Promise<string | null> => {
+  const ensureWallet = useCallback((client: DaimoClient): Promise<string> => {
     if (ensureWalletRef.current) return ensureWalletRef.current;
 
-    const run = async (): Promise<string | null> => {
-      if (!privyRef.current) return null;
+    const run = async (): Promise<string> => {
+      if (!privyRef.current) throw new Error("privy not initialized");
       setIsCreatingWallet(true);
       await waitForReady();
-      await waitForWalletsReady();
-      if (privyRef.current.walletAddress) {
-        setWalletAddress(privyRef.current.walletAddress);
-        return privyRef.current.walletAddress;
-      }
-      if (privyRef.current.hasEmbeddedWallet) return null;
+      const token = await privyRef.current.getAccessToken();
+      if (!token) throw new Error("not authenticated");
 
-      const wallet = await privyRef.current.createWallet();
-      setWalletAddress(wallet.address);
-      return wallet.address;
+      const { walletAddress: ensuredAddress } =
+        await client.account.ensureWallet({ bearerToken: token });
+      await privyRef.current.refreshUser();
+      await waitForAccountFlowState(
+        () =>
+          accountWalletAddressesMatch(
+            privyRef.current?.walletAddress ?? null,
+            ensuredAddress,
+          ),
+        "wallet synchronization timed out",
+      );
+      setWalletAddress(ensuredAddress);
+      return ensuredAddress;
     };
 
-    ensureWalletRef.current = run()
-      .catch((err) => {
-        console.error("failed to ensure wallet:", err);
-        return null;
-      })
-      .finally(() => {
-        setIsCreatingWallet(false);
-        ensureWalletRef.current = null;
-      });
+    ensureWalletRef.current = run().finally(() => {
+      setIsCreatingWallet(false);
+      ensureWalletRef.current = null;
+    });
 
     return ensureWalletRef.current;
-  }, [waitForReady, waitForWalletsReady]);
+  }, [waitForReady]);
 
   const signTypedData = useCallback(
     async (typedData: Record<string, unknown>): Promise<string> => {
@@ -473,4 +461,39 @@ export function useAccountFlowState(): AccountFlowState {
 function privyAuthErrorMessage(err: unknown): string {
   if (err instanceof Error && err.message) return err.message;
   return "failed to verify code";
+}
+
+export function accountWalletAddressesMatch(
+  currentAddress: string | null,
+  ensuredAddress: string,
+): boolean {
+  return (
+    currentAddress != null &&
+    getAddress(currentAddress) === getAddress(ensuredAddress)
+  );
+}
+
+/** Wait for auth-provider state without allowing a broken client to hang forever. */
+export function waitForAccountFlowState(
+  isReady: () => boolean,
+  timeoutMessage: string,
+  timeoutMs = ACCOUNT_FLOW_READY_TIMEOUT_MS,
+): Promise<void> {
+  if (isReady()) return Promise.resolve();
+
+  return new Promise((resolve, reject) => {
+    const startedAt = Date.now();
+    const check = () => {
+      if (isReady()) {
+        resolve();
+        return;
+      }
+      if (Date.now() - startedAt >= timeoutMs) {
+        reject(new Error(timeoutMessage));
+        return;
+      }
+      setTimeout(check, Math.min(ACCOUNT_FLOW_READY_POLL_MS, timeoutMs));
+    };
+    check();
+  });
 }

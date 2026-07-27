@@ -2,6 +2,33 @@ import { describe, expect, test } from "vitest";
 
 import { createDaimoClient } from "./createDaimoClient.js";
 
+describe("account wallet provisioning", () => {
+  test("posts bearer auth to the idempotent wallet route", async () => {
+    let requestUrl = "";
+    let requestInit: RequestInit | undefined;
+    const walletAddress = "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045";
+    const client = createDaimoClient({
+      baseUrl: "https://api.example.test",
+      fetchImpl: async (input, init) => {
+        requestUrl = String(input);
+        requestInit = init;
+        return Response.json({ walletAddress });
+      },
+    });
+
+    await expect(
+      client.account.ensureWallet({ bearerToken: "privy-token" }),
+    ).resolves.toEqual({ walletAddress });
+    expect(requestUrl).toBe(
+      "https://api.example.test/v1/internal/account/wallet",
+    );
+    expect(requestInit?.method).toBe("POST");
+    expect(new Headers(requestInit?.headers).get("Authorization")).toBe(
+      "Bearer privy-token",
+    );
+  });
+});
+
 describe("prepareDeposit authorization compatibility", () => {
   test("normalizes a legacy flat response from an older server", async () => {
     let requestBody: unknown;
