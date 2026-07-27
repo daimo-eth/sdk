@@ -18,6 +18,11 @@ function extractMessage(value: unknown): string {
 
 type ErrorPageProps = {
   message: unknown;
+  /** Detailed error for telemetry when the user-facing message is generic. */
+  eventError?: unknown;
+  /** Machine-readable failure metadata for session telemetry. */
+  errorCode?: string;
+  errorStage?: string;
   /** Optional navigation back to the previous modal page */
   onBack?: () => void;
   /** Button text, defaults to "Reload" */
@@ -44,6 +49,9 @@ type ErrorPageProps = {
  */
 export function ErrorPage({
   message,
+  eventError,
+  errorCode,
+  errorStage,
   onBack,
   retryText = t.reload,
   onRetry,
@@ -56,19 +64,32 @@ export function ErrorPage({
   hideRetry = false,
 }: ErrorPageProps) {
   const displayMessage = extractMessage(message);
+  const eventDisplayMessage = extractMessage(eventError ?? message);
   const client = useDaimoClient();
   const logNavEvent = useMemo(() => createNavLogger(client), [client]);
 
   useEffect(() => {
-    console.error("[ErrorPage]", message);
+    console.error("[ErrorPage]", eventError ?? message);
     if (sessionId == null) return;
     logNavEvent(sessionId, clientSecret, {
       nodeId,
       nodeType,
       action: "error_shown",
-      error: displayMessage,
+      error: eventDisplayMessage,
+      ...(errorCode ? { errorCode } : {}),
+      ...(errorStage ? { errorStage } : {}),
     });
-  }, [message, sessionId, nodeId, nodeType, displayMessage, logNavEvent]);
+  }, [
+    message,
+    eventError,
+    errorCode,
+    errorStage,
+    sessionId,
+    nodeId,
+    nodeType,
+    eventDisplayMessage,
+    logNavEvent,
+  ]);
 
   const handleRetry = () => {
     if (onRetry) {

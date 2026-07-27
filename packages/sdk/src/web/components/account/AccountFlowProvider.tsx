@@ -9,10 +9,12 @@ import {
   useLoginWithEmail,
   usePrivy,
   useSendTransaction,
+  useUser,
   useWallets,
 } from "@privy-io/react-auth";
 import { type ReactNode, useCallback, useEffect, useMemo } from "react";
 
+import type { DaimoClient } from "../../../client/createDaimoClient.js";
 import {
   AccountFlowContext,
   useAccountFlowState,
@@ -20,7 +22,6 @@ import {
 import {
   findCanonicalPrivyWallet,
   getCanonicalPrivyWalletAddress,
-  hasPrivyEmbeddedWallet,
 } from "../../accountWallet.js";
 
 // EIP-6963 provider info for the announced embedded wallet: white Daimo
@@ -34,6 +35,8 @@ const EMBEDDED_WALLET_INFO = Object.freeze({
 
 type AccountFlowProviderProps = {
   privyAppId: string;
+  /** Client used to provision a wallet immediately after authentication. */
+  walletProvisioningClient?: DaimoClient;
   /**
    * Announce the logged-in embedded wallet via EIP-6963 while true, so a
    * DaimoModal on the same page can offer it as a connected wallet. Used by
@@ -46,6 +49,7 @@ type AccountFlowProviderProps = {
 
 export function AccountFlowProvider({
   privyAppId,
+  walletProvisioningClient,
   announceEmbeddedWallet = false,
   children,
 }: AccountFlowProviderProps) {
@@ -65,6 +69,7 @@ export function AccountFlowProvider({
         <PrivyConsumer
           accountFlow={accountFlow}
           announceEmbeddedWallet={announceEmbeddedWallet}
+          walletProvisioningClient={walletProvisioningClient}
         />
         {children}
       </PrivyProvider>
@@ -75,16 +80,18 @@ export function AccountFlowProvider({
 function PrivyConsumer({
   accountFlow,
   announceEmbeddedWallet,
+  walletProvisioningClient,
 }: {
   accountFlow: ReturnType<typeof useAccountFlowState>;
   announceEmbeddedWallet: boolean;
+  walletProvisioningClient?: DaimoClient;
 }) {
-  const { ready, authenticated, logout, getAccessToken, createWallet, user } =
-    usePrivy();
+  const { ready, authenticated, logout, getAccessToken, user } = usePrivy();
+  const { refreshUser } = useUser();
   const { sendCode: rawSendCode, loginWithCode: rawLoginWithCode } =
     useLoginWithEmail();
   const { sendTransaction: rawSendTransaction } = useSendTransaction();
-  const { wallets, ready: walletsReady } = useWallets();
+  const { wallets } = useWallets();
 
   const sendCode = useCallback(
     async (email: string) => {
@@ -107,10 +114,6 @@ function PrivyConsumer({
   });
   const email = user?.email?.address ?? null;
   const phoneNumber = user?.phone?.number ?? null;
-  const hasEmbeddedWallet = hasPrivyEmbeddedWallet([
-    ...(user?.linkedAccounts ?? []),
-    ...wallets,
-  ]);
   const signingWallet = findCanonicalPrivyWallet(wallets, walletAddress);
 
   const signTypedData = useCallback(
@@ -151,7 +154,7 @@ function PrivyConsumer({
     () => ({
       sendCode,
       loginWithCode,
-      createWallet,
+      refreshUser,
       getAccessToken,
       signTypedData,
       sendSponsoredTransaction,
@@ -160,8 +163,6 @@ function PrivyConsumer({
       authenticated,
       email,
       walletAddress,
-      walletsReady,
-      hasEmbeddedWallet,
       phoneNumber,
     }),
     [
@@ -169,12 +170,10 @@ function PrivyConsumer({
       authenticated,
       email,
       walletAddress,
-      walletsReady,
-      hasEmbeddedWallet,
       phoneNumber,
       sendCode,
       loginWithCode,
-      createWallet,
+      refreshUser,
       getAccessToken,
       signTypedData,
       sendSponsoredTransaction,
@@ -185,6 +184,29 @@ function PrivyConsumer({
   useEffect(() => {
     accountFlow.registerPrivy(hooks);
   }, [hooks, accountFlow.registerPrivy]);
+
+  useEffect(() => {
+    if (
+      !walletProvisioningClient ||
+      !ready ||
+      !authenticated ||
+      walletAddress
+    ) {
+      return;
+    }
+    void accountFlow.ensureWallet(walletProvisioningClient).catch((err) => {
+      accountFlow.setAuthError(
+        err instanceof Error ? err.message : "failed to prepare wallet",
+      );
+    });
+  }, [
+    accountFlow.ensureWallet,
+    accountFlow.setAuthError,
+    authenticated,
+    ready,
+    walletAddress,
+    walletProvisioningClient,
+  ]);
 
   // EIP-6963 announce: respond to requestProvider and announce once resolved,
   // for as long as the flag is on. Consumers (DaimoModal's useInjectedWallets)

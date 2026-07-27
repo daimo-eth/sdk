@@ -293,7 +293,10 @@ export function DaimoModal(props: DaimoModalProps) {
 
   const wrapped =
     needsAccountProvider && accountAuth ? (
-      <AccountFlowProvider privyAppId={accountAuth.privyAppId}>
+      <AccountFlowProvider
+        privyAppId={accountAuth.privyAppId}
+        walletProvisioningClient={client}
+      >
         {content}
       </AccountFlowProvider>
     ) : (

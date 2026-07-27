@@ -7,6 +7,12 @@ import { ErrorPage } from "../ErrorPage.js";
 import { Skeleton, SkeletonText } from "../Skeleton.js";
 import { CenteredContent, PageHeader } from "../shared.js";
 
+import {
+  getAccountSetupFailure,
+  type AccountSetupFailure,
+  type AccountSetupStage,
+} from "./accountSetupFailure.js";
+
 type AccountCreatingWalletPageProps = {
   sessionId: string;
   clientSecret: string;
@@ -24,33 +30,47 @@ export function AccountCreatingWalletPage({
 }: AccountCreatingWalletPageProps) {
   const account = useAccountFlow();
   const client = useDaimoClient();
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<AccountSetupFailure | null>(null);
+  const autoStartedRef = useRef(false);
   const runningRef = useRef(false);
 
   const run = useCallback(async () => {
     if (!account || runningRef.current) return;
     runningRef.current = true;
     setError(null);
+    let stage: AccountSetupStage = "wallet_preparation";
     try {
-      const addr = await account.ensureWallet();
-      if (!addr) throw new Error("failed to create wallet");
+      const addr = await account.ensureWallet(client);
+      stage = "account_creation";
       await account.createAccount(client, { sessionId, clientSecret }, addr);
       onDone();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "failed to set up account");
+      setError(getAccountSetupFailure(stage, err));
     } finally {
       runningRef.current = false;
     }
   }, [account, client, sessionId, clientSecret, onDone]);
 
   useEffect(() => {
-    run();
-  }, [run]);
+    if (!account || autoStartedRef.current) return;
+    autoStartedRef.current = true;
+    void run();
+  }, [account, run]);
 
   if (error) {
     return (
       <ErrorPage
         message={t.errorAccountSetup}
+        eventError={error.eventError}
+        errorCode={error.errorCode}
+        errorStage={error.stage}
+        sessionId={sessionId}
+        clientSecret={clientSecret}
+        supportInfo={{
+          stage: error.stage,
+          details: error.eventError,
+          ...(error.errorCode ? { providerErrorCode: error.errorCode } : {}),
+        }}
         retryText={t.tryAgain}
         onRetry={run}
       />

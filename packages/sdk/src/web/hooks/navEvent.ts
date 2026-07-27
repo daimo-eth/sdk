@@ -44,7 +44,12 @@ export type NavEventAction =
   | { action: "session_expired" }
   | { action: "session_completed" }
   | { action: "session_bounced" }
-  | { action: "error_shown"; error: string };
+  | {
+      action: "error_shown";
+      error: string;
+      errorCode?: string;
+      errorStage?: string;
+    };
 
 /** Full nav event payload */
 export type NavEvent = NavEventContext & NavEventAction;

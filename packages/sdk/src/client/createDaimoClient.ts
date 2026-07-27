@@ -13,6 +13,7 @@ import type {
   EnrollmentUpdateRequest,
   AccountEnrollmentUpdate,
   EnrollmentResponse,
+  EnsureAccountWalletResponse,
   GetAccountResponse,
   GetDepositResponse,
   RoutingSignDataResponse,
@@ -69,6 +70,8 @@ export type UpsertDepositRequest = {
 
 export type DaimoClient = {
   account: {
+    /** Ensure the authenticated user has one canonical embedded EVM wallet. */
+    ensureWallet(auth: BearerAuth): Promise<EnsureAccountWalletResponse>;
     /** Look up account state for the current authenticated user. */
     get(
       target: AccountRailTarget,
@@ -209,6 +212,13 @@ export function createDaimoClient(config: TransportConfig): DaimoClient {
 
   return {
     account: {
+      ensureWallet(auth) {
+        return transport.request<EnsureAccountWalletResponse>({
+          method: "POST",
+          path: "/v1/internal/account/wallet",
+          headers: authHeaders(auth),
+        });
+      },
       get(target, session, auth) {
         return transport.request<GetAccountResponse>({
           method: "GET",
