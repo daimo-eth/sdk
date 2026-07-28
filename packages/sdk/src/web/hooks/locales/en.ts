@@ -23,11 +23,15 @@ export const en = {
   mobileWallets: "Mobile Wallets",
   scanWithPhone: "Scan with your phone to open wallet",
 
-  // ExchangePage
+  // ExternalPaymentFlowPage
   continueTo: "Continue to",
   toCompleteYourDeposit: "to complete your deposit",
   open: "Open",
   refreshInvoice: "Refresh",
+  estimatedOutput: "Estimated output",
+  serviceFee: "Service fee",
+  networkFee: "Network fee",
+  partnerFee: "Partner fee",
 
   // SelectAmountPage
   selectAmount: "Select Amount",

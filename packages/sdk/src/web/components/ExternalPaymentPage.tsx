@@ -29,6 +29,7 @@ type ExternalPaymentPageProps = {
   popupName?: string;
   popupFeatures?: string;
   placeholderDensity?: QRDensity;
+  details?: { label: string; value: string }[];
   /** Called with the opened window (null when blocked by the browser). */
   onOpened?: (popup: Window | null) => void;
 };
@@ -50,6 +51,7 @@ export function ExternalPaymentPage({
   popupName,
   popupFeatures = DEFAULT_POPUP_FEATURES,
   placeholderDensity,
+  details,
   onOpened,
 }: ExternalPaymentPageProps) {
   const desktop = isDesktop(platform);
@@ -110,6 +112,23 @@ export function ExternalPaymentPage({
           <p className="daimo-text-[var(--daimo-text-secondary)] daimo-text-center daimo-max-w-xs daimo-text-sm daimo-whitespace-pre-line">
             {message}
           </p>
+        )}
+        {details != null && details.length > 0 && (
+          <dl className="daimo-w-full daimo-max-w-xs daimo-divide-y daimo-divide-[var(--daimo-border)] daimo-rounded-lg daimo-border daimo-border-[var(--daimo-border)] daimo-text-sm">
+            {details.map((detail) => (
+              <div
+                key={`${detail.label}:${detail.value}`}
+                className="daimo-flex daimo-items-center daimo-justify-between daimo-gap-3 daimo-px-3 daimo-py-2"
+              >
+                <dt className="daimo-text-[var(--daimo-text-secondary)]">
+                  {detail.label}
+                </dt>
+                <dd className="daimo-font-medium daimo-text-[var(--daimo-text)]">
+                  {detail.value}
+                </dd>
+              </div>
+            ))}
+          </dl>
         )}
         {!showQR && (
           <PrimaryButton

@@ -16,14 +16,14 @@ import type {
   NavLocationOption,
   RecreateSessionWithNavResponse,
 } from "../api/index.js";
+import { getNavSourceAmount } from "../api/navTree.js";
 import type {
+  NavExternalPaymentNode,
   NavNode,
-  NavNodeCashApp,
   NavNodeChooseOption,
   NavNodeConnectedWallet,
   NavNodeDeeplink,
   NavNodeDepositAddress,
-  NavNodeExchange,
   NavNodeStripe,
   NavNodeTronDeposit,
   SessionWithNav,
@@ -64,7 +64,7 @@ import { ChooseWalletPage } from "./ChooseWalletPage.js";
 import { ConfirmationPage } from "./ConfirmationPage.js";
 import { EmbeddedContainer, ModalContainer } from "./containers.js";
 import { DeeplinkPage } from "./DeeplinkPage.js";
-import { ExchangePage } from "./ExchangePage.js";
+import { ExternalPaymentFlowPage } from "./ExternalPaymentFlowPage.js";
 import { ExpiredPage } from "./ExpiredPage.js";
 import { AccountPaymentInstructionsPage } from "./account/AccountBankDetailsPage.js";
 import { AccountInstitutionPickerPage } from "./account/AccountBankPickerPage.js";
@@ -104,8 +104,6 @@ import { ModalChrome, type ModalChromeControls } from "./ModalChrome.js";
 import { QRCode } from "./QRCode.js";
 import { WaitingDepositAddressPage } from "./WaitingDepositAddressPage.js";
 import { WalletAmountPage } from "./WalletAmountPage.js";
-
-type ExchangeLikeNode = NavNodeExchange | NavNodeCashApp;
 
 export type DaimoModalLocalizationProps = {
   /** Override country used to localize auto payment-method sessions. */
@@ -818,8 +816,8 @@ function renderEntry(
       return renderWaitingDeposit(entry, ctx);
     case "waiting-tron":
       return renderWaitingTron(entry, ctx);
-    case "exchange-page":
-      return renderExchangePage(entry, ctx);
+    case "external-payment":
+      return renderExternalPayment(entry, ctx);
     case "stripe-onramp":
       return renderStripeOnramp(entry, ctx);
     case "wallet-choose-chain":
@@ -1101,8 +1099,8 @@ function renderSelectAmount(
     return (
       <SelectAmountPage
         node={depositNode}
-        minimumUsd={depositNode.minimumUsd}
-        maximumUsd={depositNode.maximumUsd}
+        minimum={depositNode.minimumUsd}
+        maximum={depositNode.maximumUsd}
         tokenSuffix={depositNode.tokenSuffix}
         chainId={depositNode.chainId}
         onBack={ctx.canGoBack ? ctx.onBack : undefined}
@@ -1116,8 +1114,8 @@ function renderSelectAmount(
     return (
       <SelectAmountPage
         node={{ icon: tronNode.icon, title: tronNode.title }}
-        minimumUsd={tronNode.minimumUsd}
-        maximumUsd={tronNode.maximumUsd}
+        minimum={tronNode.minimumUsd}
+        maximum={tronNode.maximumUsd}
         tokenSuffix="USDT"
         chainId={tron.chainId}
         onBack={ctx.canGoBack ? ctx.onBack : undefined}
@@ -1126,26 +1124,25 @@ function renderSelectAmount(
       />
     );
   }
-  if (entry.flowType === "exchange") {
-    const exchangeNode = node as NavNodeExchange;
+  if (
+    entry.flowType === "exchange" ||
+    entry.flowType === "cashapp" ||
+    entry.flowType === "hosted"
+  ) {
+    if (
+      node.type !== "Exchange" &&
+      node.type !== "CashApp" &&
+      node.type !== "HostedPayment"
+    ) {
+      return null;
+    }
+    const sourceAmount = getNavSourceAmount(node);
     return (
       <SelectAmountPage
-        node={{ icon: exchangeNode.icon, title: exchangeNode.title }}
-        minimumUsd={exchangeNode.minimumUsd}
-        maximumUsd={exchangeNode.maximumUsd}
-        onBack={ctx.canGoBack ? ctx.onBack : undefined}
-        onContinue={ctx.onAmountContinue}
-        baseUrl={ctx.session.baseUrl}
-      />
-    );
-  }
-  if (entry.flowType === "cashapp") {
-    const cashAppNode = node as NavNodeCashApp;
-    return (
-      <SelectAmountPage
-        node={{ icon: cashAppNode.icon, title: cashAppNode.title }}
-        minimumUsd={cashAppNode.minimumUsd}
-        maximumUsd={cashAppNode.maximumUsd}
+        node={{ icon: node.icon, title: node.title }}
+        minimum={sourceAmount.minimum}
+        maximum={sourceAmount.maximum}
+        currencySymbol={sourceAmount.currencySymbol}
         onBack={ctx.canGoBack ? ctx.onBack : undefined}
         onContinue={ctx.onAmountContinue}
         baseUrl={ctx.session.baseUrl}
@@ -1157,8 +1154,8 @@ function renderSelectAmount(
     return (
       <SelectAmountPage
         node={{ icon: stripeNode.icon, title: stripeNode.title }}
-        minimumUsd={stripeNode.minimumUsd}
-        maximumUsd={stripeNode.maximumUsd}
+        minimum={stripeNode.minimumUsd}
+        maximum={stripeNode.maximumUsd}
         onBack={ctx.canGoBack ? ctx.onBack : undefined}
         onContinue={ctx.onAmountContinue}
         baseUrl={ctx.session.baseUrl}
@@ -1344,15 +1341,22 @@ function TrustWalletTronLoading(): React.ReactNode {
   );
 }
 
-function renderExchangePage(
-  entry: NavEntry & { type: "exchange-page" },
+function renderExternalPayment(
+  entry: NavEntry & { type: "external-payment" },
   ctx: RenderContext,
 ): React.ReactNode {
   const node = findNode(
     entry.nodeId,
     ctx.session.navTree,
-  ) as ExchangeLikeNode | null;
-  if (!node) return null;
+  ) as NavExternalPaymentNode | null;
+  if (
+    node == null ||
+    (node.type !== "Exchange" &&
+      node.type !== "CashApp" &&
+      node.type !== "HostedPayment")
+  ) {
+    return null;
+  }
   if (entry.error)
     return (
       <FlowErrorMessage
@@ -1363,13 +1367,14 @@ function renderExchangePage(
       />
     );
   return (
-    <ExchangePage
+    <ExternalPaymentFlowPage
       node={node}
       platform={ctx.platform}
-      exchangeUrl={entry.exchangeUrl}
+      paymentUrl={entry.paymentUrl}
       waitingMessage={entry.waitingMessage}
       expiresAt={entry.expiresAt}
-      isLoading={!entry.exchangeUrl}
+      quote={entry.quote}
+      isLoading={!entry.paymentUrl}
       onBack={ctx.onBack}
       onRetry={ctx.onRetry}
       baseUrl={ctx.session.baseUrl}

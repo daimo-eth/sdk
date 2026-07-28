@@ -25,11 +25,15 @@ export const ko: typeof en = {
   mobileWallets: "모바일 지갑",
   scanWithPhone: "휴대폰으로 스캔하여 지갑 열기",
 
-  // ExchangePage
+  // ExternalPaymentFlowPage
   continueTo: "",
   toCompleteYourDeposit: "에서 입금을 완료하세요",
   open: "열기",
   refreshInvoice: "새로고침",
+  estimatedOutput: "예상 수령액",
+  serviceFee: "서비스 수수료",
+  networkFee: "네트워크 수수료",
+  partnerFee: "파트너 수수료",
 
   // SelectAmountPage
   selectAmount: "금액 선택",

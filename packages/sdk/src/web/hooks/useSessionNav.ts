@@ -11,17 +11,20 @@ import type {
   AccountDepositStatus,
   AccountRail,
 } from "../../common/account.js";
-import type { ExchangeId } from "../../common/api.js";
+import type {
+  CreatePaymentMethodRequest,
+  ExchangeId,
+} from "../../common/api.js";
 import type {
   AccountAuthConfig,
   DaimoCountryCode,
   RecreateSessionWithNavResponse,
 } from "../api/index.js";
+import { getNavSourceAmount } from "../api/navTree.js";
 import type {
+  NavExternalPaymentNode,
   NavNode,
-  NavNodeCashApp,
   NavNodeChooseOption,
-  NavNodeExchange,
   NavNodeFiat,
   NavNodeStripe,
   NavNodeTronDeposit,
@@ -54,7 +57,6 @@ import type { InjectedWallet } from "./useInjectedWallets.js";
 import { isUserRejection, type WalletFlowResult } from "./useWalletFlow.js";
 
 type NodeContext = { nodeId: string | null; nodeType: NavNodeType | null };
-type ExchangeNode = NavNodeExchange | NavNodeCashApp;
 
 type SessionNavResult = {
   stack: NavEntry[];
@@ -65,7 +67,7 @@ type SessionNavResult = {
   handleNavigate: (nodeId: string, options?: { autoNav?: boolean }) => void;
   handleBack: () => void;
   handleReset: () => void;
-  handleAmountContinue: (amountUsd: number) => void;
+  handleAmountContinue: (amount: number) => void;
   handleRetry: () => void;
   handleRefresh: () => Promise<void>;
   handleAccountSessionRecreate: (depositAmount: string) => Promise<void>;
@@ -86,8 +88,14 @@ type SessionNavResult = {
   handleAccountLogout: () => void;
 };
 
-function isExchangeNode(node: NavNode | null): node is ExchangeNode {
-  return node?.type === "Exchange" || node?.type === "CashApp";
+function isExternalPaymentNode(
+  node: NavNode | null,
+): node is NavExternalPaymentNode {
+  return (
+    node?.type === "Exchange" ||
+    node?.type === "CashApp" ||
+    node?.type === "HostedPayment"
+  );
 }
 
 function isStripeNode(node: NavNode | null): node is NavNodeStripe {
@@ -98,14 +106,34 @@ function isTrustTronNode(node: NavNode | null): node is NavNodeTronDeposit {
   return node?.type === "TronDeposit" && node.id === "Trust-Tron";
 }
 
-function getExchangeSelection(node: ExchangeNode): {
-  exchangeId: ExchangeId;
-  nodeType: "Exchange" | "CashApp";
-} {
-  if (node.type === "CashApp") {
-    return { exchangeId: "CashApp", nodeType: "CashApp" };
+function getExternalPaymentSelection(node: NavExternalPaymentNode):
+  | {
+      kind: "exchange";
+      exchangeId: ExchangeId;
+      nodeType: "Exchange" | "CashApp";
+    }
+  | {
+      kind: "hosted";
+      hostedPaymentMethodId: string;
+      countryCode: string;
+      nodeType: "HostedPayment";
+    } {
+  if (node.type === "HostedPayment") {
+    return {
+      kind: "hosted",
+      hostedPaymentMethodId: node.hostedPaymentMethodId,
+      countryCode: node.countryCode,
+      nodeType: "HostedPayment",
+    };
   }
-  return { exchangeId: node.exchangeId, nodeType: "Exchange" };
+  if (node.type === "CashApp") {
+    return { kind: "exchange", exchangeId: "CashApp", nodeType: "CashApp" };
+  }
+  return {
+    kind: "exchange",
+    exchangeId: node.exchangeId,
+    nodeType: "Exchange",
+  };
 }
 
 function replacePendingAccountEntry(
@@ -265,65 +293,91 @@ export function useSessionNav(
     ],
   );
 
-  const fetchExchangeUrl = useCallback(
-    async (
-      nodeId: string,
-      exchangeId: ExchangeId,
-      amountUsd: number,
-      nodeType: "Exchange" | "CashApp",
-    ) => {
+  const fetchExternalPayment = useCallback(
+    async (nodeId: string, node: NavExternalPaymentNode, amount: number) => {
+      const selection = getExternalPaymentSelection(node);
+      const sourceAmount = getNavSourceAmount(node);
+      const paymentMethod: CreatePaymentMethodRequest["paymentMethod"] =
+        selection.kind === "hosted"
+          ? {
+              type: "hosted",
+              hostedPaymentMethodId: selection.hostedPaymentMethodId,
+              countryCode: selection.countryCode,
+              sourceAmount: {
+                units: amount.toFixed(sourceAmount.decimals),
+                currency: sourceAmount.currency,
+              },
+              platform: effectivePlatform,
+            }
+          : {
+              type: "exchange",
+              exchangeId: selection.exchangeId,
+              amountUsd: amount,
+              platform: effectivePlatform,
+            };
       try {
         const result = await client.sessions.paymentMethods.create(
           session.sessionId,
           {
             clientSecret: session.clientSecret,
-            paymentMethod: {
-              type: "exchange",
-              exchangeId,
-              amountUsd,
-              platform: effectivePlatform,
-            },
+            paymentMethod,
           },
         );
-        if (!result.exchange) return;
+        const payment =
+          selection.kind === "hosted" ? result.hosted : result.exchange;
+        if (payment == null) {
+          throw new Error("external payment details not returned");
+        }
+        const paymentMethodId =
+          selection.kind === "hosted"
+            ? selection.hostedPaymentMethodId
+            : selection.exchangeId;
         logNavEvent(session.sessionId, session.clientSecret, {
           nodeId,
-          nodeType,
-          action: "flow_exchange_url",
-          exchangeId,
+          nodeType: selection.nodeType,
+          action: "flow_external_payment",
+          paymentMethodId,
           success: true,
-          url: result.exchange.url,
+          url: payment.url,
         });
         setStack((prev) => {
           const top = prev[prev.length - 1];
-          if (top?.type !== "exchange-page" || top.nodeId !== nodeId)
+          if (top?.type !== "external-payment" || top.nodeId !== nodeId)
             return prev;
           return [
             ...prev.slice(0, -1),
             {
               ...top,
-              exchangeUrl: result.exchange!.url,
-              waitingMessage: result.exchange!.waitingMessage,
-              expiresAt: result.exchange!.expiresAt,
+              paymentUrl: payment.url,
+              waitingMessage: payment.waitingMessage,
+              expiresAt: payment.expiresAt,
+              quote:
+                selection.kind === "hosted" ? result.hosted?.quote : undefined,
               error: undefined,
             },
           ];
         });
       } catch (error) {
-        console.error("failed to get exchange url:", error);
+        console.error("failed to create external payment:", error);
         const errorMsg =
-          error instanceof Error ? error.message : "failed to get exchange url";
+          error instanceof Error
+            ? error.message
+            : "failed to create external payment";
+        const paymentMethodId =
+          selection.kind === "hosted"
+            ? selection.hostedPaymentMethodId
+            : selection.exchangeId;
         logNavEvent(session.sessionId, session.clientSecret, {
           nodeId,
-          nodeType,
-          action: "flow_exchange_url",
-          exchangeId,
+          nodeType: selection.nodeType,
+          action: "flow_external_payment",
+          paymentMethodId,
           success: false,
           error: errorMsg,
         });
         setStack((prev) => {
           const top = prev[prev.length - 1];
-          if (top?.type !== "exchange-page" || top.nodeId !== nodeId)
+          if (top?.type !== "external-payment" || top.nodeId !== nodeId)
             return prev;
           return [...prev.slice(0, -1), { ...top, error: errorMsg }];
         });
@@ -712,15 +766,19 @@ export function useSessionNav(
         return;
       }
 
-      if (isExchangeNode(targetNode)) {
-        const { exchangeId, nodeType } = getExchangeSelection(targetNode);
-        const requiredUsd = targetNode.requiredUsd ?? 0;
-        if (requiredUsd > 0) {
+      if (isExternalPaymentNode(targetNode)) {
+        const required = getNavSourceAmount(targetNode).required ?? 0;
+        if (required > 0) {
           setStack((prev) => [
             ...prev,
-            { type: "exchange-page", nodeId, amountUsd: requiredUsd, autoNav },
+            {
+              type: "external-payment",
+              nodeId,
+              sourceAmount: required,
+              autoNav,
+            },
           ]);
-          fetchExchangeUrl(nodeId, exchangeId, requiredUsd, nodeType);
+          fetchExternalPayment(nodeId, targetNode, required);
           return;
         }
         setStack((prev) => [
@@ -728,7 +786,12 @@ export function useSessionNav(
           {
             type: "select-amount",
             nodeId,
-            flowType: targetNode.type === "CashApp" ? "cashapp" : "exchange",
+            flowType:
+              targetNode.type === "CashApp"
+                ? "cashapp"
+                : targetNode.type === "HostedPayment"
+                  ? "hosted"
+                  : "exchange",
             autoNav,
           },
         ]);
@@ -766,7 +829,7 @@ export function useSessionNav(
       session.sessionId,
       getNodeCtx,
       fetchTronAddress,
-      fetchExchangeUrl,
+      fetchExternalPayment,
       fetchStripeOnramp,
       handleAccountNavigate,
       enableFiatPopup,
@@ -813,9 +876,22 @@ export function useSessionNav(
   // ─── Flow handlers ──────────────────────────────────────────────────────
 
   const handleAmountContinue = useCallback(
-    (amountUsd: number) => {
+    (amount: number) => {
       if (!topEntry || topEntry.type !== "select-amount") return;
       const { nodeId, flowType } = topEntry;
+      const selectedNode = findNode(nodeId, session.navTree);
+      const amountContext =
+        (flowType === "exchange" ||
+          flowType === "cashapp" ||
+          flowType === "hosted") &&
+        isExternalPaymentNode(selectedNode)
+          ? {
+              sourceAmountUnits: amount.toFixed(
+                getNavSourceAmount(selectedNode).decimals,
+              ),
+              sourceCurrency: getNavSourceAmount(selectedNode).currency,
+            }
+          : { amountUsd: amount };
 
       logNavEvent(session.sessionId, session.clientSecret, {
         nodeId,
@@ -826,41 +902,44 @@ export function useSessionNav(
               ? "TronDeposit"
               : flowType === "cashapp"
                 ? "CashApp"
-                : flowType === "stripe"
-                  ? "Stripe"
-                  : "Exchange",
+                : flowType === "hosted"
+                  ? "HostedPayment"
+                  : flowType === "stripe"
+                    ? "Stripe"
+                    : "Exchange",
         action: "flow_amount_continue",
-        amountUsd,
+        ...amountContext,
       });
 
       if (flowType === "deposit") {
         setStack((prev) => [
           ...prev,
-          { type: "waiting-deposit", nodeId, amountUsd },
+          { type: "waiting-deposit", nodeId, amountUsd: amount },
         ]);
       } else if (flowType === "tron") {
         setStack((prev) => [
           ...prev,
-          { type: "waiting-tron", nodeId, amountUsd },
+          { type: "waiting-tron", nodeId, amountUsd: amount },
         ]);
-        fetchTronAddress(nodeId, amountUsd);
-      } else if (flowType === "exchange" || flowType === "cashapp") {
-        const node = findNode(nodeId, session.navTree);
-        if (!isExchangeNode(node)) return;
-        const { exchangeId, nodeType } = getExchangeSelection(node);
+        fetchTronAddress(nodeId, amount);
+      } else if (
+        flowType === "exchange" ||
+        flowType === "cashapp" ||
+        flowType === "hosted"
+      ) {
+        if (!isExternalPaymentNode(selectedNode)) return;
         setStack((prev) => [
           ...prev,
-          { type: "exchange-page", nodeId, amountUsd },
+          { type: "external-payment", nodeId, sourceAmount: amount },
         ]);
-        fetchExchangeUrl(nodeId, exchangeId, amountUsd, nodeType);
+        fetchExternalPayment(nodeId, selectedNode, amount);
       } else if (flowType === "stripe") {
-        const node = findNode(nodeId, session.navTree);
-        if (!isStripeNode(node)) return;
+        if (!isStripeNode(selectedNode)) return;
         setStack((prev) => [
           ...prev,
-          { type: "stripe-onramp", nodeId, amountUsd },
+          { type: "stripe-onramp", nodeId, amountUsd: amount },
         ]);
-        fetchStripeOnramp(nodeId, amountUsd);
+        fetchStripeOnramp(nodeId, amount);
       }
     },
     [
@@ -868,7 +947,7 @@ export function useSessionNav(
       session.sessionId,
       session.navTree,
       fetchTronAddress,
-      fetchExchangeUrl,
+      fetchExternalPayment,
       fetchStripeOnramp,
     ],
   );
@@ -940,29 +1019,23 @@ export function useSessionNav(
       return;
     }
 
-    if (topEntry.type === "exchange-page") {
+    if (topEntry.type === "external-payment") {
       const node = findNode(topEntry.nodeId, session.navTree);
-      if (!isExchangeNode(node)) return;
-      const { exchangeId, nodeType } = getExchangeSelection(node);
+      if (!isExternalPaymentNode(node)) return;
       setStack((prev) => {
         const top = prev[prev.length - 1];
-        if (top?.type !== "exchange-page") return prev;
+        if (top?.type !== "external-payment") return prev;
         return [
           ...prev.slice(0, -1),
           {
             ...top,
-            exchangeUrl: undefined,
+            paymentUrl: undefined,
             expiresAt: undefined,
             error: undefined,
           },
         ];
       });
-      fetchExchangeUrl(
-        topEntry.nodeId,
-        exchangeId,
-        topEntry.amountUsd,
-        nodeType,
-      );
+      fetchExternalPayment(topEntry.nodeId, node, topEntry.sourceAmount);
       return;
     }
 
@@ -987,7 +1060,7 @@ export function useSessionNav(
     topEntry,
     session.navTree,
     fetchTronAddress,
-    fetchExchangeUrl,
+    fetchExternalPayment,
     fetchStripeOnramp,
     doWalletSend,
   ]);

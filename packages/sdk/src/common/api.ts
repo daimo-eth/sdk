@@ -6,6 +6,10 @@ import { zAddress, zSolanaAddress } from "./primitives.js";
 import type { SessionPublicInfo } from "./session.js";
 
 const zPlatform = z.enum(["ios", "android", "other", "desktop", "mobile"]);
+const zPositiveDecimalUnits = z
+  .string()
+  .max(100)
+  .regex(/^(?:[1-9]\d*(?:\.\d+)?|0\.\d*[1-9]\d*)$/);
 
 export const zExchangeId = z.enum([
   "Coinbase",
@@ -39,6 +43,18 @@ export const zCreatePaymentMethodRequest = z.object({
       type: z.literal("exchange"),
       exchangeId: zExchangeId,
       amountUsd: z.number().positive(),
+      platform: zPlatform.optional(),
+    }),
+    z.object({
+      type: z.literal("hosted"),
+      /** Opaque method ID supplied by the backend navigation tree. */
+      hostedPaymentMethodId: z.string().min(1),
+      /** ISO-3166 alpha-2 country selected in the backend navigation tree. */
+      countryCode: z.string().regex(/^[A-Z]{2}$/),
+      sourceAmount: z.object({
+        units: zPositiveDecimalUnits,
+        currency: z.string().regex(/^[A-Z]{3}$/),
+      }),
       platform: zPlatform.optional(),
     }),
     z.object({
@@ -121,6 +137,17 @@ export type CreatePaymentMethodResponse = {
     /** Invoice expiry time (unix seconds). Present for Lightning invoices. */
     expiresAt?: number;
   };
+  /** Hosted-payment details, present for a generic external handoff. */
+  hosted?: {
+    /** URL where the user completes the hosted payment. */
+    url: string;
+    /** Message to display while waiting for the payment. */
+    waitingMessage: string;
+    /** Hosted link expiry time (unix seconds), when supplied by the backend. */
+    expiresAt?: number;
+    /** Provider-neutral estimate for quoted hosted payments. */
+    quote?: HostedPaymentQuote;
+  };
   /** Fiat payment details, present when payment method is fiat. */
   fiat?: {
     /** Hosted URL where the user completes KYC and the selected fiat flow. */
@@ -141,6 +168,18 @@ export type CreatePaymentMethodResponse = {
     /** Stripe-hosted onramp URL. */
     redirectUrl: string;
   };
+};
+
+export type HostedPaymentQuote = {
+  sourceAmountUnits: string;
+  sourceCurrency: string;
+  estimatedDestinationUnits: string;
+  destinationCurrency: string;
+  fees: {
+    kind: "service" | "network" | "partner";
+    amountUnits: string;
+    currency: string;
+  }[];
 };
 
 export type CheckSessionResponse = {

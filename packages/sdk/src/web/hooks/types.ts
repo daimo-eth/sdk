@@ -4,6 +4,7 @@ import type {
   AccountRail,
   DepositPaymentInteraction,
 } from "../../common/account.js";
+import type { HostedPaymentQuote } from "../../common/api.js";
 import type { NavNode, SessionWithNav } from "../api/navTree.js";
 import type { WalletPaymentOption } from "../api/walletTypes.js";
 
@@ -26,7 +27,13 @@ export type NavEntry =
   | {
       type: "select-amount";
       nodeId: string;
-      flowType: "deposit" | "tron" | "exchange" | "cashapp" | "stripe";
+      flowType:
+        | "deposit"
+        | "tron"
+        | "exchange"
+        | "cashapp"
+        | "hosted"
+        | "stripe";
       autoNav?: boolean;
     }
   | {
@@ -49,12 +56,13 @@ export type NavEntry =
       autoNav?: boolean;
     }
   | {
-      type: "exchange-page";
+      type: "external-payment";
       nodeId: string;
-      amountUsd: number;
-      exchangeUrl?: string;
+      sourceAmount: number;
+      paymentUrl?: string;
       waitingMessage?: string;
       expiresAt?: number;
+      quote?: HostedPaymentQuote;
       error?: string;
       autoNav?: boolean;
     }

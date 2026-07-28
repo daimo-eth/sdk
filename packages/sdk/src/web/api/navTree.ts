@@ -89,22 +89,98 @@ export type NavNodeDeeplink = NavNodeCommon & {
   pageIcon?: string;
 };
 
+export type NavSourceAmount = {
+  /** ISO 4217 source currency selected by the backend. */
+  currency: string;
+  /** Presentation symbol selected by the backend, for example "$" or "€". */
+  currencySymbol: string;
+  /** Decimal places submitted to the backend. */
+  decimals: number;
+  required?: number;
+  minimum: number;
+  maximum: number;
+};
+
+export type NavExternalHandoff = {
+  desktopBehavior: "popup" | "qr";
+  popupName?: string;
+  placeholderDensity?: "short" | "medium" | "long";
+};
+
 export type NavNodeExchange = NavNodeCommon & {
   type: "Exchange";
   exchangeId: ExchangeId;
   icon?: string;
+  /** Backend-owned amount and currency policy. Optional for old servers. */
+  sourceAmount?: NavSourceAmount;
+  /** Backend-owned external handoff presentation. Optional for old servers. */
+  externalHandoff?: NavExternalHandoff;
+  /** @deprecated Use sourceAmount.required. */
   requiredUsd?: number;
+  /** @deprecated Use sourceAmount.minimum. */
   minimumUsd: number;
+  /** @deprecated Use sourceAmount.maximum. */
   maximumUsd: number;
 };
 
 export type NavNodeCashApp = NavNodeCommon & {
   type: "CashApp";
   icon?: string;
+  /** Backend-owned amount and currency policy. Optional for old servers. */
+  sourceAmount?: NavSourceAmount;
+  /** Backend-owned external handoff presentation. Optional for old servers. */
+  externalHandoff?: NavExternalHandoff;
   requiredUsd?: number;
   minimumUsd: number;
   maximumUsd: number;
 };
+
+/**
+ * Generic hosted redirect. The SDK renders the interaction without knowing
+ * which provider owns the method ID.
+ */
+export type NavNodeHostedPayment = NavNodeCommon & {
+  type: "HostedPayment";
+  hostedPaymentMethodId: string;
+  /** ISO-3166 alpha-2 country to echo when initiating this hosted payment. */
+  countryCode: string;
+  icon?: string;
+  sourceAmount: NavSourceAmount;
+  externalHandoff: NavExternalHandoff;
+};
+
+export type NavExternalPaymentNode =
+  | NavNodeExchange
+  | NavNodeCashApp
+  | NavNodeHostedPayment;
+
+/** Compatibility fallback for nav trees produced by pre-sourceAmount servers. */
+export function getNavSourceAmount(
+  node: NavExternalPaymentNode,
+): NavSourceAmount {
+  if (node.type === "HostedPayment") return node.sourceAmount;
+  if (node.sourceAmount != null) return node.sourceAmount;
+  return {
+    currency: "USD",
+    currencySymbol: "$",
+    decimals: 2,
+    required: node.requiredUsd,
+    minimum: node.minimumUsd,
+    maximum: node.maximumUsd,
+  };
+}
+
+/** Compatibility fallback for nav trees produced by pre-handoff servers. */
+export function getNavExternalHandoff(
+  node: NavExternalPaymentNode,
+): NavExternalHandoff {
+  if (node.type === "HostedPayment") return node.externalHandoff;
+  if (node.externalHandoff != null) return node.externalHandoff;
+  return {
+    desktopBehavior: "qr",
+    placeholderDensity: "short",
+  };
+}
 
 export type NavNodeStripe = NavNodeCommon & {
   type: "Stripe";
@@ -144,6 +220,7 @@ export type NavNode =
   | NavNodeDeeplink
   | NavNodeExchange
   | NavNodeCashApp
+  | NavNodeHostedPayment
   | NavNodeStripe
   | NavNodeTronDeposit
   | NavNodeConnectedWallet

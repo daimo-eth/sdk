@@ -10,6 +10,9 @@ export type {
   NavNodeDeeplink,
   NavNodeDepositAddress,
   NavNodeExchange,
+  NavExternalPaymentNode,
+  NavExternalHandoff,
+  NavNodeHostedPayment,
   NavNodeFiat,
   NavNodeKycRequirement,
   NavNodeKycRequirementDisplayItem,
@@ -17,6 +20,7 @@ export type {
   NavNodeKycRequirementItem,
   NavNodeKycRequirementKind,
   NavNodeTronDeposit,
+  NavSourceAmount,
   SessionNavInfo,
   SessionWithNav,
 } from "./navTree.js";

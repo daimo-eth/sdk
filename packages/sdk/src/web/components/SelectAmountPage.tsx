@@ -14,15 +14,17 @@ import {
 
 type SelectAmountPageProps = {
   node: NavNodeDepositAddress | { icon?: string; title: string };
-  minimumUsd: number;
-  maximumUsd: number;
+  minimum: number;
+  maximum: number;
+  /** Fiat currency symbol shown before the amount. Defaults to USD. */
+  currencySymbol?: string;
   /** Token suffix for display (e.g., "USDC", "USDT") */
   tokenSuffix?: string;
   /** Chain ID for token badge display */
   chainId?: number;
   /** Optional back handler. If undefined, back button is hidden. */
   onBack?: () => void;
-  onContinue: (amountUsd: number) => void;
+  onContinue: (amount: number) => void;
   isLoading?: boolean;
   error?: string | null;
   baseUrl: string;
@@ -30,8 +32,9 @@ type SelectAmountPageProps = {
 
 export function SelectAmountPage({
   node,
-  minimumUsd,
-  maximumUsd,
+  minimum,
+  maximum,
+  currencySymbol,
   tokenSuffix,
   chainId,
   onBack,
@@ -40,11 +43,7 @@ export function SelectAmountPage({
   error,
   baseUrl,
 }: SelectAmountPageProps) {
-  const {
-    amount: amountUsd,
-    isValid,
-    handleChange,
-  } = useAmountInput(minimumUsd, maximumUsd);
+  const { amount, isValid, handleChange } = useAmountInput(minimum, maximum);
 
   // Create pseudo-token for display if tokenSuffix is USDC or USDT and chainId is provided
   const selectedToken =
@@ -95,8 +94,9 @@ export function SelectAmountPage({
         {/* Amount input */}
         <div className="daimo-mb-6">
           <AmountInput
-            minimum={minimumUsd}
-            maximum={maximumUsd}
+            minimum={minimum}
+            maximum={maximum}
+            currencySymbol={currencySymbol}
             onSubmit={onContinue}
             onChange={handleChange}
           />
@@ -110,7 +110,7 @@ export function SelectAmountPage({
         )}
 
         <PrimaryButton
-          onClick={() => isValid && !isLoading && onContinue(amountUsd)}
+          onClick={() => isValid && !isLoading && onContinue(amount)}
           disabled={!isValid || isLoading}
           className="daimo-max-w-none"
         >

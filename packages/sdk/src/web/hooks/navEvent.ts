@@ -17,11 +17,16 @@ export type NavEventAction =
   | { action: "nav_select"; targetNodeId: string; targetNodeType: NavNodeType }
   | { action: "nav_back" }
   | { action: "nav_deeplink"; url: string }
-  | { action: "flow_amount_continue"; amountUsd: number }
+  | ({
+      action: "flow_amount_continue";
+    } & (
+      | { amountUsd: number }
+      | { sourceAmountUnits: string; sourceCurrency: string }
+    ))
   | { action: "flow_refresh" }
   | {
-      action: "flow_exchange_url";
-      exchangeId: string;
+      action: "flow_external_payment";
+      paymentMethodId: string;
       success: boolean;
       url?: string;
       error?: string;

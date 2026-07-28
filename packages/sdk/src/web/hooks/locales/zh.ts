@@ -25,11 +25,15 @@ export const zh: typeof en = {
   mobileWallets: "移动钱包",
   scanWithPhone: "用手机扫码打开钱包",
 
-  // ExchangePage
+  // ExternalPaymentFlowPage
   continueTo: "前往",
   toCompleteYourDeposit: "以完成充值",
   open: "打开",
   refreshInvoice: "刷新",
+  estimatedOutput: "预计到账金额",
+  serviceFee: "服务费",
+  networkFee: "网络费",
+  partnerFee: "合作伙伴费用",
 
   // SelectAmountPage
   selectAmount: "选择金额",
