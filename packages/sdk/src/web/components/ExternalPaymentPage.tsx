@@ -15,6 +15,12 @@ import {
 type QRDensity = "short" | "medium" | "long";
 type DesktopBehavior = "popup" | "qr";
 
+type ExternalPaymentDetail = {
+  id: string;
+  label: string;
+  value: string;
+};
+
 type ExternalPaymentPageProps = {
   title: string;
   platform: DaimoPlatform;
@@ -29,7 +35,7 @@ type ExternalPaymentPageProps = {
   popupName?: string;
   popupFeatures?: string;
   placeholderDensity?: QRDensity;
-  details?: { label: string; value: string }[];
+  details?: ExternalPaymentDetail[];
   /** Called with the opened window (null when blocked by the browser). */
   onOpened?: (popup: Window | null) => void;
 };
@@ -117,7 +123,7 @@ export function ExternalPaymentPage({
           <dl className="daimo-w-full daimo-max-w-xs daimo-divide-y daimo-divide-[var(--daimo-border)] daimo-rounded-lg daimo-border daimo-border-[var(--daimo-border)] daimo-text-sm">
             {details.map((detail) => (
               <div
-                key={`${detail.label}:${detail.value}`}
+                key={detail.id}
                 className="daimo-flex daimo-items-center daimo-justify-between daimo-gap-3 daimo-px-3 daimo-py-2"
               >
                 <dt className="daimo-text-[var(--daimo-text-secondary)]">

@@ -56,10 +56,12 @@ export function ExternalPaymentFlowPage({
           ? undefined
           : [
               {
+                id: "estimated-output",
                 label: t.estimatedOutput,
                 value: `${quote.estimatedDestinationUnits} ${quote.destinationCurrency}`,
               },
-              ...quote.fees.map((fee) => ({
+              ...quote.fees.map((fee, index) => ({
+                id: `fee-${fee.kind}-${index}`,
                 label:
                   fee.kind === "service"
                     ? t.serviceFee
