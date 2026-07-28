@@ -128,7 +128,10 @@ export type CreatePaymentMethodResponse = {
     /** Base64-encoded Solana transaction for the user to sign. */
     serializedTx: string;
   };
-  /** Exchange-specific payment details, present when payment method is Exchange. */
+  /**
+   * @deprecated Use externalPayment. Retained for compatibility with servers
+   * and clients that predate the provider-neutral external payment contract.
+   */
   exchange?: {
     /** Deeplink URL for the exchange. */
     url: string;
@@ -137,17 +140,8 @@ export type CreatePaymentMethodResponse = {
     /** Invoice expiry time (unix seconds). Present for Lightning invoices. */
     expiresAt?: number;
   };
-  /** Hosted-payment details, present for a generic external handoff. */
-  hosted?: {
-    /** URL where the user completes the hosted payment. */
-    url: string;
-    /** Message to display while waiting for the payment. */
-    waitingMessage: string;
-    /** Hosted link expiry time (unix seconds), when supplied by the backend. */
-    expiresAt?: number;
-    /** Provider-neutral estimate for quoted hosted payments. */
-    quote?: HostedPaymentQuote;
-  };
+  /** Provider-neutral details for any external payment handoff. */
+  externalPayment?: ExternalPayment;
   /** Fiat payment details, present when payment method is fiat. */
   fiat?: {
     /** Hosted URL where the user completes KYC and the selected fiat flow. */
@@ -170,7 +164,18 @@ export type CreatePaymentMethodResponse = {
   };
 };
 
-export type HostedPaymentQuote = {
+export type ExternalPayment = {
+  /** URL where the user completes the external payment. */
+  url: string;
+  /** Message to display while waiting for the payment. */
+  waitingMessage: string;
+  /** Link expiry time (unix seconds), when supplied by the backend. */
+  expiresAt?: number;
+  /** Optional estimate for quoted external payments. */
+  quote?: ExternalPaymentQuote;
+};
+
+export type ExternalPaymentQuote = {
   sourceAmountUnits: string;
   sourceCurrency: string;
   estimatedDestinationUnits: string;

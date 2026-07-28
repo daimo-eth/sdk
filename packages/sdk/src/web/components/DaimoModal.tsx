@@ -1142,6 +1142,7 @@ function renderSelectAmount(
         node={{ icon: node.icon, title: node.title }}
         minimum={sourceAmount.minimum}
         maximum={sourceAmount.maximum}
+        decimals={sourceAmount.decimals}
         currencySymbol={sourceAmount.currencySymbol}
         onBack={ctx.canGoBack ? ctx.onBack : undefined}
         onContinue={ctx.onAmountContinue}

@@ -4,7 +4,7 @@ import type {
   AccountRail,
   DepositPaymentInteraction,
 } from "../../common/account.js";
-import type { HostedPaymentQuote } from "../../common/api.js";
+import type { ExternalPaymentQuote } from "../../common/api.js";
 import type { NavNode, SessionWithNav } from "../api/navTree.js";
 import type { WalletPaymentOption } from "../api/walletTypes.js";
 
@@ -62,7 +62,7 @@ export type NavEntry =
       paymentUrl?: string;
       waitingMessage?: string;
       expiresAt?: number;
-      quote?: HostedPaymentQuote;
+      quote?: ExternalPaymentQuote;
       error?: string;
       autoNav?: boolean;
     }

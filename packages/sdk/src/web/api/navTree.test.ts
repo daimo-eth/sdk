@@ -1,6 +1,7 @@
 import { describe, expect, test } from "vitest";
 
 import {
+  formatNavSourceAmountUnits,
   getNavExternalHandoff,
   getNavSourceAmount,
   type NavNodeExchange,
@@ -30,6 +31,19 @@ describe("external payment nav policy", () => {
 
     expect(getNavSourceAmount(node)).toEqual(node.sourceAmount);
     expect(getNavExternalHandoff(node)).toEqual(node.externalHandoff);
+    expect(formatNavSourceAmountUnits(125, node.sourceAmount)).toBe("125");
+  });
+
+  test("rejects invalid backend amount precision", () => {
+    expect(() =>
+      formatNavSourceAmountUnits(10, {
+        currency: "EUR",
+        currencySymbol: "€",
+        decimals: 21,
+        minimum: 1,
+        maximum: 100,
+      }),
+    ).toThrow("invalid external payment amount");
   });
 
   test("falls back to legacy USD nav fields without provider checks", () => {

@@ -16,6 +16,8 @@ type SelectAmountPageProps = {
   node: NavNodeDepositAddress | { icon?: string; title: string };
   minimum: number;
   maximum: number;
+  /** Maximum source-currency decimal places. Defaults to 2. */
+  decimals?: number;
   /** Fiat currency symbol shown before the amount. Defaults to USD. */
   currencySymbol?: string;
   /** Token suffix for display (e.g., "USDC", "USDT") */
@@ -34,6 +36,7 @@ export function SelectAmountPage({
   node,
   minimum,
   maximum,
+  decimals,
   currencySymbol,
   tokenSuffix,
   chainId,
@@ -96,6 +99,7 @@ export function SelectAmountPage({
           <AmountInput
             minimum={minimum}
             maximum={maximum}
+            decimals={decimals}
             currencySymbol={currencySymbol}
             onSubmit={onContinue}
             onChange={handleChange}

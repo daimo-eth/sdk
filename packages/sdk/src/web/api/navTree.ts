@@ -182,6 +182,22 @@ export function getNavExternalHandoff(
   };
 }
 
+/** Format an amount exactly as required by the backend-owned source policy. */
+export function formatNavSourceAmountUnits(
+  amount: number,
+  sourceAmount: NavSourceAmount,
+): string {
+  if (
+    !Number.isFinite(amount) ||
+    !Number.isInteger(sourceAmount.decimals) ||
+    sourceAmount.decimals < 0 ||
+    sourceAmount.decimals > 20
+  ) {
+    throw new Error("invalid external payment amount");
+  }
+  return amount.toFixed(sourceAmount.decimals);
+}
+
 export type NavNodeStripe = NavNodeCommon & {
   type: "Stripe";
   icon?: string;

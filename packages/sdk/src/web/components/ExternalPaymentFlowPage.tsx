@@ -1,4 +1,4 @@
-import type { HostedPaymentQuote } from "../../common/api.js";
+import type { ExternalPaymentQuote } from "../../common/api.js";
 import { getNavExternalHandoff } from "../api/navTree.js";
 import type { NavExternalPaymentNode } from "../api/navTree.js";
 
@@ -12,7 +12,7 @@ type ExternalPaymentFlowPageProps = {
   paymentUrl?: string;
   waitingMessage?: string;
   expiresAt?: number;
-  quote?: HostedPaymentQuote;
+  quote?: ExternalPaymentQuote;
   isLoading?: boolean;
   onBack: () => void;
   onRetry?: () => void;

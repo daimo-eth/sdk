@@ -20,7 +20,10 @@ import type {
   DaimoCountryCode,
   RecreateSessionWithNavResponse,
 } from "../api/index.js";
-import { getNavSourceAmount } from "../api/navTree.js";
+import {
+  formatNavSourceAmountUnits,
+  getNavSourceAmount,
+} from "../api/navTree.js";
 import type {
   NavExternalPaymentNode,
   NavNode,
@@ -297,6 +300,10 @@ export function useSessionNav(
     async (nodeId: string, node: NavExternalPaymentNode, amount: number) => {
       const selection = getExternalPaymentSelection(node);
       const sourceAmount = getNavSourceAmount(node);
+      const sourceAmountUnits = formatNavSourceAmountUnits(
+        amount,
+        sourceAmount,
+      );
       const paymentMethod: CreatePaymentMethodRequest["paymentMethod"] =
         selection.kind === "hosted"
           ? {
@@ -304,7 +311,7 @@ export function useSessionNav(
               hostedPaymentMethodId: selection.hostedPaymentMethodId,
               countryCode: selection.countryCode,
               sourceAmount: {
-                units: amount.toFixed(sourceAmount.decimals),
+                units: sourceAmountUnits,
                 currency: sourceAmount.currency,
               },
               platform: effectivePlatform,
@@ -323,8 +330,7 @@ export function useSessionNav(
             paymentMethod,
           },
         );
-        const payment =
-          selection.kind === "hosted" ? result.hosted : result.exchange;
+        const payment = result.externalPayment ?? result.exchange;
         if (payment == null) {
           throw new Error("external payment details not returned");
         }
@@ -351,8 +357,7 @@ export function useSessionNav(
               paymentUrl: payment.url,
               waitingMessage: payment.waitingMessage,
               expiresAt: payment.expiresAt,
-              quote:
-                selection.kind === "hosted" ? result.hosted?.quote : undefined,
+              quote: result.externalPayment?.quote,
               error: undefined,
             },
           ];
@@ -880,16 +885,20 @@ export function useSessionNav(
       if (!topEntry || topEntry.type !== "select-amount") return;
       const { nodeId, flowType } = topEntry;
       const selectedNode = findNode(nodeId, session.navTree);
+      const selectedSourceAmount = isExternalPaymentNode(selectedNode)
+        ? getNavSourceAmount(selectedNode)
+        : null;
       const amountContext =
         (flowType === "exchange" ||
           flowType === "cashapp" ||
           flowType === "hosted") &&
-        isExternalPaymentNode(selectedNode)
+        selectedSourceAmount != null
           ? {
-              sourceAmountUnits: amount.toFixed(
-                getNavSourceAmount(selectedNode).decimals,
+              sourceAmountUnits: formatNavSourceAmountUnits(
+                amount,
+                selectedSourceAmount,
               ),
-              sourceCurrency: getNavSourceAmount(selectedNode).currency,
+              sourceCurrency: selectedSourceAmount.currency,
             }
           : { amountUsd: amount };
 
