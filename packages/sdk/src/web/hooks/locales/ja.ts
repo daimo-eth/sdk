@@ -104,6 +104,8 @@ export const ja: typeof en = {
   accountOtpSentViaDaimo: (destination: string) =>
     `Daimo経由で${destination}に確認コードを送信しました。`,
   accountCreatingWallet: "アカウントを準備中",
+  accountWalletConsent:
+    "確認することで、Daimoがお客様のセルフカストディウォレットを作成し、ルーティングポリシーに基づいて入金を自動ルーティングすることを承認し、以下に同意します：",
   accountEnrollment: "アカウント設定",
   accountEnrollmentRetry: "書類を再提出",
   accountEnrollmentPending: "情報を確認中",
@@ -147,10 +149,7 @@ export const ja: typeof en = {
   accountInteracConfirmBank: "銀行",
   accountInteracConfirmProcessingTime: "処理時間",
   accountInteracConfirmOpenInterac: "Interacを開く",
-  accountInteracWaitingInstructions: (
-    amount: string,
-    processingTime: string,
-  ) =>
+  accountInteracWaitingInstructions: (amount: string, processingTime: string) =>
     `銀行でPayTrie AB Incからの${amount}のリクエストを承認してください。PayTrieはこの入金のカナダ向けInterac決済パートナーです。承認後、送金が届くまで${processingTime}かかることがあります。これは通常の動作です。このページを開いたままにすると、自動的に続行します。`,
   accountBankDetails: "振込詳細",
   accountDirections: "手順",

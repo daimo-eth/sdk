@@ -612,6 +612,27 @@ export interface AccountInfo {
   walletAddress: Address;
 }
 
+export type PrivySignerStatus = "pending" | "active" | "revoked" | "error";
+
+/** Exact Privy embedded wallet selected for signer enrollment. */
+export type PrivyWalletIdentity = {
+  walletId: string;
+  walletAddress: Address;
+};
+
+/** Server-observed signer enrollment for one exact Privy wallet. */
+export type PrivySignerEnrollment = PrivyWalletIdentity & {
+  status: PrivySignerStatus;
+  signerVersion: number | null;
+  lastVerifiedAt: string | null;
+};
+
+/** Public IDs of the pre-created signer resources attached by the client. */
+export type PrivySignerConfig = {
+  quorumId: string;
+  policyId: string;
+};
+
 /** GET /v1/internal/account response. */
 export type GetAccountResponse =
   | {
@@ -636,6 +657,8 @@ export type CreateAccountResponse = {
 
 /** POST /v1/internal/account/wallet response. */
 export type EnsureAccountWalletResponse = {
+  /** Present on signer-aware servers; absent on legacy deployments. */
+  walletId?: string;
   walletAddress: Address;
 };
 
