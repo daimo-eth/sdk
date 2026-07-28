@@ -103,8 +103,7 @@ export const zh: typeof en = {
   accountOtpSentViaDaimo: (destination: string) =>
     `我们已通过 Daimo 向 ${destination} 发送验证码。`,
   accountCreatingWallet: "正在准备您的账户",
-  accountWalletConsent:
-    "验证即表示您授权 Daimo 为您创建自托管钱包、根据路由策略自动路由入金，并同意：",
+  accountWalletConsent: "验证即表示您同意：",
   accountEnrollment: "账户设置",
   accountEnrollmentRetry: "重新提交文件",
   accountEnrollmentPending: "正在审核您的信息",

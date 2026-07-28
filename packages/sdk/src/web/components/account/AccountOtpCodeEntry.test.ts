@@ -28,7 +28,7 @@ describe("OTP input semantics", () => {
     expect(markup).not.toContain("focus-within:daimo-ring-2");
   });
 
-  test("shows wallet and routing consent on Account verification", () => {
+  test("shows only terms and privacy consent on Account verification", () => {
     const markup = renderToStaticMarkup(
       createElement(AccountOtpPage, {
         onBack: () => undefined,
@@ -36,10 +36,13 @@ describe("OTP input semantics", () => {
       }),
     );
 
-    expect(markup).toContain("By verifying");
-    expect(markup).toContain("self-custodial wallet");
+    expect(markup).toContain("By verifying, you agree to the");
+    expect(markup).toContain("Terms and Conditions");
     expect(markup).toContain("https://daimo.com/terms-of-use");
+    expect(markup).toContain("Privacy Policy");
     expect(markup).toContain("https://daimo.com/privacy");
+    expect(markup).not.toContain("self-custodial wallet");
+    expect(markup).not.toContain("routing policy");
   });
 });
 

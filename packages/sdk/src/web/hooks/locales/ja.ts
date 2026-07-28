@@ -104,8 +104,7 @@ export const ja: typeof en = {
   accountOtpSentViaDaimo: (destination: string) =>
     `Daimo経由で${destination}に確認コードを送信しました。`,
   accountCreatingWallet: "アカウントを準備中",
-  accountWalletConsent:
-    "確認することで、Daimoがお客様のセルフカストディウォレットを作成し、ルーティングポリシーに基づいて入金を自動ルーティングすることを承認し、以下に同意します：",
+  accountWalletConsent: "確認することで、以下に同意します：",
   accountEnrollment: "アカウント設定",
   accountEnrollmentRetry: "書類を再提出",
   accountEnrollmentPending: "情報を確認中",
