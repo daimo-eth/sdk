@@ -102,8 +102,7 @@ export const en = {
   accountOtpSentViaDaimo: (destination: string) =>
     `We sent a verification code via Daimo to ${destination}.`,
   accountCreatingWallet: "Preparing your account",
-  accountWalletConsent:
-    "By verifying, you authorize Daimo to create a self-custodial wallet for you, automatically route deposits under its routing policy, and agree to:",
+  accountWalletConsent: "By verifying, you agree to the",
   accountEnrollment: "Account setup",
   accountEnrollmentRetry: "Resubmit documents",
   accountEnrollmentPending: "Reviewing your information",
@@ -163,7 +162,7 @@ export const en = {
   accountTosTitle: "Terms of Service",
   accountTosDesc:
     "To continue, please agree to the terms of service and privacy policy.",
-  accountTosTerms: "Terms of Service",
+  accountTosTerms: "Terms and Conditions",
   accountTosPrivacy: "Privacy Policy",
   accountTosCta: "Continue",
   accountKycIntroTitle: "Verify your identity",

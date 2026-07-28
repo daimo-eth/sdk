@@ -74,8 +74,7 @@ export const es: typeof en = {
   accountOtpSentViaDaimo: (destination: string) =>
     `Enviamos un código de verificación vía Daimo a ${destination}.`,
   accountCreatingWallet: "Preparando tu cuenta",
-  accountWalletConsent:
-    "Al verificar, autorizas a Daimo a crear una billetera de autocustodia para ti, enrutar depósitos automáticamente según su política de enrutamiento y aceptas:",
+  accountWalletConsent: "Al verificar, aceptas los",
   accountEnrollment: "Configurar cuenta",
   accountEnrollmentRetry: "Reenviar documentos",
   accountEnrollmentPending: "Revisando tu información",
@@ -135,7 +134,7 @@ export const es: typeof en = {
   accountTosTitle: "Términos de servicio",
   accountTosDesc:
     "Para continuar, acepta los términos de servicio y la política de privacidad.",
-  accountTosTerms: "Términos de servicio",
+  accountTosTerms: "Términos y condiciones",
   accountTosPrivacy: "Política de privacidad",
   accountTosCta: "Continuar",
   accountKycIntroTitle: "Verifica tu identidad",
