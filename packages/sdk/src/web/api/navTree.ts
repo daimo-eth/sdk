@@ -104,7 +104,6 @@ export type NavSourceAmount = {
 export type NavExternalHandoff = {
   desktopBehavior: "popup" | "qr";
   popupName?: string;
-  placeholderDensity?: "short" | "medium" | "long";
 };
 
 export type NavNodeExchange = NavNodeCommon & {
@@ -173,12 +172,30 @@ export function getNavSourceAmount(
 /** Compatibility fallback for nav trees produced by pre-handoff servers. */
 export function getNavExternalHandoff(
   node: NavExternalPaymentNode,
-): NavExternalHandoff {
+): NavExternalHandoff & {
+  legacyQrPlaceholderDensity?: "short" | "medium" | "long";
+} {
   if (node.type === "HostedPayment") return node.externalHandoff;
   if (node.externalHandoff != null) return node.externalHandoff;
+  return getLegacyNavExternalHandoff(node);
+}
+
+/** Preserve pre-handoff SDK behavior while old backend nav trees remain valid. */
+function getLegacyNavExternalHandoff(
+  node: NavNodeExchange | NavNodeCashApp,
+): NavExternalHandoff & {
+  legacyQrPlaceholderDensity: "short" | "medium";
+} {
+  const exchangeId = node.type === "CashApp" ? "CashApp" : node.exchangeId;
   return {
-    desktopBehavior: "qr",
-    placeholderDensity: "short",
+    desktopBehavior:
+      exchangeId === "Coinbase" || exchangeId === "MtPelerin" ? "popup" : "qr",
+    legacyQrPlaceholderDensity:
+      exchangeId === "Binance" ||
+      exchangeId === "BinanceUSDC" ||
+      exchangeId === "BinanceUSDT"
+        ? "medium"
+        : "short",
   };
 }
 

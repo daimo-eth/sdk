@@ -50,7 +50,7 @@ export function ExternalPaymentFlowPage({
       baseUrl={baseUrl}
       desktopBehavior={desktopBehavior}
       popupName={handoff.popupName ?? node.id.toLowerCase()}
-      placeholderDensity={handoff.placeholderDensity}
+      placeholderDensity={handoff.legacyQrPlaceholderDensity}
       details={
         quote == null
           ? undefined

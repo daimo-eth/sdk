@@ -46,7 +46,7 @@ describe("external payment nav policy", () => {
     ).toThrow("invalid external payment amount");
   });
 
-  test("falls back to legacy USD nav fields without provider checks", () => {
+  test("falls back to legacy USD nav fields", () => {
     const node: NavNodeExchange = {
       type: "Exchange",
       id: "Exchange-Coinbase",
@@ -66,8 +66,34 @@ describe("external payment nav policy", () => {
       maximum: 100,
     });
     expect(getNavExternalHandoff(node)).toEqual({
-      desktopBehavior: "qr",
-      placeholderDensity: "short",
+      desktopBehavior: "popup",
+      legacyQrPlaceholderDensity: "short",
     });
   });
+
+  test.each([
+    ["Coinbase", "popup", "short"],
+    ["MtPelerin", "popup", "short"],
+    ["Binance", "qr", "medium"],
+    ["BinanceUSDC", "qr", "medium"],
+    ["BinanceUSDT", "qr", "medium"],
+    ["Lemon", "qr", "short"],
+  ] as const)(
+    "preserves legacy %s handoff behavior",
+    (exchangeId, desktopBehavior, legacyQrPlaceholderDensity) => {
+      const node: NavNodeExchange = {
+        type: "Exchange",
+        id: `Exchange-${exchangeId}`,
+        title: exchangeId,
+        exchangeId,
+        minimumUsd: 1,
+        maximumUsd: 100,
+      };
+
+      expect(getNavExternalHandoff(node)).toEqual({
+        desktopBehavior,
+        legacyQrPlaceholderDensity,
+      });
+    },
+  );
 });
