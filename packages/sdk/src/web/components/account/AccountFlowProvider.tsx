@@ -119,6 +119,10 @@ function PrivyConsumer({
     () => listPrivyEmbeddedWallets(user?.linkedAccounts ?? []),
     [user?.linkedAccounts],
   );
+  const refreshEmbeddedWallets = useCallback(async () => {
+    const refreshedUser = await refreshUser();
+    return listPrivyEmbeddedWallets(refreshedUser.linkedAccounts ?? []);
+  }, [refreshUser]);
   const email = user?.email?.address ?? null;
   const phoneNumber = user?.phone?.number ?? null;
   const signingWallet = findCanonicalPrivyWallet(wallets, walletAddress);
@@ -181,6 +185,7 @@ function PrivyConsumer({
       sendCode,
       loginWithCode,
       refreshUser,
+      refreshEmbeddedWallets,
       addSigners,
       getAccessToken,
       signTypedData,
@@ -202,6 +207,7 @@ function PrivyConsumer({
       sendCode,
       loginWithCode,
       refreshUser,
+      refreshEmbeddedWallets,
       addSigners,
       getAccessToken,
       signTypedData,

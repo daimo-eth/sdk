@@ -613,6 +613,7 @@ export interface AccountInfo {
 }
 
 export type PrivySignerStatus = "pending" | "active" | "revoked" | "error";
+export type PrivySignerReadiness = "active" | "required";
 
 /** Exact Privy embedded wallet selected for signer enrollment. */
 export type PrivyWalletIdentity = {
@@ -643,11 +644,15 @@ export type GetAccountResponse =
       account: AccountInfo;
       nextAction: "enrollment_update";
       enrollmentUpdate: AccountEnrollmentUpdate;
+      /** Whether the Account wallet needs the current configured signer. */
+      signerReadiness?: PrivySignerReadiness;
     }
   | {
       account: AccountInfo;
       nextAction: Exclude<ExistingAccountNextAction, "enrollment_update">;
       enrollmentUpdate?: never;
+      /** Whether the Account wallet needs the current configured signer. */
+      signerReadiness?: PrivySignerReadiness;
     };
 
 /** POST /v1/internal/account response. */

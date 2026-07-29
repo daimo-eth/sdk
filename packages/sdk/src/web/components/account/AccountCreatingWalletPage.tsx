@@ -54,9 +54,9 @@ export function AccountCreatingWalletPage({
         authorizeSigner: true,
         signerConfig,
         operations: {
-          embeddedWallets: account.embeddedWallets,
           getAccount: () => account.getAccount(client, session, { rail }),
           ensureWallet: () => account.ensureWalletDetails(client),
+          resolveWallet: account.resolveEmbeddedWallet,
           createAccount: (walletAddress) => {
             stage = "account_creation";
             return account.createAccountResult(client, session, walletAddress);

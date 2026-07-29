@@ -7,16 +7,15 @@ import type {
   PrivySignerConfig,
   PrivyWalletIdentity,
 } from "../common/account.js";
-import { findPrivyEmbeddedWalletByAddress } from "./accountWallet.js";
 import type { PrivySignerEnrollmentClientState } from "./privySignerEnrollment.js";
 
 type ExistingAccountResponse = Exclude<GetAccountResponse, { account: null }>;
 
 type AccountSignerOperations = {
-  embeddedWallets: readonly PrivyWalletIdentity[];
   getAccount: () => Promise<GetAccountResponse | null>;
   createAccount: (walletAddress: string) => Promise<CreateAccountResponse>;
   ensureWallet: () => Promise<EnsureAccountWalletResponse>;
+  resolveWallet: (walletAddress: string) => Promise<PrivyWalletIdentity | null>;
   authorizeWalletSigner: (
     wallet: PrivyWalletIdentity,
     signerConfig: PrivySignerConfig,
@@ -24,7 +23,19 @@ type AccountSignerOperations = {
   onEnrollmentUnavailable?: (state: PrivySignerEnrollmentClientState) => void;
 };
 
-/** Prepare one Account wallet and optionally enroll its signer after consent. */
+/** Require signer authorization only when both session and server enable it. */
+export function requiresPrivySignerAuthorization(
+  response: GetAccountResponse,
+  signerConfig: PrivySignerConfig | null,
+): boolean {
+  return (
+    signerConfig != null &&
+    response.account != null &&
+    response.signerReadiness === "required"
+  );
+}
+
+/** Prepare one Account wallet and enroll its configured signer when requested. */
 export async function prepareAccountSigner(args: {
   initialResponse?: GetAccountResponse;
   authorizeSigner: boolean;
@@ -36,8 +47,7 @@ export async function prepareAccountSigner(args: {
   if (!initial) throw new Error("failed to load account");
 
   if (initial.account) {
-    const wallet = findPrivyEmbeddedWalletByAddress(
-      operations.embeddedWallets,
+    const wallet = await operations.resolveWallet(
       initial.account.walletAddress,
     );
     if (wallet) {
@@ -47,6 +57,8 @@ export async function prepareAccountSigner(args: {
         wallet,
         operations,
       );
+    } else if (args.authorizeSigner && args.signerConfig) {
+      operations.onEnrollmentUnavailable?.(walletIdentityUnavailable());
     }
     return initial;
   }
@@ -79,10 +91,7 @@ async function enrollSigner(
 ) {
   if (!authorized || !signerConfig) return;
   if (!wallet.walletId) {
-    operations.onEnrollmentUnavailable?.({
-      status: "failed",
-      error: "wallet identity unavailable",
-    });
+    operations.onEnrollmentUnavailable?.(walletIdentityUnavailable());
     return;
   }
   let state: PrivySignerEnrollmentClientState;
@@ -104,4 +113,11 @@ async function enrollSigner(
     };
   }
   if (state.status !== "active") operations.onEnrollmentUnavailable?.(state);
+}
+
+function walletIdentityUnavailable(): PrivySignerEnrollmentClientState {
+  return {
+    status: "failed",
+    error: "wallet identity unavailable",
+  };
 }

@@ -6,7 +6,10 @@ import type {
   GetAccountResponse,
   PrivyWalletIdentity,
 } from "../common/account.js";
-import { prepareAccountSigner } from "./accountSigner.js";
+import {
+  prepareAccountSigner,
+  requiresPrivySignerAuthorization,
+} from "./accountSigner.js";
 
 const WALLET: PrivyWalletIdentity = {
   walletId: "wallet-one",
@@ -56,10 +59,13 @@ describe("prepareAccountSigner", () => {
       WALLET,
       SIGNER_CONFIG,
     );
+    expect(operations.resolveWallet).toHaveBeenCalledWith(
+      ACCOUNT.account.walletAddress,
+    );
   });
 
   test("keeps legacy Account access when no embedded wallet matches", async () => {
-    const operations = makeOperations({ embeddedWallets: [] });
+    const operations = makeOperations({ resolvedWallet: null });
 
     await expect(
       prepareAccountSigner({
@@ -71,6 +77,27 @@ describe("prepareAccountSigner", () => {
     ).resolves.toEqual(ACCOUNT);
 
     expect(operations.authorizeWalletSigner).not.toHaveBeenCalled();
+    expect(operations.onEnrollmentUnavailable).toHaveBeenCalledWith({
+      status: "failed",
+      error: "wallet identity unavailable",
+    });
+  });
+
+  test("uses a refreshed wallet identity for a returning Account", async () => {
+    const operations = makeOperations({ resolvedWallet: WALLET });
+
+    await prepareAccountSigner({
+      initialResponse: ACCOUNT,
+      authorizeSigner: true,
+      signerConfig: SIGNER_CONFIG,
+      operations,
+    });
+
+    expect(operations.resolveWallet).toHaveBeenCalledOnce();
+    expect(operations.authorizeWalletSigner).toHaveBeenCalledWith(
+      WALLET,
+      SIGNER_CONFIG,
+    );
   });
 
   test("does not block Account access when signer enrollment fails", async () => {
@@ -96,7 +123,6 @@ describe("prepareAccountSigner", () => {
 
   test("uses the server-provisioned wallet for a new Account", async () => {
     const operations = makeOperations({
-      embeddedWallets: [],
       getAccountResults: [
         { account: null, nextAction: "create_account" },
         ACCOUNT,
@@ -122,7 +148,6 @@ describe("prepareAccountSigner", () => {
   test("supports a legacy ensure response when session signer config is absent", async () => {
     const operations = makeOperations({
       ensuredWallet: { walletAddress: WALLET.walletAddress },
-      embeddedWallets: [],
       getAccountResults: [
         { account: null, nextAction: "create_account" },
         ACCOUNT,
@@ -145,7 +170,6 @@ describe("prepareAccountSigner", () => {
   test("does not block account access when wallet identity is unavailable", async () => {
     const operations = makeOperations({
       ensuredWallet: { walletAddress: WALLET.walletAddress },
-      embeddedWallets: [],
       getAccountResults: [
         { account: null, nextAction: "create_account" },
         ACCOUNT,
@@ -168,22 +192,60 @@ describe("prepareAccountSigner", () => {
   });
 });
 
+describe("requiresPrivySignerAuthorization", () => {
+  test("requires authorization for a server-required configured signer", () => {
+    expect(
+      requiresPrivySignerAuthorization(
+        { ...ACCOUNT, signerReadiness: "required" },
+        SIGNER_CONFIG,
+      ),
+    ).toBe(true);
+  });
+
+  test("skips authorization for active, legacy, and signer-disabled sessions", () => {
+    expect(
+      requiresPrivySignerAuthorization(
+        { ...ACCOUNT, signerReadiness: "active" },
+        SIGNER_CONFIG,
+      ),
+    ).toBe(false);
+    expect(requiresPrivySignerAuthorization(ACCOUNT, SIGNER_CONFIG)).toBe(
+      false,
+    );
+    expect(
+      requiresPrivySignerAuthorization(
+        { ...ACCOUNT, signerReadiness: "required" },
+        null,
+      ),
+    ).toBe(false);
+  });
+
+  test("does not gate an account that has not been created", () => {
+    expect(
+      requiresPrivySignerAuthorization(
+        { account: null, nextAction: "create_account" },
+        SIGNER_CONFIG,
+      ),
+    ).toBe(false);
+  });
+});
+
 function makeOperations({
-  embeddedWallets = [WALLET],
   getAccountResults = [ACCOUNT],
   ensuredWallet = WALLET,
+  resolvedWallet = WALLET,
 }: {
-  embeddedWallets?: readonly PrivyWalletIdentity[];
   getAccountResults?: GetAccountResponse[];
   ensuredWallet?: EnsureAccountWalletResponse;
+  resolvedWallet?: PrivyWalletIdentity | null;
 } = {}) {
   return {
-    embeddedWallets,
     getAccount: vi
       .fn<() => Promise<GetAccountResponse | null>>()
       .mockImplementation(async () => getAccountResults.shift() ?? null),
     createAccount: vi.fn(async () => ({ account: ACCOUNT.account })),
     ensureWallet: vi.fn(async () => ensuredWallet),
+    resolveWallet: vi.fn(async () => resolvedWallet),
     authorizeWalletSigner: vi.fn(async () => ({
       status: "active" as const,
       enrollment: {

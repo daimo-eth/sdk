@@ -22,6 +22,7 @@ import {
   authorizePrivyWallet,
   type PrivySignerEnrollmentClientState,
 } from "../privySignerEnrollment.js";
+import { findPrivyEmbeddedWalletByAddress } from "../accountWallet.js";
 
 const ACCOUNT_FLOW_READY_POLL_MS = 50;
 const ACCOUNT_FLOW_READY_TIMEOUT_MS = 15_000;
@@ -31,6 +32,7 @@ export type PrivyHooks = {
   sendCode: (email: string) => Promise<void>;
   loginWithCode: (code: string) => Promise<void>;
   refreshUser: () => Promise<unknown>;
+  refreshEmbeddedWallets?: () => Promise<readonly PrivyWalletIdentity[]>;
   addSigners?: (args: {
     walletAddress: PrivyWalletIdentity["walletAddress"];
     quorumId: string;
@@ -117,6 +119,9 @@ export type AccountFlowState = {
   ensureWalletDetails: (
     client: DaimoClient,
   ) => Promise<EnsureAccountWalletResponse>;
+  resolveEmbeddedWallet: (
+    walletAddress: string,
+  ) => Promise<PrivyWalletIdentity | null>;
   authorizeWalletSigner: (
     client: DaimoClient,
     wallet: PrivyWalletIdentity,
@@ -392,6 +397,23 @@ export function useAccountFlowState(): AccountFlowState {
     [ensureWalletDetails],
   );
 
+  const resolveEmbeddedWallet = useCallback(
+    async (accountWalletAddress: string) => {
+      const current = findPrivyEmbeddedWalletByAddress(
+        privyRef.current?.embeddedWallets ?? [],
+        accountWalletAddress,
+      );
+      if (current) return current;
+
+      const refreshed = await privyRef.current?.refreshEmbeddedWallets?.();
+      return findPrivyEmbeddedWalletByAddress(
+        refreshed ?? [],
+        accountWalletAddress,
+      );
+    },
+    [],
+  );
+
   const confirmSignerEnrollment = useCallback(
     async (client: DaimoClient, walletId: string) => {
       const token = await getAccessToken();
@@ -537,6 +559,7 @@ export function useAccountFlowState(): AccountFlowState {
     embeddedWallets,
     ensureWallet,
     ensureWalletDetails,
+    resolveEmbeddedWallet,
     authorizeWalletSigner,
     getAccessToken,
     signTypedData,
