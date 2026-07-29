@@ -16,7 +16,6 @@ import {
 import { type ReactNode, useCallback, useEffect, useMemo } from "react";
 
 import type { DaimoClient } from "../../../client/createDaimoClient.js";
-import type { PrivySignerConfig } from "../../../common/account.js";
 import {
   AccountFlowContext,
   useAccountFlowState,
@@ -40,8 +39,6 @@ type AccountFlowProviderProps = {
   privyAppId: string;
   /** Client used to provision a wallet immediately after authentication. */
   walletProvisioningClient?: DaimoClient;
-  /** Pre-created Privy quorum and policy IDs for wallet-scoped enrollment. */
-  signerConfig?: PrivySignerConfig;
   /**
    * Announce the logged-in embedded wallet via EIP-6963 while true, so a
    * DaimoModal on the same page can offer it as a connected wallet. Used by
@@ -55,7 +52,6 @@ type AccountFlowProviderProps = {
 export function AccountFlowProvider({
   privyAppId,
   walletProvisioningClient,
-  signerConfig,
   announceEmbeddedWallet = false,
   children,
 }: AccountFlowProviderProps) {
@@ -75,7 +71,6 @@ export function AccountFlowProvider({
         <PrivyConsumer
           accountFlow={accountFlow}
           announceEmbeddedWallet={announceEmbeddedWallet}
-          signerConfig={signerConfig}
           walletProvisioningClient={walletProvisioningClient}
         />
         {children}
@@ -87,12 +82,10 @@ export function AccountFlowProvider({
 function PrivyConsumer({
   accountFlow,
   announceEmbeddedWallet,
-  signerConfig,
   walletProvisioningClient,
 }: {
   accountFlow: ReturnType<typeof useAccountFlowState>;
   announceEmbeddedWallet: boolean;
-  signerConfig?: PrivySignerConfig;
   walletProvisioningClient?: DaimoClient;
 }) {
   const { ready, authenticated, logout, getAccessToken, user } = usePrivy();
@@ -126,6 +119,10 @@ function PrivyConsumer({
     () => listPrivyEmbeddedWallets(user?.linkedAccounts ?? []),
     [user?.linkedAccounts],
   );
+  const refreshEmbeddedWallets = useCallback(async () => {
+    const refreshedUser = await refreshUser();
+    return listPrivyEmbeddedWallets(refreshedUser.linkedAccounts ?? []);
+  }, [refreshUser]);
   const email = user?.email?.address ?? null;
   const phoneNumber = user?.phone?.number ?? null;
   const signingWallet = findCanonicalPrivyWallet(wallets, walletAddress);
@@ -188,6 +185,7 @@ function PrivyConsumer({
       sendCode,
       loginWithCode,
       refreshUser,
+      refreshEmbeddedWallets,
       addSigners,
       getAccessToken,
       signTypedData,
@@ -198,7 +196,6 @@ function PrivyConsumer({
       email,
       walletAddress,
       embeddedWallets,
-      signerConfig: signerConfig ?? null,
       phoneNumber,
     }),
     [
@@ -210,13 +207,13 @@ function PrivyConsumer({
       sendCode,
       loginWithCode,
       refreshUser,
+      refreshEmbeddedWallets,
       addSigners,
       getAccessToken,
       signTypedData,
       sendSponsoredTransaction,
       logout,
       embeddedWallets,
-      signerConfig,
     ],
   );
 

@@ -22,6 +22,7 @@ import {
   authorizePrivyWallet,
   type PrivySignerEnrollmentClientState,
 } from "../privySignerEnrollment.js";
+import { findPrivyEmbeddedWalletByAddress } from "../accountWallet.js";
 
 const ACCOUNT_FLOW_READY_POLL_MS = 50;
 const ACCOUNT_FLOW_READY_TIMEOUT_MS = 15_000;
@@ -31,6 +32,7 @@ export type PrivyHooks = {
   sendCode: (email: string) => Promise<void>;
   loginWithCode: (code: string) => Promise<void>;
   refreshUser: () => Promise<unknown>;
+  refreshEmbeddedWallets?: () => Promise<readonly PrivyWalletIdentity[]>;
   addSigners?: (args: {
     walletAddress: PrivyWalletIdentity["walletAddress"];
     quorumId: string;
@@ -50,7 +52,6 @@ export type PrivyHooks = {
   email: string | null;
   walletAddress: string | null;
   embeddedWallets?: readonly PrivyWalletIdentity[];
-  signerConfig?: PrivySignerConfig | null;
   phoneNumber: string | null;
 };
 
@@ -118,10 +119,13 @@ export type AccountFlowState = {
   ensureWalletDetails: (
     client: DaimoClient,
   ) => Promise<EnsureAccountWalletResponse>;
-  signerConfig: PrivySignerConfig | null;
+  resolveEmbeddedWallet: (
+    walletAddress: string,
+  ) => Promise<PrivyWalletIdentity | null>;
   authorizeWalletSigner: (
     client: DaimoClient,
     wallet: PrivyWalletIdentity,
+    signerConfig: PrivySignerConfig,
   ) => Promise<PrivySignerEnrollmentClientState>;
 
   getAccessToken: () => Promise<string | null>;
@@ -197,16 +201,13 @@ export function useAccountFlowState(): AccountFlowState {
   const [embeddedWallets, setEmbeddedWallets] = useState<
     readonly PrivyWalletIdentity[]
   >([]);
-  const [signerConfig, setSignerConfig] = useState<PrivySignerConfig | null>(
-    null,
-  );
   const [storedDepositState, setStoredDepositState] =
     useState<DepositState | null>(null);
 
   const privyRef = useRef<PrivyHooks | null>(null);
-  const signerConfigRef = useRef<PrivySignerConfig | null>(null);
-  const ensureWalletRef =
-    useRef<Promise<EnsureAccountWalletResponse> | null>(null);
+  const ensureWalletRef = useRef<Promise<EnsureAccountWalletResponse> | null>(
+    null,
+  );
 
   // PrivyConsumer calls registerPrivy on every Privy state change,
   // keeping our state in sync without polling.
@@ -216,8 +217,6 @@ export function useAccountFlowState(): AccountFlowState {
     setIsAuthenticated(hooks.authenticated);
     setWalletAddress(hooks.walletAddress);
     setEmbeddedWallets(hooks.embeddedWallets ?? []);
-    signerConfigRef.current = hooks.signerConfig ?? null;
-    setSignerConfig(hooks.signerConfig ?? null);
     const email = hooks.email;
     if (email) {
       setEmail((current) => (current === email ? current : email));
@@ -398,6 +397,23 @@ export function useAccountFlowState(): AccountFlowState {
     [ensureWalletDetails],
   );
 
+  const resolveEmbeddedWallet = useCallback(
+    async (accountWalletAddress: string) => {
+      const current = findPrivyEmbeddedWalletByAddress(
+        privyRef.current?.embeddedWallets ?? [],
+        accountWalletAddress,
+      );
+      if (current) return current;
+
+      const refreshed = await privyRef.current?.refreshEmbeddedWallets?.();
+      return findPrivyEmbeddedWalletByAddress(
+        refreshed ?? [],
+        accountWalletAddress,
+      );
+    },
+    [],
+  );
+
   const confirmSignerEnrollment = useCallback(
     async (client: DaimoClient, walletId: string) => {
       const token = await getAccessToken();
@@ -415,12 +431,11 @@ export function useAccountFlowState(): AccountFlowState {
     async (
       client: DaimoClient,
       wallet: PrivyWalletIdentity,
+      signerConfig: PrivySignerConfig,
     ): Promise<PrivySignerEnrollmentClientState> => {
-      const config = signerConfigRef.current;
-      if (!config) throw new Error("privy signer not configured");
       return authorizePrivyWallet({
         wallet,
-        config,
+        config: signerConfig,
         confirm: (walletId) => confirmSignerEnrollment(client, walletId),
         addSigners: (args) => {
           if (!privyRef.current) throw new Error("privy not initialized");
@@ -519,8 +534,6 @@ export function useAccountFlowState(): AccountFlowState {
     setIsAuthenticated(false);
     setWalletAddress(null);
     setEmbeddedWallets([]);
-    signerConfigRef.current = null;
-    setSignerConfig(null);
     setEmail("");
     setPhoneNumber("");
     setAuthError(null);
@@ -546,7 +559,7 @@ export function useAccountFlowState(): AccountFlowState {
     embeddedWallets,
     ensureWallet,
     ensureWalletDetails,
-    signerConfig,
+    resolveEmbeddedWallet,
     authorizeWalletSigner,
     getAccessToken,
     signTypedData,
