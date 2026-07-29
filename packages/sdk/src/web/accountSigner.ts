@@ -4,6 +4,7 @@ import type {
   CreateAccountResponse,
   EnsureAccountWalletResponse,
   GetAccountResponse,
+  PrivySignerConfig,
   PrivyWalletIdentity,
 } from "../common/account.js";
 import { findPrivyEmbeddedWalletByAddress } from "./accountWallet.js";
@@ -13,12 +14,12 @@ type ExistingAccountResponse = Exclude<GetAccountResponse, { account: null }>;
 
 type AccountSignerOperations = {
   embeddedWallets: readonly PrivyWalletIdentity[];
-  signerConfigured: boolean;
   getAccount: () => Promise<GetAccountResponse | null>;
   createAccount: (walletAddress: string) => Promise<CreateAccountResponse>;
   ensureWallet: () => Promise<EnsureAccountWalletResponse>;
   authorizeWalletSigner: (
     wallet: PrivyWalletIdentity,
+    signerConfig: PrivySignerConfig,
   ) => Promise<PrivySignerEnrollmentClientState>;
   onEnrollmentUnavailable?: (state: PrivySignerEnrollmentClientState) => void;
 };
@@ -27,6 +28,7 @@ type AccountSignerOperations = {
 export async function prepareAccountSigner(args: {
   initialResponse?: GetAccountResponse;
   authorizeSigner: boolean;
+  signerConfig: PrivySignerConfig | null;
   operations: AccountSignerOperations;
 }): Promise<ExistingAccountResponse> {
   const { operations } = args;
@@ -38,7 +40,14 @@ export async function prepareAccountSigner(args: {
       operations.embeddedWallets,
       initial.account.walletAddress,
     );
-    if (wallet) await enrollSigner(args.authorizeSigner, wallet, operations);
+    if (wallet) {
+      await enrollSigner(
+        args.authorizeSigner,
+        args.signerConfig,
+        wallet,
+        operations,
+      );
+    }
     return initial;
   }
 
@@ -50,7 +59,12 @@ export async function prepareAccountSigner(args: {
   ) {
     throw new Error("account wallet identity mismatch");
   }
-  await enrollSigner(args.authorizeSigner, wallet, operations);
+  await enrollSigner(
+    args.authorizeSigner,
+    args.signerConfig,
+    wallet,
+    operations,
+  );
 
   const response = await operations.getAccount();
   if (!response?.account) throw new Error("account not found");
@@ -59,10 +73,11 @@ export async function prepareAccountSigner(args: {
 
 async function enrollSigner(
   authorized: boolean,
+  signerConfig: PrivySignerConfig | null,
   wallet: EnsureAccountWalletResponse,
   operations: AccountSignerOperations,
 ) {
-  if (!authorized || !operations.signerConfigured) return;
+  if (!authorized || !signerConfig) return;
   if (!wallet.walletId) {
     operations.onEnrollmentUnavailable?.({
       status: "failed",
@@ -72,10 +87,13 @@ async function enrollSigner(
   }
   let state: PrivySignerEnrollmentClientState;
   try {
-    state = await operations.authorizeWalletSigner({
-      walletId: wallet.walletId,
-      walletAddress: wallet.walletAddress,
-    });
+    state = await operations.authorizeWalletSigner(
+      {
+        walletId: wallet.walletId,
+        walletAddress: wallet.walletAddress,
+      },
+      signerConfig,
+    );
   } catch (error) {
     state = {
       status: "failed",

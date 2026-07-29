@@ -12,6 +12,10 @@ const WALLET: PrivyWalletIdentity = {
   walletId: "wallet-one",
   walletAddress: getAddress("0x1234567890abcdef1234567890abcdef12345678"),
 };
+const SIGNER_CONFIG = {
+  quorumId: "quorum-daimo",
+  policyId: "policy-send-transaction",
+};
 const ACCOUNT: Exclude<GetAccountResponse, { account: null }> = {
   account: {
     id: "account-one",
@@ -29,6 +33,7 @@ describe("prepareAccountSigner", () => {
       prepareAccountSigner({
         initialResponse: ACCOUNT,
         authorizeSigner: false,
+        signerConfig: SIGNER_CONFIG,
         operations,
       }),
     ).resolves.toEqual(ACCOUNT);
@@ -37,16 +42,20 @@ describe("prepareAccountSigner", () => {
     expect(operations.authorizeWalletSigner).not.toHaveBeenCalled();
   });
 
-  test("authorizes the exact Account wallet after fresh consent", async () => {
+  test("authorizes the exact Account wallet with session signer config", async () => {
     const operations = makeOperations();
 
     await prepareAccountSigner({
       initialResponse: ACCOUNT,
       authorizeSigner: true,
+      signerConfig: SIGNER_CONFIG,
       operations,
     });
 
-    expect(operations.authorizeWalletSigner).toHaveBeenCalledWith(WALLET);
+    expect(operations.authorizeWalletSigner).toHaveBeenCalledWith(
+      WALLET,
+      SIGNER_CONFIG,
+    );
   });
 
   test("keeps legacy Account access when no embedded wallet matches", async () => {
@@ -56,6 +65,7 @@ describe("prepareAccountSigner", () => {
       prepareAccountSigner({
         initialResponse: ACCOUNT,
         authorizeSigner: true,
+        signerConfig: SIGNER_CONFIG,
         operations,
       }),
     ).resolves.toEqual(ACCOUNT);
@@ -73,6 +83,7 @@ describe("prepareAccountSigner", () => {
       prepareAccountSigner({
         initialResponse: ACCOUNT,
         authorizeSigner: true,
+        signerConfig: SIGNER_CONFIG,
         operations,
       }),
     ).resolves.toEqual(ACCOUNT);
@@ -95,18 +106,21 @@ describe("prepareAccountSigner", () => {
     await expect(
       prepareAccountSigner({
         authorizeSigner: true,
+        signerConfig: SIGNER_CONFIG,
         operations,
       }),
     ).resolves.toEqual(ACCOUNT);
 
     expect(operations.ensureWallet).toHaveBeenCalledOnce();
     expect(operations.createAccount).toHaveBeenCalledWith(WALLET.walletAddress);
-    expect(operations.authorizeWalletSigner).toHaveBeenCalledWith(WALLET);
+    expect(operations.authorizeWalletSigner).toHaveBeenCalledWith(
+      WALLET,
+      SIGNER_CONFIG,
+    );
   });
 
-  test("supports a legacy ensure response when signer config is absent", async () => {
+  test("supports a legacy ensure response when session signer config is absent", async () => {
     const operations = makeOperations({
-      signerConfigured: false,
       ensuredWallet: { walletAddress: WALLET.walletAddress },
       embeddedWallets: [],
       getAccountResults: [
@@ -118,6 +132,7 @@ describe("prepareAccountSigner", () => {
     await expect(
       prepareAccountSigner({
         authorizeSigner: true,
+        signerConfig: null,
         operations,
       }),
     ).resolves.toEqual(ACCOUNT);
@@ -140,6 +155,7 @@ describe("prepareAccountSigner", () => {
     await expect(
       prepareAccountSigner({
         authorizeSigner: true,
+        signerConfig: SIGNER_CONFIG,
         operations,
       }),
     ).resolves.toEqual(ACCOUNT);
@@ -156,16 +172,13 @@ function makeOperations({
   embeddedWallets = [WALLET],
   getAccountResults = [ACCOUNT],
   ensuredWallet = WALLET,
-  signerConfigured = true,
 }: {
   embeddedWallets?: readonly PrivyWalletIdentity[];
   getAccountResults?: GetAccountResponse[];
   ensuredWallet?: EnsureAccountWalletResponse;
-  signerConfigured?: boolean;
 } = {}) {
   return {
     embeddedWallets,
-    signerConfigured,
     getAccount: vi
       .fn<() => Promise<GetAccountResponse | null>>()
       .mockImplementation(async () => getAccountResults.shift() ?? null),

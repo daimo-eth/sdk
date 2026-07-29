@@ -1,14 +1,8 @@
-import {
-  afterEach,
-  describe,
-  expect,
-  expectTypeOf,
-  test,
-  vi,
-} from "vitest";
+import { afterEach, describe, expect, expectTypeOf, test, vi } from "vitest";
 import { getAddress } from "viem";
 
 import type { DaimoClient } from "../../client/createDaimoClient.js";
+import type { PrivySignerConfig } from "../../common/account.js";
 import {
   type AccountFlowState,
   type PrivyHooks,
@@ -27,6 +21,9 @@ test("preserves legacy account flow method contracts", () => {
       walletAddress: string,
     ) => Promise<void>
   >();
+  expectTypeOf<AccountFlowState["authorizeWalletSigner"]>()
+    .parameter(2)
+    .toEqualTypeOf<PrivySignerConfig>();
 });
 
 test("accepts the legacy Privy hook registration shape", () => {
