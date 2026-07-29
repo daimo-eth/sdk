@@ -1,8 +1,11 @@
 import { describe, expect, test } from "vitest";
 
 import {
+  AccountWalletNotReadyError,
   findCanonicalPrivyWallet,
   findPrivyEmbeddedWalletByAddress,
+  getReadyCanonicalPrivyWalletAddress,
+  isAccountWalletNotReadyError,
   listPrivyEmbeddedWallets,
 } from "./accountWallet.js";
 
@@ -105,6 +108,48 @@ describe("wallet-scoped Privy selection", () => {
         "0x1234567890AbcdEF1234567890aBcdef12345678",
       ),
     ).toBe(wallet);
+  });
+
+  test("waits for Privy to settle the exact connected signing wallet", () => {
+    const canonicalWalletAddress = "0x1234567890AbcdEF1234567890aBcdef12345678";
+    const wallet = {
+      chainType: "ethereum",
+      walletClientType: "privy",
+      address: canonicalWalletAddress.toLowerCase(),
+    };
+
+    expect(
+      getReadyCanonicalPrivyWalletAddress({
+        ready: false,
+        wallets: [wallet],
+        canonicalWalletAddress,
+      }),
+    ).toBeNull();
+    expect(
+      getReadyCanonicalPrivyWalletAddress({
+        ready: true,
+        wallets: [],
+        canonicalWalletAddress,
+      }),
+    ).toBeNull();
+    expect(
+      getReadyCanonicalPrivyWalletAddress({
+        ready: true,
+        wallets: [wallet],
+        canonicalWalletAddress,
+      }),
+    ).toBe(canonicalWalletAddress);
+  });
+
+  test("identifies only bounded-retry wallet readiness failures", () => {
+    expect(isAccountWalletNotReadyError(new AccountWalletNotReadyError())).toBe(
+      true,
+    );
+    expect(
+      isAccountWalletNotReadyError(
+        new Error("wallet is still initializing. please try again"),
+      ),
+    ).toBe(false);
   });
 
   test("rejects external, non-EVM, malformed, and conflicting wallets", () => {

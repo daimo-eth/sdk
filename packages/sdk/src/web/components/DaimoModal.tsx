@@ -865,6 +865,8 @@ function renderEntry(
       return (
         <AccountEmailPage
           methodLabel={node.title}
+          sessionId={ctx.session.sessionId}
+          clientSecret={ctx.session.clientSecret}
           onBack={ctx.canGoBack ? ctx.onBack : null}
           onOtpSent={() => ctx.onAccountAdvance("account-otp")}
         />
@@ -873,6 +875,8 @@ function renderEntry(
     case "account-otp":
       return (
         <AccountOtpPage
+          sessionId={ctx.session.sessionId}
+          clientSecret={ctx.session.clientSecret}
           onBack={ctx.onBack}
           onVerified={() => ctx.onAccountAdvance("account-creating-wallet")}
         />
@@ -909,6 +913,8 @@ function renderEntry(
     case "account-phone":
       return (
         <AccountPhonePage
+          sessionId={ctx.session.sessionId}
+          clientSecret={ctx.session.clientSecret}
           onBack={ctx.onBack}
           onOtpSent={() => ctx.onAccountAdvance("account-phone-otp")}
         />
@@ -916,6 +922,8 @@ function renderEntry(
     case "account-phone-otp":
       return (
         <AccountPhoneOtpPage
+          sessionId={ctx.session.sessionId}
+          clientSecret={ctx.session.clientSecret}
           onBack={ctx.onBack}
           onVerified={() => ctx.onAccountAdvance("account-enrollment")}
         />

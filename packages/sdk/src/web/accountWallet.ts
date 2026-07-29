@@ -14,6 +14,19 @@ export type PrivyWalletLike = {
 
 export const CANONICAL_PRIVY_WALLET_INDEX = 0;
 
+export class AccountWalletNotReadyError extends Error {
+  constructor(options?: ErrorOptions) {
+    super("wallet is still initializing. please try again", options);
+    this.name = "AccountWalletNotReadyError";
+  }
+}
+
+export function isAccountWalletNotReadyError(
+  error: unknown,
+): error is AccountWalletNotReadyError {
+  return error instanceof AccountWalletNotReadyError;
+}
+
 export function getCanonicalPrivyWalletAddress({
   userWalletAddress,
   linkedAccounts,
@@ -101,6 +114,23 @@ export function findCanonicalPrivyWallet<T extends PrivyWalletLike>(
         getAddress(wallet.address) === expectedAddress,
     ) ?? null
   );
+}
+
+/** Return the connected canonical wallet only after Privy has settled wallets. */
+export function getReadyCanonicalPrivyWalletAddress({
+  ready,
+  wallets,
+  canonicalWalletAddress,
+}: {
+  ready: boolean;
+  wallets: readonly PrivyWalletLike[];
+  canonicalWalletAddress: string | null;
+}): Address | null {
+  if (!ready) return null;
+  const wallet = findCanonicalPrivyWallet(wallets, canonicalWalletAddress);
+  return wallet?.address && isAddress(wallet.address)
+    ? getAddress(wallet.address)
+    : null;
 }
 
 function isCanonicalPrivyWallet(wallet: PrivyWalletLike): boolean {

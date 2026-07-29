@@ -122,7 +122,6 @@ export function AccountPaymentInstructionsPage({
       : null;
   const {
     payment: draftedPayment,
-    isCreating,
     error: draftError,
     retry: retryDraft,
   } = useDraftDeposit({
@@ -160,12 +159,8 @@ export function AccountPaymentInstructionsPage({
           emphasized: field.emphasized === true,
         }))
       : parseInstructions(instructions);
-  const bankTransferDetails = bankTransferFields.filter(
-    (field) => field.label,
-  );
-  const bankTransferNotes = bankTransferFields.filter(
-    (field) => !field.label,
-  );
+  const bankTransferDetails = bankTransferFields.filter((field) => field.label);
+  const bankTransferNotes = bankTransferFields.filter((field) => !field.label);
   const directionsPayment = payment?.flow === "directions" ? payment : null;
   const directionsLocale = getLocale();
   const bankTransferAmount =
@@ -236,6 +231,10 @@ export function AccountPaymentInstructionsPage({
     return (
       <ErrorPage
         message={paymentError}
+        errorCode={contractMismatch ? "payment_contract_mismatch" : undefined}
+        errorStage="signed_deposit_draft"
+        sessionId={sessionId}
+        clientSecret={clientSecret}
         retryText={t.tryAgain}
         onRetry={retryDraft}
       />

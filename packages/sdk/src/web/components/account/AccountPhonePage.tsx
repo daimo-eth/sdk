@@ -5,6 +5,7 @@ import { t } from "../../hooks/locale.js";
 import { useAccountFlow } from "../../hooks/useAccountFlow.js";
 import { PrimaryButton } from "../buttons.js";
 import { CenteredContent, ErrorMessage, PageHeader } from "../shared.js";
+import { AccountAuthErrorMessage } from "./AccountAuthErrorMessage.js";
 import {
   formatUsPhoneLocal,
   normalizeUsPhoneDigits,
@@ -18,6 +19,8 @@ type PhoneState =
   | { kind: "valid"; e164: string };
 
 type AccountPhonePageProps = {
+  sessionId: string;
+  clientSecret: string;
   onBack: () => void;
   onOtpSent: () => void;
 };
@@ -25,7 +28,12 @@ type AccountPhonePageProps = {
 /**
  * Phone entry for the semantic account-phone-verification interaction.
  */
-export function AccountPhonePage({ onBack, onOtpSent }: AccountPhonePageProps) {
+export function AccountPhonePage({
+  sessionId,
+  clientSecret,
+  onBack,
+  onOtpSent,
+}: AccountPhonePageProps) {
   const account = useAccountFlow();
   const client = useDaimoClient();
   const [phoneDigits, setPhoneDigits] = useState(() =>
@@ -38,9 +46,8 @@ export function AccountPhonePage({ onBack, onOtpSent }: AccountPhonePageProps) {
     const e164 = parseUsPhoneNumber(phoneDigits);
     return e164 ? { kind: "valid", e164 } : { kind: "invalid" };
   }, [phoneDigits]);
-  const errorMessage =
-    account?.authError ??
-    (phone.kind === "invalid" ? t.applePayUsPhoneRequired : null);
+  const validationError =
+    phone.kind === "invalid" ? t.applePayUsPhoneRequired : null;
   const formattedPhone = useMemo(
     () => formatUsPhoneLocal(phoneDigits),
     [phoneDigits],
@@ -161,7 +168,14 @@ export function AccountPhonePage({ onBack, onOtpSent }: AccountPhonePageProps) {
             className="daimo-flex-1 daimo-min-w-0 daimo-bg-transparent daimo-border-none daimo-outline-none daimo-shadow-none daimo-ring-0 daimo-text-base daimo-text-[var(--daimo-text)] daimo-placeholder-[var(--daimo-placeholder)] daimo-caret-[var(--daimo-accent)] focus:daimo-outline-none focus:daimo-ring-0 focus:daimo-border-none focus:daimo-shadow-none"
           />
         </div>
-        {errorMessage && <ErrorMessage message={errorMessage} />}
+        {account?.authError ? (
+          <AccountAuthErrorMessage
+            sessionId={sessionId}
+            clientSecret={clientSecret}
+          />
+        ) : (
+          validationError && <ErrorMessage message={validationError} />
+        )}
       </CenteredContent>
 
       <div className="daimo-px-6 daimo-pb-6 daimo-flex daimo-flex-col daimo-items-center">

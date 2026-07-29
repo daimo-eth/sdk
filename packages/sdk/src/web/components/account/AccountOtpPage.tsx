@@ -8,11 +8,18 @@ import {
 } from "./AccountOtpCodeEntry.js";
 
 type AccountOtpPageProps = {
+  sessionId: string;
+  clientSecret: string;
   onBack: () => void;
   onVerified: () => void;
 };
 
-export function AccountOtpPage({ onBack, onVerified }: AccountOtpPageProps) {
+export function AccountOtpPage({
+  sessionId,
+  clientSecret,
+  onBack,
+  onVerified,
+}: AccountOtpPageProps) {
   const account = useAccountFlow();
   const destination = account?.email ?? "";
 
@@ -33,6 +40,8 @@ export function AccountOtpPage({ onBack, onVerified }: AccountOtpPageProps) {
   return (
     <AccountOtpCodeEntry
       destination={destination}
+      sessionId={sessionId}
+      clientSecret={clientSecret}
       title={t.accountOtp}
       message={t.accountOtpSentViaDaimo(destination)}
       consent={<AccountWalletConsent />}

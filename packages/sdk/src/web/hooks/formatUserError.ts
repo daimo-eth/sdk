@@ -21,6 +21,10 @@ function getErrorMappings(): [pattern: string | RegExp, message: string][] {
       /insufficient funds for (gas|transfer)|exceeds the balance of the account/i,
       t.insufficientGas,
     ],
+    [
+      /wallet (synchronization timed out|is still initializing)/i,
+      t.errorAccountSetup,
+    ],
   ];
 }
 
