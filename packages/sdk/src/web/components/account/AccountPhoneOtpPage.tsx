@@ -9,6 +9,8 @@ import {
 import { formatUsPhoneDisplay } from "./phone.js";
 
 type AccountPhoneOtpPageProps = {
+  sessionId: string;
+  clientSecret: string;
   onBack: () => void;
   onVerified: () => void;
 };
@@ -19,6 +21,8 @@ type AccountPhoneOtpPageProps = {
  * Providers that care about phone verification ingest it server-side there.
  */
 export function AccountPhoneOtpPage({
+  sessionId,
+  clientSecret,
   onBack,
   onVerified,
 }: AccountPhoneOtpPageProps) {
@@ -47,6 +51,8 @@ export function AccountPhoneOtpPage({
   return (
     <AccountOtpCodeEntry
       destination={destination}
+      sessionId={sessionId}
+      clientSecret={clientSecret}
       onBack={onBack}
       onVerified={onVerified}
       onVerify={handleVerify}

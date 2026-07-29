@@ -1,4 +1,10 @@
-import { type FormEvent, useCallback, useEffect, useRef } from "react";
+import {
+  type FormEvent,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 
@@ -6,11 +12,8 @@ import { t } from "../../hooks/locale.js";
 import { useAccountFlow } from "../../hooks/useAccountFlow.js";
 import { PrimaryButton } from "../buttons.js";
 import { DaimoFormField, DaimoTextField } from "../formFields.js";
-import {
-  CenteredContent,
-  ErrorMessage,
-  PageHeader,
-} from "../shared.js";
+import { CenteredContent, PageHeader } from "../shared.js";
+import { AccountAuthErrorMessage } from "./AccountAuthErrorMessage.js";
 import {
   type EmailFormValues,
   type EmailSubmitValues,
@@ -19,17 +22,22 @@ import {
 
 type AccountEmailPageProps = {
   methodLabel: string;
+  sessionId: string;
+  clientSecret: string;
   onBack: (() => void) | null;
   onOtpSent: () => void;
 };
 
 export function AccountEmailPage({
   methodLabel,
+  sessionId,
+  clientSecret,
   onBack,
   onOtpSent,
 }: AccountEmailPageProps) {
   const account = useAccountFlow();
   const logoutDone = useRef(false);
+  const [isPreparingAuth, setIsPreparingAuth] = useState(true);
   const {
     formState: { errors, isValid },
     handleSubmit,
@@ -44,18 +52,28 @@ export function AccountEmailPage({
   useEffect(() => {
     if (logoutDone.current) return;
     logoutDone.current = true;
-    account?.logout();
-  }, [account]);
+    if (!account) {
+      setIsPreparingAuth(false);
+      return;
+    }
+    let cancelled = false;
+    void account.logout().finally(() => {
+      if (!cancelled) setIsPreparingAuth(false);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [account?.logout]);
 
   const submit = handleSubmit(
     useCallback(
       async ({ email }) => {
-        if (!account) return;
+        if (!account || isPreparingAuth) return;
         account.setEmail(email);
         const sent = await account.sendOtp(email);
         if (sent) onOtpSent();
       },
-      [account, onOtpSent],
+      [account, isPreparingAuth, onOtpSent],
     ),
   );
 
@@ -73,6 +91,7 @@ export function AccountEmailPage({
       <form
         className="daimo-flex daimo-flex-col daimo-flex-1 daimo-min-h-0"
         onSubmit={handleFormSubmit}
+        aria-busy={isPreparingAuth || !!account?.isLoggingIn}
       >
         <CenteredContent>
           <p className="daimo-text-sm daimo-text-[var(--daimo-text-secondary)] daimo-text-center">
@@ -102,15 +121,18 @@ export function AccountEmailPage({
             </DaimoFormField>
           </div>
 
-          {account?.authError && <ErrorMessage message={account.authError} />}
+          <AccountAuthErrorMessage
+            sessionId={sessionId}
+            clientSecret={clientSecret}
+          />
         </CenteredContent>
 
         <div className="daimo-px-6 daimo-pb-6 daimo-flex daimo-flex-col daimo-items-center">
           <PrimaryButton
             type="submit"
-            disabled={!isValid || account?.isLoggingIn}
+            disabled={!isValid || isPreparingAuth || account?.isLoggingIn}
           >
-            {account?.isLoggingIn ? t.loading : t.continue}
+            {isPreparingAuth || account?.isLoggingIn ? t.loading : t.continue}
           </PrimaryButton>
         </div>
       </form>

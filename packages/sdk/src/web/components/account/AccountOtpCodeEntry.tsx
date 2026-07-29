@@ -3,12 +3,15 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { t } from "../../hooks/locale.js";
 import { useAccountFlow } from "../../hooks/useAccountFlow.js";
 import { PrimaryButton, SecondaryLinkButton } from "../buttons.js";
-import { CenteredContent, ErrorMessage, PageHeader } from "../shared.js";
+import { CenteredContent, PageHeader } from "../shared.js";
+import { AccountAuthErrorMessage } from "./AccountAuthErrorMessage.js";
 
 export type OtpVerifyOutcome = { ok: true } | { ok: false; msg?: string };
 
 type AccountOtpCodeEntryProps = {
   destination: string;
+  sessionId?: string;
+  clientSecret?: string;
   title?: string;
   message?: React.ReactNode;
   consent?: React.ReactNode;
@@ -28,6 +31,8 @@ const ERROR_DELAY_MS = 700;
 
 export function AccountOtpCodeEntry({
   destination,
+  sessionId,
+  clientSecret,
   title,
   message,
   consent,
@@ -198,7 +203,10 @@ export function AccountOtpCodeEntry({
           </div>
         </div>
 
-        {account?.authError && <ErrorMessage message={account.authError} />}
+        <AccountAuthErrorMessage
+          sessionId={sessionId}
+          clientSecret={clientSecret}
+        />
 
         <SecondaryLinkButton
           onClick={handleResend}

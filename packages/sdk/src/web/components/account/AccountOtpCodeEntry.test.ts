@@ -31,6 +31,8 @@ describe("OTP input semantics", () => {
   test("shows only terms and privacy consent on Account verification", () => {
     const markup = renderToStaticMarkup(
       createElement(AccountOtpPage, {
+        sessionId: "session-test",
+        clientSecret: "secret-test",
         onBack: () => undefined,
         onVerified: () => undefined,
       }),

@@ -9,19 +9,23 @@ import {
   useLoginWithEmail,
   usePrivy,
   useSendTransaction,
+  useSignTypedData,
   useSigners,
   useUser,
   useWallets,
 } from "@privy-io/react-auth";
-import { type ReactNode, useCallback, useEffect, useMemo } from "react";
+import { type ReactNode, useCallback, useEffect, useMemo, useRef } from "react";
 
 import type { DaimoClient } from "../../../client/createDaimoClient.js";
 import {
   AccountFlowContext,
   useAccountFlowState,
+  waitForAccountFlowState,
 } from "../../hooks/useAccountFlow.js";
 import {
+  AccountWalletNotReadyError,
   findCanonicalPrivyWallet,
+  getReadyCanonicalPrivyWalletAddress,
   getCanonicalPrivyWalletAddress,
   listPrivyEmbeddedWallets,
 } from "../../accountWallet.js";
@@ -34,6 +38,7 @@ const EMBEDDED_WALLET_INFO = Object.freeze({
   icon: "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMDAgMzAwIj48cmVjdCB3aWR0aD0iMzAwIiBoZWlnaHQ9IjMwMCIgcng9IjY0IiBmaWxsPSIjMDA5MTEwIi8+PGcgc3Ryb2tlPSIjRkZGIiBzdHJva2Utd2lkdGg9IjM0IiBzdHJva2UtbGluZWNhcD0icm91bmQiPjxwYXRoIGQ9Ik0xODAgMjAyIDEyMCA5OCIvPjxwYXRoIGQ9Ik0yMTAgMTUwIDkwIDE1MCIvPjxwYXRoIGQ9Ik0xODAgOTggMTIwIDIwMiIvPjwvZz48L3N2Zz4=",
   rdns: "com.daimo",
 });
+const SIGNING_WALLET_READY_TIMEOUT_MS = 5_000;
 
 type AccountFlowProviderProps = {
   privyAppId: string;
@@ -93,8 +98,9 @@ function PrivyConsumer({
   const { sendCode: rawSendCode, loginWithCode: rawLoginWithCode } =
     useLoginWithEmail();
   const { sendTransaction: rawSendTransaction } = useSendTransaction();
+  const { signTypedData: rawSignTypedData } = useSignTypedData();
   const { addSigners: rawAddSigners } = useSigners();
-  const { wallets } = useWallets();
+  const { wallets, ready: walletsReady } = useWallets();
 
   const sendCode = useCallback(
     async (email: string) => {
@@ -126,6 +132,47 @@ function PrivyConsumer({
   const email = user?.email?.address ?? null;
   const phoneNumber = user?.phone?.number ?? null;
   const signingWallet = findCanonicalPrivyWallet(wallets, walletAddress);
+  const signingStateRef = useRef({
+    walletsReady,
+    wallets,
+    walletAddress,
+  });
+  signingStateRef.current = {
+    walletsReady,
+    wallets,
+    walletAddress,
+  };
+
+  const resolveSigningWalletAddress = useCallback(async () => {
+    const getReadyAddress = () =>
+      getReadyCanonicalPrivyWalletAddress({
+        ready: signingStateRef.current.walletsReady,
+        wallets: signingStateRef.current.wallets,
+        canonicalWalletAddress: signingStateRef.current.walletAddress,
+      });
+    const current = getReadyAddress();
+    if (current) return current;
+
+    try {
+      await refreshUser();
+    } catch (err) {
+      console.warn("[account-wallet] failed to refresh before signing", err);
+    }
+    try {
+      await waitForAccountFlowState(
+        () => getReadyAddress() !== null,
+        "wallet is still initializing. please try again",
+        SIGNING_WALLET_READY_TIMEOUT_MS,
+      );
+    } catch (err) {
+      throw new AccountWalletNotReadyError({ cause: err });
+    }
+    const refreshed = getReadyAddress();
+    if (!refreshed) {
+      throw new AccountWalletNotReadyError();
+    }
+    return refreshed;
+  }, [refreshUser]);
 
   const addSigners = useCallback(
     async (args: {
@@ -148,17 +195,12 @@ function PrivyConsumer({
 
   const signTypedData = useCallback(
     async (typedData: Record<string, unknown>): Promise<string> => {
-      if (!signingWallet || !walletAddress) {
-        throw new Error("no canonical embedded wallet");
-      }
-      const provider = await signingWallet.getEthereumProvider();
-      const result = await provider.request({
-        method: "eth_signTypedData_v4",
-        params: [walletAddress, JSON.stringify(typedData)],
-      });
-      return result as string;
+      const address = await resolveSigningWalletAddress();
+      const input = typedData as Parameters<typeof rawSignTypedData>[0];
+      const { signature } = await rawSignTypedData(input, { address });
+      return signature;
     },
-    [signingWallet, walletAddress],
+    [rawSignTypedData, resolveSigningWalletAddress],
   );
 
   const sendSponsoredTransaction = useCallback(
@@ -168,16 +210,14 @@ function PrivyConsumer({
       data?: `0x${string}`;
       value?: bigint;
     }): Promise<`0x${string}`> => {
-      if (!signingWallet || !walletAddress) {
-        throw new Error("no canonical embedded wallet");
-      }
+      const address = await resolveSigningWalletAddress();
       const { hash } = await rawSendTransaction(transaction, {
-        address: walletAddress,
+        address,
         sponsor: true,
       });
       return hash;
     },
-    [rawSendTransaction, signingWallet, walletAddress],
+    [rawSendTransaction, resolveSigningWalletAddress],
   );
 
   const hooks = useMemo(
@@ -231,13 +271,11 @@ function PrivyConsumer({
       return;
     }
     void accountFlow.ensureWallet(walletProvisioningClient).catch((err) => {
-      accountFlow.setAuthError(
-        err instanceof Error ? err.message : "failed to prepare wallet",
-      );
+      accountFlow.setAuthFailure("wallet_provisioning", err);
     });
   }, [
     accountFlow.ensureWallet,
-    accountFlow.setAuthError,
+    accountFlow.setAuthFailure,
     authenticated,
     ready,
     walletAddress,
