@@ -26,6 +26,7 @@ import {
   formatNavSourceAmountUnits,
   getNavExternalHandoff,
   getNavSourceAmount,
+  hasCanonicalPaymentMethod,
 } from "../api/navTree.js";
 import type {
   NavActionPaymentMethodNode,
@@ -112,7 +113,7 @@ function isTrustTronNode(node: NavNode | null): node is NavNodeTronDeposit {
 function getPaymentMethodId(
   node: NavActionPaymentMethodNode,
 ): ActionPaymentMethodId {
-  if (node.type === "PaymentMethod") return node.methodId;
+  if (hasCanonicalPaymentMethod(node)) return node.methodId;
   if (node.type === "CashApp") return "CashApp";
   if (node.type === "Stripe") return "Stripe";
   return node.exchangeId;
@@ -123,7 +124,7 @@ function getPaymentMethodRequest(
   amount: number,
   platform: DaimoPlatform,
 ): CreatePaymentMethodRequest["paymentMethod"] {
-  if (node.type === "PaymentMethod") {
+  if (hasCanonicalPaymentMethod(node)) {
     const sourceAmount = getNavSourceAmount(node);
     return {
       id: node.methodId,

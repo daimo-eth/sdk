@@ -126,6 +126,12 @@ export type NavNodePaymentMethod = NavNodeCommon & {
 export type NavNodeExchange = NavNodeCommon & {
   type: "Exchange";
   exchangeId: ExchangeId;
+  /** Canonical identity emitted by upgraded servers. */
+  methodId?: ActionPaymentMethodId;
+  /** Canonical product metadata emitted by upgraded servers. */
+  category?: PaymentMethodCategory;
+  /** ISO-3166 alpha-2 country to echo when initiating this payment. */
+  countryCode?: string;
   icon?: string;
   /** Backend-owned amount and currency policy. Optional for old servers. */
   sourceAmount?: NavSourceAmount;
@@ -142,6 +148,12 @@ export type NavNodeExchange = NavNodeCommon & {
 /** @deprecated Old servers emit provider-shaped navigation nodes. */
 export type NavNodeCashApp = NavNodeCommon & {
   type: "CashApp";
+  /** Canonical identity emitted by upgraded servers. */
+  methodId?: "CashApp";
+  /** Canonical product metadata emitted by upgraded servers. */
+  category?: "paymentApp";
+  /** ISO-3166 alpha-2 country to echo when initiating this payment. */
+  countryCode?: string;
   icon?: string;
   /** Backend-owned amount and currency policy. Optional for old servers. */
   sourceAmount?: NavSourceAmount;
@@ -155,6 +167,12 @@ export type NavNodeCashApp = NavNodeCommon & {
 /** @deprecated Old servers emit provider-shaped navigation nodes. */
 export type NavNodeStripe = NavNodeCommon & {
   type: "Stripe";
+  /** Canonical identity emitted by upgraded servers. */
+  methodId?: "Stripe";
+  /** Canonical product metadata emitted by upgraded servers. */
+  category?: "onramp";
+  /** ISO-3166 alpha-2 country to echo when initiating this payment. */
+  countryCode?: string;
   icon?: string;
   sourceAmount?: NavSourceAmount;
   requiredUsd?: number;
@@ -167,6 +185,16 @@ export type NavActionPaymentMethodNode =
   | NavNodeExchange
   | NavNodeCashApp
   | NavNodeStripe;
+
+/** True when a compatibility node carries the canonical method contract. */
+export function hasCanonicalPaymentMethod(
+  node: NavActionPaymentMethodNode,
+): node is NavActionPaymentMethodNode & {
+  methodId: ActionPaymentMethodId;
+  category: PaymentMethodCategory;
+} {
+  return node.type === "PaymentMethod" || node.methodId != null;
+}
 
 /** Compatibility fallback for nav trees produced by pre-sourceAmount servers. */
 export function getNavSourceAmount(

@@ -4,6 +4,7 @@ import {
   formatNavSourceAmountUnits,
   getNavExternalHandoff,
   getNavSourceAmount,
+  hasCanonicalPaymentMethod,
   type NavNodeExchange,
   type NavNodePaymentMethod,
 } from "./navTree.js";
@@ -65,6 +66,28 @@ describe("payment method nav policy", () => {
       desktopBehavior: "popup",
       legacyQrPlaceholderDensity: "short",
     });
+  });
+
+  test("recognizes canonical metadata on a compatibility node", () => {
+    const node: NavNodeExchange = {
+      type: "Exchange",
+      id: "Exchange-MtPelerin",
+      title: "Mt Pelerin",
+      exchangeId: "MtPelerin",
+      methodId: "MtPelerin",
+      category: "onramp",
+      sourceAmount: {
+        currency: "EUR",
+        currencySymbol: "€",
+        decimals: 2,
+        minimum: 10,
+        maximum: 1000,
+      },
+      minimumUsd: 10,
+      maximumUsd: 1000,
+    };
+
+    expect(hasCanonicalPaymentMethod(node)).toBe(true);
   });
 
   test.each([
