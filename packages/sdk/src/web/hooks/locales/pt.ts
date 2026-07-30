@@ -25,11 +25,15 @@ export const pt: typeof en = {
   mobileWallets: "Carteiras móveis",
   scanWithPhone: "Escaneie com seu telefone para abrir a carteira",
 
-  // ExchangePage
+  // PaymentActionPage
   continueTo: "Continuar para",
   toCompleteYourDeposit: "para concluir seu depósito",
   open: "Abrir",
   refreshInvoice: "Atualizar",
+  estimatedOutput: "Valor estimado",
+  serviceFee: "Taxa de serviço",
+  networkFee: "Taxa de rede",
+  partnerFee: "Taxa do parceiro",
 
   // SelectAmountPage
   selectAmount: "Selecionar valor",

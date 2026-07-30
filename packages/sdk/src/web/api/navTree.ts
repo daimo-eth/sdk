@@ -3,7 +3,8 @@ import type {
   AccountRail,
   DepositPaymentInteraction,
 } from "../../common/account.js";
-import type { ExchangeId } from "../../common/api.js";
+import type { ActionPaymentMethodId, ExchangeId } from "../../common/api.js";
+import type { PaymentMethodCategory } from "../../common/paymentMethod.js";
 import type { SessionPublicInfo } from "../../common/session.js";
 
 /** Session plus server-defined modal navigation data. */
@@ -89,30 +90,144 @@ export type NavNodeDeeplink = NavNodeCommon & {
   pageIcon?: string;
 };
 
+export type NavSourceAmount = {
+  /** ISO 4217 source currency selected by the backend. */
+  currency: string;
+  /** Presentation symbol selected by the backend, for example "$" or "€". */
+  currencySymbol: string;
+  /** Decimal places submitted to the backend. */
+  decimals: number;
+  required?: number;
+  minimum: number;
+  maximum: number;
+};
+
+export type NavExternalHandoff = {
+  desktopBehavior: "popup" | "qr";
+  popupName?: string;
+};
+
+/**
+ * A payment method whose next step is returned as a PaymentAction.
+ *
+ * The method ID describes what the customer selected. The response action
+ * separately describes how the SDK should execute it.
+ */
+export type NavNodePaymentMethod = NavNodeCommon & {
+  type: "PaymentMethod";
+  methodId: ActionPaymentMethodId;
+  category: PaymentMethodCategory;
+  countryCode?: string;
+  icon?: string;
+  sourceAmount: NavSourceAmount;
+};
+
+/** @deprecated Old servers emit provider-shaped navigation nodes. */
 export type NavNodeExchange = NavNodeCommon & {
   type: "Exchange";
   exchangeId: ExchangeId;
   icon?: string;
+  /** Backend-owned amount and currency policy. Optional for old servers. */
+  sourceAmount?: NavSourceAmount;
+  /** Backend-owned external handoff presentation. Optional for old servers. */
+  externalHandoff?: NavExternalHandoff;
+  /** @deprecated Use sourceAmount.required. */
   requiredUsd?: number;
+  /** @deprecated Use sourceAmount.minimum. */
   minimumUsd: number;
+  /** @deprecated Use sourceAmount.maximum. */
   maximumUsd: number;
 };
 
+/** @deprecated Old servers emit provider-shaped navigation nodes. */
 export type NavNodeCashApp = NavNodeCommon & {
   type: "CashApp";
   icon?: string;
+  /** Backend-owned amount and currency policy. Optional for old servers. */
+  sourceAmount?: NavSourceAmount;
+  /** Backend-owned external handoff presentation. Optional for old servers. */
+  externalHandoff?: NavExternalHandoff;
   requiredUsd?: number;
   minimumUsd: number;
   maximumUsd: number;
 };
 
+/** @deprecated Old servers emit provider-shaped navigation nodes. */
 export type NavNodeStripe = NavNodeCommon & {
   type: "Stripe";
   icon?: string;
+  sourceAmount?: NavSourceAmount;
   requiredUsd?: number;
   minimumUsd: number;
   maximumUsd: number;
 };
+
+export type NavActionPaymentMethodNode =
+  | NavNodePaymentMethod
+  | NavNodeExchange
+  | NavNodeCashApp
+  | NavNodeStripe;
+
+/** Compatibility fallback for nav trees produced by pre-sourceAmount servers. */
+export function getNavSourceAmount(
+  node: NavActionPaymentMethodNode,
+): NavSourceAmount {
+  if (node.type === "PaymentMethod") return node.sourceAmount;
+  if (node.sourceAmount != null) return node.sourceAmount;
+  return {
+    currency: "USD",
+    currencySymbol: "$",
+    decimals: 2,
+    required: node.requiredUsd,
+    minimum: node.minimumUsd,
+    maximum: node.maximumUsd,
+  };
+}
+
+/** Compatibility fallback for nav trees produced by pre-handoff servers. */
+export function getNavExternalHandoff(
+  node: NavNodeExchange | NavNodeCashApp,
+): NavExternalHandoff & {
+  legacyQrPlaceholderDensity?: "short" | "medium" | "long";
+} {
+  if (node.externalHandoff != null) return node.externalHandoff;
+  return getLegacyNavExternalHandoff(node);
+}
+
+/** Preserve pre-handoff SDK behavior while old backend nav trees remain valid. */
+function getLegacyNavExternalHandoff(
+  node: NavNodeExchange | NavNodeCashApp,
+): NavExternalHandoff & {
+  legacyQrPlaceholderDensity: "short" | "medium";
+} {
+  const exchangeId = node.type === "CashApp" ? "CashApp" : node.exchangeId;
+  return {
+    desktopBehavior:
+      exchangeId === "Coinbase" || exchangeId === "MtPelerin" ? "popup" : "qr",
+    legacyQrPlaceholderDensity:
+      exchangeId === "Binance" ||
+      exchangeId === "BinanceUSDC" ||
+      exchangeId === "BinanceUSDT"
+        ? "medium"
+        : "short",
+  };
+}
+
+/** Format an amount exactly as required by the backend-owned source policy. */
+export function formatNavSourceAmountUnits(
+  amount: number,
+  sourceAmount: NavSourceAmount,
+): string {
+  if (
+    !Number.isFinite(amount) ||
+    !Number.isInteger(sourceAmount.decimals) ||
+    sourceAmount.decimals < 0 ||
+    sourceAmount.decimals > 20
+  ) {
+    throw new Error("invalid payment method amount");
+  }
+  return amount.toFixed(sourceAmount.decimals);
+}
 
 export type NavNodeTronDeposit = NavNodeCommon & {
   type: "TronDeposit";
@@ -142,6 +257,7 @@ export type NavNode =
   | NavNodeChooseOption
   | NavNodeDepositAddress
   | NavNodeDeeplink
+  | NavNodePaymentMethod
   | NavNodeExchange
   | NavNodeCashApp
   | NavNodeStripe

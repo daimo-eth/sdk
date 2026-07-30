@@ -17,24 +17,24 @@ export type NavEventAction =
   | { action: "nav_select"; targetNodeId: string; targetNodeType: NavNodeType }
   | { action: "nav_back" }
   | { action: "nav_deeplink"; url: string }
-  | { action: "flow_amount_continue"; amountUsd: number }
+  | ({
+      action: "flow_amount_continue";
+    } & (
+      | { amountUsd: number }
+      | { sourceAmountUnits: string; sourceCurrency: string }
+    ))
   | { action: "flow_refresh" }
   | {
-      action: "flow_exchange_url";
-      exchangeId: string;
+      action: "flow_payment_action";
+      paymentMethodId: string;
+      actionType?: "openUrl" | "embeddedWidget";
       success: boolean;
-      url?: string;
       error?: string;
     }
   | {
       action: "flow_tron_address";
       success: boolean;
       address?: string;
-      error?: string;
-    }
-  | {
-      action: "flow_stripe_onramp";
-      success: boolean;
       error?: string;
     }
   | { action: "popup_open"; reopen: boolean }

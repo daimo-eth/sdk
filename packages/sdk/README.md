@@ -15,6 +15,44 @@ See [docs.daimo.com](https://docs.daimo.com) for more.
 - `@daimo/sdk/web` — React modal (`<DaimoModal>`) and hooks for the built-in deposit UI
 - `@daimo/sdk/native` — React Native deposit UI (`<DaimoFrameRN>`) over `react-native-webview`
 
+### Payment methods
+
+Payment method identity, product category, and client execution are separate
+concepts:
+
+- `PaymentMethodId` is the stable identity selected by a customer, such as
+  `CashApp`, `MtPelerin`, or `Stripe`.
+- `PaymentMethodCategory` is derived product metadata such as `paymentApp`,
+  `onramp`, or `exchange`.
+- `PaymentAction` tells a client what to do next, such as open a URL or render
+  an embedded widget.
+
+Custom UIs create action-based methods through the same request shape:
+
+```ts
+const result = await client.sessions.paymentMethods.create(sessionId, {
+  clientSecret,
+  paymentMethod: {
+    id: "CashApp",
+    sourceAmount: { currency: "USD", units: "25.00" },
+    platform: "ios",
+  },
+});
+
+switch (result.action?.type) {
+  case "openUrl":
+    window.open(result.action.url, "_blank");
+    break;
+  case "embeddedWidget":
+    // Mount result.action.sdk with its scoped client credentials.
+    break;
+}
+```
+
+The built-in modal performs this call and renders the action automatically.
+Provider-shaped exchange and Stripe request/response fields remain accepted as
+deprecated compatibility adapters.
+
 ### Styles
 
 Import `@daimo/sdk/web/theme.css` for the built-in web UI. The distributed stylesheet namespaces internal classes with `daimo-` so it can coexist with a host app's Tailwind build.

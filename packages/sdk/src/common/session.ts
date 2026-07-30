@@ -2,6 +2,7 @@ import type { Address, Hex } from "viem";
 import { z } from "zod";
 
 import type { AccountRail } from "./account.js";
+import type { Money, PaymentMethodId } from "./paymentMethod.js";
 import type { DaimoSessionTheme } from "./theme.js";
 import type {
   SolanaAddress,
@@ -98,21 +99,33 @@ export type PaymentMethod =
   | PaymentMethodStripe
   | PaymentMethodFiat;
 
-export type PaymentMethodStripe = {
-  type: "stripe";
+type PaymentMethodCommon = {
+  /**
+   * Stable user-visible payment method identity.
+   *
+   * Optional while sessions created by older servers remain readable.
+   */
+  id?: PaymentMethodId;
+  /** Money the user authorized when the method has a fiat source amount. */
+  sourceAmount?: Money;
   /** When this payment method was created (unix seconds). */
   createdAt: number;
 };
 
-export type PaymentMethodFiat = {
+export type PaymentMethodStripe = PaymentMethodCommon & {
+  /** @deprecated Inspect id for identity. This describes the source adapter. */
+  type: "stripe";
+};
+
+export type PaymentMethodFiat = PaymentMethodCommon & {
+  /** @deprecated Inspect id for identity. This describes the source adapter. */
   type: "fiat";
   /** Selected fiat method, when known. */
   fiatMethod?: AccountRail;
-  /** When this payment method was created (unix seconds). */
-  createdAt: number;
 };
 
-export type PaymentMethodEvm = {
+export type PaymentMethodEvm = PaymentMethodCommon & {
+  /** @deprecated Inspect id for identity. This describes the funds source. */
   type: "evm";
   /** Address that receives user's funds, checksum encoded. */
   receiverAddress: Address;
@@ -133,11 +146,10 @@ export type PaymentMethodEvm = {
     /** Source transaction hash, set once tx is confirmed. */
     txHash?: Hex;
   };
-  /** When this payment method was created (unix seconds). */
-  createdAt: number;
 };
 
-export type PaymentMethodTron = {
+export type PaymentMethodTron = PaymentMethodCommon & {
+  /** @deprecated Inspect id for identity. This describes the funds source. */
   type: "tron";
   /** Address that receives user's funds. */
   receiverAddress: TronAddress;
@@ -156,11 +168,10 @@ export type PaymentMethodTron = {
     /** Source transaction hash, set once tx is confirmed. */
     txHash?: TronTxHash;
   };
-  /** When this payment method was created (unix seconds). */
-  createdAt: number;
 };
 
-export type PaymentMethodSolana = {
+export type PaymentMethodSolana = PaymentMethodCommon & {
+  /** @deprecated Inspect id for identity. This describes the funds source. */
   type: "solana";
   /** Populated once user initiates a transaction. */
   source?: {
@@ -177,8 +188,6 @@ export type PaymentMethodSolana = {
     /** Source transaction hash, set once tx is confirmed. */
     txHash?: SolanaTxHash;
   };
-  /** When this payment method was created (unix seconds). */
-  createdAt: number;
 };
 
 export type UserMetadata = Record<string, string> | null;

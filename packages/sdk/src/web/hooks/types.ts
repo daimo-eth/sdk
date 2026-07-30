@@ -4,6 +4,7 @@ import type {
   AccountRail,
   DepositPaymentInteraction,
 } from "../../common/account.js";
+import type { PaymentAction } from "../../common/api.js";
 import type { NavNode, SessionWithNav } from "../api/navTree.js";
 import type { WalletPaymentOption } from "../api/walletTypes.js";
 
@@ -26,7 +27,7 @@ export type NavEntry =
   | {
       type: "select-amount";
       nodeId: string;
-      flowType: "deposit" | "tron" | "exchange" | "cashapp" | "stripe";
+      flowType: "deposit" | "tron" | "payment-method";
       autoNav?: boolean;
     }
   | {
@@ -49,22 +50,10 @@ export type NavEntry =
       autoNav?: boolean;
     }
   | {
-      type: "exchange-page";
+      type: "payment-method";
       nodeId: string;
-      amountUsd: number;
-      exchangeUrl?: string;
-      waitingMessage?: string;
-      expiresAt?: number;
-      error?: string;
-      autoNav?: boolean;
-    }
-  | {
-      type: "stripe-onramp";
-      nodeId: string;
-      amountUsd: number;
-      onrampSessionClientSecret?: string;
-      publishableKey?: string;
-      redirectUrl?: string;
+      sourceAmount: number;
+      action?: PaymentAction;
       error?: string;
       autoNav?: boolean;
     }

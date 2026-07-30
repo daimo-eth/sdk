@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { zAccountRail } from "./account.js";
+import { type PaymentAction, zMoney } from "./paymentMethod.js";
 import type { TronAddress, UUID } from "./primitives.js";
 import { zAddress, zSolanaAddress } from "./primitives.js";
 import type { SessionPublicInfo } from "./session.js";
@@ -23,32 +24,64 @@ export type ExchangeId = z.infer<typeof zExchangeId>;
 
 export const zSessionId = z.string().describe("Session ID");
 
+export const zActionPaymentMethodId = z.enum([
+  "CashApp",
+  "Coinbase",
+  "Binance",
+  "BinanceUSDC",
+  "BinanceUSDT",
+  "Lemon",
+  "BitgetExchange",
+  "BybitExchange",
+  "MtPelerin",
+  "Stripe",
+]);
+
+export type ActionPaymentMethodId = z.infer<typeof zActionPaymentMethodId>;
+
+export const zActionPaymentMethodRequest = z.object({
+  id: zActionPaymentMethodId,
+  sourceAmount: zMoney,
+  countryCode: z
+    .string()
+    .regex(/^[A-Z]{2}$/)
+    .optional(),
+  platform: zPlatform.optional(),
+});
+
+export type PaymentMethodRequest = z.infer<typeof zActionPaymentMethodRequest>;
+
+const zLegacyPaymentMethodRequest = z.discriminatedUnion("type", [
+  z.object({ type: z.literal("evm") }),
+  z.object({ type: z.literal("tron"), amountUsd: z.number().positive() }),
+  z.object({
+    type: z.literal("solana"),
+    walletAddress: z.string().min(1),
+    inputTokenMint: z.string().min(1),
+    amountUsd: z.number().positive(),
+  }),
+  z.object({
+    type: z.literal("exchange"),
+    exchangeId: zExchangeId,
+    amountUsd: z.number().positive(),
+    platform: zPlatform.optional(),
+  }),
+  z.object({
+    type: z.literal("stripe"),
+    amountUsd: z.number().positive(),
+  }),
+  z.object({
+    type: z.literal("fiat"),
+    fiatMethod: zAccountRail.optional(),
+  }),
+]);
+
 export const zCreatePaymentMethodRequest = z.object({
   clientSecret: z.string(),
   locale: z.string().optional(),
-  paymentMethod: z.discriminatedUnion("type", [
-    z.object({ type: z.literal("evm") }),
-    z.object({ type: z.literal("tron"), amountUsd: z.number().positive() }),
-    z.object({
-      type: z.literal("solana"),
-      walletAddress: z.string().min(1),
-      inputTokenMint: z.string().min(1),
-      amountUsd: z.number().positive(),
-    }),
-    z.object({
-      type: z.literal("exchange"),
-      exchangeId: zExchangeId,
-      amountUsd: z.number().positive(),
-      platform: zPlatform.optional(),
-    }),
-    z.object({
-      type: z.literal("stripe"),
-      amountUsd: z.number().positive(),
-    }),
-    z.object({
-      type: z.literal("fiat"),
-      fiatMethod: zAccountRail.optional(),
-    }),
+  paymentMethod: z.union([
+    zActionPaymentMethodRequest,
+    zLegacyPaymentMethodRequest,
   ]),
 });
 
@@ -91,6 +124,8 @@ export type RetrieveSessionResponse = {
 export type CreatePaymentMethodResponse = {
   /** Updated session state after payment method creation. */
   session: SessionPublicInfo;
+  /** Canonical next step for the client. */
+  action?: PaymentAction;
   /** Tron-specific payment details, present when payment method is Tron. */
   tron?: {
     /** Tron address to send funds to. */
@@ -112,7 +147,7 @@ export type CreatePaymentMethodResponse = {
     /** Base64-encoded Solana transaction for the user to sign. */
     serializedTx: string;
   };
-  /** Exchange-specific payment details, present when payment method is Exchange. */
+  /** @deprecated Use action. */
   exchange?: {
     /** Deeplink URL for the exchange. */
     url: string;
@@ -128,7 +163,7 @@ export type CreatePaymentMethodResponse = {
     /** Selected fiat method for this hosted flow, when pinned to one method. */
     fiatMethod?: z.infer<typeof zAccountRail>;
   };
-  /** Stripe Onramp details, present when payment method is Stripe. */
+  /** @deprecated Use action. */
   stripe?: {
     /**
      * Stripe OnrampSession client secret, scoped to this onramp session.
@@ -142,6 +177,14 @@ export type CreatePaymentMethodResponse = {
     redirectUrl: string;
   };
 };
+
+export type {
+  Money,
+  PaymentAction,
+  PaymentMethodCategory,
+  PaymentMethodId,
+  PaymentQuote,
+} from "./paymentMethod.js";
 
 export type CheckSessionResponse = {
   /** Current session state. */

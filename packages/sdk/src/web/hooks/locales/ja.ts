@@ -25,11 +25,15 @@ export const ja: typeof en = {
   mobileWallets: "モバイルウォレット",
   scanWithPhone: "スマートフォンでスキャンしてウォレットを開く",
 
-  // ExchangePage
+  // PaymentActionPage
   continueTo: "",
   toCompleteYourDeposit: "で入金を完了してください",
   open: "開く",
   refreshInvoice: "更新",
+  estimatedOutput: "受取額（見込み）",
+  serviceFee: "サービス手数料",
+  networkFee: "ネットワーク手数料",
+  partnerFee: "パートナー手数料",
 
   // SelectAmountPage
   selectAmount: "金額を選択",

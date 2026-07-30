@@ -19,15 +19,14 @@ import type {
   NavLocationOption,
   RecreateSessionWithNavResponse,
 } from "../api/index.js";
+import { getNavSourceAmount } from "../api/navTree.js";
 import type {
+  NavActionPaymentMethodNode,
   NavNode,
-  NavNodeCashApp,
   NavNodeChooseOption,
   NavNodeConnectedWallet,
   NavNodeDeeplink,
   NavNodeDepositAddress,
-  NavNodeExchange,
-  NavNodeStripe,
   NavNodeTronDeposit,
   SessionWithNav,
 } from "../api/navTree.js";
@@ -67,7 +66,7 @@ import { ChooseWalletPage } from "./ChooseWalletPage.js";
 import { ConfirmationPage } from "./ConfirmationPage.js";
 import { EmbeddedContainer, ModalContainer } from "./containers.js";
 import { DeeplinkPage } from "./DeeplinkPage.js";
-import { ExchangePage } from "./ExchangePage.js";
+import { PaymentActionPage } from "./PaymentActionPage.js";
 import { ExpiredPage } from "./ExpiredPage.js";
 import { AccountPaymentInstructionsPage } from "./account/AccountBankDetailsPage.js";
 import { AccountInstitutionPickerPage } from "./account/AccountBankPickerPage.js";
@@ -93,7 +92,6 @@ import {
 } from "./account/accountNav.js";
 import { SelectAmountPage } from "./SelectAmountPage.js";
 import { SelectTokenPage } from "./SelectTokenPage.js";
-import { StripeOnrampPage } from "./StripeOnrampPage.js";
 import {
   CenteredContent,
   ContactSupportButton,
@@ -107,8 +105,6 @@ import { ModalChrome, type ModalChromeControls } from "./ModalChrome.js";
 import { QRCode } from "./QRCode.js";
 import { WaitingDepositAddressPage } from "./WaitingDepositAddressPage.js";
 import { WalletAmountPage } from "./WalletAmountPage.js";
-
-type ExchangeLikeNode = NavNodeExchange | NavNodeCashApp;
 
 export type DaimoModalLocalizationProps = {
   /** Override country used to localize auto payment-method sessions. */
@@ -821,10 +817,8 @@ function renderEntry(
       return renderWaitingDeposit(entry, ctx);
     case "waiting-tron":
       return renderWaitingTron(entry, ctx);
-    case "exchange-page":
-      return renderExchangePage(entry, ctx);
-    case "stripe-onramp":
-      return renderStripeOnramp(entry, ctx);
+    case "payment-method":
+      return renderPaymentMethod(entry, ctx);
     case "wallet-choose-chain":
       return (
         <ChooseChainPage
@@ -1113,8 +1107,8 @@ function renderSelectAmount(
     return (
       <SelectAmountPage
         node={depositNode}
-        minimumUsd={depositNode.minimumUsd}
-        maximumUsd={depositNode.maximumUsd}
+        minimum={depositNode.minimumUsd}
+        maximum={depositNode.maximumUsd}
         tokenSuffix={depositNode.tokenSuffix}
         chainId={depositNode.chainId}
         onBack={ctx.canGoBack ? ctx.onBack : undefined}
@@ -1128,8 +1122,8 @@ function renderSelectAmount(
     return (
       <SelectAmountPage
         node={{ icon: tronNode.icon, title: tronNode.title }}
-        minimumUsd={tronNode.minimumUsd}
-        maximumUsd={tronNode.maximumUsd}
+        minimum={tronNode.minimumUsd}
+        maximum={tronNode.maximumUsd}
         tokenSuffix="USDT"
         chainId={tron.chainId}
         onBack={ctx.canGoBack ? ctx.onBack : undefined}
@@ -1138,39 +1132,23 @@ function renderSelectAmount(
       />
     );
   }
-  if (entry.flowType === "exchange") {
-    const exchangeNode = node as NavNodeExchange;
+  if (entry.flowType === "payment-method") {
+    if (
+      node.type !== "PaymentMethod" &&
+      node.type !== "Exchange" &&
+      node.type !== "CashApp" &&
+      node.type !== "Stripe"
+    ) {
+      return null;
+    }
+    const sourceAmount = getNavSourceAmount(node);
     return (
       <SelectAmountPage
-        node={{ icon: exchangeNode.icon, title: exchangeNode.title }}
-        minimumUsd={exchangeNode.minimumUsd}
-        maximumUsd={exchangeNode.maximumUsd}
-        onBack={ctx.canGoBack ? ctx.onBack : undefined}
-        onContinue={ctx.onAmountContinue}
-        baseUrl={ctx.session.baseUrl}
-      />
-    );
-  }
-  if (entry.flowType === "cashapp") {
-    const cashAppNode = node as NavNodeCashApp;
-    return (
-      <SelectAmountPage
-        node={{ icon: cashAppNode.icon, title: cashAppNode.title }}
-        minimumUsd={cashAppNode.minimumUsd}
-        maximumUsd={cashAppNode.maximumUsd}
-        onBack={ctx.canGoBack ? ctx.onBack : undefined}
-        onContinue={ctx.onAmountContinue}
-        baseUrl={ctx.session.baseUrl}
-      />
-    );
-  }
-  if (entry.flowType === "stripe") {
-    const stripeNode = node as NavNodeStripe;
-    return (
-      <SelectAmountPage
-        node={{ icon: stripeNode.icon, title: stripeNode.title }}
-        minimumUsd={stripeNode.minimumUsd}
-        maximumUsd={stripeNode.maximumUsd}
+        node={{ icon: node.icon, title: node.title }}
+        minimum={sourceAmount.minimum}
+        maximum={sourceAmount.maximum}
+        decimals={sourceAmount.decimals}
+        currencySymbol={sourceAmount.currencySymbol}
         onBack={ctx.canGoBack ? ctx.onBack : undefined}
         onContinue={ctx.onAmountContinue}
         baseUrl={ctx.session.baseUrl}
@@ -1356,15 +1334,23 @@ function TrustWalletTronLoading(): React.ReactNode {
   );
 }
 
-function renderExchangePage(
-  entry: NavEntry & { type: "exchange-page" },
+function renderPaymentMethod(
+  entry: NavEntry & { type: "payment-method" },
   ctx: RenderContext,
 ): React.ReactNode {
   const node = findNode(
     entry.nodeId,
     ctx.session.navTree,
-  ) as ExchangeLikeNode | null;
-  if (!node) return null;
+  ) as NavActionPaymentMethodNode | null;
+  if (
+    node == null ||
+    (node.type !== "PaymentMethod" &&
+      node.type !== "Exchange" &&
+      node.type !== "CashApp" &&
+      node.type !== "Stripe")
+  ) {
+    return null;
+  }
   if (entry.error)
     return (
       <FlowErrorMessage
@@ -1375,40 +1361,12 @@ function renderExchangePage(
       />
     );
   return (
-    <ExchangePage
+    <PaymentActionPage
       node={node}
       platform={ctx.platform}
-      exchangeUrl={entry.exchangeUrl}
-      waitingMessage={entry.waitingMessage}
-      expiresAt={entry.expiresAt}
-      isLoading={!entry.exchangeUrl}
+      action={entry.action}
+      isLoading={entry.action == null}
       onBack={ctx.onBack}
-      onRetry={ctx.onRetry}
-      baseUrl={ctx.session.baseUrl}
-    />
-  );
-}
-
-function renderStripeOnramp(
-  entry: NavEntry & { type: "stripe-onramp" },
-  ctx: RenderContext,
-): React.ReactNode {
-  const node = findNode(
-    entry.nodeId,
-    ctx.session.navTree,
-  ) as NavNodeStripe | null;
-  if (!node) return null;
-
-  return (
-    <StripeOnrampPage
-      node={node}
-      platform={ctx.platform}
-      amountUsd={entry.amountUsd}
-      redirectUrl={entry.redirectUrl}
-      isLoading={!entry.redirectUrl && !entry.error}
-      error={entry.error}
-      onBack={ctx.onBack}
-      onRetry={ctx.onRetry}
       baseUrl={ctx.session.baseUrl}
     />
   );

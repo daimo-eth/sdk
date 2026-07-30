@@ -11,19 +11,27 @@ import type {
   AccountDepositStatus,
   AccountRail,
 } from "../../common/account.js";
-import type { ExchangeId } from "../../common/api.js";
+import type {
+  ActionPaymentMethodId,
+  CreatePaymentMethodResponse,
+  CreatePaymentMethodRequest,
+  PaymentAction,
+} from "../../common/api.js";
 import type {
   AccountAuthConfig,
   DaimoCountryCode,
   RecreateSessionWithNavResponse,
 } from "../api/index.js";
+import {
+  formatNavSourceAmountUnits,
+  getNavExternalHandoff,
+  getNavSourceAmount,
+} from "../api/navTree.js";
 import type {
+  NavActionPaymentMethodNode,
   NavNode,
-  NavNodeCashApp,
   NavNodeChooseOption,
-  NavNodeExchange,
   NavNodeFiat,
-  NavNodeStripe,
   NavNodeTronDeposit,
   SessionWithNav,
 } from "../api/navTree.js";
@@ -55,7 +63,6 @@ import type { InjectedWallet } from "./useInjectedWallets.js";
 import { isUserRejection, type WalletFlowResult } from "./useWalletFlow.js";
 
 type NodeContext = { nodeId: string | null; nodeType: NavNodeType | null };
-type ExchangeNode = NavNodeExchange | NavNodeCashApp;
 
 type SessionNavResult = {
   stack: NavEntry[];
@@ -66,7 +73,7 @@ type SessionNavResult = {
   handleNavigate: (nodeId: string, options?: { autoNav?: boolean }) => void;
   handleBack: () => void;
   handleReset: () => void;
-  handleAmountContinue: (amountUsd: number) => void;
+  handleAmountContinue: (amount: number) => void;
   handleRetry: () => void;
   handleRefresh: () => Promise<void>;
   handleAccountSessionRecreate: (depositAmount: string) => Promise<void>;
@@ -87,26 +94,85 @@ type SessionNavResult = {
   handleAccountLogout: () => void;
 };
 
-function isExchangeNode(node: NavNode | null): node is ExchangeNode {
-  return node?.type === "Exchange" || node?.type === "CashApp";
-}
-
-function isStripeNode(node: NavNode | null): node is NavNodeStripe {
-  return node?.type === "Stripe";
+function isActionPaymentMethodNode(
+  node: NavNode | null,
+): node is NavActionPaymentMethodNode {
+  return (
+    node?.type === "PaymentMethod" ||
+    node?.type === "Exchange" ||
+    node?.type === "CashApp" ||
+    node?.type === "Stripe"
+  );
 }
 
 function isTrustTronNode(node: NavNode | null): node is NavNodeTronDeposit {
   return node?.type === "TronDeposit" && node.id === "Trust-Tron";
 }
 
-function getExchangeSelection(node: ExchangeNode): {
-  exchangeId: ExchangeId;
-  nodeType: "Exchange" | "CashApp";
-} {
-  if (node.type === "CashApp") {
-    return { exchangeId: "CashApp", nodeType: "CashApp" };
+function getPaymentMethodId(
+  node: NavActionPaymentMethodNode,
+): ActionPaymentMethodId {
+  if (node.type === "PaymentMethod") return node.methodId;
+  if (node.type === "CashApp") return "CashApp";
+  if (node.type === "Stripe") return "Stripe";
+  return node.exchangeId;
+}
+
+function getPaymentMethodRequest(
+  node: NavActionPaymentMethodNode,
+  amount: number,
+  platform: DaimoPlatform,
+): CreatePaymentMethodRequest["paymentMethod"] {
+  if (node.type === "PaymentMethod") {
+    const sourceAmount = getNavSourceAmount(node);
+    return {
+      id: node.methodId,
+      sourceAmount: {
+        units: formatNavSourceAmountUnits(amount, sourceAmount),
+        currency: sourceAmount.currency,
+      },
+      countryCode: node.countryCode,
+      platform,
+    };
   }
-  return { exchangeId: node.exchangeId, nodeType: "Exchange" };
+  if (node.type === "Stripe") return { type: "stripe", amountUsd: amount };
+  return {
+    type: "exchange",
+    exchangeId: node.type === "CashApp" ? "CashApp" : node.exchangeId,
+    amountUsd: amount,
+    platform,
+  };
+}
+
+function getPaymentAction(
+  node: NavActionPaymentMethodNode,
+  result: CreatePaymentMethodResponse,
+): PaymentAction {
+  if (result.action != null) return result.action;
+  if (node.type === "Stripe" && result.stripe != null) {
+    return {
+      type: "embeddedWidget",
+      sdk: "stripeOnramp",
+      clientSecret: result.stripe.onrampSessionClientSecret,
+      publishableKey: result.stripe.publishableKey,
+      fallbackUrl: result.stripe.redirectUrl,
+    };
+  }
+  if (
+    (node.type === "Exchange" || node.type === "CashApp") &&
+    result.exchange != null
+  ) {
+    const handoff = getNavExternalHandoff(node);
+    return {
+      type: "openUrl",
+      url: result.exchange.url,
+      presentation: handoff.desktopBehavior,
+      popupName: handoff.popupName,
+      waitingMessage: result.exchange.waitingMessage,
+      expiresAt: result.exchange.expiresAt,
+    };
+  }
+  throw new Error("payment action not returned");
 }
 
 function replacePendingAccountEntry(
@@ -266,134 +332,70 @@ export function useSessionNav(
     ],
   );
 
-  const fetchExchangeUrl = useCallback(
+  const fetchPaymentMethodAction = useCallback(
     async (
       nodeId: string,
-      exchangeId: ExchangeId,
-      amountUsd: number,
-      nodeType: "Exchange" | "CashApp",
+      node: NavActionPaymentMethodNode,
+      amount: number,
     ) => {
+      const paymentMethodId = getPaymentMethodId(node);
       try {
         const result = await client.sessions.paymentMethods.create(
           session.sessionId,
           {
             clientSecret: session.clientSecret,
-            paymentMethod: {
-              type: "exchange",
-              exchangeId,
-              amountUsd,
-              platform: effectivePlatform,
-            },
+            paymentMethod: getPaymentMethodRequest(
+              node,
+              amount,
+              effectivePlatform,
+            ),
           },
         );
-        if (!result.exchange) return;
+        const action = getPaymentAction(node, result);
         logNavEvent(session.sessionId, session.clientSecret, {
           nodeId,
-          nodeType,
-          action: "flow_exchange_url",
-          exchangeId,
+          nodeType: node.type,
+          action: "flow_payment_action",
+          paymentMethodId,
+          actionType: action.type,
           success: true,
-          url: result.exchange.url,
         });
         setStack((prev) => {
           const top = prev[prev.length - 1];
-          if (top?.type !== "exchange-page" || top.nodeId !== nodeId)
+          if (top?.type !== "payment-method" || top.nodeId !== nodeId)
             return prev;
           return [
             ...prev.slice(0, -1),
             {
               ...top,
-              exchangeUrl: result.exchange!.url,
-              waitingMessage: result.exchange!.waitingMessage,
-              expiresAt: result.exchange!.expiresAt,
+              action,
               error: undefined,
             },
           ];
         });
       } catch (error) {
-        console.error("failed to get exchange url:", error);
+        console.error("failed to create payment action:", error);
         const errorMsg =
-          error instanceof Error ? error.message : "failed to get exchange url";
+          error instanceof Error
+            ? error.message
+            : "failed to create payment action";
         logNavEvent(session.sessionId, session.clientSecret, {
           nodeId,
-          nodeType,
-          action: "flow_exchange_url",
-          exchangeId,
+          nodeType: node.type,
+          action: "flow_payment_action",
+          paymentMethodId,
           success: false,
           error: errorMsg,
         });
         setStack((prev) => {
           const top = prev[prev.length - 1];
-          if (top?.type !== "exchange-page" || top.nodeId !== nodeId)
+          if (top?.type !== "payment-method" || top.nodeId !== nodeId)
             return prev;
           return [...prev.slice(0, -1), { ...top, error: errorMsg }];
         });
       }
     },
     [session.sessionId, session.clientSecret, effectivePlatform, client],
-  );
-
-  const fetchStripeOnramp = useCallback(
-    async (nodeId: string, amountUsd: number) => {
-      try {
-        const result = await client.sessions.paymentMethods.create(
-          session.sessionId,
-          {
-            clientSecret: session.clientSecret,
-            paymentMethod: { type: "stripe", amountUsd },
-          },
-        );
-        if (!result.stripe) {
-          throw new Error("stripe onramp session not returned");
-        }
-        if (!result.stripe.redirectUrl) {
-          throw new Error("stripe onramp url not returned");
-        }
-
-        logNavEvent(session.sessionId, session.clientSecret, {
-          nodeId,
-          nodeType: "Stripe",
-          action: "flow_stripe_onramp",
-          success: true,
-        });
-        setStack((prev) => {
-          const top = prev[prev.length - 1];
-          if (top?.type !== "stripe-onramp" || top.nodeId !== nodeId)
-            return prev;
-          return [
-            ...prev.slice(0, -1),
-            {
-              ...top,
-              onrampSessionClientSecret:
-                result.stripe!.onrampSessionClientSecret,
-              publishableKey: result.stripe!.publishableKey,
-              redirectUrl: result.stripe!.redirectUrl,
-              error: undefined,
-            },
-          ];
-        });
-      } catch (error) {
-        console.error("failed to create stripe onramp:", error);
-        const errorMsg =
-          error instanceof Error
-            ? error.message
-            : "failed to create stripe onramp";
-        logNavEvent(session.sessionId, session.clientSecret, {
-          nodeId,
-          nodeType: "Stripe",
-          action: "flow_stripe_onramp",
-          success: false,
-          error: errorMsg,
-        });
-        setStack((prev) => {
-          const top = prev[prev.length - 1];
-          if (top?.type !== "stripe-onramp" || top.nodeId !== nodeId)
-            return prev;
-          return [...prev.slice(0, -1), { ...top, error: errorMsg }];
-        });
-      }
-    },
-    [session.sessionId, session.clientSecret, client],
   );
 
   // ─── Account deposit handler ────────────────────────────────────────────────
@@ -728,15 +730,19 @@ export function useSessionNav(
         return;
       }
 
-      if (isExchangeNode(targetNode)) {
-        const { exchangeId, nodeType } = getExchangeSelection(targetNode);
-        const requiredUsd = targetNode.requiredUsd ?? 0;
-        if (requiredUsd > 0) {
+      if (isActionPaymentMethodNode(targetNode)) {
+        const required = getNavSourceAmount(targetNode).required ?? 0;
+        if (required > 0) {
           setStack((prev) => [
             ...prev,
-            { type: "exchange-page", nodeId, amountUsd: requiredUsd, autoNav },
+            {
+              type: "payment-method",
+              nodeId,
+              sourceAmount: required,
+              autoNav,
+            },
           ]);
-          fetchExchangeUrl(nodeId, exchangeId, requiredUsd, nodeType);
+          fetchPaymentMethodAction(nodeId, targetNode, required);
           return;
         }
         setStack((prev) => [
@@ -744,26 +750,9 @@ export function useSessionNav(
           {
             type: "select-amount",
             nodeId,
-            flowType: targetNode.type === "CashApp" ? "cashapp" : "exchange",
+            flowType: "payment-method",
             autoNav,
           },
-        ]);
-        return;
-      }
-
-      if (isStripeNode(targetNode)) {
-        const requiredUsd = targetNode.requiredUsd ?? 0;
-        if (requiredUsd > 0) {
-          setStack((prev) => [
-            ...prev,
-            { type: "stripe-onramp", nodeId, amountUsd: requiredUsd, autoNav },
-          ]);
-          fetchStripeOnramp(nodeId, requiredUsd);
-          return;
-        }
-        setStack((prev) => [
-          ...prev,
-          { type: "select-amount", nodeId, flowType: "stripe", autoNav },
         ]);
         return;
       }
@@ -782,8 +771,7 @@ export function useSessionNav(
       session.sessionId,
       getNodeCtx,
       fetchTronAddress,
-      fetchExchangeUrl,
-      fetchStripeOnramp,
+      fetchPaymentMethodAction,
       handleAccountNavigate,
       enableFiatPopup,
     ],
@@ -829,9 +817,23 @@ export function useSessionNav(
   // ─── Flow handlers ──────────────────────────────────────────────────────
 
   const handleAmountContinue = useCallback(
-    (amountUsd: number) => {
+    (amount: number) => {
       if (!topEntry || topEntry.type !== "select-amount") return;
       const { nodeId, flowType } = topEntry;
+      const selectedNode = findNode(nodeId, session.navTree);
+      const selectedSourceAmount = isActionPaymentMethodNode(selectedNode)
+        ? getNavSourceAmount(selectedNode)
+        : null;
+      const amountContext =
+        flowType === "payment-method" && selectedSourceAmount != null
+          ? {
+              sourceAmountUnits: formatNavSourceAmountUnits(
+                amount,
+                selectedSourceAmount,
+              ),
+              sourceCurrency: selectedSourceAmount.currency,
+            }
+          : { amountUsd: amount };
 
       logNavEvent(session.sessionId, session.clientSecret, {
         nodeId,
@@ -840,43 +842,29 @@ export function useSessionNav(
             ? "DepositAddress"
             : flowType === "tron"
               ? "TronDeposit"
-              : flowType === "cashapp"
-                ? "CashApp"
-                : flowType === "stripe"
-                  ? "Stripe"
-                  : "Exchange",
+              : (selectedNode?.type ?? null),
         action: "flow_amount_continue",
-        amountUsd,
+        ...amountContext,
       });
 
       if (flowType === "deposit") {
         setStack((prev) => [
           ...prev,
-          { type: "waiting-deposit", nodeId, amountUsd },
+          { type: "waiting-deposit", nodeId, amountUsd: amount },
         ]);
       } else if (flowType === "tron") {
         setStack((prev) => [
           ...prev,
-          { type: "waiting-tron", nodeId, amountUsd },
+          { type: "waiting-tron", nodeId, amountUsd: amount },
         ]);
-        fetchTronAddress(nodeId, amountUsd);
-      } else if (flowType === "exchange" || flowType === "cashapp") {
-        const node = findNode(nodeId, session.navTree);
-        if (!isExchangeNode(node)) return;
-        const { exchangeId, nodeType } = getExchangeSelection(node);
+        fetchTronAddress(nodeId, amount);
+      } else if (flowType === "payment-method") {
+        if (!isActionPaymentMethodNode(selectedNode)) return;
         setStack((prev) => [
           ...prev,
-          { type: "exchange-page", nodeId, amountUsd },
+          { type: "payment-method", nodeId, sourceAmount: amount },
         ]);
-        fetchExchangeUrl(nodeId, exchangeId, amountUsd, nodeType);
-      } else if (flowType === "stripe") {
-        const node = findNode(nodeId, session.navTree);
-        if (!isStripeNode(node)) return;
-        setStack((prev) => [
-          ...prev,
-          { type: "stripe-onramp", nodeId, amountUsd },
-        ]);
-        fetchStripeOnramp(nodeId, amountUsd);
+        fetchPaymentMethodAction(nodeId, selectedNode, amount);
       }
     },
     [
@@ -884,8 +872,7 @@ export function useSessionNav(
       session.sessionId,
       session.navTree,
       fetchTronAddress,
-      fetchExchangeUrl,
-      fetchStripeOnramp,
+      fetchPaymentMethodAction,
     ],
   );
 
@@ -956,55 +943,28 @@ export function useSessionNav(
       return;
     }
 
-    if (topEntry.type === "exchange-page") {
+    if (topEntry.type === "payment-method") {
       const node = findNode(topEntry.nodeId, session.navTree);
-      if (!isExchangeNode(node)) return;
-      const { exchangeId, nodeType } = getExchangeSelection(node);
+      if (!isActionPaymentMethodNode(node)) return;
       setStack((prev) => {
         const top = prev[prev.length - 1];
-        if (top?.type !== "exchange-page") return prev;
+        if (top?.type !== "payment-method") return prev;
         return [
           ...prev.slice(0, -1),
           {
             ...top,
-            exchangeUrl: undefined,
-            expiresAt: undefined,
+            action: undefined,
             error: undefined,
           },
         ];
       });
-      fetchExchangeUrl(
-        topEntry.nodeId,
-        exchangeId,
-        topEntry.amountUsd,
-        nodeType,
-      );
-      return;
-    }
-
-    if (topEntry.type === "stripe-onramp") {
-      setStack((prev) => {
-        const top = prev[prev.length - 1];
-        if (top?.type !== "stripe-onramp") return prev;
-        return [
-          ...prev.slice(0, -1),
-          {
-            ...top,
-            onrampSessionClientSecret: undefined,
-            publishableKey: undefined,
-            redirectUrl: undefined,
-            error: undefined,
-          },
-        ];
-      });
-      fetchStripeOnramp(topEntry.nodeId, topEntry.amountUsd);
+      fetchPaymentMethodAction(topEntry.nodeId, node, topEntry.sourceAmount);
     }
   }, [
     topEntry,
     session.navTree,
     fetchTronAddress,
-    fetchExchangeUrl,
-    fetchStripeOnramp,
+    fetchPaymentMethodAction,
     doWalletSend,
   ]);
 

@@ -5,7 +5,7 @@ import { useDaimoClient } from "../../hooks/DaimoClientContext.js";
 import { t } from "../../hooks/locale.js";
 import { createNavLogger } from "../../hooks/navEvent.js";
 import type { DaimoPlatform } from "../../platform.js";
-import { ExternalPaymentPage } from "../ExternalPaymentPage.js";
+import { HostedPaymentPage } from "../HostedPaymentPage.js";
 import {
   buildFiatPopupUrl,
   FIAT_POPUP_FEATURES,
@@ -65,7 +65,7 @@ export function FiatPopupPage({
   };
 
   return (
-    <ExternalPaymentPage
+    <HostedPaymentPage
       title={node.title}
       platform={platform}
       url={url}

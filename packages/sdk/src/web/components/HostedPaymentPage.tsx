@@ -15,7 +15,13 @@ import {
 type QRDensity = "short" | "medium" | "long";
 type DesktopBehavior = "popup" | "qr";
 
-type ExternalPaymentPageProps = {
+type HostedPaymentDetail = {
+  id: string;
+  label: string;
+  value: string;
+};
+
+type HostedPaymentPageProps = {
   title: string;
   platform: DaimoPlatform;
   url?: string;
@@ -29,6 +35,7 @@ type ExternalPaymentPageProps = {
   popupName?: string;
   popupFeatures?: string;
   placeholderDensity?: QRDensity;
+  details?: HostedPaymentDetail[];
   /** Called with the opened window (null when blocked by the browser). */
   onOpened?: (popup: Window | null) => void;
 };
@@ -36,7 +43,7 @@ type ExternalPaymentPageProps = {
 const DEFAULT_POPUP_FEATURES = "width=500,height=700";
 
 /** Shared handoff page for providers that complete payment outside the modal. */
-export function ExternalPaymentPage({
+export function HostedPaymentPage({
   title,
   platform,
   url,
@@ -50,8 +57,9 @@ export function ExternalPaymentPage({
   popupName,
   popupFeatures = DEFAULT_POPUP_FEATURES,
   placeholderDensity,
+  details,
   onOpened,
-}: ExternalPaymentPageProps) {
+}: HostedPaymentPageProps) {
   const desktop = isDesktop(platform);
   const showQR = desktop && desktopBehavior === "qr";
 
@@ -110,6 +118,23 @@ export function ExternalPaymentPage({
           <p className="daimo-text-[var(--daimo-text-secondary)] daimo-text-center daimo-max-w-xs daimo-text-sm daimo-whitespace-pre-line">
             {message}
           </p>
+        )}
+        {details != null && details.length > 0 && (
+          <dl className="daimo-w-full daimo-max-w-xs daimo-divide-y daimo-divide-[var(--daimo-border)] daimo-rounded-lg daimo-border daimo-border-[var(--daimo-border)] daimo-text-sm">
+            {details.map((detail) => (
+              <div
+                key={detail.id}
+                className="daimo-flex daimo-items-center daimo-justify-between daimo-gap-3 daimo-px-3 daimo-py-2"
+              >
+                <dt className="daimo-text-[var(--daimo-text-secondary)]">
+                  {detail.label}
+                </dt>
+                <dd className="daimo-font-medium daimo-text-[var(--daimo-text)]">
+                  {detail.value}
+                </dd>
+              </div>
+            ))}
+          </dl>
         )}
         {!showQR && (
           <PrimaryButton
