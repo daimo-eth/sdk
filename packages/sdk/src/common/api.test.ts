@@ -1,5 +1,6 @@
 import { describe, expect, test } from "vitest";
 
+import type { ExternalPaymentMethodRequest } from "./api.js";
 import { zCreatePaymentMethodRequest } from "./api.js";
 
 describe("zCreatePaymentMethodRequest", () => {
@@ -63,17 +64,18 @@ describe("zCreatePaymentMethodRequest", () => {
   });
 
   test("accepts Cash App without a country", () => {
+    const paymentMethod: ExternalPaymentMethodRequest = {
+      type: "external",
+      id: "CashApp",
+      sourceAmount: {
+        units: "10.50",
+        currency: "USD",
+      },
+    };
     expect(
       zCreatePaymentMethodRequest.parse({
         clientSecret: "secret",
-        paymentMethod: {
-          type: "external",
-          id: "CashApp",
-          sourceAmount: {
-            units: "10.50",
-            currency: "USD",
-          },
-        },
+        paymentMethod,
       }).paymentMethod,
     ).toEqual({
       type: "external",

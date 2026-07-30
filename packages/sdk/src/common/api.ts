@@ -100,6 +100,12 @@ export type CreatePaymentMethodRequest = z.output<
   typeof zCreatePaymentMethodRequest
 >;
 
+/** Provider-neutral request for payment apps and hosted external handoffs. */
+export type ExternalPaymentMethodRequest = Extract<
+  CreatePaymentMethodRequest["paymentMethod"],
+  { type: "external" }
+>;
+
 export type CheckSessionRequest = z.output<typeof zCheckSessionRequest>;
 
 export type TokenOptionsRequest = z.output<typeof zTokenOptionsRequest>;
