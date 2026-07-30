@@ -34,7 +34,6 @@ test("accepts the legacy Privy hook registration shape", () => {
     authenticated: false,
     email: null,
     walletAddress: null,
-    walletsReady: true,
     hasEmbeddedWallet: false,
     phoneNumber: null,
   } satisfies PrivyHooks;

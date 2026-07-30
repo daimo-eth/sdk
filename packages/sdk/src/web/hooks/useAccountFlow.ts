@@ -41,7 +41,6 @@ export type PrivyHooks = {
   authenticated: boolean;
   email: string | null;
   walletAddress: string | null;
-  walletsReady: boolean;
   hasEmbeddedWallet: boolean;
   phoneNumber: string | null;
 };
@@ -223,13 +222,6 @@ export function useAccountFlowState(): AccountFlowState {
     );
   }, []);
 
-  const waitForWalletsReady = useCallback((): Promise<void> => {
-    return waitForAccountFlowState(
-      () => privyRef.current?.walletsReady === true,
-      "wallet initialization timed out",
-    );
-  }, []);
-
   const getAccessToken = useCallback(async (): Promise<string | null> => {
     return privyRef.current?.getAccessToken() ?? null;
   }, []);
@@ -359,7 +351,6 @@ export function useAccountFlowState(): AccountFlowState {
       if (!privyRef.current) throw new Error("privy not initialized");
       setIsCreatingWallet(true);
       await waitForReady();
-      await waitForWalletsReady();
       const address = await preparePrivyWallet(privyRef.current);
       setWalletAddress(address);
       return address;
@@ -371,7 +362,7 @@ export function useAccountFlowState(): AccountFlowState {
     });
 
     return ensureWalletRef.current;
-  }, [waitForReady, waitForWalletsReady]);
+  }, [waitForReady]);
 
   const signTypedData = useCallback(
     async (typedData: Record<string, unknown>): Promise<string> => {

@@ -86,7 +86,7 @@ function PrivyConsumer({
     useLoginWithEmail();
   const { sendTransaction: rawSendTransaction } = useSendTransaction();
   const { signTypedData: rawSignTypedData } = useSignTypedData();
-  const { wallets, ready: walletsReady } = useWallets();
+  const { wallets } = useWallets();
 
   const sendCode = useCallback(
     async (email: string) => {
@@ -157,7 +157,6 @@ function PrivyConsumer({
       authenticated,
       email,
       walletAddress,
-      walletsReady,
       hasEmbeddedWallet,
       phoneNumber,
     }),
@@ -174,7 +173,6 @@ function PrivyConsumer({
       signTypedData,
       sendSponsoredTransaction,
       logout,
-      walletsReady,
       hasEmbeddedWallet,
     ],
   );
