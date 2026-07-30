@@ -2,6 +2,7 @@ import type { Address, Hex } from "viem";
 import { z } from "zod";
 
 import type { AccountRail } from "./account.js";
+import type { ExternalPaymentMethodId, Money } from "./externalPayment.js";
 import type { DaimoSessionTheme } from "./theme.js";
 import type {
   SolanaAddress,
@@ -96,7 +97,18 @@ export type PaymentMethod =
   | PaymentMethodTron
   | PaymentMethodSolana
   | PaymentMethodStripe
-  | PaymentMethodFiat;
+  | PaymentMethodFiat
+  | PaymentMethodExternal;
+
+export type PaymentMethodExternal = {
+  type: "external";
+  /** User-visible payment method identity. */
+  id: ExternalPaymentMethodId;
+  /** Money the user authorized in the external payment app. */
+  sourceAmount: Money;
+  /** When this payment method was created (unix seconds). */
+  createdAt: number;
+};
 
 export type PaymentMethodStripe = {
   type: "stripe";

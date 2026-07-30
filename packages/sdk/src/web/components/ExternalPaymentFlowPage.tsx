@@ -58,7 +58,7 @@ export function ExternalPaymentFlowPage({
               {
                 id: "estimated-output",
                 label: t.estimatedOutput,
-                value: `${quote.estimatedDestinationUnits} ${quote.destinationCurrency}`,
+                value: `${quote.estimatedDestinationAmount.units} ${quote.estimatedDestinationAmount.currency}`,
               },
               ...quote.fees.map((fee, index) => ({
                 id: `fee-${fee.kind}-${index}`,
@@ -68,7 +68,7 @@ export function ExternalPaymentFlowPage({
                     : fee.kind === "network"
                       ? t.networkFee
                       : t.partnerFee,
-                value: `${fee.amountUnits} ${fee.currency}`,
+                value: `${fee.amount.units} ${fee.amount.currency}`,
               })),
             ]
       }

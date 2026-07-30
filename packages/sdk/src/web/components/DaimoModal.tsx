@@ -1127,12 +1127,12 @@ function renderSelectAmount(
   if (
     entry.flowType === "exchange" ||
     entry.flowType === "cashapp" ||
-    entry.flowType === "hosted"
+    entry.flowType === "external"
   ) {
     if (
       node.type !== "Exchange" &&
       node.type !== "CashApp" &&
-      node.type !== "HostedPayment"
+      node.type !== "ExternalPayment"
     ) {
       return null;
     }
@@ -1354,7 +1354,7 @@ function renderExternalPayment(
     node == null ||
     (node.type !== "Exchange" &&
       node.type !== "CashApp" &&
-      node.type !== "HostedPayment")
+      node.type !== "ExternalPayment")
   ) {
     return null;
   }

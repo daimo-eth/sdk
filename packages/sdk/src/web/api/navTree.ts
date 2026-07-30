@@ -4,6 +4,7 @@ import type {
   DepositPaymentInteraction,
 } from "../../common/account.js";
 import type { ExchangeId } from "../../common/api.js";
+import type { ExternalPaymentMethodId } from "../../common/externalPayment.js";
 import type { SessionPublicInfo } from "../../common/session.js";
 
 /** Session plus server-defined modal navigation data. */
@@ -125,6 +126,11 @@ export type NavNodeExchange = NavNodeCommon & {
 export type NavNodeCashApp = NavNodeCommon & {
   type: "CashApp";
   icon?: string;
+  /**
+   * Present when the server accepts the external-payment request for Cash App.
+   * Its absence preserves compatibility with pre-external-payment servers.
+   */
+  externalPaymentMethodId?: "CashApp";
   /** Backend-owned amount and currency policy. Optional for old servers. */
   sourceAmount?: NavSourceAmount;
   /** Backend-owned external handoff presentation. Optional for old servers. */
@@ -135,14 +141,14 @@ export type NavNodeCashApp = NavNodeCommon & {
 };
 
 /**
- * Generic hosted redirect. The SDK renders the interaction without knowing
- * which provider owns the method ID.
+ * Generic external payment handoff. The SDK renders the interaction without
+ * knowing which implementation owns the method ID.
  */
-export type NavNodeHostedPayment = NavNodeCommon & {
-  type: "HostedPayment";
-  hostedPaymentMethodId: string;
-  /** ISO-3166 alpha-2 country to echo when initiating this hosted payment. */
-  countryCode: string;
+export type NavNodeExternalPayment = NavNodeCommon & {
+  type: "ExternalPayment";
+  externalPaymentMethodId: ExternalPaymentMethodId;
+  /** ISO-3166 alpha-2 country to echo when initiating this payment. */
+  countryCode?: string;
   icon?: string;
   sourceAmount: NavSourceAmount;
   externalHandoff: NavExternalHandoff;
@@ -151,13 +157,13 @@ export type NavNodeHostedPayment = NavNodeCommon & {
 export type NavExternalPaymentNode =
   | NavNodeExchange
   | NavNodeCashApp
-  | NavNodeHostedPayment;
+  | NavNodeExternalPayment;
 
 /** Compatibility fallback for nav trees produced by pre-sourceAmount servers. */
 export function getNavSourceAmount(
   node: NavExternalPaymentNode,
 ): NavSourceAmount {
-  if (node.type === "HostedPayment") return node.sourceAmount;
+  if (node.type === "ExternalPayment") return node.sourceAmount;
   if (node.sourceAmount != null) return node.sourceAmount;
   return {
     currency: "USD",
@@ -175,7 +181,7 @@ export function getNavExternalHandoff(
 ): NavExternalHandoff & {
   legacyQrPlaceholderDensity?: "short" | "medium" | "long";
 } {
-  if (node.type === "HostedPayment") return node.externalHandoff;
+  if (node.type === "ExternalPayment") return node.externalHandoff;
   if (node.externalHandoff != null) return node.externalHandoff;
   return getLegacyNavExternalHandoff(node);
 }
@@ -253,7 +259,7 @@ export type NavNode =
   | NavNodeDeeplink
   | NavNodeExchange
   | NavNodeCashApp
-  | NavNodeHostedPayment
+  | NavNodeExternalPayment
   | NavNodeStripe
   | NavNodeTronDeposit
   | NavNodeConnectedWallet

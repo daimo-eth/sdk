@@ -12,7 +12,7 @@ export type {
   NavNodeExchange,
   NavExternalPaymentNode,
   NavExternalHandoff,
-  NavNodeHostedPayment,
+  NavNodeExternalPayment,
   NavNodeFiat,
   NavNodeKycRequirement,
   NavNodeKycRequirementDisplayItem,

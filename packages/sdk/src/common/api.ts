@@ -1,6 +1,10 @@
 import { z } from "zod";
 
 import { zAccountRail } from "./account.js";
+import {
+  type ExternalPayment,
+  zExternalPaymentMethodId,
+} from "./externalPayment.js";
 import type { TronAddress, UUID } from "./primitives.js";
 import { zAddress, zSolanaAddress } from "./primitives.js";
 import type { SessionPublicInfo } from "./session.js";
@@ -46,11 +50,13 @@ export const zCreatePaymentMethodRequest = z.object({
       platform: zPlatform.optional(),
     }),
     z.object({
-      type: z.literal("hosted"),
-      /** Opaque method ID supplied by the backend navigation tree. */
-      hostedPaymentMethodId: z.string().min(1),
+      type: z.literal("external"),
+      id: zExternalPaymentMethodId,
       /** ISO-3166 alpha-2 country selected in the backend navigation tree. */
-      countryCode: z.string().regex(/^[A-Z]{2}$/),
+      countryCode: z
+        .string()
+        .regex(/^[A-Z]{2}$/)
+        .optional(),
       sourceAmount: z.object({
         units: zPositiveDecimalUnits,
         currency: z.string().regex(/^[A-Z]{3}$/),
@@ -164,28 +170,12 @@ export type CreatePaymentMethodResponse = {
   };
 };
 
-export type ExternalPayment = {
-  /** URL where the user completes the external payment. */
-  url: string;
-  /** Message to display while waiting for the payment. */
-  waitingMessage: string;
-  /** Link expiry time (unix seconds), when supplied by the backend. */
-  expiresAt?: number;
-  /** Optional estimate for quoted external payments. */
-  quote?: ExternalPaymentQuote;
-};
-
-export type ExternalPaymentQuote = {
-  sourceAmountUnits: string;
-  sourceCurrency: string;
-  estimatedDestinationUnits: string;
-  destinationCurrency: string;
-  fees: {
-    kind: "service" | "network" | "partner";
-    amountUnits: string;
-    currency: string;
-  }[];
-};
+export type {
+  ExternalPayment,
+  ExternalPaymentQuote,
+  ExternalPaymentMethodId,
+  Money,
+} from "./externalPayment.js";
 
 export type CheckSessionResponse = {
   /** Current session state. */

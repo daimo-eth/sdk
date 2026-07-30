@@ -5,16 +5,16 @@ import {
   getNavExternalHandoff,
   getNavSourceAmount,
   type NavNodeExchange,
-  type NavNodeHostedPayment,
+  type NavNodeExternalPayment,
 } from "./navTree.js";
 
 describe("external payment nav policy", () => {
   test("uses backend-provided amount and handoff descriptors", () => {
-    const node: NavNodeHostedPayment = {
-      type: "HostedPayment",
-      id: "HostedPayment-FutureHostedMethod",
-      title: "Future hosted method",
-      hostedPaymentMethodId: "FutureHostedMethod",
+    const node: NavNodeExternalPayment = {
+      type: "ExternalPayment",
+      id: "ExternalPayment-Revolut",
+      title: "Revolut",
+      externalPaymentMethodId: "Revolut",
       countryCode: "JP",
       sourceAmount: {
         currency: "JPY",

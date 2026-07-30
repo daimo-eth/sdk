@@ -32,7 +32,7 @@ export type NavEntry =
         | "tron"
         | "exchange"
         | "cashapp"
-        | "hosted"
+        | "external"
         | "stripe";
       autoNav?: boolean;
     }

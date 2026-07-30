@@ -20,13 +20,30 @@ describe("zCreatePaymentMethodRequest", () => {
     });
   });
 
-  test("accepts backend-defined hosted methods and source currencies", () => {
+  test("continues to accept legacy Cash App exchange requests", () => {
     expect(
       zCreatePaymentMethodRequest.parse({
         clientSecret: "secret",
         paymentMethod: {
-          type: "hosted",
-          hostedPaymentMethodId: "FutureHostedMethod",
+          type: "exchange",
+          exchangeId: "CashApp",
+          amountUsd: 10,
+        },
+      }).paymentMethod,
+    ).toEqual({
+      type: "exchange",
+      exchangeId: "CashApp",
+      amountUsd: 10,
+    });
+  });
+
+  test("accepts typed external methods and source currencies", () => {
+    expect(
+      zCreatePaymentMethodRequest.parse({
+        clientSecret: "secret",
+        paymentMethod: {
+          type: "external",
+          id: "Revolut",
           countryCode: "DE",
           sourceAmount: {
             units: "10.50",
@@ -35,8 +52,8 @@ describe("zCreatePaymentMethodRequest", () => {
         },
       }).paymentMethod,
     ).toEqual({
-      type: "hosted",
-      hostedPaymentMethodId: "FutureHostedMethod",
+      type: "external",
+      id: "Revolut",
       countryCode: "DE",
       sourceAmount: {
         units: "10.50",
@@ -45,13 +62,36 @@ describe("zCreatePaymentMethodRequest", () => {
     });
   });
 
-  test("rejects malformed source amounts without encoding provider policy", () => {
+  test("accepts Cash App without a country", () => {
+    expect(
+      zCreatePaymentMethodRequest.parse({
+        clientSecret: "secret",
+        paymentMethod: {
+          type: "external",
+          id: "CashApp",
+          sourceAmount: {
+            units: "10.50",
+            currency: "USD",
+          },
+        },
+      }).paymentMethod,
+    ).toEqual({
+      type: "external",
+      id: "CashApp",
+      sourceAmount: {
+        units: "10.50",
+        currency: "USD",
+      },
+    });
+  });
+
+  test("rejects malformed source amounts without encoding method policy", () => {
     expect(() =>
       zCreatePaymentMethodRequest.parse({
         clientSecret: "secret",
         paymentMethod: {
-          type: "hosted",
-          hostedPaymentMethodId: "FutureHostedMethod",
+          type: "external",
+          id: "Revolut",
           countryCode: "DE",
           sourceAmount: {
             units: "0",
@@ -64,8 +104,8 @@ describe("zCreatePaymentMethodRequest", () => {
       zCreatePaymentMethodRequest.parse({
         clientSecret: "secret",
         paymentMethod: {
-          type: "hosted",
-          hostedPaymentMethodId: "FutureHostedMethod",
+          type: "external",
+          id: "Revolut",
           countryCode: "DE",
           sourceAmount: {
             units: "10.00",
@@ -76,7 +116,7 @@ describe("zCreatePaymentMethodRequest", () => {
     ).toThrow();
   });
 
-  test("keeps hosted methods out of the exchange enum", () => {
+  test("keeps external methods out of the exchange enum", () => {
     expect(() =>
       zCreatePaymentMethodRequest.parse({
         clientSecret: "secret",
@@ -84,6 +124,22 @@ describe("zCreatePaymentMethodRequest", () => {
           type: "exchange",
           exchangeId: "Revolut",
           amountUsd: 10,
+        },
+      }),
+    ).toThrow();
+  });
+
+  test("rejects untyped external method IDs", () => {
+    expect(() =>
+      zCreatePaymentMethodRequest.parse({
+        clientSecret: "secret",
+        paymentMethod: {
+          type: "external",
+          id: "FutureExternalMethod",
+          sourceAmount: {
+            units: "10.00",
+            currency: "EUR",
+          },
         },
       }),
     ).toThrow();

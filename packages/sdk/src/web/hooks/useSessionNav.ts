@@ -97,7 +97,7 @@ function isExternalPaymentNode(
   return (
     node?.type === "Exchange" ||
     node?.type === "CashApp" ||
-    node?.type === "HostedPayment"
+    node?.type === "ExternalPayment"
   );
 }
 
@@ -116,20 +116,27 @@ function getExternalPaymentSelection(node: NavExternalPaymentNode):
       nodeType: "Exchange" | "CashApp";
     }
   | {
-      kind: "hosted";
-      hostedPaymentMethodId: string;
-      countryCode: string;
-      nodeType: "HostedPayment";
+      kind: "external";
+      externalPaymentMethodId: "CashApp" | "Revolut";
+      countryCode?: string;
+      nodeType: "CashApp" | "ExternalPayment";
     } {
-  if (node.type === "HostedPayment") {
+  if (node.type === "ExternalPayment") {
     return {
-      kind: "hosted",
-      hostedPaymentMethodId: node.hostedPaymentMethodId,
+      kind: "external",
+      externalPaymentMethodId: node.externalPaymentMethodId,
       countryCode: node.countryCode,
-      nodeType: "HostedPayment",
+      nodeType: "ExternalPayment",
     };
   }
   if (node.type === "CashApp") {
+    if (node.externalPaymentMethodId != null) {
+      return {
+        kind: "external",
+        externalPaymentMethodId: node.externalPaymentMethodId,
+        nodeType: "CashApp",
+      };
+    }
     return { kind: "exchange", exchangeId: "CashApp", nodeType: "CashApp" };
   }
   return {
@@ -305,10 +312,10 @@ export function useSessionNav(
         sourceAmount,
       );
       const paymentMethod: CreatePaymentMethodRequest["paymentMethod"] =
-        selection.kind === "hosted"
+        selection.kind === "external"
           ? {
-              type: "hosted",
-              hostedPaymentMethodId: selection.hostedPaymentMethodId,
+              type: "external",
+              id: selection.externalPaymentMethodId,
               countryCode: selection.countryCode,
               sourceAmount: {
                 units: sourceAmountUnits,
@@ -335,8 +342,8 @@ export function useSessionNav(
           throw new Error("external payment details not returned");
         }
         const paymentMethodId =
-          selection.kind === "hosted"
-            ? selection.hostedPaymentMethodId
+          selection.kind === "external"
+            ? selection.externalPaymentMethodId
             : selection.exchangeId;
         logNavEvent(session.sessionId, session.clientSecret, {
           nodeId,
@@ -369,8 +376,8 @@ export function useSessionNav(
             ? error.message
             : "failed to create external payment";
         const paymentMethodId =
-          selection.kind === "hosted"
-            ? selection.hostedPaymentMethodId
+          selection.kind === "external"
+            ? selection.externalPaymentMethodId
             : selection.exchangeId;
         logNavEvent(session.sessionId, session.clientSecret, {
           nodeId,
@@ -794,8 +801,8 @@ export function useSessionNav(
             flowType:
               targetNode.type === "CashApp"
                 ? "cashapp"
-                : targetNode.type === "HostedPayment"
-                  ? "hosted"
+                : targetNode.type === "ExternalPayment"
+                  ? "external"
                   : "exchange",
             autoNav,
           },
@@ -891,7 +898,7 @@ export function useSessionNav(
       const amountContext =
         (flowType === "exchange" ||
           flowType === "cashapp" ||
-          flowType === "hosted") &&
+          flowType === "external") &&
         selectedSourceAmount != null
           ? {
               sourceAmountUnits: formatNavSourceAmountUnits(
@@ -911,8 +918,8 @@ export function useSessionNav(
               ? "TronDeposit"
               : flowType === "cashapp"
                 ? "CashApp"
-                : flowType === "hosted"
-                  ? "HostedPayment"
+                : flowType === "external"
+                  ? "ExternalPayment"
                   : flowType === "stripe"
                     ? "Stripe"
                     : "Exchange",
@@ -934,7 +941,7 @@ export function useSessionNav(
       } else if (
         flowType === "exchange" ||
         flowType === "cashapp" ||
-        flowType === "hosted"
+        flowType === "external"
       ) {
         if (!isExternalPaymentNode(selectedNode)) return;
         setStack((prev) => [
