@@ -1,17 +1,16 @@
 import { afterEach, describe, expect, expectTypeOf, test, vi } from "vitest";
-import { getAddress } from "viem";
 
 import type { DaimoClient } from "../../client/createDaimoClient.js";
 import {
   type AccountFlowState,
   type PrivyHooks,
-  accountWalletAddressesMatch,
+  preparePrivyWallet,
   waitForAccountFlowState,
 } from "./useAccountFlow.js";
 
 test("preserves legacy account flow method contracts", () => {
   expectTypeOf<AccountFlowState["ensureWallet"]>().toEqualTypeOf<
-    (client: DaimoClient) => Promise<string>
+    () => Promise<string>
   >();
   expectTypeOf<AccountFlowState["createAccount"]>().toEqualTypeOf<
     (
@@ -26,7 +25,7 @@ test("accepts the legacy Privy hook registration shape", () => {
   const hooks = {
     sendCode: async () => {},
     loginWithCode: async () => {},
-    refreshUser: async () => {},
+    createWallet: async () => ({ address: "0x1234" }),
     getAccessToken: async () => null,
     signTypedData: async () => "0x",
     sendSponsoredTransaction: async () => "0x" as const,
@@ -35,18 +34,52 @@ test("accepts the legacy Privy hook registration shape", () => {
     authenticated: false,
     email: null,
     walletAddress: null,
+    hasEmbeddedWallet: false,
     phoneNumber: null,
   } satisfies PrivyHooks;
 
   expect(hooks.ready).toBe(true);
 });
 
-test("matches the same wallet across address casing", () => {
-  const lowercase = "0x1234567890abcdef1234567890abcdef12345678";
+describe("preparePrivyWallet", () => {
+  test("uses the existing embedded wallet address", async () => {
+    const createWallet = vi.fn();
 
-  expect(accountWalletAddressesMatch(getAddress(lowercase), lowercase)).toBe(
-    true,
-  );
+    await expect(
+      preparePrivyWallet({
+        createWallet,
+        hasEmbeddedWallet: true,
+        walletAddress: "0x1234",
+      }),
+    ).resolves.toBe("0x1234");
+    expect(createWallet).not.toHaveBeenCalled();
+  });
+
+  test("creates a wallet in the authenticated browser", async () => {
+    const createWallet = vi.fn(async () => ({ address: "0x5678" }));
+
+    await expect(
+      preparePrivyWallet({
+        createWallet,
+        hasEmbeddedWallet: false,
+        walletAddress: null,
+      }),
+    ).resolves.toBe("0x5678");
+    expect(createWallet).toHaveBeenCalledOnce();
+  });
+
+  test("does not create a second wallet when metadata lacks an address", async () => {
+    const createWallet = vi.fn();
+
+    await expect(
+      preparePrivyWallet({
+        createWallet,
+        hasEmbeddedWallet: true,
+        walletAddress: null,
+      }),
+    ).rejects.toThrow("embedded wallet address unavailable");
+    expect(createWallet).not.toHaveBeenCalled();
+  });
 });
 
 describe("waitForAccountFlowState", () => {

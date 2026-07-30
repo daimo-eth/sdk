@@ -5,7 +5,6 @@ import {
   useRef,
   useState,
 } from "react";
-import { getAddress } from "viem";
 
 import type {
   AccountEnrollmentUpdate,
@@ -28,7 +27,7 @@ const ACCOUNT_FLOW_READY_TIMEOUT_MS = 15_000;
 export type PrivyHooks = {
   sendCode: (email: string) => Promise<void>;
   loginWithCode: (code: string) => Promise<void>;
-  refreshUser: () => Promise<unknown>;
+  createWallet: () => Promise<{ address: string }>;
   getAccessToken: () => Promise<string | null>;
   signTypedData: (typedData: Record<string, unknown>) => Promise<string>;
   sendSponsoredTransaction: (transaction: {
@@ -42,6 +41,7 @@ export type PrivyHooks = {
   authenticated: boolean;
   email: string | null;
   walletAddress: string | null;
+  hasEmbeddedWallet: boolean;
   phoneNumber: string | null;
 };
 
@@ -104,7 +104,7 @@ export type AccountFlowState = {
   verifyPhoneOtp: (code: string, client: DaimoClient) => Promise<boolean>;
   isCreatingWallet: boolean;
   walletAddress: string | null;
-  ensureWallet: (client: DaimoClient) => Promise<string>;
+  ensureWallet: () => Promise<string>;
 
   getAccessToken: () => Promise<string | null>;
   signTypedData: (typedData: Record<string, unknown>) => Promise<string>;
@@ -344,42 +344,25 @@ export function useAccountFlowState(): AccountFlowState {
     [getAccessToken, phoneNumber, setAuthError, setAuthFailure, waitForReady],
   );
 
-  const ensureWallet = useCallback(
-    (client: DaimoClient): Promise<string> => {
-      if (ensureWalletRef.current) return ensureWalletRef.current;
+  const ensureWallet = useCallback((): Promise<string> => {
+    if (ensureWalletRef.current) return ensureWalletRef.current;
 
-      const run = async (): Promise<string> => {
-        if (!privyRef.current) throw new Error("privy not initialized");
-        setIsCreatingWallet(true);
-        await waitForReady();
-        const token = await privyRef.current.getAccessToken();
-        if (!token) throw new Error("not authenticated");
+    const run = async (): Promise<string> => {
+      if (!privyRef.current) throw new Error("privy not initialized");
+      setIsCreatingWallet(true);
+      await waitForReady();
+      const address = await preparePrivyWallet(privyRef.current);
+      setWalletAddress(address);
+      return address;
+    };
 
-        const wallet = await client.account.ensureWallet({
-          bearerToken: token,
-        });
-        await privyRef.current.refreshUser();
-        await waitForAccountFlowState(
-          () =>
-            accountWalletAddressesMatch(
-              privyRef.current?.walletAddress ?? null,
-              wallet.walletAddress,
-            ),
-          "wallet synchronization timed out",
-        );
-        setWalletAddress(wallet.walletAddress);
-        return wallet.walletAddress;
-      };
+    ensureWalletRef.current = run().finally(() => {
+      setIsCreatingWallet(false);
+      ensureWalletRef.current = null;
+    });
 
-      ensureWalletRef.current = run().finally(() => {
-        setIsCreatingWallet(false);
-        ensureWalletRef.current = null;
-      });
-
-      return ensureWalletRef.current;
-    },
-    [waitForReady],
-  );
+    return ensureWalletRef.current;
+  }, [waitForReady]);
 
   const signTypedData = useCallback(
     async (typedData: Record<string, unknown>): Promise<string> => {
@@ -506,14 +489,18 @@ export function useAccountFlowState(): AccountFlowState {
   };
 }
 
-export function accountWalletAddressesMatch(
-  currentAddress: string | null,
-  ensuredAddress: string,
-): boolean {
-  return (
-    currentAddress != null &&
-    getAddress(currentAddress) === getAddress(ensuredAddress)
-  );
+export async function preparePrivyWallet(
+  hooks: Pick<
+    PrivyHooks,
+    "createWallet" | "hasEmbeddedWallet" | "walletAddress"
+  >,
+): Promise<string> {
+  if (hooks.walletAddress) return hooks.walletAddress;
+  if (hooks.hasEmbeddedWallet) {
+    throw new Error("embedded wallet address unavailable");
+  }
+  const wallet = await hooks.createWallet();
+  return wallet.address;
 }
 
 /** Wait for auth-provider state without allowing a broken client to hang forever. */

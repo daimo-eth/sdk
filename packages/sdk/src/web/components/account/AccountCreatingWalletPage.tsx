@@ -40,7 +40,7 @@ export function AccountCreatingWalletPage({
     setError(null);
     let stage: AccountSetupStage = "wallet_preparation";
     try {
-      const addr = await account.ensureWallet(client);
+      const addr = await account.ensureWallet();
       stage = "account_creation";
       await account.createAccount(client, { sessionId, clientSecret }, addr);
       onDone();
