@@ -34,7 +34,6 @@ import {
   getDepositResumeTarget,
   shouldRecoverExpiredPayment,
 } from "../components/account/accountNav.js";
-import { requiresPrivySignerAuthorization } from "../accountSigner.js";
 import { getNodePaymentInteraction } from "../components/account/accountPaymentCompatibility.js";
 import {
   recreateAccountPaymentSession,
@@ -497,21 +496,6 @@ export function useSessionNav(
           rail,
         });
         if (result) {
-          if (
-            requiresPrivySignerAuthorization(
-              result,
-              accountAuth?.signerConfig ?? null,
-            )
-          ) {
-            replaceLoading({
-              type: "account-creating-wallet",
-              nodeId,
-              rail,
-              paymentInteraction,
-              autoNav,
-            });
-            return;
-          }
           if (result.nextAction === "ready_for_payment") {
             if (
               existingDeposit &&

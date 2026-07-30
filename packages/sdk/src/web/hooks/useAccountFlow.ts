@@ -10,12 +10,8 @@ import { getAddress } from "viem";
 import type {
   AccountEnrollmentUpdate,
   AccountRail,
-  CreateAccountResponse,
   DepositPaymentInfo,
-  EnsureAccountWalletResponse,
   GetAccountResponse,
-  PrivySignerConfig,
-  PrivyWalletIdentity,
 } from "../../common/account.js";
 import type { DaimoClient } from "../../client/createDaimoClient.js";
 import {
@@ -23,11 +19,6 @@ import {
   type AccountAuthFailure,
   type AccountAuthStage,
 } from "../accountAuthFailure.js";
-import {
-  authorizePrivyWallet,
-  type PrivySignerEnrollmentClientState,
-} from "../privySignerEnrollment.js";
-import { findPrivyEmbeddedWalletByAddress } from "../accountWallet.js";
 import { t } from "./locale.js";
 
 const ACCOUNT_FLOW_READY_POLL_MS = 50;
@@ -38,12 +29,6 @@ export type PrivyHooks = {
   sendCode: (email: string) => Promise<void>;
   loginWithCode: (code: string) => Promise<void>;
   refreshUser: () => Promise<unknown>;
-  refreshEmbeddedWallets?: () => Promise<readonly PrivyWalletIdentity[]>;
-  addSigners?: (args: {
-    walletAddress: PrivyWalletIdentity["walletAddress"];
-    quorumId: string;
-    policyId: string;
-  }) => Promise<void>;
   getAccessToken: () => Promise<string | null>;
   signTypedData: (typedData: Record<string, unknown>) => Promise<string>;
   sendSponsoredTransaction: (transaction: {
@@ -57,7 +42,6 @@ export type PrivyHooks = {
   authenticated: boolean;
   email: string | null;
   walletAddress: string | null;
-  embeddedWallets?: readonly PrivyWalletIdentity[];
   phoneNumber: string | null;
 };
 
@@ -120,21 +104,7 @@ export type AccountFlowState = {
   verifyPhoneOtp: (code: string, client: DaimoClient) => Promise<boolean>;
   isCreatingWallet: boolean;
   walletAddress: string | null;
-  embeddedWallets: readonly PrivyWalletIdentity[];
-  /** Ensure a wallet and return its address. */
   ensureWallet: (client: DaimoClient) => Promise<string>;
-  /** Ensure a wallet and return signer-aware server details when available. */
-  ensureWalletDetails: (
-    client: DaimoClient,
-  ) => Promise<EnsureAccountWalletResponse>;
-  resolveEmbeddedWallet: (
-    walletAddress: string,
-  ) => Promise<PrivyWalletIdentity | null>;
-  authorizeWalletSigner: (
-    client: DaimoClient,
-    wallet: PrivyWalletIdentity,
-    signerConfig: PrivySignerConfig,
-  ) => Promise<PrivySignerEnrollmentClientState>;
 
   getAccessToken: () => Promise<string | null>;
   signTypedData: (typedData: Record<string, unknown>) => Promise<string>;
@@ -149,11 +119,6 @@ export type AccountFlowState = {
     session: SessionContext,
     walletAddress: string,
   ) => Promise<void>;
-  createAccountResult: (
-    client: DaimoClient,
-    session: SessionContext,
-    walletAddress: string,
-  ) => Promise<CreateAccountResponse>;
   getAccount: (
     client: DaimoClient,
     session: SessionContext,
@@ -208,17 +173,12 @@ export function useAccountFlowState(): AccountFlowState {
     useState<AccountAuthFailure | null>(null);
   const [isCreatingWallet, setIsCreatingWallet] = useState(false);
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
-  const [embeddedWallets, setEmbeddedWallets] = useState<
-    readonly PrivyWalletIdentity[]
-  >([]);
   const [storedDepositState, setStoredDepositState] =
     useState<DepositState | null>(null);
 
   const privyRef = useRef<PrivyHooks | null>(null);
   const logoutRef = useRef<Promise<void> | null>(null);
-  const ensureWalletRef = useRef<Promise<EnsureAccountWalletResponse> | null>(
-    null,
-  );
+  const ensureWalletRef = useRef<Promise<string> | null>(null);
 
   const setAuthError = useCallback((error: string | null) => {
     setAuthErrorState(error);
@@ -242,7 +202,6 @@ export function useAccountFlowState(): AccountFlowState {
     setIsReady(hooks.ready);
     setIsAuthenticated(hooks.authenticated);
     setWalletAddress(hooks.walletAddress);
-    setEmbeddedWallets(hooks.embeddedWallets ?? []);
     const email = hooks.email;
     if (email) {
       setEmail((current) => (current === email ? current : email));
@@ -385,11 +344,11 @@ export function useAccountFlowState(): AccountFlowState {
     [getAccessToken, phoneNumber, setAuthError, setAuthFailure, waitForReady],
   );
 
-  const ensureWalletDetails = useCallback(
-    (client: DaimoClient): Promise<EnsureAccountWalletResponse> => {
+  const ensureWallet = useCallback(
+    (client: DaimoClient): Promise<string> => {
       if (ensureWalletRef.current) return ensureWalletRef.current;
 
-      const run = async (): Promise<EnsureAccountWalletResponse> => {
+      const run = async (): Promise<string> => {
         if (!privyRef.current) throw new Error("privy not initialized");
         setIsCreatingWallet(true);
         await waitForReady();
@@ -409,7 +368,7 @@ export function useAccountFlowState(): AccountFlowState {
           "wallet synchronization timed out",
         );
         setWalletAddress(wallet.walletAddress);
-        return wallet;
+        return wallet.walletAddress;
       };
 
       ensureWalletRef.current = run().finally(() => {
@@ -420,66 +379,6 @@ export function useAccountFlowState(): AccountFlowState {
       return ensureWalletRef.current;
     },
     [waitForReady],
-  );
-
-  const ensureWallet = useCallback(
-    async (client: DaimoClient): Promise<string> => {
-      const wallet = await ensureWalletDetails(client);
-      return wallet.walletAddress;
-    },
-    [ensureWalletDetails],
-  );
-
-  const resolveEmbeddedWallet = useCallback(
-    async (accountWalletAddress: string) => {
-      const current = findPrivyEmbeddedWalletByAddress(
-        privyRef.current?.embeddedWallets ?? [],
-        accountWalletAddress,
-      );
-      if (current) return current;
-
-      const refreshed = await privyRef.current?.refreshEmbeddedWallets?.();
-      return findPrivyEmbeddedWalletByAddress(
-        refreshed ?? [],
-        accountWalletAddress,
-      );
-    },
-    [],
-  );
-
-  const confirmSignerEnrollment = useCallback(
-    async (client: DaimoClient, walletId: string) => {
-      const token = await getAccessToken();
-      if (!token) throw new Error("not authenticated");
-      const { enrollment } = await client.account.confirmPrivySignerEnrollment(
-        { walletId },
-        { bearerToken: token },
-      );
-      return enrollment;
-    },
-    [getAccessToken],
-  );
-
-  const authorizeWalletSigner = useCallback(
-    async (
-      client: DaimoClient,
-      wallet: PrivyWalletIdentity,
-      signerConfig: PrivySignerConfig,
-    ): Promise<PrivySignerEnrollmentClientState> => {
-      return authorizePrivyWallet({
-        wallet,
-        config: signerConfig,
-        confirm: (walletId) => confirmSignerEnrollment(client, walletId),
-        addSigners: (args) => {
-          if (!privyRef.current) throw new Error("privy not initialized");
-          if (!privyRef.current.addSigners) {
-            throw new Error("privy signer authorization unavailable");
-          }
-          return privyRef.current.addSigners(args);
-        },
-      });
-    },
-    [confirmSignerEnrollment],
   );
 
   const signTypedData = useCallback(
@@ -521,22 +420,15 @@ export function useAccountFlowState(): AccountFlowState {
     );
   }, []);
 
-  const createAccountResult = useCallback(
+  const createAccount = useCallback(
     async (client: DaimoClient, session: SessionContext, addr: string) => {
       const token = await getAccessToken();
       if (!token) throw new Error("not authenticated");
-      return client.account.create({ walletAddress: addr }, session, {
+      await client.account.create({ walletAddress: addr }, session, {
         bearerToken: token,
       });
     },
     [getAccessToken],
-  );
-
-  const createAccount = useCallback(
-    async (client: DaimoClient, session: SessionContext, addr: string) => {
-      await createAccountResult(client, session, addr);
-    },
-    [createAccountResult],
   );
 
   const getAccount = useCallback(
@@ -569,7 +461,6 @@ export function useAccountFlowState(): AccountFlowState {
       }
       setIsAuthenticated(false);
       setWalletAddress(null);
-      setEmbeddedWallets([]);
       setEmail("");
       setPhoneNumber("");
       setAuthError(null);
@@ -600,11 +491,7 @@ export function useAccountFlowState(): AccountFlowState {
     verifyPhoneOtp,
     isCreatingWallet,
     walletAddress,
-    embeddedWallets,
     ensureWallet,
-    ensureWalletDetails,
-    resolveEmbeddedWallet,
-    authorizeWalletSigner,
     getAccessToken,
     signTypedData,
     sendSponsoredTransaction,
@@ -612,7 +499,6 @@ export function useAccountFlowState(): AccountFlowState {
     setDepositState,
     clearDepositState,
     createAccount,
-    createAccountResult,
     getAccount,
     logout,
     waitForReady,

@@ -12,7 +12,6 @@ import {
   type AccountFlowState,
   useSessionDepositState,
 } from "./useAccountFlow.js";
-import { isAccountWalletNotReadyError } from "../accountWallet.js";
 import { formatUserError } from "./formatUserError.js";
 import { getLocale, t } from "./locale.js";
 import {
@@ -38,8 +37,6 @@ type UseDraftDepositResult = {
   retry: () => void;
 };
 
-const MAX_TRANSIENT_WALLET_RETRIES = 2;
-
 /**
  * Debounced draft-deposit upsert. Fires `upsertDeposit` each time the amount
  * settles, stores the result on the session deposit state. Used by every
@@ -57,11 +54,6 @@ export function useDraftDeposit({
   const { depositState, setDepositState } = useSessionDepositState(sessionId);
   const [error, setError] = useState<string | null>(null);
   const requestSeqRef = useRef(0);
-  const transientRetryRef = useRef({ key: "", count: 0 });
-  const transientRetryKey = `${sessionId}:${rail}:${depositAmount}:${draftMode}`;
-  if (transientRetryRef.current.key !== transientRetryKey) {
-    transientRetryRef.current = { key: transientRetryKey, count: 0 };
-  }
 
   const matchesAmount =
     depositState != null && depositState.depositAmount === depositAmount;
@@ -114,7 +106,6 @@ export function useDraftDeposit({
                 });
           if (seq !== requestSeqRef.current) return;
           if (result.payment === null) {
-            transientRetryRef.current.count = 0;
             setDepositState({
               depositAmount,
               kind: "drafted",
@@ -124,7 +115,6 @@ export function useDraftDeposit({
             });
             return;
           }
-          transientRetryRef.current.count = 0;
           setDepositState({
             depositAmount,
             kind: "drafted",
@@ -133,19 +123,6 @@ export function useDraftDeposit({
           });
         } catch (err) {
           if (seq !== requestSeqRef.current) return;
-          if (
-            isAccountWalletNotReadyError(err) &&
-            transientRetryRef.current.count < MAX_TRANSIENT_WALLET_RETRIES
-          ) {
-            transientRetryRef.current.count += 1;
-            console.warn("[account-deposit] wallet not ready, retrying", {
-              sessionId,
-              rail,
-              attempt: transientRetryRef.current.count,
-            });
-            setDepositState({ depositAmount, kind: "idle" });
-            return;
-          }
           console.error("[account-deposit] failed to draft deposit", {
             sessionId,
             rail,
@@ -181,7 +158,6 @@ export function useDraftDeposit({
     isCreating,
     error,
     retry: () => {
-      transientRetryRef.current.count = 0;
       setError(null);
       setDepositState({ depositAmount, kind: "idle" });
     },
