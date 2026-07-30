@@ -85,6 +85,7 @@ export function ErrorPage({
     errorCode,
     errorStage,
     sessionId,
+    clientSecret,
     nodeId,
     nodeType,
     eventDisplayMessage,

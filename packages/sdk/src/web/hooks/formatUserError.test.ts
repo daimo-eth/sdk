@@ -42,4 +42,13 @@ describe("formatUserError", () => {
 
     expect(formatUserError(error, t.errorDepositFailed)).toBe(message);
   });
+
+  test("replaces wallet readiness internals with a recoverable message", () => {
+    expect(
+      formatUserError(
+        new Error("wallet is still initializing. please try again"),
+        t.errorDepositFailed,
+      ),
+    ).toBe(t.errorAccountSetup);
+  });
 });

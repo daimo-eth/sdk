@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import type { AccountRail } from "../../../common/account.js";
+import type {
+  AccountRail,
+  PrivySignerConfig,
+} from "../../../common/account.js";
 import { prepareAccountSigner } from "../../accountSigner.js";
 import { t } from "../../hooks/locale.js";
 import { useAccountFlow } from "../../hooks/useAccountFlow.js";
@@ -19,6 +22,7 @@ type AccountCreatingWalletPageProps = {
   sessionId: string;
   clientSecret: string;
   rail: AccountRail;
+  signerConfig: PrivySignerConfig | null;
   onDone: () => void;
 };
 
@@ -30,6 +34,7 @@ export function AccountCreatingWalletPage({
   sessionId,
   clientSecret,
   rail,
+  signerConfig,
   onDone,
 }: AccountCreatingWalletPageProps) {
   const account = useAccountFlow();
@@ -47,17 +52,17 @@ export function AccountCreatingWalletPage({
       const session = { sessionId, clientSecret };
       await prepareAccountSigner({
         authorizeSigner: true,
+        signerConfig,
         operations: {
-          embeddedWallets: account.embeddedWallets,
-          signerConfigured: account.signerConfig !== null,
           getAccount: () => account.getAccount(client, session, { rail }),
           ensureWallet: () => account.ensureWalletDetails(client),
+          resolveWallet: account.resolveEmbeddedWallet,
           createAccount: (walletAddress) => {
             stage = "account_creation";
             return account.createAccountResult(client, session, walletAddress);
           },
-          authorizeWalletSigner: (wallet) =>
-            account.authorizeWalletSigner(client, wallet),
+          authorizeWalletSigner: (wallet, config) =>
+            account.authorizeWalletSigner(client, wallet, config),
           onEnrollmentUnavailable: (enrollment) => {
             console.warn(
               "[account-signer] automatic routing was not enabled:",
@@ -72,7 +77,7 @@ export function AccountCreatingWalletPage({
     } finally {
       runningRef.current = false;
     }
-  }, [account, client, sessionId, clientSecret, rail, onDone]);
+  }, [account, client, sessionId, clientSecret, rail, signerConfig, onDone]);
 
   useEffect(() => {
     if (!account || autoStartedRef.current) return;

@@ -108,8 +108,7 @@ export const ko: typeof en = {
   accountOtpSentViaDaimo: (destination: string) =>
     `Daimo를 통해 ${destination}(으)로 인증 코드를 보냈습니다.`,
   accountCreatingWallet: "계정 준비 중",
-  accountWalletConsent:
-    "인증하면 Daimo가 사용자를 위한 셀프 커스터디 지갑을 생성하고 라우팅 정책에 따라 입금을 자동 라우팅하도록 승인하며 다음에 동의합니다:",
+  accountWalletConsent: "인증하면 다음에 동의합니다:",
   accountEnrollment: "계정 설정",
   accountEnrollmentRetry: "서류 재제출",
   accountEnrollmentPending: "정보 검토 중",

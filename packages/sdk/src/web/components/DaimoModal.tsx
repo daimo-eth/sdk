@@ -6,7 +6,10 @@ import {
   useState,
 } from "react";
 import type { Address } from "viem";
-import type { AccountDepositStatus } from "../../common/account.js";
+import type {
+  AccountDepositStatus,
+  PrivySignerConfig,
+} from "../../common/account.js";
 import { tron } from "../../common/chain.js";
 import { isSessionTerminal } from "../../common/session.js";
 import type {
@@ -245,8 +248,7 @@ export function DaimoModal(props: DaimoModalProps) {
   }, [sessionId, clientSecret, countryCode]);
 
   // If the API returned account auth config and no AccountFlowProvider exists
-  // upstream (e.g. customer didn't pass privyAppId to DaimoSDKProvider),
-  // lazily wrap modal content so fiat flow works automatically.
+  // upstream, lazily wrap modal content so fiat flow works automatically.
   const existingAccountFlow = useAccountFlow();
   const accountAuth = loaded?.accountAuth;
   const needsAccountProvider = !!accountAuth && !existingAccountFlow;
@@ -293,7 +295,6 @@ export function DaimoModal(props: DaimoModalProps) {
     needsAccountProvider && accountAuth ? (
       <AccountFlowProvider
         privyAppId={accountAuth.privyAppId}
-        signerConfig={accountAuth.signerConfig}
         walletProvisioningClient={client}
       >
         {content}
@@ -603,6 +604,7 @@ function DaimoModalInner({
       walletFlow,
       onWalletSelectToken: nav.handleWalletSelectToken,
       onWalletSending: nav.handleWalletSending,
+      signerConfig: accountAuth?.signerConfig ?? null,
       onAccountAdvance: nav.handleAccountAdvance,
       setModalCloseVisible: setPageCloseVisible,
     });
@@ -712,6 +714,7 @@ type RenderContext = {
   };
   onWalletSelectToken: (token: WalletPaymentOption) => void;
   onWalletSending: (token: WalletPaymentOption, amountUsd: number) => void;
+  signerConfig: PrivySignerConfig | null;
   onAccountAdvance: (
     nextType: AccountNavEntry["type"],
     options?: { initialStatus?: AccountDepositStatus },
@@ -860,6 +863,8 @@ function renderEntry(
       return (
         <AccountEmailPage
           methodLabel={node.title}
+          sessionId={ctx.session.sessionId}
+          clientSecret={ctx.session.clientSecret}
           onBack={ctx.canGoBack ? ctx.onBack : null}
           onOtpSent={() => ctx.onAccountAdvance("account-otp")}
         />
@@ -868,6 +873,8 @@ function renderEntry(
     case "account-otp":
       return (
         <AccountOtpPage
+          sessionId={ctx.session.sessionId}
+          clientSecret={ctx.session.clientSecret}
           onBack={ctx.onBack}
           onVerified={() => ctx.onAccountAdvance("account-creating-wallet")}
         />
@@ -878,6 +885,7 @@ function renderEntry(
           sessionId={ctx.session.sessionId}
           clientSecret={ctx.session.clientSecret}
           rail={entry.rail}
+          signerConfig={ctx.signerConfig}
           onDone={() => ctx.onAccountAdvance("account-enrollment")}
         />
       );
@@ -903,6 +911,8 @@ function renderEntry(
     case "account-phone":
       return (
         <AccountPhonePage
+          sessionId={ctx.session.sessionId}
+          clientSecret={ctx.session.clientSecret}
           onBack={ctx.onBack}
           onOtpSent={() => ctx.onAccountAdvance("account-phone-otp")}
         />
@@ -910,6 +920,8 @@ function renderEntry(
     case "account-phone-otp":
       return (
         <AccountPhoneOtpPage
+          sessionId={ctx.session.sessionId}
+          clientSecret={ctx.session.clientSecret}
           onBack={ctx.onBack}
           onVerified={() => ctx.onAccountAdvance("account-enrollment")}
         />
