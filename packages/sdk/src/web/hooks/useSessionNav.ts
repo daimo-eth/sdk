@@ -173,6 +173,9 @@ function getPaymentAction(
     (node.type === "Exchange" || node.type === "CashApp") &&
     result.exchange != null
   ) {
+    if (!result.exchange.url) {
+      throw new Error("exchange url not returned");
+    }
     const handoff = getNavExternalHandoff(node);
     return {
       type: "openUrl",

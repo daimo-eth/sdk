@@ -45,9 +45,13 @@ export function PaymentActionPage({
   const placeholderDensity = legacyHandoff?.legacyQrPlaceholderDensity;
   const popupName =
     openUrl?.popupName ??
-    (node.type === "Stripe"
-      ? "stripe"
-      : embeddedWidget?.sdk ?? node.id.toLowerCase());
+    (node.type === "Exchange"
+      ? node.exchangeId.toLowerCase()
+      : node.type === "CashApp"
+        ? "cashapp"
+        : node.type === "Stripe"
+          ? "stripe"
+          : embeddedWidget?.sdk ?? node.id.toLowerCase());
 
   return (
     <HostedPaymentPage
