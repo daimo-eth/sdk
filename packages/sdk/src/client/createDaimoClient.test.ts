@@ -81,39 +81,3 @@ describe("prepareDeposit authorization compatibility", () => {
     ).resolves.toEqual({ kind: "direct" });
   });
 });
-
-describe("confirmPrivySignerEnrollment", () => {
-  test("submits only the selected wallet ID with bearer auth", async () => {
-    let requestUrl = "";
-    let requestBody: unknown;
-    let authorization = "";
-    const client = createDaimoClient({
-      baseUrl: "https://api.example.test",
-      fetchImpl: async (input, init) => {
-        requestUrl = String(input);
-        requestBody = JSON.parse(String(init?.body));
-        authorization = new Headers(init?.headers).get("Authorization") ?? "";
-        return Response.json({
-          enrollment: {
-            walletId: "wallet-two",
-            walletAddress: "0x0000000000000000000000000000000000000020",
-            status: "active",
-            signerVersion: 1,
-            lastVerifiedAt: "2026-07-23T00:00:00.000Z",
-          },
-        });
-      },
-    });
-
-    await client.account.confirmPrivySignerEnrollment(
-      { walletId: "wallet-two" },
-      { bearerToken: "privy-token" },
-    );
-
-    expect(requestUrl).toBe(
-      "https://api.example.test/v1/internal/account/signer/confirm",
-    );
-    expect(requestBody).toEqual({ walletId: "wallet-two" });
-    expect(authorization).toBe("Bearer privy-token");
-  });
-});

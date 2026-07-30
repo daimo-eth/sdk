@@ -1,10 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import type {
-  AccountRail,
-  PrivySignerConfig,
-} from "../../../common/account.js";
-import { prepareAccountSigner } from "../../accountSigner.js";
 import { t } from "../../hooks/locale.js";
 import { useAccountFlow } from "../../hooks/useAccountFlow.js";
 import { useDaimoClient } from "../../hooks/DaimoClientContext.js";
@@ -21,20 +16,16 @@ import {
 type AccountCreatingWalletPageProps = {
   sessionId: string;
   clientSecret: string;
-  rail: AccountRail;
-  signerConfig: PrivySignerConfig | null;
   onDone: () => void;
 };
 
 /**
- * Ensures the canonical wallet and Account, then enrolls the configured signer.
+ * Ensures the canonical wallet and Account.
  * Advances automatically — back button should skip this screen.
  */
 export function AccountCreatingWalletPage({
   sessionId,
   clientSecret,
-  rail,
-  signerConfig,
   onDone,
 }: AccountCreatingWalletPageProps) {
   const account = useAccountFlow();
@@ -49,35 +40,16 @@ export function AccountCreatingWalletPage({
     setError(null);
     let stage: AccountSetupStage = "wallet_preparation";
     try {
-      const session = { sessionId, clientSecret };
-      await prepareAccountSigner({
-        authorizeSigner: true,
-        signerConfig,
-        operations: {
-          getAccount: () => account.getAccount(client, session, { rail }),
-          ensureWallet: () => account.ensureWalletDetails(client),
-          resolveWallet: account.resolveEmbeddedWallet,
-          createAccount: (walletAddress) => {
-            stage = "account_creation";
-            return account.createAccountResult(client, session, walletAddress);
-          },
-          authorizeWalletSigner: (wallet, config) =>
-            account.authorizeWalletSigner(client, wallet, config),
-          onEnrollmentUnavailable: (enrollment) => {
-            console.warn(
-              "[account-signer] automatic routing was not enabled:",
-              enrollment.error ?? enrollment.status,
-            );
-          },
-        },
-      });
+      const addr = await account.ensureWallet(client);
+      stage = "account_creation";
+      await account.createAccount(client, { sessionId, clientSecret }, addr);
       onDone();
     } catch (err) {
       setError(getAccountSetupFailure(stage, err));
     } finally {
       runningRef.current = false;
     }
-  }, [account, client, sessionId, clientSecret, rail, signerConfig, onDone]);
+  }, [account, client, sessionId, clientSecret, onDone]);
 
   useEffect(() => {
     if (!account || autoStartedRef.current) return;

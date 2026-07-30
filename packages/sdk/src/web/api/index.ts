@@ -1,6 +1,5 @@
 import type { SessionNavInfo, SessionWithNav } from "./navTree.js";
 import type { WalletPaymentOption } from "./walletTypes.js";
-import type { PrivySignerConfig } from "../../common/account.js";
 
 export type {
   NavNodeCashApp,
@@ -37,8 +36,6 @@ export type AccountAuthHint = {
 export type AccountAuthConfig = AccountAuthHint & {
   /** Embedded auth app ID used for account deposit flows. */
   privyAppId: string;
-  /** Pre-created signer resources; absent keeps the legacy account flow. */
-  signerConfig?: PrivySignerConfig;
 };
 
 declare const daimoCountryCodeBrand: unique symbol;

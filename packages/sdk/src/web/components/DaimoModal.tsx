@@ -6,10 +6,7 @@ import {
   useState,
 } from "react";
 import type { Address } from "viem";
-import type {
-  AccountDepositStatus,
-  PrivySignerConfig,
-} from "../../common/account.js";
+import type { AccountDepositStatus } from "../../common/account.js";
 import { tron } from "../../common/chain.js";
 import { isSessionTerminal } from "../../common/session.js";
 import type {
@@ -606,7 +603,6 @@ function DaimoModalInner({
       walletFlow,
       onWalletSelectToken: nav.handleWalletSelectToken,
       onWalletSending: nav.handleWalletSending,
-      signerConfig: accountAuth?.signerConfig ?? null,
       onAccountAdvance: nav.handleAccountAdvance,
       setModalCloseVisible: setPageCloseVisible,
     });
@@ -716,7 +712,6 @@ type RenderContext = {
   };
   onWalletSelectToken: (token: WalletPaymentOption) => void;
   onWalletSending: (token: WalletPaymentOption, amountUsd: number) => void;
-  signerConfig: PrivySignerConfig | null;
   onAccountAdvance: (
     nextType: AccountNavEntry["type"],
     options?: { initialStatus?: AccountDepositStatus },
@@ -886,8 +881,6 @@ function renderEntry(
         <AccountCreatingWalletPage
           sessionId={ctx.session.sessionId}
           clientSecret={ctx.session.clientSecret}
-          rail={entry.rail}
-          signerConfig={ctx.signerConfig}
           onDone={() => ctx.onAccountAdvance("account-enrollment")}
         />
       );

@@ -9,25 +9,19 @@ import {
   useLoginWithEmail,
   usePrivy,
   useSendTransaction,
-  useSignTypedData,
-  useSigners,
   useUser,
   useWallets,
 } from "@privy-io/react-auth";
-import { type ReactNode, useCallback, useEffect, useMemo, useRef } from "react";
+import { type ReactNode, useCallback, useEffect, useMemo } from "react";
 
 import type { DaimoClient } from "../../../client/createDaimoClient.js";
 import {
   AccountFlowContext,
   useAccountFlowState,
-  waitForAccountFlowState,
 } from "../../hooks/useAccountFlow.js";
 import {
-  AccountWalletNotReadyError,
   findCanonicalPrivyWallet,
-  getReadyCanonicalPrivyWalletAddress,
   getCanonicalPrivyWalletAddress,
-  listPrivyEmbeddedWallets,
 } from "../../accountWallet.js";
 
 // EIP-6963 provider info for the announced embedded wallet: white Daimo
@@ -38,8 +32,6 @@ const EMBEDDED_WALLET_INFO = Object.freeze({
   icon: "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMDAgMzAwIj48cmVjdCB3aWR0aD0iMzAwIiBoZWlnaHQ9IjMwMCIgcng9IjY0IiBmaWxsPSIjMDA5MTEwIi8+PGcgc3Ryb2tlPSIjRkZGIiBzdHJva2Utd2lkdGg9IjM0IiBzdHJva2UtbGluZWNhcD0icm91bmQiPjxwYXRoIGQ9Ik0xODAgMjAyIDEyMCA5OCIvPjxwYXRoIGQ9Ik0yMTAgMTUwIDkwIDE1MCIvPjxwYXRoIGQ9Ik0xODAgOTggMTIwIDIwMiIvPjwvZz48L3N2Zz4=",
   rdns: "com.daimo",
 });
-const SIGNING_WALLET_READY_TIMEOUT_MS = 5_000;
-
 type AccountFlowProviderProps = {
   privyAppId: string;
   /** Client used to provision a wallet immediately after authentication. */
@@ -98,9 +90,7 @@ function PrivyConsumer({
   const { sendCode: rawSendCode, loginWithCode: rawLoginWithCode } =
     useLoginWithEmail();
   const { sendTransaction: rawSendTransaction } = useSendTransaction();
-  const { signTypedData: rawSignTypedData } = useSignTypedData();
-  const { addSigners: rawAddSigners } = useSigners();
-  const { wallets, ready: walletsReady } = useWallets();
+  const { wallets } = useWallets();
 
   const sendCode = useCallback(
     async (email: string) => {
@@ -121,86 +111,23 @@ function PrivyConsumer({
     linkedAccounts: user?.linkedAccounts ?? [],
     connectedWallets: wallets,
   });
-  const embeddedWallets = useMemo(
-    () => listPrivyEmbeddedWallets(user?.linkedAccounts ?? []),
-    [user?.linkedAccounts],
-  );
-  const refreshEmbeddedWallets = useCallback(async () => {
-    const refreshedUser = await refreshUser();
-    return listPrivyEmbeddedWallets(refreshedUser.linkedAccounts ?? []);
-  }, [refreshUser]);
   const email = user?.email?.address ?? null;
   const phoneNumber = user?.phone?.number ?? null;
   const signingWallet = findCanonicalPrivyWallet(wallets, walletAddress);
-  const signingStateRef = useRef({
-    walletsReady,
-    wallets,
-    walletAddress,
-  });
-  signingStateRef.current = {
-    walletsReady,
-    wallets,
-    walletAddress,
-  };
-
-  const resolveSigningWalletAddress = useCallback(async () => {
-    const getReadyAddress = () =>
-      getReadyCanonicalPrivyWalletAddress({
-        ready: signingStateRef.current.walletsReady,
-        wallets: signingStateRef.current.wallets,
-        canonicalWalletAddress: signingStateRef.current.walletAddress,
-      });
-    const current = getReadyAddress();
-    if (current) return current;
-
-    try {
-      await refreshUser();
-    } catch (err) {
-      console.warn("[account-wallet] failed to refresh before signing", err);
-    }
-    try {
-      await waitForAccountFlowState(
-        () => getReadyAddress() !== null,
-        "wallet is still initializing. please try again",
-        SIGNING_WALLET_READY_TIMEOUT_MS,
-      );
-    } catch (err) {
-      throw new AccountWalletNotReadyError({ cause: err });
-    }
-    const refreshed = getReadyAddress();
-    if (!refreshed) {
-      throw new AccountWalletNotReadyError();
-    }
-    return refreshed;
-  }, [refreshUser]);
-
-  const addSigners = useCallback(
-    async (args: {
-      walletAddress: `0x${string}`;
-      quorumId: string;
-      policyId: string;
-    }) => {
-      await rawAddSigners({
-        address: args.walletAddress,
-        signers: [
-          {
-            signerId: args.quorumId,
-            policyIds: [args.policyId],
-          },
-        ],
-      });
-    },
-    [rawAddSigners],
-  );
 
   const signTypedData = useCallback(
     async (typedData: Record<string, unknown>): Promise<string> => {
-      const address = await resolveSigningWalletAddress();
-      const input = typedData as Parameters<typeof rawSignTypedData>[0];
-      const { signature } = await rawSignTypedData(input, { address });
-      return signature;
+      if (!signingWallet || !walletAddress) {
+        throw new Error("no canonical embedded wallet");
+      }
+      const provider = await signingWallet.getEthereumProvider();
+      const result = await provider.request({
+        method: "eth_signTypedData_v4",
+        params: [walletAddress, JSON.stringify(typedData)],
+      });
+      return result as string;
     },
-    [rawSignTypedData, resolveSigningWalletAddress],
+    [signingWallet, walletAddress],
   );
 
   const sendSponsoredTransaction = useCallback(
@@ -210,14 +137,16 @@ function PrivyConsumer({
       data?: `0x${string}`;
       value?: bigint;
     }): Promise<`0x${string}`> => {
-      const address = await resolveSigningWalletAddress();
+      if (!signingWallet || !walletAddress) {
+        throw new Error("no canonical embedded wallet");
+      }
       const { hash } = await rawSendTransaction(transaction, {
-        address,
+        address: walletAddress,
         sponsor: true,
       });
       return hash;
     },
-    [rawSendTransaction, resolveSigningWalletAddress],
+    [rawSendTransaction, signingWallet, walletAddress],
   );
 
   const hooks = useMemo(
@@ -225,8 +154,6 @@ function PrivyConsumer({
       sendCode,
       loginWithCode,
       refreshUser,
-      refreshEmbeddedWallets,
-      addSigners,
       getAccessToken,
       signTypedData,
       sendSponsoredTransaction,
@@ -235,7 +162,6 @@ function PrivyConsumer({
       authenticated,
       email,
       walletAddress,
-      embeddedWallets,
       phoneNumber,
     }),
     [
@@ -247,13 +173,10 @@ function PrivyConsumer({
       sendCode,
       loginWithCode,
       refreshUser,
-      refreshEmbeddedWallets,
-      addSigners,
       getAccessToken,
       signTypedData,
       sendSponsoredTransaction,
       logout,
-      embeddedWallets,
     ],
   );
 
