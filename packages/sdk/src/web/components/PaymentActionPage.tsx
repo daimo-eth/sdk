@@ -1,11 +1,11 @@
 import type { PaymentAction } from "../../common/api.js";
 import {
-  formatNavSourceAmountUnits,
   getNavExternalHandoff,
   getNavSourceAmount,
   type NavActionPaymentMethodNode,
 } from "../api/navTree.js";
 
+import { formatFixedAmount } from "../formatAmount.js";
 import { t } from "../hooks/locale.js";
 import { isDesktop, type DaimoPlatform } from "../platform.js";
 import { HostedPaymentPage } from "./HostedPaymentPage.js";
@@ -40,7 +40,7 @@ export function PaymentActionPage({
   const usesDesktopQR = isDesktop(platform) && presentation === "qr";
   const url = openUrl?.url ?? embeddedWidget?.fallbackUrl;
   const sourcePolicy = getNavSourceAmount(node);
-  const sourceUnits = formatNavSourceAmountUnits(sourceAmount, sourcePolicy);
+  const sourceUnits = formatFixedAmount(sourceAmount, sourcePolicy.decimals);
   const formattedSourceAmount = `${sourcePolicy.currencySymbol}${sourceUnits} ${sourcePolicy.currency}`;
   const placeholderDensity = legacyHandoff?.legacyQrPlaceholderDensity;
   const popupName =
