@@ -64,6 +64,7 @@ describe("payment method nav policy", () => {
     });
     expect(getNavExternalHandoff(node)).toEqual({
       desktopBehavior: "popup",
+      popupName: "coinbase",
       legacyQrPlaceholderDensity: "short",
     });
   });
@@ -111,6 +112,7 @@ describe("payment method nav policy", () => {
 
       expect(getNavExternalHandoff(node)).toEqual({
         desktopBehavior,
+        popupName: exchangeId.toLowerCase(),
         legacyQrPlaceholderDensity,
       });
     },

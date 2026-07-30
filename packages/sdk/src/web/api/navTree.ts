@@ -284,6 +284,7 @@ function getLegacyNavExternalHandoff(
   return {
     desktopBehavior:
       exchangeId === "Coinbase" || exchangeId === "MtPelerin" ? "popup" : "qr",
+    popupName: exchangeId.toLowerCase(),
     legacyQrPlaceholderDensity:
       exchangeId === "Binance" ||
       exchangeId === "BinanceUSDC" ||

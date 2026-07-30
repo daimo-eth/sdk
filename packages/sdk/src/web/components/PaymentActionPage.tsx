@@ -31,16 +31,23 @@ export function PaymentActionPage({
 }: PaymentActionPageProps) {
   const openUrl = action?.type === "openUrl" ? action : undefined;
   const embeddedWidget = action?.type === "embeddedWidget" ? action : undefined;
-  const presentation = openUrl?.presentation ?? "popup";
+  const legacyHandoff =
+    node.type === "Exchange" || node.type === "CashApp"
+      ? getNavExternalHandoff(node)
+      : undefined;
+  const presentation =
+    openUrl?.presentation ?? legacyHandoff?.desktopBehavior ?? "popup";
   const usesDesktopQR = isDesktop(platform) && presentation === "qr";
   const url = openUrl?.url ?? embeddedWidget?.fallbackUrl;
   const sourcePolicy = getNavSourceAmount(node);
   const sourceUnits = formatNavSourceAmountUnits(sourceAmount, sourcePolicy);
   const formattedSourceAmount = `${sourcePolicy.currencySymbol}${sourceUnits} ${sourcePolicy.currency}`;
-  const placeholderDensity =
-    node.type === "Exchange" || node.type === "CashApp"
-      ? getNavExternalHandoff(node).legacyQrPlaceholderDensity
-      : undefined;
+  const placeholderDensity = legacyHandoff?.legacyQrPlaceholderDensity;
+  const popupName =
+    openUrl?.popupName ??
+    (node.type === "Stripe"
+      ? "stripe"
+      : embeddedWidget?.sdk ?? node.id.toLowerCase());
 
   return (
     <HostedPaymentPage
@@ -49,7 +56,7 @@ export function PaymentActionPage({
       url={url}
       icon={node.icon}
       message={
-        openUrl?.waitingMessage ??
+        openUrl?.waitingMessage ||
         (embeddedWidget
           ? t.depositExactlyWith(formattedSourceAmount, node.title)
           : usesDesktopQR
@@ -61,9 +68,7 @@ export function PaymentActionPage({
       baseUrl={baseUrl}
       desktopBehavior={presentation}
       placeholderDensity={placeholderDensity}
-      popupName={
-        openUrl?.popupName ?? embeddedWidget?.sdk ?? node.id.toLowerCase()
-      }
+      popupName={popupName}
       details={
         openUrl?.quote == null
           ? undefined
