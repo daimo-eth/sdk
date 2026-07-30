@@ -149,8 +149,18 @@ function getPaymentAction(
   node: NavActionPaymentMethodNode,
   result: CreatePaymentMethodResponse,
 ): PaymentAction {
-  if (result.action != null) return result.action;
+  if (result.action != null) {
+    const url =
+      result.action.type === "openUrl"
+        ? result.action.url
+        : result.action.fallbackUrl;
+    if (!url) throw new Error("payment action url not returned");
+    return result.action;
+  }
   if (node.type === "Stripe" && result.stripe != null) {
+    if (!result.stripe.redirectUrl) {
+      throw new Error("stripe onramp url not returned");
+    }
     return {
       type: "embeddedWidget",
       sdk: "stripeOnramp",

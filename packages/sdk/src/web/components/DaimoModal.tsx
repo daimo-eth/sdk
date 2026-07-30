@@ -1364,6 +1364,7 @@ function renderPaymentMethod(
     <PaymentActionPage
       node={node}
       platform={ctx.platform}
+      sourceAmount={entry.sourceAmount}
       action={entry.action}
       isLoading={entry.action == null}
       onBack={ctx.onBack}

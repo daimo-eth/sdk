@@ -186,6 +186,42 @@ export type NavActionPaymentMethodNode =
   | NavNodeCashApp
   | NavNodeStripe;
 
+export type NavNodeTronDeposit = NavNodeCommon & {
+  type: "TronDeposit";
+  icon?: string;
+  requiredUsd?: number;
+  minimumUsd: number;
+  maximumUsd: number;
+};
+
+export type NavNodeConnectedWallet = NavNodeCommon & {
+  type: "ConnectedWallet";
+  icon?: string;
+  /** When true, proactively call eth_requestAccounts. Default false (passive). */
+  autoconnect?: boolean;
+};
+
+export type NavNodeFiat = NavNodeCommon & {
+  type: "Fiat";
+  fiatMethod: AccountRail;
+  /** Semantic entry flow. Optional only while old servers remain supported. */
+  paymentInteraction?: DepositPaymentInteraction;
+  icon?: string;
+  kycRequirement?: NavNodeKycRequirement;
+};
+
+export type NavNode =
+  | NavNodeChooseOption
+  | NavNodeDepositAddress
+  | NavNodeDeeplink
+  | NavNodePaymentMethod
+  | NavNodeExchange
+  | NavNodeCashApp
+  | NavNodeStripe
+  | NavNodeTronDeposit
+  | NavNodeConnectedWallet
+  | NavNodeFiat;
+
 /** True when a compatibility node carries the canonical method contract. */
 export function hasCanonicalPaymentMethod(
   node: NavActionPaymentMethodNode,
@@ -222,6 +258,22 @@ export function getNavExternalHandoff(
   return getLegacyNavExternalHandoff(node);
 }
 
+/** Format an amount exactly as required by the backend-owned source policy. */
+export function formatNavSourceAmountUnits(
+  amount: number,
+  sourceAmount: NavSourceAmount,
+): string {
+  if (
+    !Number.isFinite(amount) ||
+    !Number.isInteger(sourceAmount.decimals) ||
+    sourceAmount.decimals < 0 ||
+    sourceAmount.decimals > 20
+  ) {
+    throw new Error("invalid payment method amount");
+  }
+  return amount.toFixed(sourceAmount.decimals);
+}
+
 /** Preserve pre-handoff SDK behavior while old backend nav trees remain valid. */
 function getLegacyNavExternalHandoff(
   node: NavNodeExchange | NavNodeCashApp,
@@ -240,55 +292,3 @@ function getLegacyNavExternalHandoff(
         : "short",
   };
 }
-
-/** Format an amount exactly as required by the backend-owned source policy. */
-export function formatNavSourceAmountUnits(
-  amount: number,
-  sourceAmount: NavSourceAmount,
-): string {
-  if (
-    !Number.isFinite(amount) ||
-    !Number.isInteger(sourceAmount.decimals) ||
-    sourceAmount.decimals < 0 ||
-    sourceAmount.decimals > 20
-  ) {
-    throw new Error("invalid payment method amount");
-  }
-  return amount.toFixed(sourceAmount.decimals);
-}
-
-export type NavNodeTronDeposit = NavNodeCommon & {
-  type: "TronDeposit";
-  icon?: string;
-  requiredUsd?: number;
-  minimumUsd: number;
-  maximumUsd: number;
-};
-
-export type NavNodeConnectedWallet = NavNodeCommon & {
-  type: "ConnectedWallet";
-  icon?: string;
-  /** When true, proactively call eth_requestAccounts. Default false (passive). */
-  autoconnect?: boolean;
-};
-
-export type NavNodeFiat = NavNodeCommon & {
-  type: "Fiat";
-  fiatMethod: AccountRail;
-  /** Semantic entry flow. Optional only while old servers remain supported. */
-  paymentInteraction?: DepositPaymentInteraction;
-  icon?: string;
-  kycRequirement?: NavNodeKycRequirement;
-};
-
-export type NavNode =
-  | NavNodeChooseOption
-  | NavNodeDepositAddress
-  | NavNodeDeeplink
-  | NavNodePaymentMethod
-  | NavNodeExchange
-  | NavNodeCashApp
-  | NavNodeStripe
-  | NavNodeTronDeposit
-  | NavNodeConnectedWallet
-  | NavNodeFiat;

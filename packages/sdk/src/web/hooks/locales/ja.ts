@@ -28,6 +28,8 @@ export const ja: typeof en = {
   // PaymentActionPage
   continueTo: "",
   toCompleteYourDeposit: "で入金を完了してください",
+  depositExactlyWith: (amount: string, provider: string) =>
+    `${provider}で正確に${amount}を入金してから、このページに戻ってください。`,
   open: "開く",
   refreshInvoice: "更新",
   estimatedOutput: "受取額（見込み）",

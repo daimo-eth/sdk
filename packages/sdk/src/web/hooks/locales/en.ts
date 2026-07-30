@@ -26,6 +26,8 @@ export const en = {
   // PaymentActionPage
   continueTo: "Continue to",
   toCompleteYourDeposit: "to complete your deposit",
+  depositExactlyWith: (amount: string, provider: string) =>
+    `Deposit exactly ${amount} with ${provider}, then return to this page.`,
   open: "Open",
   refreshInvoice: "Refresh",
   estimatedOutput: "Estimated output",

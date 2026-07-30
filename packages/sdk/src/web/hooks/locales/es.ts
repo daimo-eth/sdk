@@ -21,6 +21,8 @@ export const es: typeof en = {
   scanWithPhone: "Escanea con tu teléfono para abrir la billetera",
   continueTo: "Continuar a",
   toCompleteYourDeposit: "para completar tu depósito",
+  depositExactlyWith: (amount: string, provider: string) =>
+    `Deposita exactamente ${amount} con ${provider} y luego vuelve a esta página.`,
   open: "Abrir",
   refreshInvoice: "Actualizar",
   estimatedOutput: "Importe estimado",

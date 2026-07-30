@@ -28,6 +28,8 @@ export const ko: typeof en = {
   // PaymentActionPage
   continueTo: "",
   toCompleteYourDeposit: "에서 입금을 완료하세요",
+  depositExactlyWith: (amount: string, provider: string) =>
+    `${provider}에서 정확히 ${amount}를 입금한 후 이 페이지로 돌아오세요.`,
   open: "열기",
   refreshInvoice: "새로고침",
   estimatedOutput: "예상 수령액",

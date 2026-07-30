@@ -28,6 +28,8 @@ export const pt: typeof en = {
   // PaymentActionPage
   continueTo: "Continuar para",
   toCompleteYourDeposit: "para concluir seu depósito",
+  depositExactlyWith: (amount: string, provider: string) =>
+    `Deposite exatamente ${amount} com ${provider} e depois volte a esta página.`,
   open: "Abrir",
   refreshInvoice: "Atualizar",
   estimatedOutput: "Valor estimado",

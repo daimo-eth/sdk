@@ -28,6 +28,8 @@ export const zh: typeof en = {
   // PaymentActionPage
   continueTo: "前往",
   toCompleteYourDeposit: "以完成充值",
+  depositExactlyWith: (amount: string, provider: string) =>
+    `请使用${provider}准确存入${amount}，然后返回此页面。`,
   open: "打开",
   refreshInvoice: "刷新",
   estimatedOutput: "预计到账金额",
