@@ -3,6 +3,7 @@ import type { NavNodeDeeplink } from "../api/navTree.js";
 import { ExternalLinkIcon, PrimaryButton } from "./buttons.js";
 import { t } from "../hooks/locale.js";
 import { isDesktop, type DaimoPlatform } from "../platform.js";
+import { ExternalPaymentPage } from "./ExternalPaymentPage.js";
 import {
   CenteredContent,
   PageHeader,
@@ -18,7 +19,7 @@ type DeeplinkPageProps = {
   baseUrl: string;
 };
 
-/** Mobile wallet deeplink page. Opens directly on mobile; shows as QR code on desktop. */
+/** External deeplink page. Opens on mobile and hands off by QR or popup on desktop. */
 export function DeeplinkPage({
   node,
   platform,
@@ -27,6 +28,24 @@ export function DeeplinkPage({
 }: DeeplinkPageProps) {
   const desktop = isDesktop(platform);
   const pageIcon = node.pageIcon ?? node.icon;
+  const desktopBehavior =
+    node.desktopBehavior ?? (node.id === "RevolutRamp" ? "popup" : "qr");
+
+  if (desktop && desktopBehavior === "popup") {
+    return (
+      <ExternalPaymentPage
+        title={node.title}
+        platform={platform}
+        url={node.url}
+        icon={node.icon}
+        message={`${t.continueTo} ${node.title} ${t.toCompleteYourDeposit}`}
+        onBack={onBack}
+        baseUrl={baseUrl}
+        desktopBehavior="popup"
+        popupName={node.id.toLowerCase()}
+      />
+    );
+  }
 
   if (desktop) {
     return (
