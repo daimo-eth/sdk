@@ -2,10 +2,13 @@ import QRCodeLib from "qrcode";
 import { ReactElement, useMemo } from "react";
 
 type QRDensity = "short" | "medium" | "long";
+type QRCodeVariant = "styled" | "compact";
 
 type QRCodeProps = {
   value?: string;
   image?: React.ReactNode;
+  /** Compact renders a standard, logo-free QR optimized for long values. */
+  variant?: QRCodeVariant;
   /** Hint for placeholder density. Longer = denser QR skeleton. */
   placeholderDensity?: QRDensity;
 };
@@ -17,6 +20,7 @@ type QRPlaceholderProps = {
 
 /** SVG viewBox size for quality (actual display size is controlled by CSS) */
 const VIEW_SIZE = 288;
+const QUIET_ZONE_MODULES = 4;
 const LOGO_SIZE_PERCENT = 28;
 const LOGO_SIZE_RATIO = LOGO_SIZE_PERCENT / 100;
 const centerLogoStyle = {
@@ -165,6 +169,47 @@ function QRCodeContent({ value, image }: { value: string; image?: React.ReactNod
   );
 }
 
+function CompactQRCodeContent({ value }: { value: string }) {
+  const compactQR = useMemo(() => {
+    try {
+      const qr = QRCodeLib.create(value, { errorCorrectionLevel: "L" });
+      const path: string[] = [];
+      const { data, size } = qr.modules;
+      for (let row = 0; row < size; row++) {
+        for (let column = 0; column < size; column++) {
+          if (!data[row * size + column]) continue;
+
+          const x = column + QUIET_ZONE_MODULES;
+          const y = row + QUIET_ZONE_MODULES;
+          path.push(`M${x} ${y}h1v1h-1z`);
+        }
+      }
+
+      return {
+        path: path.join(""),
+        viewSize: size + QUIET_ZONE_MODULES * 2,
+      };
+    } catch {
+      return null;
+    }
+  }, [value]);
+
+  if (!compactQR) return null;
+
+  return (
+    <div className="daimo-absolute daimo-inset-0">
+      <svg
+        viewBox={`0 0 ${compactQR.viewSize} ${compactQR.viewSize}`}
+        className="daimo-block daimo-h-full daimo-w-full"
+        shapeRendering="crispEdges"
+        data-qr-variant="compact"
+      >
+        <path d={compactQR.path} fill="var(--daimo-qr-dot, black)" />
+      </svg>
+    </div>
+  );
+}
+
 function QRPlaceholderContent({ image, density = "medium" }: QRPlaceholderProps) {
   const dots = useMemo(
     () => generateQRDots(PLACEHOLDER_VALUES[density], true),
@@ -204,7 +249,12 @@ export function QRPlaceholder({ image, density }: QRPlaceholderProps) {
   );
 }
 
-export function QRCode({ value, image, placeholderDensity }: QRCodeProps) {
+export function QRCode({
+  value,
+  image,
+  variant = "styled",
+  placeholderDensity,
+}: QRCodeProps) {
   return (
     <QRCodeShell>
       <div className={value ? "daimo-qr-fade-out" : ""}>
@@ -212,7 +262,11 @@ export function QRCode({ value, image, placeholderDensity }: QRCodeProps) {
       </div>
       {value && (
         <div className="daimo-qr-fade-in">
-          <QRCodeContent value={value} image={image} />
+          {variant === "compact" ? (
+            <CompactQRCodeContent value={value} />
+          ) : (
+            <QRCodeContent value={value} image={image} />
+          )}
         </div>
       )}
     </QRCodeShell>

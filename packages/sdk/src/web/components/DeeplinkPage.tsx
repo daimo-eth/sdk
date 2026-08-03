@@ -36,6 +36,7 @@ export function DeeplinkPage({
           <div className="daimo-w-full daimo-max-w-[200px] sm:daimo-max-w-[260px]">
             <QRCode
               value={node.url}
+              variant={pageIcon ? "styled" : "compact"}
               image={
                 pageIcon ? (
                   <img
