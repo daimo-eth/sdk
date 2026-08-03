@@ -34,6 +34,30 @@ describe("QRCode", () => {
 });
 
 describe("DeeplinkPage", () => {
+  it("uses a popup handoff when requested by a desktop deeplink", () => {
+    const node: NavNodeDeeplink = {
+      type: "Deeplink",
+      id: "RevolutRamp",
+      title: "Revolut",
+      icon: "/wallet-logos/revolut-logo.svg",
+      url: LONG_DEEPLINK_URL,
+      desktopBehavior: "popup",
+    };
+
+    const html = renderToStaticMarkup(
+      createElement(DeeplinkPage, {
+        node,
+        platform: "desktop",
+        onBack: null,
+        baseUrl: "https://example.com",
+      }),
+    );
+
+    expect(html).not.toContain("data-qr-variant");
+    expect(html).toContain("wallet-logos/revolut-logo.svg");
+    expect(html).toContain("Open Revolut");
+  });
+
   it("uses the compact renderer for an unbranded desktop deeplink", () => {
     const node: NavNodeDeeplink = {
       type: "Deeplink",
