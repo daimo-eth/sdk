@@ -28,8 +28,10 @@ export function DeeplinkPage({
 }: DeeplinkPageProps) {
   const desktop = isDesktop(platform);
   const pageIcon = node.pageIcon ?? node.icon;
+  const desktopBehavior =
+    node.desktopBehavior ?? (node.id === "RevolutRamp" ? "popup" : "qr");
 
-  if (desktop && node.desktopBehavior === "popup") {
+  if (desktop && desktopBehavior === "popup") {
     return (
       <ExternalPaymentPage
         title={node.title}
