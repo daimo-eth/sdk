@@ -1,8 +1,12 @@
-import type { EnrollmentFormField } from "../../../common/account.js";
+import type {
+  EnrollmentForm,
+  EnrollmentFormField,
+} from "../../../common/account.js";
 import { describe, expect, test } from "vitest";
 
 import {
   dependentFieldKeys,
+  enrollmentFormValuesAfterUpdate,
   updateFormValuesForChange,
   validateEnrollmentField,
 } from "./PaginatedEnrollmentForm.js";
@@ -112,5 +116,66 @@ describe("enrollment phone validation", () => {
     expect(validateEnrollmentField(phoneField, "1234567890")).toBe(
       "enter a valid phone number",
     );
+  });
+});
+
+describe("enrollment form server updates", () => {
+  const form: EnrollmentForm = {
+    id: "identity_form",
+    revision: "1",
+    title: "Verify identity",
+    submitLabel: "Continue",
+    fields: [
+      {
+        key: "firstName",
+        type: "text",
+        label: "First name",
+        required: true,
+      },
+      {
+        key: "lastName",
+        type: "text",
+        label: "Last name",
+        required: true,
+      },
+    ],
+  };
+
+  test("preserves transient values when the same form returns errors", () => {
+    expect(
+      enrollmentFormValuesAfterUpdate(
+        { id: form.id, revision: form.revision },
+        { ...form, fieldErrors: { lastName: "required" } },
+        { firstName: "Angela", lastName: "" },
+      ),
+    ).toEqual({ firstName: "Angela", lastName: "" });
+  });
+
+  test("resets values when the form revision changes", () => {
+    expect(
+      enrollmentFormValuesAfterUpdate(
+        { id: form.id, revision: form.revision },
+        {
+          ...form,
+          revision: "2",
+          fields: [
+            {
+              key: "firstName",
+              type: "text",
+              label: "First name",
+              required: true,
+              defaultValue: "Default",
+            },
+            {
+              key: "lastName",
+              type: "text",
+              label: "Last name",
+              required: true,
+            },
+          ],
+        },
+        { firstName: "Angela", lastName: "Ocando", stale: "private" },
+      ),
+    ).toEqual({ firstName: "Default", lastName: "" });
   });
 });

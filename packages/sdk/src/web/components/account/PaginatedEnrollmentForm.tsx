@@ -1,4 +1,4 @@
-import { type FormEvent, useEffect, useMemo, useState } from "react";
+import { type FormEvent, useEffect, useMemo, useRef, useState } from "react";
 
 import type {
   EnrollmentForm,
@@ -56,13 +56,21 @@ export function PaginatedEnrollmentForm({
     () => new Set(),
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const formIdentityRef = useRef(enrollmentFormIdentity(form));
 
   useEffect(() => {
     const nextErrors = form.fieldErrors ?? {};
-    setValues(initialFormValues(form));
+    const previousIdentity = formIdentityRef.current;
+    const nextIdentity = enrollmentFormIdentity(form);
+    setValues((current) =>
+      enrollmentFormValuesAfterUpdate(previousIdentity, form, current),
+    );
     setFieldErrors(nextErrors);
     setPageIndex(firstErrorPageIndex(pages, nextErrors));
-    setValidatedFieldKeys(new Set());
+    if (!sameEnrollmentForm(previousIdentity, nextIdentity)) {
+      setValidatedFieldKeys(new Set());
+    }
+    formIdentityRef.current = nextIdentity;
   }, [form, pages]);
 
   const visibleFields = pages[pageIndex] ?? [];
@@ -461,6 +469,39 @@ function initialFieldValue(field: EnrollmentFormField): EnrollmentFormValue {
   if (field.type !== "boolean") return "";
   if (field.control !== "yes_no") return false;
   return field.required ? "" : false;
+}
+
+type EnrollmentFormIdentity = Pick<EnrollmentForm, "id" | "revision">;
+
+/** Preserve transient values only while the server is returning the same form. */
+export function enrollmentFormValuesAfterUpdate(
+  previousIdentity: EnrollmentFormIdentity,
+  nextForm: EnrollmentForm,
+  current: Record<string, EnrollmentFormValue>,
+): Record<string, EnrollmentFormValue> {
+  const preserveCurrent = sameEnrollmentForm(
+    previousIdentity,
+    enrollmentFormIdentity(nextForm),
+  );
+  return Object.fromEntries(
+    nextForm.fields.map((field) => [
+      field.key,
+      preserveCurrent && Object.hasOwn(current, field.key)
+        ? current[field.key]
+        : initialFieldValue(field),
+    ]),
+  );
+}
+
+function enrollmentFormIdentity(form: EnrollmentForm): EnrollmentFormIdentity {
+  return { id: form.id, revision: form.revision };
+}
+
+function sameEnrollmentForm(
+  left: EnrollmentFormIdentity,
+  right: EnrollmentFormIdentity,
+): boolean {
+  return left.id === right.id && left.revision === right.revision;
 }
 
 export function updateFormValuesForChange(
