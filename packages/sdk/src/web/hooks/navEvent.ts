@@ -1,5 +1,6 @@
-import type { NavNode } from "../api/navTree.js";
 import type { DaimoClient } from "../../client/createDaimoClient.js";
+import type { SourceAmount } from "../../common/money.js";
+import type { NavNode } from "../api/navTree.js";
 
 /** Node types from NavNode union */
 export type NavNodeType = NavNode["type"];
@@ -17,7 +18,10 @@ export type NavEventAction =
   | { action: "nav_select"; targetNodeId: string; targetNodeType: NavNodeType }
   | { action: "nav_back" }
   | { action: "nav_deeplink"; url: string }
-  | { action: "flow_amount_continue"; amountUsd: number }
+  | ({ action: "flow_amount_continue" } & (
+      | { amountUsd: number; sourceAmount?: never }
+      | { amountUsd?: never; sourceAmount: SourceAmount }
+    ))
   | { action: "flow_refresh" }
   | {
       action: "flow_exchange_url";

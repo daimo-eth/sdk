@@ -4,10 +4,15 @@ import type {
   AccountRail,
   DepositPaymentInteraction,
 } from "../../common/account.js";
+import type { SourceAmount } from "../../common/money.js";
 import type { NavNode, SessionWithNav } from "../api/navTree.js";
 import type { WalletPaymentOption } from "../api/walletTypes.js";
 
 export type { SessionWithNav };
+
+export type ExchangeAmount =
+  | { amountUsd: number; sourceAmount?: never }
+  | { amountUsd?: never; sourceAmount: SourceAmount };
 
 type AccountNavBase = {
   nodeId: string;
@@ -48,16 +53,15 @@ export type NavEntry =
       error?: string;
       autoNav?: boolean;
     }
-  | {
+  | ({
       type: "exchange-page";
       nodeId: string;
-      amountUsd: number;
       exchangeUrl?: string;
       waitingMessage?: string;
       expiresAt?: number;
       error?: string;
       autoNav?: boolean;
-    }
+    } & ExchangeAmount)
   | {
       type: "stripe-onramp";
       nodeId: string;

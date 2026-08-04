@@ -4,6 +4,7 @@ import type {
   DepositPaymentInteraction,
 } from "../../common/account.js";
 import type { ExchangeId } from "../../common/api.js";
+import type { Currency } from "../../common/money.js";
 import type { SessionPublicInfo } from "../../common/session.js";
 
 /** Session plus server-defined modal navigation data. */
@@ -90,14 +91,35 @@ export type NavNodeDeeplink = NavNodeCommon & {
   desktopBehavior?: "popup" | "qr";
 };
 
-export type NavNodeExchange = NavNodeCommon & {
+type NavNodeExchangeBase = NavNodeCommon & {
   type: "Exchange";
   exchangeId: ExchangeId;
   icon?: string;
+};
+
+export type NavSourceAmount = {
+  currency: Currency & { decimals: number };
+  requiredUnits?: string;
+  minimumUnits: string;
+  maximumUnits: string;
+};
+
+type NavLegacyUsdAmount = {
+  sourceAmount?: never;
   requiredUsd?: number;
   minimumUsd: number;
   maximumUsd: number;
 };
+
+type NavCurrencyAmount = {
+  sourceAmount: NavSourceAmount;
+  requiredUsd?: never;
+  minimumUsd?: never;
+  maximumUsd?: never;
+};
+
+export type NavNodeExchange = NavNodeExchangeBase &
+  (NavLegacyUsdAmount | NavCurrencyAmount);
 
 export type NavNodeCashApp = NavNodeCommon & {
   type: "CashApp";

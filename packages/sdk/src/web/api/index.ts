@@ -15,6 +15,7 @@ export type {
   NavNodeKycRequirementIcon,
   NavNodeKycRequirementItem,
   NavNodeKycRequirementKind,
+  NavSourceAmount,
   NavNodeTronDeposit,
   SessionNavInfo,
   SessionWithNav,

@@ -48,7 +48,12 @@ import { pruneCompletedAccountAuth } from "./accountAuthNav.js";
 import { useDaimoClient } from "./DaimoClientContext.js";
 import { t } from "./locale.js";
 import { createNavLogger, type NavNodeType } from "./navEvent.js";
-import { findNode, type AccountNavEntry, type NavEntry } from "./types.js";
+import {
+  findNode,
+  type AccountNavEntry,
+  type ExchangeAmount,
+  type NavEntry,
+} from "./types.js";
 import type { AccountFlowState } from "./useAccountFlow.js";
 import type { InjectedWallet } from "./useInjectedWallets.js";
 import { isUserRejection, type WalletFlowResult } from "./useWalletFlow.js";
@@ -65,7 +70,7 @@ type SessionNavResult = {
   handleNavigate: (nodeId: string, options?: { autoNav?: boolean }) => void;
   handleBack: () => void;
   handleReset: () => void;
-  handleAmountContinue: (amountUsd: number) => void;
+  handleAmountContinue: (amount: number) => void;
   handleRetry: () => void;
   handleRefresh: () => Promise<void>;
   handleAccountSessionRecreate: (depositAmount: string) => Promise<void>;
@@ -106,6 +111,28 @@ function getExchangeSelection(node: ExchangeNode): {
     return { exchangeId: "CashApp", nodeType: "CashApp" };
   }
   return { exchangeId: node.exchangeId, nodeType: "Exchange" };
+}
+
+function getExchangeAmount(node: ExchangeNode, amount: number): ExchangeAmount {
+  if (node.type !== "Exchange" || node.sourceAmount == null) {
+    return { amountUsd: amount };
+  }
+  return {
+    sourceAmount: {
+      currency: node.sourceAmount.currency.code,
+      units: amount.toFixed(node.sourceAmount.currency.decimals),
+    },
+  };
+}
+
+function getRequiredExchangeAmount(node: ExchangeNode): ExchangeAmount | null {
+  if (node.type === "Exchange" && node.sourceAmount != null) {
+    const requiredUnits = node.sourceAmount.requiredUnits;
+    if (requiredUnits == null) return null;
+    return getExchangeAmount(node, Number(requiredUnits));
+  }
+  const requiredUsd = node.requiredUsd ?? 0;
+  return requiredUsd > 0 ? { amountUsd: requiredUsd } : null;
 }
 
 function replacePendingAccountEntry(
@@ -269,7 +296,7 @@ export function useSessionNav(
     async (
       nodeId: string,
       exchangeId: ExchangeId,
-      amountUsd: number,
+      amount: ExchangeAmount,
       nodeType: "Exchange" | "CashApp",
     ) => {
       try {
@@ -280,7 +307,7 @@ export function useSessionNav(
             paymentMethod: {
               type: "exchange",
               exchangeId,
-              amountUsd,
+              ...amount,
               platform: effectivePlatform,
             },
           },
@@ -714,13 +741,18 @@ export function useSessionNav(
 
       if (isExchangeNode(targetNode)) {
         const { exchangeId, nodeType } = getExchangeSelection(targetNode);
-        const requiredUsd = targetNode.requiredUsd ?? 0;
-        if (requiredUsd > 0) {
+        const requiredAmount = getRequiredExchangeAmount(targetNode);
+        if (requiredAmount != null) {
           setStack((prev) => [
             ...prev,
-            { type: "exchange-page", nodeId, amountUsd: requiredUsd, autoNav },
+            {
+              type: "exchange-page",
+              nodeId,
+              ...requiredAmount,
+              autoNav,
+            },
           ]);
-          fetchExchangeUrl(nodeId, exchangeId, requiredUsd, nodeType);
+          fetchExchangeUrl(nodeId, exchangeId, requiredAmount, nodeType);
           return;
         }
         setStack((prev) => [
@@ -813,9 +845,15 @@ export function useSessionNav(
   // ─── Flow handlers ──────────────────────────────────────────────────────
 
   const handleAmountContinue = useCallback(
-    (amountUsd: number) => {
+    (amount: number) => {
       if (!topEntry || topEntry.type !== "select-amount") return;
       const { nodeId, flowType } = topEntry;
+      const node = findNode(nodeId, session.navTree);
+      const selectedAmount =
+        (flowType === "exchange" || flowType === "cashapp") &&
+        isExchangeNode(node)
+          ? getExchangeAmount(node, amount)
+          : ({ amountUsd: amount } as const);
 
       logNavEvent(session.sessionId, session.clientSecret, {
         nodeId,
@@ -830,37 +868,35 @@ export function useSessionNav(
                   ? "Stripe"
                   : "Exchange",
         action: "flow_amount_continue",
-        amountUsd,
+        ...selectedAmount,
       });
 
       if (flowType === "deposit") {
         setStack((prev) => [
           ...prev,
-          { type: "waiting-deposit", nodeId, amountUsd },
+          { type: "waiting-deposit", nodeId, amountUsd: amount },
         ]);
       } else if (flowType === "tron") {
         setStack((prev) => [
           ...prev,
-          { type: "waiting-tron", nodeId, amountUsd },
+          { type: "waiting-tron", nodeId, amountUsd: amount },
         ]);
-        fetchTronAddress(nodeId, amountUsd);
+        fetchTronAddress(nodeId, amount);
       } else if (flowType === "exchange" || flowType === "cashapp") {
-        const node = findNode(nodeId, session.navTree);
         if (!isExchangeNode(node)) return;
         const { exchangeId, nodeType } = getExchangeSelection(node);
         setStack((prev) => [
           ...prev,
-          { type: "exchange-page", nodeId, amountUsd },
+          { type: "exchange-page", nodeId, ...selectedAmount },
         ]);
-        fetchExchangeUrl(nodeId, exchangeId, amountUsd, nodeType);
+        fetchExchangeUrl(nodeId, exchangeId, selectedAmount, nodeType);
       } else if (flowType === "stripe") {
-        const node = findNode(nodeId, session.navTree);
         if (!isStripeNode(node)) return;
         setStack((prev) => [
           ...prev,
-          { type: "stripe-onramp", nodeId, amountUsd },
+          { type: "stripe-onramp", nodeId, amountUsd: amount },
         ]);
-        fetchStripeOnramp(nodeId, amountUsd);
+        fetchStripeOnramp(nodeId, amount);
       }
     },
     [
@@ -960,7 +996,9 @@ export function useSessionNav(
       fetchExchangeUrl(
         topEntry.nodeId,
         exchangeId,
-        topEntry.amountUsd,
+        topEntry.sourceAmount != null
+          ? { sourceAmount: topEntry.sourceAmount }
+          : { amountUsd: topEntry.amountUsd },
         nodeType,
       );
       return;
