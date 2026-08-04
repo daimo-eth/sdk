@@ -104,6 +104,8 @@ type AmountInputProps = {
   maximum: number;
   /** Currency symbol prefix (e.g., "$", "CA$"). Defaults to "$". */
   currencySymbol?: string;
+  /** Maximum fractional digits accepted. Defaults to 2. */
+  decimals?: number;
   /** Label shown below input (e.g., "Balance: $X.XX" or "Minimum $X.XX") */
   defaultLabel?: string;
   /** Initial value for the input field. */
@@ -122,6 +124,7 @@ export function AmountInput({
   minimum,
   maximum,
   currencySymbol = "$",
+  decimals = 2,
   defaultLabel,
   initialValue,
   onSubmit,
@@ -149,7 +152,7 @@ export function AmountInput({
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = parseDisplayAmount(e.target.value);
-    if (!isValidAmountInput(value, 2)) return;
+    if (!isValidAmountInput(value, decimals)) return;
 
     setInputValue(value);
     const newAmount = parseFloat(value) || 0;
@@ -164,18 +167,20 @@ export function AmountInput({
   };
 
   const displayValue = formatAmountInput(inputValue);
-  const placeholder = formatAmountInput("0.00");
+  const placeholder = formatAmountInput(
+    decimals === 0 ? "0" : `0.${"0".repeat(decimals)}`,
+  );
   const inputWidth =
     displayValue.length === 0
       ? "3.55ch"
       : `${Math.min(displayValue.length - (displayValue.match(/\./g) || []).length * 0.55, 12)}ch`;
 
   const label = showMinWarning
-    ? `${t.minimum} ${currencySymbol}${formatFixedAmount(minimum)}`
+    ? `${t.minimum} ${currencySymbol}${formatFixedAmount(minimum, decimals)}`
     : showMaxWarning
-      ? `${t.maximum} ${currencySymbol}${formatFixedAmount(maximum)}`
+      ? `${t.maximum} ${currencySymbol}${formatFixedAmount(maximum, decimals)}`
       : (defaultLabel ??
-        `${t.minimum} ${currencySymbol}${formatFixedAmount(minimum)}`);
+        `${t.minimum} ${currencySymbol}${formatFixedAmount(minimum, decimals)}`);
 
   const labelClass =
     showMinWarning || showMaxWarning

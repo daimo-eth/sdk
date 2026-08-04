@@ -1103,8 +1103,8 @@ function renderSelectAmount(
     return (
       <SelectAmountPage
         node={depositNode}
-        minimumUsd={depositNode.minimumUsd}
-        maximumUsd={depositNode.maximumUsd}
+        minimum={depositNode.minimumUsd}
+        maximum={depositNode.maximumUsd}
         tokenSuffix={depositNode.tokenSuffix}
         chainId={depositNode.chainId}
         onBack={ctx.canGoBack ? ctx.onBack : undefined}
@@ -1118,8 +1118,8 @@ function renderSelectAmount(
     return (
       <SelectAmountPage
         node={{ icon: tronNode.icon, title: tronNode.title }}
-        minimumUsd={tronNode.minimumUsd}
-        maximumUsd={tronNode.maximumUsd}
+        minimum={tronNode.minimumUsd}
+        maximum={tronNode.maximumUsd}
         tokenSuffix="USDT"
         chainId={tron.chainId}
         onBack={ctx.canGoBack ? ctx.onBack : undefined}
@@ -1130,11 +1130,22 @@ function renderSelectAmount(
   }
   if (entry.flowType === "exchange") {
     const exchangeNode = node as NavNodeExchange;
+    const sourceAmount = exchangeNode.sourceAmount;
     return (
       <SelectAmountPage
         node={{ icon: exchangeNode.icon, title: exchangeNode.title }}
-        minimumUsd={exchangeNode.minimumUsd}
-        maximumUsd={exchangeNode.maximumUsd}
+        minimum={
+          sourceAmount
+            ? Number(sourceAmount.minimumUnits)
+            : exchangeNode.minimumUsd
+        }
+        maximum={
+          sourceAmount
+            ? Number(sourceAmount.maximumUnits)
+            : exchangeNode.maximumUsd
+        }
+        currencySymbol={sourceAmount?.currency.symbol}
+        decimals={sourceAmount?.currency.decimals}
         onBack={ctx.canGoBack ? ctx.onBack : undefined}
         onContinue={ctx.onAmountContinue}
         baseUrl={ctx.session.baseUrl}
@@ -1146,8 +1157,8 @@ function renderSelectAmount(
     return (
       <SelectAmountPage
         node={{ icon: cashAppNode.icon, title: cashAppNode.title }}
-        minimumUsd={cashAppNode.minimumUsd}
-        maximumUsd={cashAppNode.maximumUsd}
+        minimum={cashAppNode.minimumUsd}
+        maximum={cashAppNode.maximumUsd}
         onBack={ctx.canGoBack ? ctx.onBack : undefined}
         onContinue={ctx.onAmountContinue}
         baseUrl={ctx.session.baseUrl}
@@ -1159,8 +1170,8 @@ function renderSelectAmount(
     return (
       <SelectAmountPage
         node={{ icon: stripeNode.icon, title: stripeNode.title }}
-        minimumUsd={stripeNode.minimumUsd}
-        maximumUsd={stripeNode.maximumUsd}
+        minimum={stripeNode.minimumUsd}
+        maximum={stripeNode.maximumUsd}
         onBack={ctx.canGoBack ? ctx.onBack : undefined}
         onContinue={ctx.onAmountContinue}
         baseUrl={ctx.session.baseUrl}

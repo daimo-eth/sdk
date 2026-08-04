@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { zAccountRail } from "./account.js";
+import { zSourceAmount } from "./money.js";
 import type { TronAddress, UUID } from "./primitives.js";
 import { zAddress, zSolanaAddress } from "./primitives.js";
 import type { SessionPublicInfo } from "./session.js";
@@ -17,6 +18,7 @@ export const zExchangeId = z.enum([
   "BybitExchange",
   "MtPelerin",
   "CashApp",
+  "RevolutRamp",
 ]);
 
 export type ExchangeId = z.infer<typeof zExchangeId>;
@@ -26,7 +28,7 @@ export const zSessionId = z.string().describe("Session ID");
 export const zCreatePaymentMethodRequest = z.object({
   clientSecret: z.string(),
   locale: z.string().optional(),
-  paymentMethod: z.discriminatedUnion("type", [
+  paymentMethod: z.union([
     z.object({ type: z.literal("evm") }),
     z.object({ type: z.literal("tron"), amountUsd: z.number().positive() }),
     z.object({
@@ -39,6 +41,14 @@ export const zCreatePaymentMethodRequest = z.object({
       type: z.literal("exchange"),
       exchangeId: zExchangeId,
       amountUsd: z.number().positive(),
+      sourceAmount: z.never().optional(),
+      platform: zPlatform.optional(),
+    }),
+    z.object({
+      type: z.literal("exchange"),
+      exchangeId: zExchangeId,
+      amountUsd: z.never().optional(),
+      sourceAmount: zSourceAmount,
       platform: zPlatform.optional(),
     }),
     z.object({

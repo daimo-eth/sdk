@@ -27,7 +27,11 @@ export function ExchangePage({
 }: ExchangePageProps) {
   const exchangeId = node.type === "CashApp" ? "CashApp" : node.exchangeId;
   const desktopBehavior =
-    exchangeId === "Coinbase" || exchangeId === "MtPelerin" ? "popup" : "qr";
+    exchangeId === "Coinbase" ||
+    exchangeId === "MtPelerin" ||
+    exchangeId === "RevolutRamp"
+      ? "popup"
+      : "qr";
   const usesDesktopQR = isDesktop(platform) && desktopBehavior === "qr";
 
   const isBinanceExchange =
