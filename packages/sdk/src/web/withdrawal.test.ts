@@ -7,6 +7,7 @@ import { baseUSDC } from "../common/token.js";
 import {
   ManualWithdrawalSession,
   buildDaimoWithdrawalDestination,
+  getDaimoWithdrawalStorage,
   readDaimoWithdrawalContacts,
   removeDaimoWithdrawalContact,
   resolveWithdrawalIdentifier,
@@ -19,6 +20,7 @@ const EVM_ADDRESS = getAddress("0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045");
 const RECEIVER_ADDRESS = getAddress(
   "0x1111111111111111111111111111111111111111",
 );
+const CONTACT_STORAGE_SCOPE = "account-1";
 
 describe("withdrawal identifiers", () => {
   it("checksums EVM addresses and accepts Solana addresses", async () => {
@@ -48,6 +50,9 @@ describe("withdrawal identifiers", () => {
   it("rejects invalid identifiers and propagates ENS failures", async () => {
     await expect(
       resolveWithdrawalIdentifier("not-an-address", vi.fn()),
+    ).rejects.toThrow("enter a valid EVM address, Solana address, or ENS name");
+    await expect(
+      resolveWithdrawalIdentifier("z".repeat(44), vi.fn()),
     ).rejects.toThrow("enter a valid EVM address, Solana address, or ENS name");
     await expect(
       resolveWithdrawalIdentifier(
@@ -80,8 +85,12 @@ describe("withdrawal contacts", () => {
 
   it("persists, deduplicates, orders, and removes contacts", () => {
     const storage = createStorage();
-    saveDaimoWithdrawalContact(contact, storage);
-    saveDaimoWithdrawalContact({ ...contact, lastUsedAt: 20 }, storage);
+    saveDaimoWithdrawalContact(contact, CONTACT_STORAGE_SCOPE, storage);
+    saveDaimoWithdrawalContact(
+      { ...contact, lastUsedAt: 20 },
+      CONTACT_STORAGE_SCOPE,
+      storage,
+    );
     saveDaimoWithdrawalContact(
       {
         ...contact,
@@ -89,20 +98,32 @@ describe("withdrawal contacts", () => {
         identifierType: "evm",
         lastUsedAt: 15,
       },
+      CONTACT_STORAGE_SCOPE,
       storage,
     );
 
     expect(
-      readDaimoWithdrawalContacts(storage).map((item) => item.lastUsedAt),
+      readDaimoWithdrawalContacts(CONTACT_STORAGE_SCOPE, storage).map(
+        (item) => item.lastUsedAt,
+      ),
     ).toEqual([20, 15]);
-    expect(removeDaimoWithdrawalContact(contact, storage)).toHaveLength(1);
+    expect(
+      removeDaimoWithdrawalContact(contact, CONTACT_STORAGE_SCOPE, storage),
+    ).toHaveLength(1);
   });
 
   it("ignores malformed and unknown-version storage", () => {
-    const malformed = createStorage("{");
-    expect(readDaimoWithdrawalContacts(malformed)).toEqual([]);
-    const future = createStorage(JSON.stringify({ version: 2, contacts: [] }));
-    expect(readDaimoWithdrawalContacts(future)).toEqual([]);
+    const malformed = createStorage("{", CONTACT_STORAGE_SCOPE);
+    expect(
+      readDaimoWithdrawalContacts(CONTACT_STORAGE_SCOPE, malformed),
+    ).toEqual([]);
+    const future = createStorage(
+      JSON.stringify({ version: 2, contacts: [] }),
+      CONTACT_STORAGE_SCOPE,
+    );
+    expect(readDaimoWithdrawalContacts(CONTACT_STORAGE_SCOPE, future)).toEqual(
+      [],
+    );
   });
 
   it("ignores invalid contact identifiers and incompatible routes", () => {
@@ -118,8 +139,11 @@ describe("withdrawal contacts", () => {
           },
         ],
       }),
+      CONTACT_STORAGE_SCOPE,
     );
-    expect(readDaimoWithdrawalContacts(storage)).toEqual([]);
+    expect(readDaimoWithdrawalContacts(CONTACT_STORAGE_SCOPE, storage)).toEqual(
+      [],
+    );
   });
 
   it("does not block when contact storage is unavailable", () => {
@@ -129,7 +153,29 @@ describe("withdrawal contacts", () => {
         throw new Error("storage unavailable");
       }),
     };
-    expect(saveDaimoWithdrawalContact(contact, storage)).toEqual([contact]);
+    expect(
+      saveDaimoWithdrawalContact(contact, CONTACT_STORAGE_SCOPE, storage),
+    ).toEqual([contact]);
+  });
+
+  it("isolates contacts by authenticated user scope", () => {
+    const storage = createStorage();
+    saveDaimoWithdrawalContact(contact, "account-a", storage);
+
+    expect(readDaimoWithdrawalContacts("account-a", storage)).toEqual([
+      contact,
+    ]);
+    expect(readDaimoWithdrawalContacts("account-b", storage)).toEqual([]);
+  });
+
+  it("guards access to the localStorage property itself", () => {
+    expect(
+      getDaimoWithdrawalStorage({
+        get localStorage(): Storage {
+          throw new Error("storage blocked");
+        },
+      }),
+    ).toBeNull();
   });
 
   it("keeps case-sensitive Solana contacts distinct", () => {
@@ -141,16 +187,19 @@ describe("withdrawal contacts", () => {
       chainId: solana.chainId,
       lastUsedAt: 10,
     };
-    saveDaimoWithdrawalContact(solanaContact, storage);
+    saveDaimoWithdrawalContact(solanaContact, CONTACT_STORAGE_SCOPE, storage);
     saveDaimoWithdrawalContact(
       {
         ...solanaContact,
         identifier: "Wote111111111111111111111111111111111111111",
         lastUsedAt: 20,
       },
+      CONTACT_STORAGE_SCOPE,
       storage,
     );
-    expect(readDaimoWithdrawalContacts(storage)).toHaveLength(2);
+    expect(
+      readDaimoWithdrawalContacts(CONTACT_STORAGE_SCOPE, storage),
+    ).toHaveLength(2);
   });
 });
 
@@ -280,12 +329,19 @@ describe("manual withdrawal session", () => {
   });
 });
 
-function createStorage(initial?: string) {
-  let value = initial ?? null;
+function createStorage(initial?: string, initialScope?: string) {
+  const values = new Map<string, string>();
+  if (initial != null && initialScope != null) {
+    values.set(getStorageKey(initialScope), initial);
+  }
   return {
-    getItem: vi.fn(() => value),
-    setItem: vi.fn((_key: string, next: string) => {
-      value = next;
+    getItem: vi.fn((key: string) => values.get(key) ?? null),
+    setItem: vi.fn((key: string, next: string) => {
+      values.set(key, next);
     }),
   };
+}
+
+function getStorageKey(scope: string) {
+  return `daimo.withdrawal.contacts.${encodeURIComponent(scope)}`;
 }

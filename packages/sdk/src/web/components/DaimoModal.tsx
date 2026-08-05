@@ -61,7 +61,7 @@ import { ExternalLinkIcon, PrimaryButton } from "./buttons.js";
 import { ChooseChainPage } from "./ChooseChainPage.js";
 import { ChooseOptionPage } from "./ChooseOptionPage.js";
 import { ChooseWalletPage } from "./ChooseWalletPage.js";
-import { ConfirmationPage } from "./ConfirmationPage.js";
+import { ConfirmationPage, type ConfirmationMode } from "./ConfirmationPage.js";
 import { EmbeddedContainer, ModalContainer } from "./containers.js";
 import { DeeplinkPage } from "./DeeplinkPage.js";
 import { ExchangePage } from "./ExchangePage.js";
@@ -136,7 +136,7 @@ type DaimoModalBaseProps = {
   /** Override the session's light/dark/system theme mode. */
   themeMode?: DaimoThemeMode;
   /** Copy variant for terminal progress shown by higher-level SDK surfaces. */
-  confirmationMode?: "payment" | "withdrawal";
+  confirmationMode?: ConfirmationMode;
   /** Caller's platform. Prefer "desktop" or "mobile"; legacy values still work. Auto-detected. */
   platform?: DaimoPlatform;
   /** URL to navigate to after successful payment. */
@@ -568,7 +568,11 @@ function DaimoModalInner({
 
   if (session.status === "expired") {
     content = (
-      <ExpiredPage sessionId={session.sessionId} onClose={handleClose} />
+      <ExpiredPage
+        sessionId={session.sessionId}
+        onClose={handleClose}
+        mode={confirmationMode}
+      />
     );
   } else if (
     !isAccountFlow &&
@@ -612,6 +616,7 @@ function DaimoModalInner({
       walletFlow,
       selectTokenSkeletonCount:
         confirmationMode === "withdrawal" ? 1 : undefined,
+      confirmationMode,
       onWalletSelectToken: nav.handleWalletSelectToken,
       onWalletSending: nav.handleWalletSending,
       onAccountAdvance: nav.handleAccountAdvance,
@@ -722,6 +727,7 @@ type RenderContext = {
     retryConnect: () => Promise<void>;
   };
   selectTokenSkeletonCount?: number;
+  confirmationMode?: ConfirmationMode;
   onWalletSelectToken: (token: WalletPaymentOption) => void;
   onWalletSending: (token: WalletPaymentOption, amountUsd: number) => void;
   onAccountAdvance: (
@@ -1604,6 +1610,7 @@ function renderWalletSending(
       onRetry={ctx.onRetry}
       onBack={!entry.txHash ? ctx.onBack : undefined}
       baseUrl={ctx.session.baseUrl}
+      mode={ctx.confirmationMode}
     />
   );
 }

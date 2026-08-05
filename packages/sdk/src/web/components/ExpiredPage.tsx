@@ -1,20 +1,27 @@
 import { SecondaryButton } from "./buttons.js";
 import { ExpiredIcon } from "./icons.js";
 import { t } from "../hooks/locale.js";
+import type { ConfirmationMode } from "./ConfirmationPage.js";
 import { ContactSupportButton, PageHeader } from "./shared.js";
 
 type ExpiredPageProps = {
   sessionId: string;
   onClose?: () => void;
+  mode?: ConfirmationMode;
 };
 
 /**
  * Expired page shown when a payment session times out.
  */
-export function ExpiredPage({ sessionId, onClose }: ExpiredPageProps) {
+export function ExpiredPage({
+  sessionId,
+  onClose,
+  mode = "payment",
+}: ExpiredPageProps) {
+  const withdrawal = mode === "withdrawal";
   return (
     <div className="daimo-flex daimo-flex-col daimo-flex-1 daimo-min-h-0">
-      <PageHeader title={t.expired} />
+      <PageHeader title={withdrawal ? "Withdrawal expired" : t.expired} />
       <div className="daimo-flex-1 daimo-flex daimo-flex-col daimo-items-center daimo-justify-center daimo-p-6 daimo-gap-6">
         <div
           className="daimo-w-20 daimo-h-20 daimo-rounded-full daimo-flex daimo-items-center daimo-justify-center"
@@ -23,14 +30,19 @@ export function ExpiredPage({ sessionId, onClose }: ExpiredPageProps) {
           <ExpiredIcon />
         </div>
         <p className="daimo-text-[var(--daimo-text-secondary)]">
-          {t.paymentSessionExpired}
+          {withdrawal
+            ? "This withdrawal session expired."
+            : t.paymentSessionExpired}
         </p>
         {onClose && (
           <SecondaryButton onClick={onClose}>{t.close}</SecondaryButton>
         )}
       </div>
       <div className="daimo-px-6 daimo-pb-6 daimo-flex daimo-flex-col daimo-items-center">
-        <ContactSupportButton subject="Expired session" info={{ sessionId }} />
+        <ContactSupportButton
+          subject={withdrawal ? "Expired withdrawal" : "Expired session"}
+          info={{ sessionId }}
+        />
       </div>
     </div>
   );

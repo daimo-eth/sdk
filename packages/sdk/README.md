@@ -40,6 +40,7 @@ export function Withdrawal() {
     <DaimoSDKProvider>
       <DaimoWithdrawal
         fundingMode="injected-wallet"
+        contactStorageScope={currentUser.id}
         createSession={(input) =>
           fetch("/api/withdrawal/session", {
             method: "POST",
@@ -53,13 +54,16 @@ export function Withdrawal() {
 }
 ```
 
-Use `connectToAddress` when the host already has an EVM wallet connected. In
-manual mode, provide `sendManualTransaction`; it receives a receiver address
-that the widget deliberately never renders:
+`contactStorageScope` must be a stable authenticated user or account ID. The
+widget uses it to isolate saved destinations in local storage. Use
+`connectToAddress` when the host already has an EVM wallet connected. In manual
+mode, provide `sendManualTransaction`; it receives a receiver address that the
+widget deliberately never renders:
 
 ```tsx
 <DaimoWithdrawal
   fundingMode="manual"
+  contactStorageScope={currentUser.id}
   createSession={createWithdrawalSession}
   sendManualTransaction={async ({ receiverAddress, expiresAt }) => {
     const txHash = await hostWallet.sendStablecoin({

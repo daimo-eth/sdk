@@ -44,6 +44,7 @@ export type DaimoWithdrawalManualTransferResult = void | {
 };
 
 type WithdrawalStorage = Pick<Storage, "getItem" | "setItem">;
+type WithdrawalStorageHost = { readonly localStorage: WithdrawalStorage };
 type EnsResolver = (name: string) => Promise<{ address: Address }>;
 type ManualTransferAdapter = (
   request: DaimoWithdrawalManualTransferRequest,
@@ -116,10 +117,13 @@ export function buildDaimoWithdrawalDestination(
 }
 
 export function readDaimoWithdrawalContacts(
-  storage: WithdrawalStorage,
+  storageScope: string,
+  storage: WithdrawalStorage | null,
 ): DaimoWithdrawalContact[] {
+  const storageKey = getContactsStorageKey(storageScope);
+  if (!storage || !storageKey) return [];
   try {
-    const raw = storage.getItem(CONTACTS_STORAGE_KEY);
+    const raw = storage.getItem(storageKey);
     if (!raw) return [];
     const parsed: unknown = JSON.parse(raw);
     if (!isRecord(parsed) || parsed.version !== CONTACTS_VERSION) return [];
@@ -142,29 +146,42 @@ export function readDaimoWithdrawalContacts(
 
 export function saveDaimoWithdrawalContact(
   contact: DaimoWithdrawalContact,
-  storage: WithdrawalStorage,
+  storageScope: string,
+  storage: WithdrawalStorage | null,
 ): DaimoWithdrawalContact[] {
   const key = getContactKey(contact);
   const contacts = [
     contact,
-    ...readDaimoWithdrawalContacts(storage).filter(
+    ...readDaimoWithdrawalContacts(storageScope, storage).filter(
       (candidate) => getContactKey(candidate) !== key,
     ),
   ].slice(0, MAX_CONTACTS);
-  writeContacts(contacts, storage);
+  writeContacts(contacts, storageScope, storage);
   return contacts;
 }
 
 export function removeDaimoWithdrawalContact(
   contact: DaimoWithdrawalContact,
-  storage: WithdrawalStorage,
+  storageScope: string,
+  storage: WithdrawalStorage | null,
 ): DaimoWithdrawalContact[] {
   const key = getContactKey(contact);
-  const contacts = readDaimoWithdrawalContacts(storage).filter(
+  const contacts = readDaimoWithdrawalContacts(storageScope, storage).filter(
     (candidate) => getContactKey(candidate) !== key,
   );
-  writeContacts(contacts, storage);
+  writeContacts(contacts, storageScope, storage);
   return contacts;
+}
+
+/** Access browser storage without assuming the localStorage getter is usable. */
+export function getDaimoWithdrawalStorage(
+  host: WithdrawalStorageHost = globalThis,
+): WithdrawalStorage | null {
+  try {
+    return host.localStorage || null;
+  } catch {
+    return null;
+  }
 }
 
 /** Manual-mode controller that keeps the hidden receiver stable across retry. */
@@ -256,16 +273,25 @@ export function getContactRoute(
 
 function writeContacts(
   contacts: DaimoWithdrawalContact[],
-  storage: WithdrawalStorage,
+  storageScope: string,
+  storage: WithdrawalStorage | null,
 ) {
+  const storageKey = getContactsStorageKey(storageScope);
+  if (!storage || !storageKey) return;
   try {
     storage.setItem(
-      CONTACTS_STORAGE_KEY,
+      storageKey,
       JSON.stringify({ version: CONTACTS_VERSION, contacts }),
     );
   } catch {
     // Contacts are optional; storage failures must not block a withdrawal.
   }
+}
+
+function getContactsStorageKey(storageScope: string): string | null {
+  const scope = storageScope.trim();
+  if (!scope) return null;
+  return `${CONTACTS_STORAGE_KEY}.${encodeURIComponent(scope)}`;
 }
 
 function getContactKey(contact: DaimoWithdrawalContact): string {

@@ -95,5 +95,12 @@ describe("withdrawal destination routes", () => {
         tokenAddress: getAddress("0x0000000000000000000000000000000000000001"),
       }),
     ).toBe(false);
+    expect(
+      isDaimoWithdrawalDestination({
+        type: "solana",
+        address: "z".repeat(44),
+        tokenAddress: solanaUSDC.token,
+      }),
+    ).toBe(false);
   });
 });

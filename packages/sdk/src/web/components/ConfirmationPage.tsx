@@ -20,6 +20,8 @@ type ConfirmationStatus =
   | "done" // Payment completed
   | "refunded"; // Payment bounced/refunded
 
+export type ConfirmationMode = "payment" | "withdrawal";
+
 type ConfirmationPageProps = {
   sessionId: string;
   /** Session state - drives confirmation status */
@@ -45,7 +47,7 @@ type ConfirmationPageProps = {
   /** Back handler - only shown during "confirming" state */
   onBack?: () => void;
   baseUrl: string;
-  mode?: "payment" | "withdrawal";
+  mode?: ConfirmationMode;
 };
 
 /**
@@ -208,7 +210,7 @@ function getConfirmationStatus(
 function getDisplayTitle(
   status: ConfirmationStatus,
   processingMessage: string,
-  mode: "payment" | "withdrawal",
+  mode: ConfirmationMode,
 ): string {
   if (mode === "withdrawal") {
     switch (status) {

@@ -46,6 +46,7 @@ import {
   ManualWithdrawalSession,
   buildDaimoWithdrawalDestination,
   getContactRoute,
+  getDaimoWithdrawalStorage,
   readDaimoWithdrawalContacts,
   removeDaimoWithdrawalContact,
   resolveWithdrawalIdentifier,
@@ -70,6 +71,8 @@ type DaimoWithdrawalSessionRef = {
 };
 
 type DaimoWithdrawalBaseProps = {
+  /** Stable authenticated user/account scope for isolated saved destinations. */
+  contactStorageScope: string;
   createSession: (input: {
     destination: DaimoWithdrawalDestination;
     fundingMode: DaimoWithdrawalFundingMode;
@@ -109,6 +112,10 @@ const EVM_WITHDRAWAL_CHAIN_IDS = [
 
 /** Recipient-first stablecoin withdrawal widget. */
 export function DaimoWithdrawal(props: DaimoWithdrawalProps) {
+  return <DaimoWithdrawalFlow key={props.contactStorageScope} {...props} />;
+}
+
+function DaimoWithdrawalFlow(props: DaimoWithdrawalProps) {
   const client = useDaimoClient();
   const [step, setStep] = useState<WithdrawalStep>("identifier");
   const [identifierInput, setIdentifierInput] = useState("");
@@ -135,9 +142,14 @@ export function DaimoWithdrawal(props: DaimoWithdrawalProps) {
   } | null>(null);
 
   useEffect(() => {
-    setContacts(readDaimoWithdrawalContacts(window.localStorage));
+    setContacts(
+      readDaimoWithdrawalContacts(
+        props.contactStorageScope,
+        getDaimoWithdrawalStorage(),
+      ),
+    );
     setContactsLoaded(true);
-  }, []);
+  }, [props.contactStorageScope]);
 
   const resolveIdentifierValue = useCallback(
     (value: string) =>
@@ -206,13 +218,14 @@ export function DaimoWithdrawal(props: DaimoWithdrawalProps) {
               chainId: nextRoute.chainId,
               lastUsedAt: Date.now(),
             },
-            window.localStorage,
+            props.contactStorageScope,
+            getDaimoWithdrawalStorage(),
           ),
         );
       }
       setSession({ ref, destination });
     },
-    [props.createSession, props.fundingMode],
+    [props.contactStorageScope, props.createSession, props.fundingMode],
   );
 
   const selectContact = useCallback(
@@ -320,7 +333,11 @@ export function DaimoWithdrawal(props: DaimoWithdrawalProps) {
             onCancelRemove={() => setRemovingContact(null)}
             onConfirmRemove={(contact) => {
               setContacts(
-                removeDaimoWithdrawalContact(contact, window.localStorage),
+                removeDaimoWithdrawalContact(
+                  contact,
+                  props.contactStorageScope,
+                  getDaimoWithdrawalStorage(),
+                ),
               );
               setRemovingContact(null);
             }}
@@ -677,16 +694,24 @@ function ManualWithdrawalFlow({
   onPaymentCompleted?: () => void;
 }) {
   const client = useDaimoClient();
+  const sendManualTransactionRef = useRef(sendManualTransaction);
+  const onPaymentStartedRef = useRef(onPaymentStarted);
+  const onPaymentCompletedRef = useRef(onPaymentCompleted);
+  sendManualTransactionRef.current = sendManualTransaction;
+  onPaymentStartedRef.current = onPaymentStarted;
+  onPaymentCompletedRef.current = onPaymentCompleted;
+  const { sessionId, clientSecret } = session.ref;
+  const destination = session.destination;
   const controller = useMemo(
     () =>
       new ManualWithdrawalSession(
         client,
-        session.ref.sessionId,
-        session.ref.clientSecret,
-        session.destination,
-        sendManualTransaction,
+        sessionId,
+        clientSecret,
+        destination,
+        (request) => sendManualTransactionRef.current(request),
       ),
-    [client, sendManualTransaction, session],
+    [client, clientSecret, destination, sessionId],
   );
   const [submission, setSubmission] =
     useState<ManualWithdrawalSubmission | null>(null);
@@ -697,7 +722,6 @@ function ManualWithdrawalFlow({
   const startedRef = useRef(false);
   const completedRef = useRef(false);
   const currentStatus = currentSession?.status;
-  const { sessionId, clientSecret } = session.ref;
 
   const submit = useCallback(async () => {
     setAdapterPending(true);
@@ -708,14 +732,14 @@ function ManualWithdrawalFlow({
       setCurrentSession(next.session);
       if (!startedRef.current) {
         startedRef.current = true;
-        onPaymentStarted?.();
+        onPaymentStartedRef.current?.();
       }
     } catch (err) {
       setAdapterError(formatUserError(err));
     } finally {
       setAdapterPending(false);
     }
-  }, [controller, onPaymentStarted]);
+  }, [controller]);
 
   useEffect(() => {
     void submit();
@@ -747,8 +771,8 @@ function ManualWithdrawalFlow({
   useEffect(() => {
     if (currentSession?.status !== "succeeded" || completedRef.current) return;
     completedRef.current = true;
-    onPaymentCompleted?.();
-  }, [currentSession?.status, onPaymentCompleted]);
+    onPaymentCompletedRef.current?.();
+  }, [currentSession?.status]);
 
   return (
     <EmbeddedContainer showFooterSpacer={false} themeMode={themeMode}>
