@@ -356,12 +356,14 @@ export function ScrollContent({
   atBottom,
   fade,
   grow = true,
+  maxHeight,
 }: {
   children: ReactNode;
   onScroll?: (e: React.UIEvent<HTMLDivElement>) => void;
   atBottom?: boolean;
   fade?: boolean;
   grow?: boolean;
+  maxHeight?: string;
 }) {
   const fadeClass = fade
     ? ` daimo-scroll-fade${atBottom ? " daimo-scroll-end" : ""}`
@@ -371,7 +373,7 @@ export function ScrollContent({
   return (
     <div
       className={`${growClass} daimo-min-h-0 daimo-overflow-y-auto daimo-px-6 ${padClass}${fadeClass}`}
-      style={{ maxHeight: "var(--daimo-scroll-max-height)" }}
+      style={{ maxHeight: maxHeight ?? "var(--daimo-scroll-max-height)" }}
       onScroll={onScroll}
     >
       {children}
@@ -385,7 +387,7 @@ export const LIST_ROW_CLASS =
   "daimo-w-full daimo-h-16 daimo-shrink-0 daimo-flex daimo-items-center daimo-justify-between daimo-px-5 daimo-rounded-[var(--daimo-radius-lg)] daimo-bg-[var(--daimo-surface-secondary)] hover:[@media(hover:hover)]:daimo-bg-[var(--daimo-surface-hover)] daimo-transition-colors daimo-text-left daimo-touch-action-manipulation";
 
 type ListRowProps = {
-  label: string;
+  label: ReactNode;
   subtitle?: string;
   right?: ReactNode;
   onClick: () => void;

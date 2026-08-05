@@ -135,6 +135,8 @@ type DaimoModalBaseProps = {
   embeddedClose?: boolean;
   /** Override the session's light/dark/system theme mode. */
   themeMode?: DaimoThemeMode;
+  /** Copy variant for terminal progress shown by higher-level SDK surfaces. */
+  confirmationMode?: "payment" | "withdrawal";
   /** Caller's platform. Prefer "desktop" or "mobile"; legacy values still work. Auto-detected. */
   platform?: DaimoPlatform;
   /** URL to navigate to after successful payment. */
@@ -254,6 +256,8 @@ export function DaimoModal(props: DaimoModalProps) {
   const themeReady = useDaimoThemeReady(
     isOpen ? loaded?.session.display.themeCssUrl : undefined,
   );
+  const loadingSkeletonRowCount =
+    props.confirmationMode === "withdrawal" ? 1 : 3;
 
   if (!isOpen) return null;
 
@@ -266,7 +270,10 @@ export function DaimoModal(props: DaimoModalProps) {
     return (
       <div style={{ visibility: "hidden" }}>
         <EmbeddedContainer showFooterSpacer={false} themeMode={props.themeMode}>
-          <SkeletonContent rowCount={3} showFooter={false} />
+          <SkeletonContent
+            rowCount={loadingSkeletonRowCount}
+            showFooter={false}
+          />
         </EmbeddedContainer>
       </div>
     );
@@ -310,7 +317,10 @@ export function DaimoModal(props: DaimoModalProps) {
           key="loading-shell"
           className="daimo-flex daimo-flex-1 daimo-min-h-0 daimo-flex-col"
         >
-          <SkeletonContent rowCount={3} showFooter={false} />
+          <SkeletonContent
+            rowCount={loadingSkeletonRowCount}
+            showFooter={false}
+          />
         </div>
       )}
       {wrapped && (
@@ -396,6 +406,7 @@ function DaimoModalInner({
   platform,
   returnUrl,
   returnLabel,
+  confirmationMode,
   enableFiatPopup = false,
   startNodeId,
   onPaymentStarted,
@@ -572,6 +583,7 @@ function DaimoModalInner({
         returnUrl={returnUrl}
         returnLabel={returnLabel}
         baseUrl={session.baseUrl}
+        mode={confirmationMode}
       />
     );
   } else {
@@ -598,6 +610,8 @@ function DaimoModalInner({
       onChainSelect: nav.handleChainSelect,
       onShowMobileWallets: nav.handleShowMobileWallets,
       walletFlow,
+      selectTokenSkeletonCount:
+        confirmationMode === "withdrawal" ? 1 : undefined,
       onWalletSelectToken: nav.handleWalletSelectToken,
       onWalletSending: nav.handleWalletSending,
       onAccountAdvance: nav.handleAccountAdvance,
@@ -707,6 +721,7 @@ type RenderContext = {
     connect: () => Promise<void>;
     retryConnect: () => Promise<void>;
   };
+  selectTokenSkeletonCount?: number;
   onWalletSelectToken: (token: WalletPaymentOption) => void;
   onWalletSending: (token: WalletPaymentOption, amountUsd: number) => void;
   onAccountAdvance: (
@@ -1505,6 +1520,7 @@ function renderWalletSelectToken(ctx: RenderContext): React.ReactNode {
       <SelectTokenPage
         options={null}
         isLoading
+        skeletonCount={ctx.selectTokenSkeletonCount}
         showRequired={!!ctx.session.destination.amountUnits}
         onSelect={ctx.onWalletSelectToken}
         onBack={ctx.canGoBack ? ctx.onBack : null}

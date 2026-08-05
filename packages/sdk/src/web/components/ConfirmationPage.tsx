@@ -45,6 +45,7 @@ type ConfirmationPageProps = {
   /** Back handler - only shown during "confirming" state */
   onBack?: () => void;
   baseUrl: string;
+  mode?: "payment" | "withdrawal";
 };
 
 /**
@@ -69,6 +70,7 @@ export function ConfirmationPage({
   onRetry,
   onBack,
   baseUrl,
+  mode = "payment",
 }: ConfirmationPageProps) {
   const status = getConfirmationStatus(pendingTxHash, sessionState);
 
@@ -97,8 +99,10 @@ export function ConfirmationPage({
 
   // Get display title based on status
   const displayTitle = rejected
-    ? t.paymentCancelled
-    : getDisplayTitle(status, processingMessage);
+    ? mode === "withdrawal"
+      ? "Withdrawal cancelled"
+      : t.paymentCancelled
+    : getDisplayTitle(status, processingMessage, mode);
 
   // Chain name for display
   const chainName = sourceChainId ? getChainName(sourceChainId) : "";
@@ -150,7 +154,9 @@ export function ConfirmationPage({
                 onClick={onRetry}
                 style={{ animation: "daimo-fade-in 0.3s ease 2s both" }}
               >
-                {t.retryPayment}
+                {mode === "withdrawal"
+                  ? "Try withdrawal again"
+                  : t.retryPayment}
               </SecondaryLinkButton>
             )}
           </>
@@ -175,7 +181,7 @@ export function ConfirmationPage({
         {/* Receipt link (post-tx states) or contact support (pre-tx states) */}
         {status === "confirming" ? (
           <ContactSupportButton
-            subject="Payment help"
+            subject={mode === "withdrawal" ? "Withdrawal help" : "Payment help"}
             info={{ sessionId }}
           />
         ) : (
@@ -202,7 +208,22 @@ function getConfirmationStatus(
 function getDisplayTitle(
   status: ConfirmationStatus,
   processingMessage: string,
+  mode: "payment" | "withdrawal",
 ): string {
+  if (mode === "withdrawal") {
+    switch (status) {
+      case "confirming":
+        return "Confirm your withdrawal";
+      case "waiting":
+        return "Waiting for your transfer";
+      case "processing":
+        return "Withdrawal in progress";
+      case "done":
+        return "Withdrawal completed";
+      case "refunded":
+        return "Withdrawal refunded";
+    }
+  }
   switch (status) {
     case "confirming":
       return t.confirmYourPayment;

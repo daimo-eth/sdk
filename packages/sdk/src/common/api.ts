@@ -177,3 +177,10 @@ export type TokenOptionsResponse = {
   /** Available token options the user can pay with. */
   options: TokenOption[];
 };
+
+export type ResolveEnsResponse = {
+  /** Normalized ENS name. */
+  name: string;
+  /** Checksummed address resolved by Daimo's Ethereum RPC. */
+  address: `0x${string}`;
+};
