@@ -73,6 +73,8 @@ type DaimoWithdrawalSessionRef = {
 type DaimoWithdrawalBaseProps = {
   /** Stable authenticated user/account scope for isolated saved destinations. */
   contactStorageScope: string;
+  /** Resolve a normalized ENS name through the host's authenticated backend. */
+  resolveEns: (name: string) => Promise<{ address: Address }>;
   createSession: (input: {
     destination: DaimoWithdrawalDestination;
     fundingMode: DaimoWithdrawalFundingMode;
@@ -116,7 +118,6 @@ export function DaimoWithdrawal(props: DaimoWithdrawalProps) {
 }
 
 function DaimoWithdrawalFlow(props: DaimoWithdrawalProps) {
-  const client = useDaimoClient();
   const [step, setStep] = useState<WithdrawalStep>("identifier");
   const [identifierInput, setIdentifierInput] = useState("");
   const [identifier, setIdentifier] =
@@ -152,9 +153,8 @@ function DaimoWithdrawalFlow(props: DaimoWithdrawalProps) {
   }, [props.contactStorageScope]);
 
   const resolveIdentifierValue = useCallback(
-    (value: string) =>
-      resolveWithdrawalIdentifier(value, (name) => client.ens.resolve(name)),
-    [client],
+    (value: string) => resolveWithdrawalIdentifier(value, props.resolveEns),
+    [props.resolveEns],
   );
 
   const resolveIdentifier = useCallback(

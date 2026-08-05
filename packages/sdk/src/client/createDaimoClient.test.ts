@@ -2,29 +2,6 @@ import { describe, expect, test } from "vitest";
 
 import { createDaimoClient } from "./createDaimoClient.js";
 
-describe("ENS resolution", () => {
-  test("uses the public Daimo resolver", async () => {
-    let requestUrl = "";
-    const client = createDaimoClient({
-      baseUrl: "https://api.example.test",
-      fetchImpl: async (input) => {
-        requestUrl = String(input);
-        return Response.json({
-          name: "vitalik.eth",
-          address: "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045",
-        });
-      },
-    });
-
-    await expect(client.ens.resolve("vitalik.eth")).resolves.toMatchObject({
-      name: "vitalik.eth",
-    });
-    expect(requestUrl).toBe(
-      "https://api.example.test/v1/ens/resolve?name=vitalik.eth",
-    );
-  });
-});
-
 describe("account wallet provisioning", () => {
   test("posts bearer auth to the idempotent wallet route", async () => {
     let requestUrl = "";

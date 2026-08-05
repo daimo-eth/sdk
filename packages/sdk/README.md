@@ -25,11 +25,12 @@ Import `@daimo/sdk/web/theme.css` for the built-in web UI. The distributed style
 
 `DaimoWithdrawal` collects a recipient address or ENS name, destination
 stablecoin, and destination network before asking your server to create an
-open-amount session. Wrap it in `DaimoSDKProvider` so ENS resolution and session
-polling use the Daimo API.
+open-amount session. Wrap it in `DaimoSDKProvider` so session polling uses the
+Daimo API.
 
-The callback should call your backend, which creates the session with your
-Daimo API key; never expose that key in browser code.
+The callbacks should call your authenticated backend, which resolves ENS and
+creates the session with your Daimo API key; never expose that key or a paid RPC
+endpoint in browser code.
 
 ```tsx
 import "@daimo/sdk/web/theme.css";
@@ -41,6 +42,7 @@ export function Withdrawal() {
       <DaimoWithdrawal
         fundingMode="injected-wallet"
         contactStorageScope={currentUser.id}
+        resolveEns={resolveWithdrawalEns}
         createSession={(input) =>
           fetch("/api/withdrawal/session", {
             method: "POST",
@@ -55,15 +57,17 @@ export function Withdrawal() {
 ```
 
 `contactStorageScope` must be a stable authenticated user or account ID. The
-widget uses it to isolate saved destinations in local storage. Use
-`connectToAddress` when the host already has an EVM wallet connected. In manual
-mode, provide `sendManualTransaction`; it receives a receiver address that the
-widget deliberately never renders:
+widget uses it to isolate saved destinations in local storage. `resolveEns`
+must authenticate the caller before forwarding a name to an upstream resolver.
+Use `connectToAddress` when the host already has an EVM wallet connected. In
+manual mode, provide `sendManualTransaction`; it receives a receiver address
+that the widget deliberately never renders:
 
 ```tsx
 <DaimoWithdrawal
   fundingMode="manual"
   contactStorageScope={currentUser.id}
+  resolveEns={resolveWithdrawalEns}
   createSession={createWithdrawalSession}
   sendManualTransaction={async ({ receiverAddress, expiresAt }) => {
     const txHash = await hostWallet.sendStablecoin({

@@ -29,7 +29,6 @@ import type {
   CreatePaymentMethodRequest,
   CreatePaymentMethodResponse,
   LogNavEventRequest,
-  ResolveEnsResponse,
   RetrieveSessionResponse,
   TokenOptionsRequest,
   TokenOptionsResponse,
@@ -70,10 +69,6 @@ export type UpsertDepositRequest = {
 };
 
 export type DaimoClient = {
-  ens: {
-    /** Resolve an ENS name through Daimo's configured Ethereum RPC. */
-    resolve(name: string): Promise<ResolveEnsResponse>;
-  };
   account: {
     /** Ensure the authenticated user has one canonical embedded EVM wallet. */
     ensureWallet(auth: BearerAuth): Promise<EnsureAccountWalletResponse>;
@@ -216,15 +211,6 @@ export function createDaimoClient(config: TransportConfig): DaimoClient {
   const transport = createTransport(config);
 
   return {
-    ens: {
-      resolve(name) {
-        return transport.request<ResolveEnsResponse>({
-          method: "GET",
-          path: "/v1/ens/resolve",
-          query: { name },
-        });
-      },
-    },
     account: {
       ensureWallet(auth) {
         return transport.request<EnsureAccountWalletResponse>({
