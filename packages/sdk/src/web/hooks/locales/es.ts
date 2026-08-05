@@ -24,6 +24,8 @@ export const es: typeof en = {
   open: "Abrir",
   refreshInvoice: "Actualizar",
   selectAmount: "Seleccionar monto",
+  fee: "Comisión",
+  youReceive: "Recibes",
   loading: "Cargando",
   continue: "Continuar",
   selectToken: "Seleccionar token",

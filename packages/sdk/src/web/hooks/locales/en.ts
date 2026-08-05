@@ -31,6 +31,8 @@ export const en = {
 
   // SelectAmountPage
   selectAmount: "Select Amount",
+  fee: "Fee",
+  youReceive: "You receive",
   loading: "Loading",
   continue: "Continue",
 

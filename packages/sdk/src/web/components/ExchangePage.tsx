@@ -1,4 +1,5 @@
 import type { NavNodeCashApp, NavNodeExchange } from "../api/navTree.js";
+import type { WaitingInstruction } from "../../common/api.js";
 
 import { t } from "../hooks/locale.js";
 import { isDesktop, type DaimoPlatform } from "../platform.js";
@@ -9,6 +10,7 @@ type ExchangePageProps = {
   platform: DaimoPlatform;
   exchangeUrl?: string;
   waitingMessage?: string;
+  waitingInstructions?: WaitingInstruction[];
   expiresAt?: number;
   isLoading?: boolean;
   onBack: () => void;
@@ -21,6 +23,7 @@ export function ExchangePage({
   platform,
   exchangeUrl,
   waitingMessage,
+  waitingInstructions,
   isLoading,
   onBack,
   baseUrl,
@@ -54,6 +57,7 @@ export function ExchangePage({
           ? t.scanWithPhone
           : `${t.continueTo} ${node.title} ${t.toCompleteYourDeposit}`)
       }
+      instructions={waitingInstructions}
       isLoading={isLoading}
       onBack={onBack}
       baseUrl={baseUrl}

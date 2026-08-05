@@ -33,6 +33,8 @@ export const zh: typeof en = {
 
   // SelectAmountPage
   selectAmount: "选择金额",
+  fee: "费用",
+  youReceive: "你将收到",
   loading: "加载中",
   continue: "继续",
 

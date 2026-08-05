@@ -5,6 +5,7 @@ import type {
   DepositPaymentInteraction,
 } from "../../common/account.js";
 import type { SourceAmount } from "../../common/money.js";
+import type { WaitingInstruction } from "../../common/api.js";
 import type { NavNode, SessionWithNav } from "../api/navTree.js";
 import type { WalletPaymentOption } from "../api/walletTypes.js";
 
@@ -58,6 +59,7 @@ export type NavEntry =
       nodeId: string;
       exchangeUrl?: string;
       waitingMessage?: string;
+      waitingInstructions?: WaitingInstruction[];
       expiresAt?: number;
       error?: string;
       autoNav?: boolean;

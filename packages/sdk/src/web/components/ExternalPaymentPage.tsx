@@ -1,3 +1,4 @@
+import type { WaitingInstruction } from "../../common/api.js";
 import { t } from "../hooks/locale.js";
 import { isDesktop, type DaimoPlatform } from "../platform.js";
 import { ApplePayLogo, isApplePayLogo } from "./ApplePayLogo.js";
@@ -21,6 +22,7 @@ type ExternalPaymentPageProps = {
   url?: string;
   icon?: string;
   message: string;
+  instructions?: WaitingInstruction[];
   isLoading?: boolean;
   onBack: (() => void) | null;
   baseUrl: string;
@@ -42,6 +44,7 @@ export function ExternalPaymentPage({
   url,
   icon,
   message,
+  instructions,
   isLoading,
   onBack,
   baseUrl,
@@ -106,6 +109,22 @@ export function ExternalPaymentPage({
         )}
         {isLoading ? (
           <SkeletonText className="daimo-max-w-xs" widths={["80%", "60%"]} />
+        ) : instructions && instructions.length > 0 ? (
+          <div className="daimo-space-y-2 daimo-text-[var(--daimo-text-secondary)] daimo-text-left daimo-max-w-xs daimo-text-sm">
+            {instructions.map((instruction, index) => (
+              <p
+                key={`${index}-${instruction.text}`}
+                className="daimo-whitespace-pre-line"
+              >
+                {instruction.text}
+                {instruction.emphasis && (
+                  <strong className="daimo-block daimo-font-semibold daimo-text-[var(--daimo-text)]">
+                    {instruction.emphasis}
+                  </strong>
+                )}
+              </p>
+            ))}
+          </div>
         ) : (
           <p className="daimo-text-[var(--daimo-text-secondary)] daimo-text-center daimo-max-w-xs daimo-text-sm daimo-whitespace-pre-line">
             {message}
