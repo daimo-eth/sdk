@@ -125,11 +125,18 @@ function getExchangeAmount(node: ExchangeNode, amount: number): ExchangeAmount {
   };
 }
 
-function getRequiredExchangeAmount(node: ExchangeNode): ExchangeAmount | null {
+export function getRequiredExchangeAmount(
+  node: ExchangeNode,
+): ExchangeAmount | null {
   if (node.type === "Exchange" && node.sourceAmount != null) {
     const requiredUnits = node.sourceAmount.requiredUnits;
-    if (requiredUnits == null) return null;
-    return getExchangeAmount(node, Number(requiredUnits));
+    if (requiredUnits == null || Number(requiredUnits) <= 0) return null;
+    return {
+      sourceAmount: {
+        currency: node.sourceAmount.currency.code,
+        units: requiredUnits,
+      },
+    };
   }
   const requiredUsd = node.requiredUsd ?? 0;
   return requiredUsd > 0 ? { amountUsd: requiredUsd } : null;
