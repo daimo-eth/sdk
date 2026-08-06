@@ -109,6 +109,7 @@ type NavLegacyUsdAmount = {
   requiredUsd?: number;
   minimumUsd: number;
   maximumUsd: number;
+  flatFeeUsd?: number;
 };
 
 type NavCurrencyAmount = {
@@ -116,6 +117,7 @@ type NavCurrencyAmount = {
   requiredUsd?: never;
   minimumUsd?: never;
   maximumUsd?: never;
+  flatFeeUsd?: never;
 };
 
 export type NavNodeExchange = NavNodeExchangeBase &

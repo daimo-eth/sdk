@@ -98,6 +98,12 @@ export type RetrieveSessionResponse = {
   session: SessionPublicInfo;
 };
 
+export type WaitingInstruction = {
+  text: string;
+  /** Optional emphasized follow-up line displayed separately. */
+  emphasis?: string;
+};
+
 export type CreatePaymentMethodResponse = {
   /** Updated session state after payment method creation. */
   session: SessionPublicInfo;
@@ -128,6 +134,8 @@ export type CreatePaymentMethodResponse = {
     url: string;
     /** Message to display while waiting. */
     waitingMessage: string;
+    /** Structured instructions to display while waiting. */
+    waitingInstructions?: WaitingInstruction[];
     /** Invoice expiry time (unix seconds). Present for Lightning invoices. */
     expiresAt?: number;
   };

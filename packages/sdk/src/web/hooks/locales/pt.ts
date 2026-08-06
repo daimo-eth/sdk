@@ -33,6 +33,8 @@ export const pt: typeof en = {
 
   // SelectAmountPage
   selectAmount: "Selecionar valor",
+  fee: "Taxa",
+  youReceive: "Você recebe",
   loading: "Carregando",
   continue: "Continuar",
 

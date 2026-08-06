@@ -3,6 +3,7 @@ import type { NavNodeDepositAddress } from "../api/navTree.js";
 import type { DaimoPayToken } from "../api/walletTypes.js";
 
 import { t } from "../hooks/locale.js";
+import { AmountSummaryRows } from "./AmountSummary.js";
 import { PrimaryButton } from "./buttons.js";
 import {
   AmountInput,
@@ -18,6 +19,7 @@ type SelectAmountPageProps = {
   maximum: number;
   currencySymbol?: string;
   decimals?: number;
+  flatFeeUsd?: number;
   /** Token suffix for display (e.g., "USDC", "USDT") */
   tokenSuffix?: string;
   /** Chain ID for token badge display */
@@ -36,6 +38,7 @@ export function SelectAmountPage({
   maximum,
   currencySymbol,
   decimals,
+  flatFeeUsd,
   tokenSuffix,
   chainId,
   onBack,
@@ -104,6 +107,16 @@ export function SelectAmountPage({
           />
         </div>
 
+        {flatFeeUsd != null && (
+          <div className="daimo-w-full daimo-max-w-[320px] daimo-flex daimo-flex-col daimo-gap-1 daimo-text-sm daimo-mb-6">
+            <AmountSummaryRows
+              currencySymbol={currencySymbol ?? "$"}
+              feeAmount={flatFeeUsd}
+              receiveAmount={getAmountAfterFee(amount, flatFeeUsd)}
+            />
+          </div>
+        )}
+
         {/* Error message */}
         {error && (
           <div className="daimo-text-[var(--daimo-error)] daimo-text-sm daimo-text-center daimo-mb-3">
@@ -121,4 +134,8 @@ export function SelectAmountPage({
       </div>
     </div>
   );
+}
+
+export function getAmountAfterFee(amount: number, fee: number): number {
+  return Math.max(0, amount - fee);
 }
