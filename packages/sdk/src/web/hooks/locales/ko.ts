@@ -18,6 +18,61 @@ export const ko: typeof en = {
   expired: "만료됨",
   paymentSessionExpired: "이 결제 세션이 만료되었습니다",
 
+  // withdrawal flow
+  withdrawalAction: "출금",
+  withdrawalDestinationQuestion: "어디로 출금하시겠어요?",
+  withdrawalIdentifierPlaceholder: "EVM 주소, ENS 또는 Solana 주소",
+  withdrawalResolving: "확인 중…",
+  withdrawalAddDestination: "새 대상 추가",
+  withdrawalSavedDestinations: "저장됨",
+  withdrawalRemoveDestinationConfirm: "이 대상을 삭제할까요?",
+  withdrawalCancel: "취소",
+  withdrawalRemove: "삭제",
+  withdrawalUnsupported: "지원되지 않음",
+  withdrawalRemoveDestinationLabel: (identifier: string) =>
+    `${identifier} 삭제`,
+  withdrawalChooseStablecoin: "스테이블코인 선택",
+  withdrawalChooseNetwork: "네트워크 선택",
+  withdrawalReview: "출금 검토",
+  withdrawalRecipient: "수신자",
+  withdrawalResolvedAddress: "확인된 주소",
+  withdrawalStablecoin: "스테이블코인",
+  withdrawalNetwork: "네트워크",
+  withdrawalSaveRoute: "다음에 사용할 수 있도록 이 경로 저장",
+  withdrawalCreating: "출금 생성 중…",
+  withdrawalNotSubmitted: "출금이 제출되지 않았습니다",
+  withdrawalConfirm: "출금 확인",
+  withdrawalConfirmInWallet: "지갑에서 출금을 확인하세요",
+  withdrawalWaitingForTransfer: "송금을 기다리는 중",
+  withdrawalInProgress: "출금 진행 중",
+  withdrawalCompleted: "출금 완료",
+  withdrawalRefunded: "출금 환불됨",
+  withdrawalCancelled: "출금 취소됨",
+  withdrawalRetry: "출금 다시 시도",
+  withdrawalExpired: "출금 만료",
+  withdrawalSessionExpired: "이 출금 세션이 만료되었습니다.",
+  withdrawalCompleteTransferInWallet: "계속하려면 지갑에서 송금을 완료하세요.",
+  withdrawalFundsBeingDelivered: "자금이 수신되어 전달 중입니다.",
+  withdrawalReachedDestination:
+    "스테이블코인이 선택한 대상으로 전달되었습니다.",
+  withdrawalDeliveryFailedRefunded: "송금을 전달하지 못해 환불되었습니다.",
+  withdrawalNoTransferBeforeExpiry:
+    "이 세션이 만료되기 전에 송금이 감지되지 않았습니다.",
+  withdrawalAutoUpdate: "자금이 도착하면 출금 상태가 자동으로 업데이트됩니다.",
+  withdrawalSolanaUnavailable: "Solana의 USDC 출금을 사용할 수 없습니다.",
+  withdrawalSavedRouteUnsupported:
+    "이 저장된 경로는 더 이상 지원되지 않습니다.",
+  withdrawalInvalidIdentifier:
+    "유효한 EVM 주소, Solana 주소 또는 ENS 이름을 입력하세요.",
+  withdrawalInvalidEns: "유효한 ENS 이름을 입력하세요.",
+  withdrawalSolanaNetworkRequired:
+    "Solana 수신자는 Solana 네트워크를 사용해야 합니다.",
+  withdrawalEvmNetworkRequired:
+    "EVM 및 ENS 수신자는 EVM 네트워크를 사용해야 합니다.",
+  withdrawalInitializationFailed: "출금을 초기화하지 못했습니다.",
+  withdrawalHelp: "출금 도움말",
+  withdrawalExpiredHelp: "만료된 출금",
+
   // DeeplinkPage
   continueIn: "",
   toCompleteYourPayment: "에서 결제를 완료하세요",

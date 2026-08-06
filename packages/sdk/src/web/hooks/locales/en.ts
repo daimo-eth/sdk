@@ -16,6 +16,63 @@ export const en = {
   expired: "Expired",
   paymentSessionExpired: "This payment session has expired",
 
+  // withdrawal flow
+  withdrawalAction: "Withdraw",
+  withdrawalDestinationQuestion: "Where do you want to withdraw?",
+  withdrawalIdentifierPlaceholder: "EVM address, ENS, or Solana address",
+  withdrawalResolving: "Resolving…",
+  withdrawalAddDestination: "Add a new destination",
+  withdrawalSavedDestinations: "Saved",
+  withdrawalRemoveDestinationConfirm: "Remove this destination?",
+  withdrawalCancel: "Cancel",
+  withdrawalRemove: "Remove",
+  withdrawalUnsupported: "Unsupported",
+  withdrawalRemoveDestinationLabel: (identifier: string) =>
+    `Remove ${identifier}`,
+  withdrawalChooseStablecoin: "Choose stablecoin",
+  withdrawalChooseNetwork: "Choose network",
+  withdrawalReview: "Review withdrawal",
+  withdrawalRecipient: "Recipient",
+  withdrawalResolvedAddress: "Resolved address",
+  withdrawalStablecoin: "Stablecoin",
+  withdrawalNetwork: "Network",
+  withdrawalSaveRoute: "Save this route for next time",
+  withdrawalCreating: "Creating withdrawal…",
+  withdrawalNotSubmitted: "Withdrawal not submitted",
+  withdrawalConfirm: "Confirm your withdrawal",
+  withdrawalConfirmInWallet: "Confirm in your wallet",
+  withdrawalWaitingForTransfer: "Waiting for your transfer",
+  withdrawalInProgress: "Withdrawal in progress",
+  withdrawalCompleted: "Withdrawal completed",
+  withdrawalRefunded: "Withdrawal refunded",
+  withdrawalCancelled: "Withdrawal cancelled",
+  withdrawalRetry: "Try withdrawal again",
+  withdrawalExpired: "Withdrawal expired",
+  withdrawalSessionExpired: "This withdrawal session expired.",
+  withdrawalCompleteTransferInWallet:
+    "Complete the transfer in your wallet to continue.",
+  withdrawalFundsBeingDelivered: "Funds were received and are being delivered.",
+  withdrawalReachedDestination:
+    "The stablecoins reached the selected destination.",
+  withdrawalDeliveryFailedRefunded:
+    "The transfer could not be delivered and was refunded.",
+  withdrawalNoTransferBeforeExpiry:
+    "No transfer was detected before this session expired.",
+  withdrawalAutoUpdate:
+    "Your withdrawal will update automatically when funds arrive.",
+  withdrawalSolanaUnavailable: "USDC withdrawals on Solana are unavailable.",
+  withdrawalSavedRouteUnsupported: "This saved route is no longer supported.",
+  withdrawalInvalidIdentifier:
+    "Enter a valid EVM address, Solana address, or ENS name.",
+  withdrawalInvalidEns: "Enter a valid ENS name.",
+  withdrawalSolanaNetworkRequired:
+    "Solana recipients require the Solana network.",
+  withdrawalEvmNetworkRequired:
+    "EVM and ENS recipients require an EVM network.",
+  withdrawalInitializationFailed: "Failed to initialize withdrawal.",
+  withdrawalHelp: "Withdrawal help",
+  withdrawalExpiredHelp: "Expired withdrawal",
+
   // DeeplinkPage
   continueIn: "Continue in",
   toCompleteYourPayment: "to complete your payment",

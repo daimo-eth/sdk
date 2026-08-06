@@ -4,8 +4,8 @@ import type {
   AccountRail,
   DepositPaymentInteraction,
 } from "../../common/account.js";
-import type { SourceAmount } from "../../common/money.js";
 import type { WaitingInstruction } from "../../common/api.js";
+import type { SourceAmount } from "../../common/money.js";
 import type { NavNode, SessionWithNav } from "../api/navTree.js";
 import type { WalletPaymentOption } from "../api/walletTypes.js";
 

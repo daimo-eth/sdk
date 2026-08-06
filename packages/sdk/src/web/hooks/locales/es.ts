@@ -14,6 +14,63 @@ export const es: typeof en = {
   onChain: "en",
   expired: "Expirado",
   paymentSessionExpired: "Esta sesión de pago ha expirado",
+  withdrawalAction: "Retirar",
+  withdrawalDestinationQuestion: "¿A dónde quieres retirar?",
+  withdrawalIdentifierPlaceholder: "Dirección EVM, ENS o dirección de Solana",
+  withdrawalResolving: "Resolviendo…",
+  withdrawalAddDestination: "Añadir un nuevo destino",
+  withdrawalSavedDestinations: "Guardados",
+  withdrawalRemoveDestinationConfirm: "¿Eliminar este destino?",
+  withdrawalCancel: "Cancelar",
+  withdrawalRemove: "Eliminar",
+  withdrawalUnsupported: "No compatible",
+  withdrawalRemoveDestinationLabel: (identifier: string) =>
+    `Eliminar ${identifier}`,
+  withdrawalChooseStablecoin: "Elegir stablecoin",
+  withdrawalChooseNetwork: "Elegir red",
+  withdrawalReview: "Revisar retiro",
+  withdrawalRecipient: "Destinatario",
+  withdrawalResolvedAddress: "Dirección resuelta",
+  withdrawalStablecoin: "Stablecoin",
+  withdrawalNetwork: "Red",
+  withdrawalSaveRoute: "Guardar esta ruta para la próxima vez",
+  withdrawalCreating: "Creando retiro…",
+  withdrawalNotSubmitted: "Retiro no enviado",
+  withdrawalConfirm: "Confirma tu retiro",
+  withdrawalConfirmInWallet: "Confirma el retiro en tu billetera",
+  withdrawalWaitingForTransfer: "Esperando tu transferencia",
+  withdrawalInProgress: "Retiro en curso",
+  withdrawalCompleted: "Retiro completado",
+  withdrawalRefunded: "Retiro reembolsado",
+  withdrawalCancelled: "Retiro cancelado",
+  withdrawalRetry: "Reintentar retiro",
+  withdrawalExpired: "Retiro expirado",
+  withdrawalSessionExpired: "Esta sesión de retiro expiró.",
+  withdrawalCompleteTransferInWallet:
+    "Completa la transferencia en tu billetera para continuar.",
+  withdrawalFundsBeingDelivered:
+    "Los fondos se recibieron y se están entregando.",
+  withdrawalReachedDestination:
+    "Las stablecoins llegaron al destino seleccionado.",
+  withdrawalDeliveryFailedRefunded:
+    "La transferencia no pudo entregarse y fue reembolsada.",
+  withdrawalNoTransferBeforeExpiry:
+    "No se detectó ninguna transferencia antes de que expirara esta sesión.",
+  withdrawalAutoUpdate:
+    "Tu retiro se actualizará automáticamente cuando lleguen los fondos.",
+  withdrawalSolanaUnavailable:
+    "Los retiros de USDC en Solana no están disponibles.",
+  withdrawalSavedRouteUnsupported: "Esta ruta guardada ya no es compatible.",
+  withdrawalInvalidIdentifier:
+    "Ingresa una dirección EVM, una dirección de Solana o un nombre ENS válidos.",
+  withdrawalInvalidEns: "Ingresa un nombre ENS válido.",
+  withdrawalSolanaNetworkRequired:
+    "Los destinatarios de Solana requieren la red Solana.",
+  withdrawalEvmNetworkRequired:
+    "Los destinatarios EVM y ENS requieren una red EVM.",
+  withdrawalInitializationFailed: "No se pudo iniciar el retiro.",
+  withdrawalHelp: "Ayuda con el retiro",
+  withdrawalExpiredHelp: "Retiro expirado",
   continueIn: "Continuar en",
   toCompleteYourPayment: "para completar tu pago",
   openIn: "Abrir en",

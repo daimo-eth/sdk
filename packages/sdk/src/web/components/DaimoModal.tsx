@@ -2,6 +2,7 @@ import {
   useCallback,
   useEffect,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
 } from "react";
@@ -57,11 +58,12 @@ import type { DaimoThemeMode } from "../../common/theme.js";
 import { detectPlatform, isDesktop, type DaimoPlatform } from "../platform.js";
 import { resolveDaimoSessionTheme, useDaimoThemeReady } from "../theme.js";
 import { useWalletFlow } from "../hooks/useWalletFlow.js";
+import type { EthereumProvider } from "../hooks/walletProvider.js";
 import { ExternalLinkIcon, PrimaryButton } from "./buttons.js";
 import { ChooseChainPage } from "./ChooseChainPage.js";
 import { ChooseOptionPage } from "./ChooseOptionPage.js";
 import { ChooseWalletPage } from "./ChooseWalletPage.js";
-import { ConfirmationPage } from "./ConfirmationPage.js";
+import { ConfirmationPage, type ConfirmationMode } from "./ConfirmationPage.js";
 import { EmbeddedContainer, ModalContainer } from "./containers.js";
 import { DeeplinkPage } from "./DeeplinkPage.js";
 import { ExchangePage } from "./ExchangePage.js";
@@ -125,6 +127,8 @@ type DaimoModalBaseProps = {
   connectToInjectedWallets?: boolean;
   /** Skip payment method picker. Use already-connected wallet specified. */
   connectToAddress?: Address;
+  /** Direct EIP-1193 provider for `connectToAddress`, without global discovery. */
+  connectToEvmProvider?: EthereumProvider;
   /** Render inline instead of as a floating modal. */
   embedded?: boolean;
   /**
@@ -135,6 +139,8 @@ type DaimoModalBaseProps = {
   embeddedClose?: boolean;
   /** Override the session's light/dark/system theme mode. */
   themeMode?: DaimoThemeMode;
+  /** Copy variant for terminal progress shown by higher-level SDK surfaces. */
+  confirmationMode?: ConfirmationMode;
   /** Caller's platform. Prefer "desktop" or "mobile"; legacy values still work. Auto-detected. */
   platform?: DaimoPlatform;
   /** URL to navigate to after successful payment. */
@@ -254,6 +260,8 @@ export function DaimoModal(props: DaimoModalProps) {
   const themeReady = useDaimoThemeReady(
     isOpen ? loaded?.session.display.themeCssUrl : undefined,
   );
+  const loadingSkeletonRowCount =
+    props.confirmationMode === "withdrawal" ? 1 : 3;
 
   if (!isOpen) return null;
 
@@ -266,7 +274,10 @@ export function DaimoModal(props: DaimoModalProps) {
     return (
       <div style={{ visibility: "hidden" }}>
         <EmbeddedContainer showFooterSpacer={false} themeMode={props.themeMode}>
-          <SkeletonContent rowCount={3} showFooter={false} />
+          <SkeletonContent
+            rowCount={loadingSkeletonRowCount}
+            showFooter={false}
+          />
         </EmbeddedContainer>
       </div>
     );
@@ -310,7 +321,10 @@ export function DaimoModal(props: DaimoModalProps) {
           key="loading-shell"
           className="daimo-flex daimo-flex-1 daimo-min-h-0 daimo-flex-col"
         >
-          <SkeletonContent rowCount={3} showFooter={false} />
+          <SkeletonContent
+            rowCount={loadingSkeletonRowCount}
+            showFooter={false}
+          />
         </div>
       )}
       {wrapped && (
@@ -358,6 +372,12 @@ const CONNECTED_WALLET_NODE: NavNode = {
   id: "ConnectedWallet",
   title: "Connected Wallet",
 };
+const DIRECT_EVM_WALLET_INFO = {
+  name: "Connected wallet",
+  icon: "",
+  rdns: "direct.evm",
+  uuid: "direct-evm",
+};
 const AUTOCONNECT_NAV: NavNode[] = [
   { ...CONNECTED_WALLET_NODE, autoconnect: true },
 ];
@@ -393,9 +413,11 @@ function DaimoModalInner({
   embeddedClose = false,
   connectToInjectedWallets = false,
   connectToAddress,
+  connectToEvmProvider,
   platform,
   returnUrl,
   returnLabel,
+  confirmationMode,
   enableFiatPopup = false,
   startNodeId,
   onPaymentStarted,
@@ -432,8 +454,23 @@ function DaimoModalInner({
       ? "auto"
       : "passive"
     : "none";
-  const { wallets: injectedWallets, isLoading: isLoadingWallets } =
+  const { wallets: discoveredWallets, isLoading: isLoadingDiscoveredWallets } =
     useInjectedWallets();
+  const injectedWallets = useMemo<InjectedWallet[]>(
+    () =>
+      connectToEvmProvider
+        ? [
+            {
+              info: DIRECT_EVM_WALLET_INFO,
+              evmProvider: connectToEvmProvider,
+            },
+          ]
+        : discoveredWallets,
+    [connectToEvmProvider, discoveredWallets],
+  );
+  const isLoadingWallets = connectToEvmProvider
+    ? false
+    : isLoadingDiscoveredWallets;
   const walletFlow = useWalletFlow(
     session.sessionId,
     depositAddress ?? "",
@@ -557,7 +594,11 @@ function DaimoModalInner({
 
   if (session.status === "expired") {
     content = (
-      <ExpiredPage sessionId={session.sessionId} onClose={handleClose} />
+      <ExpiredPage
+        sessionId={session.sessionId}
+        onClose={handleClose}
+        mode={confirmationMode}
+      />
     );
   } else if (
     !isAccountFlow &&
@@ -572,6 +613,7 @@ function DaimoModalInner({
         returnUrl={returnUrl}
         returnLabel={returnLabel}
         baseUrl={session.baseUrl}
+        mode={confirmationMode}
       />
     );
   } else {
@@ -598,6 +640,9 @@ function DaimoModalInner({
       onChainSelect: nav.handleChainSelect,
       onShowMobileWallets: nav.handleShowMobileWallets,
       walletFlow,
+      selectTokenSkeletonCount:
+        confirmationMode === "withdrawal" ? 1 : undefined,
+      confirmationMode,
       onWalletSelectToken: nav.handleWalletSelectToken,
       onWalletSending: nav.handleWalletSending,
       onAccountAdvance: nav.handleAccountAdvance,
@@ -686,7 +731,7 @@ type RenderContext = {
   canGoBack: boolean;
   onNavigate: (nodeId: string) => void;
   onBack: () => void;
-  onAmountContinue: (amountUsd: number) => void;
+  onAmountContinue: (amountUsd: number, amountUnits: string) => void;
   onRetry: () => void;
   onRefresh: () => Promise<void>;
   onAccountSessionRecreate: (depositAmount: string) => Promise<void>;
@@ -707,6 +752,8 @@ type RenderContext = {
     connect: () => Promise<void>;
     retryConnect: () => Promise<void>;
   };
+  selectTokenSkeletonCount?: number;
+  confirmationMode?: ConfirmationMode;
   onWalletSelectToken: (token: WalletPaymentOption) => void;
   onWalletSending: (token: WalletPaymentOption, amountUsd: number) => void;
   onAccountAdvance: (
@@ -1507,6 +1554,7 @@ function renderWalletSelectToken(ctx: RenderContext): React.ReactNode {
       <SelectTokenPage
         options={null}
         isLoading
+        skeletonCount={ctx.selectTokenSkeletonCount}
         showRequired={!!ctx.session.destination.amountUnits}
         onSelect={ctx.onWalletSelectToken}
         onBack={ctx.canGoBack ? ctx.onBack : null}
@@ -1590,6 +1638,7 @@ function renderWalletSending(
       onRetry={ctx.onRetry}
       onBack={!entry.txHash ? ctx.onBack : undefined}
       baseUrl={ctx.session.baseUrl}
+      mode={ctx.confirmationMode}
     />
   );
 }

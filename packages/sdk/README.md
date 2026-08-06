@@ -21,6 +21,70 @@ Import `@daimo/sdk/web/theme.css` for the built-in web UI. The distributed style
 
 `@daimo/sdk/web/styles.css` remains available as an equivalent alias.
 
+### Withdrawal widget
+
+`DaimoWithdrawal` collects a recipient address or ENS name, destination
+stablecoin, and destination network before asking your server to create an
+open-amount session. Wrap it in `DaimoSDKProvider` so session polling uses the
+Daimo API.
+
+The callbacks should call your authenticated backend, which resolves ENS and
+creates the session with your Daimo API key; never expose that key or a paid RPC
+endpoint in browser code.
+
+```tsx
+import "@daimo/sdk/web/theme.css";
+import { DaimoSDKProvider, DaimoWithdrawal } from "@daimo/sdk/web";
+
+export function Withdrawal() {
+  return (
+    <DaimoSDKProvider>
+      <DaimoWithdrawal
+        fundingMode="injected-wallet"
+        contactStorageScope={currentUser.id}
+        resolveEns={resolveWithdrawalEns}
+        createSession={(input) =>
+          fetch("/api/withdrawal/session", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(input),
+          }).then((response) => response.json())
+        }
+      />
+    </DaimoSDKProvider>
+  );
+}
+```
+
+`contactStorageScope` must be a stable authenticated user or account ID. The
+widget uses it to isolate saved destinations in local storage. `resolveEns`
+must authenticate the caller before forwarding a name to an upstream resolver.
+Use `connectToAddress` when the host already has an EVM wallet connected. In
+manual mode, provide `sendManualTransaction`; it receives a receiver address
+that the widget deliberately never renders:
+
+```tsx
+<DaimoWithdrawal
+  fundingMode="manual"
+  contactStorageScope={currentUser.id}
+  resolveEns={resolveWithdrawalEns}
+  createSession={createWithdrawalSession}
+  sendManualTransaction={async ({ receiverAddress, expiresAt }) => {
+    const txHash = await hostWallet.sendStablecoin({
+      to: receiverAddress,
+      expiresAt,
+    });
+    return { txHash };
+  }}
+/>
+```
+
+The manual adapter owns source token, source network, amount selection, and
+transaction construction. It should send supported USDC or USDT from a
+supported EVM network, resolve only after the transaction is submitted or
+handed off, and reject only when retrying that same session is safe. Returning
+the transaction hash lets session polling detect the transfer sooner.
+
 ### Account enrollment interactions
 
 The built-in account flow is a thin renderer over the versioned

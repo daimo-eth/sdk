@@ -176,6 +176,49 @@ export function CloseIcon({ className, size = 14 }: IconProps) {
   );
 }
 
+/** Plus icon for additive actions */
+export function PlusIcon({ className, size = 18 }: IconProps) {
+  return (
+    <svg
+      aria-hidden="true"
+      width={size}
+      height={size}
+      viewBox="0 0 18 18"
+      fill="none"
+      className={className ?? "daimo-text-[var(--daimo-text-muted)]"}
+    >
+      <path
+        d="M9 3.25v11.5M3.25 9h11.5"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+/** Standard Trash2 outline for destructive actions */
+export function TrashIcon({ className, size = 20 }: IconProps) {
+  return (
+    <svg
+      aria-hidden="true"
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      className={className ?? "daimo-text-[var(--daimo-text-muted)]"}
+    >
+      <path
+        d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6M10 11v6M14 11v6"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 /** Horizontal ellipsis for compact account actions */
 export function EllipsisIcon({ className, size = 18 }: IconProps) {
   return (

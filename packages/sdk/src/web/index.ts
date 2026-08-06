@@ -6,6 +6,15 @@ export type {
 } from "./components/DaimoFrame.js";
 export { DaimoModal } from "./components/DaimoModal.js";
 export type { DaimoModalProps } from "./components/DaimoModal.js";
+export { DaimoWithdrawal } from "./components/DaimoWithdrawal.js";
+export type {
+  DaimoWithdrawalDestination,
+  DaimoWithdrawalEvmProvider,
+  DaimoWithdrawalFundingMode,
+  DaimoWithdrawalManualTransferRequest,
+  DaimoWithdrawalManualTransferResult,
+  DaimoWithdrawalProps,
+} from "./components/DaimoWithdrawal.js";
 export { DaimoModalPreview } from "./components/DaimoModalPreview.js";
 export type {
   DaimoModalPreviewProps,

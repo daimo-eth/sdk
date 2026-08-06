@@ -1,3 +1,4 @@
+import { base58 } from "@scure/base";
 import { getAddress, Hex } from "viem";
 import { z } from "zod";
 
@@ -26,6 +27,9 @@ export const zAddress = z
 export const zSolanaAddress = z
   .string()
   .regex(/^[1-9A-HJ-NP-Za-km-z]{32,44}$/)
+  .refine(isSolanaPublicKey, {
+    message: "invalid solana public key",
+  })
   .describe("Solana public key (base58)");
 
 export const zTronAddress = z
@@ -34,3 +38,11 @@ export const zTronAddress = z
   .describe("Tron address");
 
 export const zUnixTimestamp = z.number().int().nonnegative();
+
+function isSolanaPublicKey(value: string): boolean {
+  try {
+    return base58.decode(value).length === 32;
+  } catch {
+    return false;
+  }
+}
