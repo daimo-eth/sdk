@@ -33,6 +33,7 @@ import {
   formatAmountInput,
   formatFixedAmount,
   isValidAmountInput,
+  normalizeFractionDigits,
   parseDisplayAmount,
 } from "../formatAmount.js";
 
@@ -110,9 +111,9 @@ type AmountInputProps = {
   defaultLabel?: string;
   /** Initial value for the input field. */
   initialValue?: string;
-  onSubmit: (amount: number) => void;
+  onSubmit: (amount: number, amountUnits: string) => void;
   /** Called whenever the amount changes */
-  onChange?: (amount: number, isValid: boolean) => void;
+  onChange?: (amount: number, isValid: boolean, amountUnits: string) => void;
   disabled?: boolean;
 };
 
@@ -131,6 +132,7 @@ export function AmountInput({
   onChange,
   disabled = false,
 }: AmountInputProps) {
+  const inputDecimals = normalizeFractionDigits(decimals);
   const [inputValue, setInputValue] = useState(initialValue ?? "");
   const lastSyncedInitialValueRef = useRef<string | undefined>(initialValue);
   const didAutofocusRef = useRef(false);
@@ -142,7 +144,7 @@ export function AmountInput({
     setInputValue(nextValue);
     const nextAmount = parseFloat(nextValue) || 0;
     const nextIsValid = nextAmount >= minimum && nextAmount <= maximum;
-    onChange?.(nextAmount, nextIsValid);
+    onChange?.(nextAmount, nextIsValid, nextValue);
   }, [initialValue, minimum, maximum]);
 
   const amount = parseFloat(inputValue) || 0;
@@ -152,23 +154,23 @@ export function AmountInput({
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = parseDisplayAmount(e.target.value);
-    if (!isValidAmountInput(value, decimals)) return;
+    if (!isValidAmountInput(value, inputDecimals)) return;
 
     setInputValue(value);
     const newAmount = parseFloat(value) || 0;
     const newIsValid = newAmount >= minimum && newAmount <= maximum;
-    onChange?.(newAmount, newIsValid);
+    onChange?.(newAmount, newIsValid, value);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter" && isValid) {
-      onSubmit(amount);
+      onSubmit(amount, inputValue);
     }
   };
 
   const displayValue = formatAmountInput(inputValue);
   const placeholder = formatAmountInput(
-    decimals === 0 ? "0" : `0.${"0".repeat(decimals)}`,
+    inputDecimals === 0 ? "0" : `0.${"0".repeat(inputDecimals)}`,
   );
   const inputWidth =
     displayValue.length === 0
@@ -176,11 +178,11 @@ export function AmountInput({
       : `${Math.min(displayValue.length - (displayValue.match(/\./g) || []).length * 0.55, 12)}ch`;
 
   const label = showMinWarning
-    ? `${t.minimum} ${currencySymbol}${formatFixedAmount(minimum, decimals)}`
+    ? `${t.minimum} ${currencySymbol}${formatFixedAmount(minimum, inputDecimals)}`
     : showMaxWarning
-      ? `${t.maximum} ${currencySymbol}${formatFixedAmount(maximum, decimals)}`
+      ? `${t.maximum} ${currencySymbol}${formatFixedAmount(maximum, inputDecimals)}`
       : (defaultLabel ??
-        `${t.minimum} ${currencySymbol}${formatFixedAmount(minimum, decimals)}`);
+        `${t.minimum} ${currencySymbol}${formatFixedAmount(minimum, inputDecimals)}`);
 
   const labelClass =
     showMinWarning || showMaxWarning
@@ -235,6 +237,7 @@ export function useAmountInput(
   initialValue?: string,
 ) {
   const initialAmount = Number(initialValue ?? "");
+  const [amountUnits, setAmountUnits] = useState(initialValue ?? "");
   const [amount, setAmount] = useState(
     Number.isFinite(initialAmount) ? initialAmount : 0,
   );
@@ -247,20 +250,23 @@ export function useAmountInput(
   useEffect(() => {
     const nextAmount = Number(initialValue ?? "");
     if (!Number.isFinite(nextAmount)) {
+      setAmountUnits("");
       setAmount(0);
       setIsValid(false);
       return;
     }
+    setAmountUnits(initialValue ?? "");
     setAmount(nextAmount);
     setIsValid(nextAmount >= minimum && nextAmount <= maximum);
   }, [initialValue, minimum, maximum]);
 
-  const handleChange = (amt: number, valid: boolean) => {
+  const handleChange = (amt: number, valid: boolean, units: string) => {
+    setAmountUnits(units);
     setAmount(amt);
     setIsValid(valid);
   };
 
-  return { amount, isValid, handleChange };
+  return { amount, amountUnits, isValid, handleChange };
 }
 
 /** Standard text input with consistent styling. */

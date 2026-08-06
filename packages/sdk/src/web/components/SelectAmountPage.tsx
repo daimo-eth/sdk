@@ -24,7 +24,7 @@ type SelectAmountPageProps = {
   chainId?: number;
   /** Optional back handler. If undefined, back button is hidden. */
   onBack?: () => void;
-  onContinue: (amount: number) => void;
+  onContinue: (amount: number, amountUnits: string) => void;
   isLoading?: boolean;
   error?: string | null;
   baseUrl: string;
@@ -44,7 +44,10 @@ export function SelectAmountPage({
   error,
   baseUrl,
 }: SelectAmountPageProps) {
-  const { amount, isValid, handleChange } = useAmountInput(minimum, maximum);
+  const { amount, amountUnits, isValid, handleChange } = useAmountInput(
+    minimum,
+    maximum,
+  );
 
   // Create pseudo-token for display if tokenSuffix is USDC or USDT and chainId is provided
   const selectedToken =
@@ -112,7 +115,9 @@ export function SelectAmountPage({
         )}
 
         <PrimaryButton
-          onClick={() => isValid && !isLoading && onContinue(amount)}
+          onClick={() =>
+            isValid && !isLoading && onContinue(amount, amountUnits)
+          }
           disabled={!isValid || isLoading}
           className="daimo-max-w-none"
         >

@@ -6,6 +6,7 @@ type AmountSeparators = {
 };
 
 const CANONICAL_DECIMAL_SEPARATOR = ".";
+const MAX_FRACTION_DIGITS = 20;
 
 export function parseDisplayAmount(
   value: string,
@@ -21,17 +22,15 @@ export function parseDisplayAmount(
       : trimmed.replaceAll(separators.group, "");
 
   if (separators.decimal === CANONICAL_DECIMAL_SEPARATOR) return ungrouped;
-  return ungrouped.replaceAll(
-    separators.decimal,
-    CANONICAL_DECIMAL_SEPARATOR,
-  );
+  return ungrouped.replaceAll(separators.decimal, CANONICAL_DECIMAL_SEPARATOR);
 }
 
 export function isValidAmountInput(
   value: string,
   maxDecimals: number,
 ): boolean {
-  const regex = new RegExp(`^\\d*\\.?\\d{0,${maxDecimals}}$`);
+  const fractionDigits = normalizeFractionDigits(maxDecimals);
+  const regex = new RegExp(`^\\d*\\.?\\d{0,${fractionDigits}}$`);
   return value === "" || regex.test(value);
 }
 
@@ -57,10 +56,16 @@ export function formatAmountInput(
 }
 
 export function formatFixedAmount(value: number, fractionDigits = 2): string {
+  const normalizedFractionDigits = normalizeFractionDigits(fractionDigits);
   return new Intl.NumberFormat(getNumberLocale(), {
-    minimumFractionDigits: fractionDigits,
-    maximumFractionDigits: fractionDigits,
+    minimumFractionDigits: normalizedFractionDigits,
+    maximumFractionDigits: normalizedFractionDigits,
   }).format(value);
+}
+
+export function normalizeFractionDigits(fractionDigits: number): number {
+  if (!Number.isFinite(fractionDigits)) return 2;
+  return Math.min(MAX_FRACTION_DIGITS, Math.max(0, Math.trunc(fractionDigits)));
 }
 
 function getAmountSeparators(locale: string): AmountSeparators {

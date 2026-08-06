@@ -4,6 +4,7 @@ import {
   formatAmountInput,
   formatFixedAmount,
   isValidAmountInput,
+  normalizeFractionDigits,
   parseDisplayAmount,
 } from "./formatAmount.js";
 import { setLocale } from "./hooks/locale.js";
@@ -56,5 +57,15 @@ describe("amount input formatting", () => {
     setLocale("pt-BR");
 
     expect(formatFixedAmount(1234.5)).toBe("1.234,50");
+  });
+
+  test("bounds unsafe server-provided fraction digits", () => {
+    setLocale("en-US");
+
+    expect(normalizeFractionDigits(21)).toBe(20);
+    expect(normalizeFractionDigits(-1)).toBe(0);
+    expect(normalizeFractionDigits(Number.NaN)).toBe(2);
+    expect(formatFixedAmount(5, 21)).toBe(`5.${"0".repeat(20)}`);
+    expect(isValidAmountInput(`1.${"1".repeat(21)}`, 21)).toBe(false);
   });
 });

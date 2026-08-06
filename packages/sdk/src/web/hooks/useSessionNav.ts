@@ -70,7 +70,7 @@ type SessionNavResult = {
   handleNavigate: (nodeId: string, options?: { autoNav?: boolean }) => void;
   handleBack: () => void;
   handleReset: () => void;
-  handleAmountContinue: (amount: number) => void;
+  handleAmountContinue: (amount: number, amountUnits: string) => void;
   handleRetry: () => void;
   handleRefresh: () => Promise<void>;
   handleAccountSessionRecreate: (depositAmount: string) => Promise<void>;
@@ -113,16 +113,26 @@ function getExchangeSelection(node: ExchangeNode): {
   return { exchangeId: node.exchangeId, nodeType: "Exchange" };
 }
 
-function getExchangeAmount(node: ExchangeNode, amount: number): ExchangeAmount {
+export function getExchangeAmount(
+  node: ExchangeNode,
+  amount: number,
+  amountUnits: string,
+): ExchangeAmount {
   if (node.type !== "Exchange" || node.sourceAmount == null) {
     return { amountUsd: amount };
   }
   return {
     sourceAmount: {
       currency: node.sourceAmount.currency.code,
-      units: amount.toFixed(node.sourceAmount.currency.decimals),
+      units: normalizeAmountUnits(amountUnits),
     },
   };
+}
+
+function normalizeAmountUnits(amountUnits: string): string {
+  const [integer = "", fraction] = amountUnits.split(".");
+  const normalizedInteger = integer.replace(/^0+(?=\d)/, "") || "0";
+  return fraction ? `${normalizedInteger}.${fraction}` : normalizedInteger;
 }
 
 export function getRequiredExchangeAmount(
@@ -852,14 +862,14 @@ export function useSessionNav(
   // ─── Flow handlers ──────────────────────────────────────────────────────
 
   const handleAmountContinue = useCallback(
-    (amount: number) => {
+    (amount: number, amountUnits: string) => {
       if (!topEntry || topEntry.type !== "select-amount") return;
       const { nodeId, flowType } = topEntry;
       const node = findNode(nodeId, session.navTree);
       const selectedAmount =
         (flowType === "exchange" || flowType === "cashapp") &&
         isExchangeNode(node)
-          ? getExchangeAmount(node, amount)
+          ? getExchangeAmount(node, amount, amountUnits)
           : ({ amountUsd: amount } as const);
 
       logNavEvent(session.sessionId, session.clientSecret, {

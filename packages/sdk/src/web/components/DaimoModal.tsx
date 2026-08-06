@@ -731,7 +731,7 @@ type RenderContext = {
   canGoBack: boolean;
   onNavigate: (nodeId: string) => void;
   onBack: () => void;
-  onAmountContinue: (amountUsd: number) => void;
+  onAmountContinue: (amountUsd: number, amountUnits: string) => void;
   onRetry: () => void;
   onRefresh: () => Promise<void>;
   onAccountSessionRecreate: (depositAmount: string) => Promise<void>;
