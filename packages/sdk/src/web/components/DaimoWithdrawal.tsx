@@ -16,7 +16,7 @@ import {
   isSessionTerminal,
   type SessionPublicInfo,
 } from "../../common/session.js";
-import type { DaimoThemeMode } from "../../common/theme.js";
+import type { DaimoSessionTheme, DaimoThemeMode } from "../../common/theme.js";
 import { TokenLogo } from "../../common/token.js";
 import {
   daimoWithdrawalDestinationRoutes,
@@ -30,6 +30,7 @@ import { useDaimoClient } from "../hooks/DaimoClientContext.js";
 import { formatUserError } from "../hooks/formatUserError.js";
 import { autoDetectLocale, t } from "../hooks/locale.js";
 import type { EthereumProvider } from "../hooks/walletProvider.js";
+import { resolveDaimoSessionTheme, useDaimoThemeReady } from "../theme.js";
 import { PrimaryButton } from "./buttons.js";
 import { ConfirmationSpinner } from "./ConfirmationSpinner.js";
 import { DaimoModal } from "./DaimoModal.js";
@@ -82,6 +83,9 @@ type DaimoWithdrawalBaseProps = {
     destination: DaimoWithdrawalDestination;
     fundingMode: DaimoWithdrawalFundingMode;
   }) => Promise<DaimoWithdrawalSessionRef>;
+  /** Resolved organization theme used before and during the session. */
+  theme?: DaimoSessionTheme;
+  /** Explicit light/dark/system override for the supplied or session theme. */
   themeMode?: DaimoThemeMode;
   onPaymentStarted?: () => void;
   onPaymentCompleted?: () => void;
@@ -125,6 +129,8 @@ export function DaimoWithdrawal(props: DaimoWithdrawalProps) {
 }
 
 function DaimoWithdrawalFlow(props: DaimoWithdrawalProps) {
+  const theme = resolveDaimoSessionTheme(props.theme, props.themeMode);
+  const themeReady = useDaimoThemeReady(theme.themeCssUrl);
   const [step, setStep] = useState<WithdrawalStep>("identifier");
   const [identifierInput, setIdentifierInput] = useState("");
   const [identifier, setIdentifier] =
@@ -291,13 +297,25 @@ function DaimoWithdrawalFlow(props: DaimoWithdrawalProps) {
     }
   }, [createWithdrawalSession, identifier, route, saveContact]);
 
+  if (!themeReady) {
+    return (
+      <div style={{ visibility: "hidden" }}>
+        <EmbeddedContainer themeMode={theme.themeMode}>
+          <WithdrawalPage title={t.withdrawalAction} compact>
+            <Skeleton className="daimo-h-16 daimo-w-full" rounded="lg" />
+          </WithdrawalPage>
+        </EmbeddedContainer>
+      </div>
+    );
+  }
+
   if (session) {
     if (props.fundingMode === "manual") {
       return (
         <ManualWithdrawalFlow
           session={session}
           sendManualTransaction={props.sendManualTransaction}
-          themeMode={props.themeMode}
+          themeMode={theme.themeMode}
           onPaymentStarted={props.onPaymentStarted}
           onPaymentCompleted={props.onPaymentCompleted}
         />
@@ -311,7 +329,7 @@ function DaimoWithdrawalFlow(props: DaimoWithdrawalProps) {
         connectToInjectedWallets={props.connectToAddress == null}
         connectToAddress={props.connectToAddress}
         connectToEvmProvider={props.evmProvider}
-        themeMode={props.themeMode}
+        themeMode={theme.themeMode}
         onPaymentStarted={props.onPaymentStarted}
         onPaymentCompleted={props.onPaymentCompleted}
         confirmationMode="withdrawal"
@@ -320,7 +338,7 @@ function DaimoWithdrawalFlow(props: DaimoWithdrawalProps) {
   }
 
   return (
-    <EmbeddedContainer themeMode={props.themeMode}>
+    <EmbeddedContainer themeMode={theme.themeMode}>
       {step === "identifier" && !contactsLoaded && (
         <WithdrawalPage title={t.withdrawalAction} compact>
           <Skeleton className="daimo-h-16 daimo-w-full" rounded="lg" />

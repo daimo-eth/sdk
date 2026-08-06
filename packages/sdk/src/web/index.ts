@@ -41,6 +41,7 @@ export {
   daimoModalThemeToCssVars,
   normalizeDaimoModalTheme,
   resolveDaimoSessionTheme,
+  useDaimoThemeReady,
 } from "./theme.js";
 export type {
   DaimoModalTheme,
