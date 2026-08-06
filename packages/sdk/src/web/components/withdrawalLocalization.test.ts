@@ -38,4 +38,38 @@ describe("withdrawal localization", () => {
     expect(html).toContain("Retiro cancelado");
     expect(html).toContain("Reintentar retiro");
   });
+
+  it("keeps custom-theme withdrawal UI hidden until the stylesheet settles", () => {
+    const html = renderToStaticMarkup(
+      createElement(DaimoWithdrawal, {
+        fundingMode: "injected-wallet",
+        contactStorageScope: "account-1",
+        resolveEns: vi.fn(),
+        createSession: vi.fn(),
+        theme: {
+          themeCssUrl: "https://example.com/theme.css",
+          themeMode: "dark",
+        },
+      }),
+    );
+
+    expect(html).toContain('style="visibility:hidden"');
+    expect(html).toContain('data-theme="dark"');
+    expect(html).not.toContain("Where do you want to withdraw?");
+  });
+
+  it("uses themeMode as an explicit organization-theme override", () => {
+    const html = renderToStaticMarkup(
+      createElement(DaimoWithdrawal, {
+        fundingMode: "injected-wallet",
+        contactStorageScope: "account-1",
+        resolveEns: vi.fn(),
+        createSession: vi.fn(),
+        theme: { themeMode: "dark" },
+        themeMode: "light",
+      }),
+    );
+
+    expect(html).toContain('data-theme="light"');
+  });
 });

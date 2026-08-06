@@ -42,6 +42,7 @@ export function Withdrawal() {
       <DaimoWithdrawal
         fundingMode="injected-wallet"
         contactStorageScope={currentUser.id}
+        theme={accountTheme}
         resolveEns={resolveWithdrawalEns}
         createSession={(input) =>
           fetch("/api/withdrawal/session", {
@@ -59,6 +60,10 @@ export function Withdrawal() {
 `contactStorageScope` must be a stable authenticated user or account ID. The
 widget uses it to isolate saved destinations in local storage. `resolveEns`
 must authenticate the caller before forwarding a name to an upstream resolver.
+Pass the organization theme returned by your backend through `theme`; the
+widget waits for a custom stylesheet before showing recipient UI. An explicit
+`themeMode` prop overrides the theme's light/dark/system mode while retaining
+its stylesheet.
 Use `connectToAddress` when the host already has an EVM wallet connected. In
 manual mode, provide `sendManualTransaction`; it receives a receiver address
 that the widget deliberately never renders:
