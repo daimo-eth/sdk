@@ -110,7 +110,7 @@ export function ExternalPaymentPage({
         {isLoading ? (
           <SkeletonText className="daimo-max-w-xs" widths={["80%", "60%"]} />
         ) : instructions && instructions.length > 0 ? (
-          <div className="daimo-space-y-2 daimo-text-[var(--daimo-text-secondary)] daimo-text-left daimo-max-w-xs daimo-text-sm">
+          <div className="daimo-space-y-2 daimo-text-[var(--daimo-text-secondary)] daimo-text-center daimo-max-w-xs daimo-text-sm">
             {instructions.map((instruction, index) => (
               <p
                 key={`${index}-${instruction.text}`}
@@ -118,7 +118,7 @@ export function ExternalPaymentPage({
               >
                 {instruction.text}
                 {instruction.emphasis && (
-                  <strong className="daimo-block daimo-font-semibold daimo-text-[var(--daimo-text)]">
+                  <strong className="daimo-block daimo-font-semibold daimo-tabular-nums daimo-text-[var(--daimo-text)]">
                     {instruction.emphasis}
                   </strong>
                 )}
