@@ -2,6 +2,7 @@ import {
   useCallback,
   useEffect,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
 } from "react";
@@ -57,6 +58,7 @@ import type { DaimoThemeMode } from "../../common/theme.js";
 import { detectPlatform, isDesktop, type DaimoPlatform } from "../platform.js";
 import { resolveDaimoSessionTheme, useDaimoThemeReady } from "../theme.js";
 import { useWalletFlow } from "../hooks/useWalletFlow.js";
+import type { EthereumProvider } from "../hooks/walletProvider.js";
 import { ExternalLinkIcon, PrimaryButton } from "./buttons.js";
 import { ChooseChainPage } from "./ChooseChainPage.js";
 import { ChooseOptionPage } from "./ChooseOptionPage.js";
@@ -125,6 +127,8 @@ type DaimoModalBaseProps = {
   connectToInjectedWallets?: boolean;
   /** Skip payment method picker. Use already-connected wallet specified. */
   connectToAddress?: Address;
+  /** Direct EIP-1193 provider for `connectToAddress`, without global discovery. */
+  connectToEvmProvider?: EthereumProvider;
   /** Render inline instead of as a floating modal. */
   embedded?: boolean;
   /**
@@ -368,6 +372,12 @@ const CONNECTED_WALLET_NODE: NavNode = {
   id: "ConnectedWallet",
   title: "Connected Wallet",
 };
+const DIRECT_EVM_WALLET_INFO = {
+  name: "Connected wallet",
+  icon: "",
+  rdns: "direct.evm",
+  uuid: "direct-evm",
+};
 const AUTOCONNECT_NAV: NavNode[] = [
   { ...CONNECTED_WALLET_NODE, autoconnect: true },
 ];
@@ -403,6 +413,7 @@ function DaimoModalInner({
   embeddedClose = false,
   connectToInjectedWallets = false,
   connectToAddress,
+  connectToEvmProvider,
   platform,
   returnUrl,
   returnLabel,
@@ -443,8 +454,23 @@ function DaimoModalInner({
       ? "auto"
       : "passive"
     : "none";
-  const { wallets: injectedWallets, isLoading: isLoadingWallets } =
+  const { wallets: discoveredWallets, isLoading: isLoadingDiscoveredWallets } =
     useInjectedWallets();
+  const injectedWallets = useMemo<InjectedWallet[]>(
+    () =>
+      connectToEvmProvider
+        ? [
+            {
+              info: DIRECT_EVM_WALLET_INFO,
+              evmProvider: connectToEvmProvider,
+            },
+          ]
+        : discoveredWallets,
+    [connectToEvmProvider, discoveredWallets],
+  );
+  const isLoadingWallets = connectToEvmProvider
+    ? false
+    : isLoadingDiscoveredWallets;
   const walletFlow = useWalletFlow(
     session.sessionId,
     depositAddress ?? "",

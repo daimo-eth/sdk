@@ -9,6 +9,7 @@ export type { DaimoModalProps } from "./components/DaimoModal.js";
 export { DaimoWithdrawal } from "./components/DaimoWithdrawal.js";
 export type {
   DaimoWithdrawalDestination,
+  DaimoWithdrawalEvmProvider,
   DaimoWithdrawalFundingMode,
   DaimoWithdrawalManualTransferRequest,
   DaimoWithdrawalManualTransferResult,

@@ -29,6 +29,7 @@ import {
 import { useDaimoClient } from "../hooks/DaimoClientContext.js";
 import { formatUserError } from "../hooks/formatUserError.js";
 import { autoDetectLocale, t } from "../hooks/locale.js";
+import type { EthereumProvider } from "../hooks/walletProvider.js";
 import { PrimaryButton } from "./buttons.js";
 import { ConfirmationSpinner } from "./ConfirmationSpinner.js";
 import { DaimoModal } from "./DaimoModal.js";
@@ -65,6 +66,7 @@ export type {
   DaimoWithdrawalManualTransferRequest,
   DaimoWithdrawalManualTransferResult,
 };
+export type DaimoWithdrawalEvmProvider = EthereumProvider;
 
 type DaimoWithdrawalSessionRef = {
   sessionId: string;
@@ -90,11 +92,14 @@ export type DaimoWithdrawalProps = DaimoWithdrawalBaseProps &
     | {
         fundingMode: "injected-wallet";
         connectToAddress?: Address;
+        /** Direct EIP-1193 provider to keep embedded wallets scoped to this widget. */
+        evmProvider?: DaimoWithdrawalEvmProvider;
         sendManualTransaction?: never;
       }
     | {
         fundingMode: "manual";
         connectToAddress?: never;
+        evmProvider?: never;
         sendManualTransaction: (
           request: DaimoWithdrawalManualTransferRequest,
         ) => Promise<DaimoWithdrawalManualTransferResult>;
@@ -136,8 +141,11 @@ function DaimoWithdrawalFlow(props: DaimoWithdrawalProps) {
   const [showIdentifierInput, setShowIdentifierInput] = useState(false);
   const [removingContact, setRemovingContact] =
     useState<DaimoWithdrawalContact | null>(null);
+  const [selectingContact, setSelectingContact] =
+    useState<DaimoWithdrawalContact | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const resolvingIdentifierRef = useRef(false);
   const creatingSessionRef = useRef(false);
   const [session, setSession] = useState<{
     ref: DaimoWithdrawalSessionRef;
@@ -161,6 +169,8 @@ function DaimoWithdrawalFlow(props: DaimoWithdrawalProps) {
 
   const resolveIdentifier = useCallback(
     async (value: string) => {
+      if (resolvingIdentifierRef.current) return null;
+      resolvingIdentifierRef.current = true;
       setBusy(true);
       setError(null);
       try {
@@ -189,6 +199,7 @@ function DaimoWithdrawalFlow(props: DaimoWithdrawalProps) {
         setError(formatWithdrawalUserError(err));
         return null;
       } finally {
+        resolvingIdentifierRef.current = false;
         setBusy(false);
       }
     },
@@ -239,6 +250,7 @@ function DaimoWithdrawalFlow(props: DaimoWithdrawalProps) {
       }
       if (creatingSessionRef.current) return;
       creatingSessionRef.current = true;
+      setSelectingContact(contact);
       setBusy(true);
       setError(null);
       try {
@@ -248,6 +260,7 @@ function DaimoWithdrawalFlow(props: DaimoWithdrawalProps) {
         setError(formatWithdrawalUserError(err));
       } finally {
         creatingSessionRef.current = false;
+        setSelectingContact(null);
         setBusy(false);
       }
     },
@@ -297,6 +310,7 @@ function DaimoWithdrawalFlow(props: DaimoWithdrawalProps) {
         embedded
         connectToInjectedWallets={props.connectToAddress == null}
         connectToAddress={props.connectToAddress}
+        connectToEvmProvider={props.evmProvider}
         themeMode={props.themeMode}
         onPaymentStarted={props.onPaymentStarted}
         onPaymentCompleted={props.onPaymentCompleted}
@@ -319,6 +333,8 @@ function DaimoWithdrawalFlow(props: DaimoWithdrawalProps) {
           <SavedDestinationsPage
             contacts={contacts}
             removingContact={removingContact}
+            selectingContact={selectingContact}
+            busy={busy}
             error={error}
             onAdd={() => {
               setIdentifierInput("");
@@ -327,6 +343,7 @@ function DaimoWithdrawalFlow(props: DaimoWithdrawalProps) {
               setRoute(null);
               setSaveContact(false);
               setRemovingContact(null);
+              setSelectingContact(null);
               setError(null);
               setShowIdentifierInput(true);
             }}
@@ -434,8 +451,9 @@ function IdentifierPage({
           value={value}
           onChange={(event) => onChange(event.target.value)}
           onKeyDown={(event) => {
-            if (event.key === "Enter" && value.trim()) onContinue();
+            if (event.key === "Enter" && value.trim() && !busy) onContinue();
           }}
+          disabled={busy}
           placeholder={t.withdrawalIdentifierPlaceholder}
           autoComplete="off"
           autoCorrect="off"
@@ -457,6 +475,8 @@ function IdentifierPage({
 function SavedDestinationsPage({
   contacts,
   removingContact,
+  selectingContact,
+  busy,
   error,
   onAdd,
   onSelectContact,
@@ -466,6 +486,8 @@ function SavedDestinationsPage({
 }: {
   contacts: DaimoWithdrawalContact[];
   removingContact: DaimoWithdrawalContact | null;
+  selectingContact: DaimoWithdrawalContact | null;
+  busy: boolean;
   error: string | null;
   onAdd: () => void;
   onSelectContact: (contact: DaimoWithdrawalContact) => void;
@@ -483,6 +505,7 @@ function SavedDestinationsPage({
           </span>
         }
         onClick={onAdd}
+        disabled={busy}
       />
       <h2 className="daimo-text-sm daimo-font-medium daimo-text-[var(--daimo-text-secondary)]">
         {t.withdrawalSavedDestinations}
@@ -490,6 +513,7 @@ function SavedDestinationsPage({
       {contacts.map((contact) => {
         const key = getContactDisplayKey(contact);
         const removing = removingContact === contact;
+        const selecting = selectingContact === contact;
         return removing ? (
           <div
             key={key}
@@ -525,9 +549,20 @@ function SavedDestinationsPage({
               }
               subtitle={`${contact.asset} ${t.onChain} ${getContactRoute(contact)?.chainName ?? t.withdrawalUnsupported}`}
               right={
-                <span aria-hidden="true" className="daimo-h-8 daimo-w-8" />
+                selecting ? (
+                  <span
+                    role="status"
+                    aria-label={t.withdrawalCreating}
+                    className="daimo-flex daimo-h-8 daimo-w-8 daimo-items-center daimo-justify-center"
+                  >
+                    <WithdrawalSpinner />
+                  </span>
+                ) : (
+                  <span aria-hidden="true" className="daimo-h-8 daimo-w-8" />
+                )
               }
               onClick={() => onSelectContact(contact)}
+              disabled={busy}
             />
             <button
               type="button"
@@ -535,6 +570,7 @@ function SavedDestinationsPage({
                 contact.identifier,
               )}
               className="daimo-absolute daimo-right-2 daimo-top-1/2 daimo-z-10 daimo-flex daimo-h-11 daimo-w-11 -daimo-translate-y-1/2 daimo-items-center daimo-justify-center daimo-rounded-full daimo-text-[var(--daimo-text-muted)] daimo-transition-colors daimo-duration-150 hover:[@media(hover:hover)]:daimo-bg-[var(--daimo-surface-hover)] hover:[@media(hover:hover)]:daimo-text-[var(--daimo-error)] focus-visible:daimo-outline-none focus-visible:daimo-ring-2 focus-visible:daimo-ring-[var(--daimo-text-muted)]"
+              disabled={busy}
               onClick={(event) => {
                 event.stopPropagation();
                 onRequestRemove(contact);
@@ -945,6 +981,25 @@ function WithdrawalError({ message }: { message: string }) {
     >
       {message}
     </p>
+  );
+}
+
+function WithdrawalSpinner() {
+  return (
+    <svg
+      aria-hidden="true"
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="daimo-animate-spin"
+    >
+      <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+    </svg>
   );
 }
 
