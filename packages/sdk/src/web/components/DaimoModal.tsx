@@ -59,6 +59,10 @@ import { detectPlatform, isDesktop, type DaimoPlatform } from "../platform.js";
 import { resolveDaimoSessionTheme, useDaimoThemeReady } from "../theme.js";
 import { useWalletFlow } from "../hooks/useWalletFlow.js";
 import type { EthereumProvider } from "../hooks/walletProvider.js";
+import {
+  filterInjectedWalletsBySource,
+  type DaimoWalletSource,
+} from "../hooks/walletSource.js";
 import { ExternalLinkIcon, PrimaryButton } from "./buttons.js";
 import { ChooseChainPage } from "./ChooseChainPage.js";
 import { ChooseOptionPage } from "./ChooseOptionPage.js";
@@ -129,6 +133,8 @@ type DaimoModalBaseProps = {
   connectToAddress?: Address;
   /** Direct EIP-1193 provider for `connectToAddress`, without global discovery. */
   connectToEvmProvider?: EthereumProvider;
+  /** Limit injected-wallet funding providers. Default: "all". */
+  walletSource?: DaimoWalletSource;
   /** Render inline instead of as a floating modal. */
   embedded?: boolean;
   /**
@@ -414,6 +420,7 @@ function DaimoModalInner({
   connectToInjectedWallets = false,
   connectToAddress,
   connectToEvmProvider,
+  walletSource = "all",
   platform,
   returnUrl,
   returnLabel,
@@ -456,18 +463,17 @@ function DaimoModalInner({
     : "none";
   const { wallets: discoveredWallets, isLoading: isLoadingDiscoveredWallets } =
     useInjectedWallets();
-  const injectedWallets = useMemo<InjectedWallet[]>(
-    () =>
-      connectToEvmProvider
-        ? [
-            {
-              info: DIRECT_EVM_WALLET_INFO,
-              evmProvider: connectToEvmProvider,
-            },
-          ]
-        : discoveredWallets,
-    [connectToEvmProvider, discoveredWallets],
-  );
+  const injectedWallets = useMemo<InjectedWallet[]>(() => {
+    const wallets = connectToEvmProvider
+      ? [
+          {
+            info: DIRECT_EVM_WALLET_INFO,
+            evmProvider: connectToEvmProvider,
+          },
+        ]
+      : discoveredWallets;
+    return filterInjectedWalletsBySource(wallets, walletSource);
+  }, [connectToEvmProvider, discoveredWallets, walletSource]);
   const isLoadingWallets = connectToEvmProvider
     ? false
     : isLoadingDiscoveredWallets;
