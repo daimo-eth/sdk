@@ -21,7 +21,7 @@ export function ExpiredPage({
   const withdrawal = mode === "withdrawal";
   return (
     <div className="daimo-flex daimo-flex-col daimo-flex-1 daimo-min-h-0">
-      <PageHeader title={withdrawal ? "Withdrawal expired" : t.expired} />
+      <PageHeader title={withdrawal ? t.withdrawalExpired : t.expired} />
       <div className="daimo-flex-1 daimo-flex daimo-flex-col daimo-items-center daimo-justify-center daimo-p-6 daimo-gap-6">
         <div
           className="daimo-w-20 daimo-h-20 daimo-rounded-full daimo-flex daimo-items-center daimo-justify-center"
@@ -30,9 +30,7 @@ export function ExpiredPage({
           <ExpiredIcon />
         </div>
         <p className="daimo-text-[var(--daimo-text-secondary)]">
-          {withdrawal
-            ? "This withdrawal session expired."
-            : t.paymentSessionExpired}
+          {withdrawal ? t.withdrawalSessionExpired : t.paymentSessionExpired}
         </p>
         {onClose && (
           <SecondaryButton onClick={onClose}>{t.close}</SecondaryButton>
@@ -40,7 +38,7 @@ export function ExpiredPage({
       </div>
       <div className="daimo-px-6 daimo-pb-6 daimo-flex daimo-flex-col daimo-items-center">
         <ContactSupportButton
-          subject={withdrawal ? "Expired withdrawal" : "Expired session"}
+          subject={withdrawal ? t.withdrawalExpiredHelp : "Expired session"}
           info={{ sessionId }}
         />
       </div>

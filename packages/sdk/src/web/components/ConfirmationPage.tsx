@@ -102,7 +102,7 @@ export function ConfirmationPage({
   // Get display title based on status
   const displayTitle = rejected
     ? mode === "withdrawal"
-      ? "Withdrawal cancelled"
+      ? t.withdrawalCancelled
       : t.paymentCancelled
     : getDisplayTitle(status, processingMessage, mode);
 
@@ -156,9 +156,7 @@ export function ConfirmationPage({
                 onClick={onRetry}
                 style={{ animation: "daimo-fade-in 0.3s ease 2s both" }}
               >
-                {mode === "withdrawal"
-                  ? "Try withdrawal again"
-                  : t.retryPayment}
+                {mode === "withdrawal" ? t.withdrawalRetry : t.retryPayment}
               </SecondaryLinkButton>
             )}
           </>
@@ -183,7 +181,7 @@ export function ConfirmationPage({
         {/* Receipt link (post-tx states) or contact support (pre-tx states) */}
         {status === "confirming" ? (
           <ContactSupportButton
-            subject={mode === "withdrawal" ? "Withdrawal help" : "Payment help"}
+            subject={mode === "withdrawal" ? t.withdrawalHelp : "Payment help"}
             info={{ sessionId }}
           />
         ) : (
@@ -215,15 +213,15 @@ function getDisplayTitle(
   if (mode === "withdrawal") {
     switch (status) {
       case "confirming":
-        return "Confirm your withdrawal";
+        return t.withdrawalConfirm;
       case "waiting":
-        return "Waiting for your transfer";
+        return t.withdrawalWaitingForTransfer;
       case "processing":
-        return "Withdrawal in progress";
+        return t.withdrawalInProgress;
       case "done":
-        return "Withdrawal completed";
+        return t.withdrawalCompleted;
       case "refunded":
-        return "Withdrawal refunded";
+        return t.withdrawalRefunded;
     }
   }
   switch (status) {

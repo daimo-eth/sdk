@@ -28,6 +28,7 @@ import {
 } from "../../common/withdrawal.js";
 import { useDaimoClient } from "../hooks/DaimoClientContext.js";
 import { formatUserError } from "../hooks/formatUserError.js";
+import { autoDetectLocale, t } from "../hooks/locale.js";
 import { PrimaryButton } from "./buttons.js";
 import { ConfirmationSpinner } from "./ConfirmationSpinner.js";
 import { DaimoModal } from "./DaimoModal.js";
@@ -114,6 +115,7 @@ const EVM_WITHDRAWAL_CHAIN_IDS = [
 
 /** Recipient-first stablecoin withdrawal widget. */
 export function DaimoWithdrawal(props: DaimoWithdrawalProps) {
+  autoDetectLocale();
   return <DaimoWithdrawalFlow key={props.contactStorageScope} {...props} />;
 }
 
@@ -172,7 +174,7 @@ function DaimoWithdrawalFlow(props: DaimoWithdrawalProps) {
             solana.chainId,
           );
           if (!solanaRoute) {
-            throw new Error("usdc withdrawals on solana are unavailable");
+            throw new Error(t.withdrawalSolanaUnavailable);
           }
           setAsset(solanaRoute.asset);
           setRoute(solanaRoute);
@@ -184,7 +186,7 @@ function DaimoWithdrawalFlow(props: DaimoWithdrawalProps) {
         }
         return resolved;
       } catch (err) {
-        setError(formatUserError(err));
+        setError(formatWithdrawalUserError(err));
         return null;
       } finally {
         setBusy(false);
@@ -232,7 +234,7 @@ function DaimoWithdrawalFlow(props: DaimoWithdrawalProps) {
     async (contact: DaimoWithdrawalContact) => {
       const contactRoute = getContactRoute(contact);
       if (!contactRoute) {
-        setError("this saved route is no longer supported");
+        setError(t.withdrawalSavedRouteUnsupported);
         return;
       }
       if (creatingSessionRef.current) return;
@@ -243,7 +245,7 @@ function DaimoWithdrawalFlow(props: DaimoWithdrawalProps) {
         const resolved = await resolveIdentifierValue(contact.identifier);
         await createWithdrawalSession(resolved, contactRoute, contact);
       } catch (err) {
-        setError(formatUserError(err));
+        setError(formatWithdrawalUserError(err));
       } finally {
         creatingSessionRef.current = false;
         setBusy(false);
@@ -269,7 +271,7 @@ function DaimoWithdrawalFlow(props: DaimoWithdrawalProps) {
         : null;
       await createWithdrawalSession(identifier, route, contact);
     } catch (err) {
-      setError(formatUserError(err));
+      setError(formatWithdrawalUserError(err));
     } finally {
       creatingSessionRef.current = false;
       setBusy(false);
@@ -306,7 +308,7 @@ function DaimoWithdrawalFlow(props: DaimoWithdrawalProps) {
   return (
     <EmbeddedContainer themeMode={props.themeMode}>
       {step === "identifier" && !contactsLoaded && (
-        <WithdrawalPage title="Withdraw" compact>
+        <WithdrawalPage title={t.withdrawalAction} compact>
           <Skeleton className="daimo-h-16 daimo-w-full" rounded="lg" />
         </WithdrawalPage>
       )}
@@ -423,10 +425,10 @@ function IdentifierPage({
   onContinue: () => void;
 }) {
   return (
-    <WithdrawalPage title="Withdraw" onBack={onBack} compact>
+    <WithdrawalPage title={t.withdrawalAction} onBack={onBack} compact>
       <label className="daimo-grid daimo-gap-2">
         <span className="daimo-text-sm daimo-font-medium daimo-text-[var(--daimo-text)]">
-          Where do you want to withdraw?
+          {t.withdrawalDestinationQuestion}
         </span>
         <TextInput
           value={value}
@@ -434,7 +436,7 @@ function IdentifierPage({
           onKeyDown={(event) => {
             if (event.key === "Enter" && value.trim()) onContinue();
           }}
-          placeholder="EVM address, ENS, or Solana address"
+          placeholder={t.withdrawalIdentifierPlaceholder}
           autoComplete="off"
           autoCorrect="off"
           spellCheck={false}
@@ -446,7 +448,7 @@ function IdentifierPage({
         onClick={onContinue}
         disabled={!value.trim() || busy}
       >
-        {busy ? "Resolving…" : "Continue"}
+        {busy ? t.withdrawalResolving : t.continue}
       </PrimaryButton>
     </WithdrawalPage>
   );
@@ -472,18 +474,18 @@ function SavedDestinationsPage({
   onConfirmRemove: (contact: DaimoWithdrawalContact) => void;
 }) {
   return (
-    <WithdrawalOptionsPage title="Withdraw" maxHeight="360px">
+    <WithdrawalOptionsPage title={t.withdrawalAction} maxHeight="360px">
       <ListRow
         label={
           <span className="daimo-flex daimo-items-center daimo-gap-2">
             <PlusIcon className="daimo-text-[var(--daimo-text)]" />
-            <span>Add a new destination</span>
+            <span>{t.withdrawalAddDestination}</span>
           </span>
         }
         onClick={onAdd}
       />
       <h2 className="daimo-text-sm daimo-font-medium daimo-text-[var(--daimo-text-secondary)]">
-        Saved
+        {t.withdrawalSavedDestinations}
       </h2>
       {contacts.map((contact) => {
         const key = getContactDisplayKey(contact);
@@ -494,7 +496,7 @@ function SavedDestinationsPage({
             className="daimo-flex daimo-min-h-16 daimo-items-center daimo-justify-between daimo-gap-3 daimo-rounded-[var(--daimo-radius-lg)] daimo-bg-[var(--daimo-surface-secondary)] daimo-px-5"
           >
             <span className="daimo-text-sm daimo-text-[var(--daimo-text)]">
-              Remove this destination?
+              {t.withdrawalRemoveDestinationConfirm}
             </span>
             <span className="daimo-flex daimo-items-center daimo-gap-1">
               <button
@@ -502,14 +504,14 @@ function SavedDestinationsPage({
                 className="daimo-min-h-11 daimo-px-2 daimo-text-sm daimo-text-[var(--daimo-text-secondary)]"
                 onClick={onCancelRemove}
               >
-                Cancel
+                {t.withdrawalCancel}
               </button>
               <button
                 type="button"
                 className="daimo-min-h-11 daimo-px-2 daimo-text-sm daimo-font-medium daimo-text-[var(--daimo-error)]"
                 onClick={() => onConfirmRemove(contact)}
               >
-                Remove
+                {t.withdrawalRemove}
               </button>
             </span>
           </div>
@@ -521,7 +523,7 @@ function SavedDestinationsPage({
                   {formatIdentifier(contact.identifier, contact.identifierType)}
                 </span>
               }
-              subtitle={`${contact.asset} on ${getContactRoute(contact)?.chainName ?? "Unsupported"}`}
+              subtitle={`${contact.asset} ${t.onChain} ${getContactRoute(contact)?.chainName ?? t.withdrawalUnsupported}`}
               right={
                 <span aria-hidden="true" className="daimo-h-8 daimo-w-8" />
               }
@@ -529,7 +531,9 @@ function SavedDestinationsPage({
             />
             <button
               type="button"
-              aria-label={`Remove ${contact.identifier}`}
+              aria-label={t.withdrawalRemoveDestinationLabel(
+                contact.identifier,
+              )}
               className="daimo-absolute daimo-right-2 daimo-top-1/2 daimo-z-10 daimo-flex daimo-h-11 daimo-w-11 -daimo-translate-y-1/2 daimo-items-center daimo-justify-center daimo-rounded-full daimo-text-[var(--daimo-text-muted)] daimo-transition-colors daimo-duration-150 hover:[@media(hover:hover)]:daimo-bg-[var(--daimo-surface-hover)] hover:[@media(hover:hover)]:daimo-text-[var(--daimo-error)] focus-visible:daimo-outline-none focus-visible:daimo-ring-2 focus-visible:daimo-ring-[var(--daimo-text-muted)]"
               onClick={(event) => {
                 event.stopPropagation();
@@ -560,7 +564,7 @@ function AssetPage({
   );
   return (
     <WithdrawalOptionsPage
-      title="Choose stablecoin"
+      title={t.withdrawalChooseStablecoin}
       onBack={onBack}
       maxHeight="156px"
     >
@@ -594,7 +598,7 @@ function ChainPage({
   const routes = getCompatibleRoutes(identifier, asset);
   return (
     <WithdrawalOptionsPage
-      title="Choose network"
+      title={t.withdrawalChooseNetwork}
       onBack={onBack}
       maxHeight="308px"
     >
@@ -634,10 +638,10 @@ function ReviewPage({
   onContinue: () => void;
 }) {
   return (
-    <WithdrawalPage title="Review withdrawal" onBack={onBack}>
+    <WithdrawalPage title={t.withdrawalReview} onBack={onBack}>
       <div className="daimo-grid daimo-gap-4 daimo-rounded-[var(--daimo-radius-lg)] daimo-bg-[var(--daimo-surface-secondary)] daimo-p-5">
         <ReviewRow
-          label="Recipient"
+          label={t.withdrawalRecipient}
           value={formatIdentifier(
             identifier.identifier,
             identifier.identifierType,
@@ -646,13 +650,13 @@ function ReviewPage({
         />
         {identifier.identifierType === "ens" && (
           <ReviewRow
-            label="Resolved address"
+            label={t.withdrawalResolvedAddress}
             value={formatIdentifier(identifier.address, "evm")}
             fullValue={identifier.address}
           />
         )}
-        <ReviewRow label="Stablecoin" value={route.asset} />
-        <ReviewRow label="Network" value={route.chainName} />
+        <ReviewRow label={t.withdrawalStablecoin} value={route.asset} />
+        <ReviewRow label={t.withdrawalNetwork} value={route.chainName} />
       </div>
       <label className="daimo-flex daimo-min-h-11 daimo-cursor-pointer daimo-items-center daimo-justify-center daimo-gap-3 daimo-text-sm daimo-text-[var(--daimo-text-secondary)]">
         <input
@@ -661,7 +665,7 @@ function ReviewPage({
           onChange={(event) => onSaveContactChange(event.target.checked)}
           className="daimo-h-4 daimo-w-4 daimo-rounded daimo-accent-[var(--daimo-accent)]"
         />
-        Save this route for next time
+        {t.withdrawalSaveRoute}
       </label>
       {error && <WithdrawalError message={error} />}
       <PrimaryButton
@@ -669,7 +673,7 @@ function ReviewPage({
         onClick={onContinue}
         disabled={busy}
       >
-        {busy ? "Creating withdrawal…" : "Continue"}
+        {busy ? t.withdrawalCreating : t.continue}
       </PrimaryButton>
     </WithdrawalPage>
   );
@@ -735,7 +739,7 @@ function ManualWithdrawalFlow({
         onPaymentStartedRef.current?.();
       }
     } catch (err) {
-      setAdapterError(formatUserError(err));
+      setAdapterError(formatWithdrawalUserError(err));
     } finally {
       setAdapterPending(false);
     }
@@ -799,10 +803,10 @@ function ManualStatusPage({
 }) {
   if (adapterError) {
     return (
-      <WithdrawalPage title="Withdrawal not submitted">
+      <WithdrawalPage title={t.withdrawalNotSubmitted}>
         <WithdrawalError message={adapterError} />
         <PrimaryButton className="daimo-mx-auto" onClick={onRetry}>
-          Try again
+          {t.tryAgain}
         </PrimaryButton>
       </WithdrawalPage>
     );
@@ -812,27 +816,27 @@ function ManualStatusPage({
   const expired = status === "expired";
   const done = status === "succeeded" || status === "bounced";
   const title = adapterPending
-    ? "Confirm in your wallet"
+    ? t.withdrawalConfirmInWallet
     : status === "processing"
-      ? "Withdrawal in progress"
+      ? t.withdrawalInProgress
       : status === "succeeded"
-        ? "Withdrawal completed"
+        ? t.withdrawalCompleted
         : status === "bounced"
-          ? "Withdrawal refunded"
+          ? t.withdrawalRefunded
           : expired
-            ? "Withdrawal expired"
-            : "Waiting for your transfer";
+            ? t.withdrawalExpired
+            : t.withdrawalWaitingForTransfer;
   const description = adapterPending
-    ? "Complete the transfer in your wallet to continue."
+    ? t.withdrawalCompleteTransferInWallet
     : status === "processing"
-      ? "Funds were received and are being delivered."
+      ? t.withdrawalFundsBeingDelivered
       : status === "succeeded"
-        ? "The stablecoins reached the selected destination."
+        ? t.withdrawalReachedDestination
         : status === "bounced"
-          ? "The transfer could not be delivered and was refunded."
+          ? t.withdrawalDeliveryFailedRefunded
           : expired
-            ? "No transfer was detected before this session expired."
-            : "Your withdrawal will update automatically when funds arrive.";
+            ? t.withdrawalNoTransferBeforeExpiry
+            : t.withdrawalAutoUpdate;
 
   return (
     <div className="daimo-flex daimo-min-h-[360px] daimo-flex-col">
@@ -942,6 +946,24 @@ function WithdrawalError({ message }: { message: string }) {
       {message}
     </p>
   );
+}
+
+function formatWithdrawalUserError(err: unknown): string {
+  const message = err instanceof Error ? err.message : null;
+  switch (message) {
+    case "enter a valid EVM address, Solana address, or ENS name":
+      return t.withdrawalInvalidIdentifier;
+    case "enter a valid ENS name":
+      return t.withdrawalInvalidEns;
+    case "Solana recipients require the Solana network":
+      return t.withdrawalSolanaNetworkRequired;
+    case "EVM and ENS recipients require an EVM network":
+      return t.withdrawalEvmNetworkRequired;
+    case "failed to initialize withdrawal":
+      return t.withdrawalInitializationFailed;
+    default:
+      return formatUserError(err);
+  }
 }
 
 function getCompatibleRoutes(

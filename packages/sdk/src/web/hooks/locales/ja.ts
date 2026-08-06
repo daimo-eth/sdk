@@ -18,6 +18,62 @@ export const ja: typeof en = {
   expired: "期限切れ",
   paymentSessionExpired: "この支払いセッションは期限切れです",
 
+  // withdrawal flow
+  withdrawalAction: "引き出す",
+  withdrawalDestinationQuestion: "引き出し先を入力してください",
+  withdrawalIdentifierPlaceholder: "EVMアドレス、ENS、またはSolanaアドレス",
+  withdrawalResolving: "確認中…",
+  withdrawalAddDestination: "新しい送金先を追加",
+  withdrawalSavedDestinations: "保存済み",
+  withdrawalRemoveDestinationConfirm: "この送金先を削除しますか？",
+  withdrawalCancel: "キャンセル",
+  withdrawalRemove: "削除",
+  withdrawalUnsupported: "未対応",
+  withdrawalRemoveDestinationLabel: (identifier: string) =>
+    `${identifier}を削除`,
+  withdrawalChooseStablecoin: "ステーブルコインを選択",
+  withdrawalChooseNetwork: "ネットワークを選択",
+  withdrawalReview: "引き出し内容を確認",
+  withdrawalRecipient: "受取人",
+  withdrawalResolvedAddress: "解決済みアドレス",
+  withdrawalStablecoin: "ステーブルコイン",
+  withdrawalNetwork: "ネットワーク",
+  withdrawalSaveRoute: "次回のためにこのルートを保存",
+  withdrawalCreating: "引き出しを作成中…",
+  withdrawalNotSubmitted: "引き出しは送信されませんでした",
+  withdrawalConfirm: "引き出しを確認",
+  withdrawalConfirmInWallet: "ウォレットで引き出しを確認",
+  withdrawalWaitingForTransfer: "送金を待っています",
+  withdrawalInProgress: "引き出し処理中",
+  withdrawalCompleted: "引き出し完了",
+  withdrawalRefunded: "引き出しは返金されました",
+  withdrawalCancelled: "引き出しはキャンセルされました",
+  withdrawalRetry: "引き出しを再試行",
+  withdrawalExpired: "引き出し期限切れ",
+  withdrawalSessionExpired: "この引き出しセッションは期限切れです。",
+  withdrawalCompleteTransferInWallet:
+    "続行するにはウォレットで送金を完了してください。",
+  withdrawalFundsBeingDelivered: "資金を受領し、送金先へ配送しています。",
+  withdrawalReachedDestination:
+    "ステーブルコインが選択した送金先に到着しました。",
+  withdrawalDeliveryFailedRefunded: "送金できなかったため、返金されました。",
+  withdrawalNoTransferBeforeExpiry:
+    "このセッションが期限切れになる前に送金が検出されませんでした。",
+  withdrawalAutoUpdate: "資金が届くと引き出し状況が自動的に更新されます。",
+  withdrawalSolanaUnavailable: "SolanaでのUSDC引き出しは利用できません。",
+  withdrawalSavedRouteUnsupported:
+    "この保存済みルートはサポートされなくなりました。",
+  withdrawalInvalidIdentifier:
+    "有効なEVMアドレス、Solanaアドレス、またはENS名を入力してください。",
+  withdrawalInvalidEns: "有効なENS名を入力してください。",
+  withdrawalSolanaNetworkRequired:
+    "Solanaの受取人にはSolanaネットワークが必要です。",
+  withdrawalEvmNetworkRequired:
+    "EVMおよびENSの受取人にはEVMネットワークが必要です。",
+  withdrawalInitializationFailed: "引き出しを開始できませんでした。",
+  withdrawalHelp: "引き出しのヘルプ",
+  withdrawalExpiredHelp: "期限切れの引き出し",
+
   // DeeplinkPage
   continueIn: "",
   toCompleteYourPayment: "で支払いを完了してください",
