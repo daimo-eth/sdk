@@ -20,7 +20,7 @@ import { t } from "../../hooks/locale.js";
 import { useSessionDepositState } from "../../hooks/useAccountFlow.js";
 import { useDraftDeposit } from "../../hooks/useDraftDeposit.js";
 import { useDepositPoller } from "../../hooks/useDepositPoller.js";
-import { formatFixedAmount } from "../../formatAmount.js";
+import { AmountSummaryRows } from "../AmountSummary.js";
 import { AmountInput, PageHeader, useAmountInput } from "../shared.js";
 import { AccountEnrollmentUpdatePage } from "./AccountEnrollmentUpdatePage.js";
 import { useCoinbaseApplePayWidget } from "./useCoinbaseApplePayWidget.js";
@@ -447,27 +447,14 @@ export function AccountWalletPayPage({
         />
 
         <div className="daimo-w-full daimo-max-w-[320px] daimo-flex daimo-flex-col daimo-gap-1 daimo-text-sm">
-          <div className="daimo-flex daimo-items-center daimo-justify-between daimo-text-[var(--daimo-text-muted)]">
-            <span>Fee</span>
-            {feeUnits != null ? (
-              <span>
-                {currencySymbol}
-                {formatFixedAmount(Number(feeUnits))}
-              </span>
-            ) : (
-              <span>{isValid && isCreating ? "…" : "—"}</span>
-            )}
-          </div>
-          <div className="daimo-flex daimo-items-center daimo-justify-between daimo-text-[var(--daimo-text)]">
-            <span>You receive</span>
-            <span className="daimo-font-semibold">
-              {totalUnits != null
-                ? `${currencySymbol}${formatFixedAmount(Number(totalUnits))}`
-                : isValid
-                  ? `${currencySymbol}${formatFixedAmount(amount)}`
-                  : `${currencySymbol}${formatFixedAmount(0)}`}
-            </span>
-          </div>
+          <AmountSummaryRows
+            currencySymbol={currencySymbol}
+            feeAmount={feeUnits == null ? null : Number(feeUnits)}
+            receiveAmount={
+              totalUnits == null ? (isValid ? amount : 0) : Number(totalUnits)
+            }
+            feeFallback={isValid && isCreating ? "…" : "—"}
+          />
           {limitSummary && (
             <div className="daimo-mt-3 daimo-pt-3 daimo-border-t daimo-border-[var(--daimo-border)] daimo-flex daimo-items-center daimo-justify-between daimo-gap-4 daimo-text-[var(--daimo-text-muted)]">
               <span className="daimo-shrink-0">Left this week</span>

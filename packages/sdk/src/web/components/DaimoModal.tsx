@@ -1193,6 +1193,7 @@ function renderSelectAmount(
         }
         currencySymbol={sourceAmount?.currency.symbol}
         decimals={sourceAmount?.currency.decimals}
+        flatFeeUsd={exchangeNode.flatFeeUsd}
         onBack={ctx.canGoBack ? ctx.onBack : undefined}
         onContinue={ctx.onAmountContinue}
         baseUrl={ctx.session.baseUrl}
@@ -1428,6 +1429,7 @@ function renderExchangePage(
       platform={ctx.platform}
       exchangeUrl={entry.exchangeUrl}
       waitingMessage={entry.waitingMessage}
+      waitingInstructions={entry.waitingInstructions}
       expiresAt={entry.expiresAt}
       isLoading={!entry.exchangeUrl}
       onBack={ctx.onBack}

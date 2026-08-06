@@ -89,6 +89,8 @@ export const ja: typeof en = {
 
   // SelectAmountPage
   selectAmount: "金額を選択",
+  fee: "手数料",
+  youReceive: "受取額",
   loading: "読み込み中",
   continue: "続ける",
 

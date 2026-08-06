@@ -348,6 +348,7 @@ export function useSessionNav(
               ...top,
               exchangeUrl: result.exchange!.url,
               waitingMessage: result.exchange!.waitingMessage,
+              waitingInstructions: result.exchange!.waitingInstructions,
               expiresAt: result.exchange!.expiresAt,
               error: undefined,
             },

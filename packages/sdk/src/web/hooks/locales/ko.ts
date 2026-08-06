@@ -88,6 +88,8 @@ export const ko: typeof en = {
 
   // SelectAmountPage
   selectAmount: "금액 선택",
+  fee: "수수료",
+  youReceive: "받는 금액",
   loading: "로딩 중",
   continue: "계속",
 
