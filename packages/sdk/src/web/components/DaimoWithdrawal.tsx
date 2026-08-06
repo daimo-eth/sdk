@@ -30,6 +30,7 @@ import { useDaimoClient } from "../hooks/DaimoClientContext.js";
 import { formatUserError } from "../hooks/formatUserError.js";
 import { autoDetectLocale, t } from "../hooks/locale.js";
 import type { EthereumProvider } from "../hooks/walletProvider.js";
+import type { DaimoWalletSource } from "../hooks/walletSource.js";
 import { resolveDaimoSessionTheme, useDaimoThemeReady } from "../theme.js";
 import { PrimaryButton } from "./buttons.js";
 import { ConfirmationSpinner } from "./ConfirmationSpinner.js";
@@ -83,6 +84,8 @@ type DaimoWithdrawalBaseProps = {
     destination: DaimoWithdrawalDestination;
     fundingMode: DaimoWithdrawalFundingMode;
   }) => Promise<DaimoWithdrawalSessionRef>;
+  /** Limit injected-wallet funding providers. Default: "all". */
+  walletSource?: DaimoWalletSource;
   /** Resolved organization theme used before and during the session. */
   theme?: DaimoSessionTheme;
   /** Explicit light/dark/system override for the supplied or session theme. */
@@ -329,6 +332,7 @@ function DaimoWithdrawalFlow(props: DaimoWithdrawalProps) {
         connectToInjectedWallets={props.connectToAddress == null}
         connectToAddress={props.connectToAddress}
         connectToEvmProvider={props.evmProvider}
+        walletSource={props.walletSource}
         themeMode={theme.themeMode}
         onPaymentStarted={props.onPaymentStarted}
         onPaymentCompleted={props.onPaymentCompleted}

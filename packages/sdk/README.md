@@ -65,8 +65,11 @@ widget waits for a custom stylesheet before showing recipient UI. An explicit
 `themeMode` prop overrides the theme's light/dark/system mode while retaining
 its stylesheet.
 Use `connectToAddress` when the host already has an EVM wallet connected. In
-manual mode, provide `sendManualTransaction`; it receives a receiver address
-that the widget deliberately never renders:
+an injected-wallet flow, set `walletSource="evm"` to exclude Solana-only
+wallets and use only the EVM provider from a dual-chain wallet. The default is
+`"all"`, which preserves mixed EVM and Solana funding. In manual mode, provide
+`sendManualTransaction`; it receives a receiver address that the widget
+deliberately never renders:
 
 ```tsx
 <DaimoWithdrawal

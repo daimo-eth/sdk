@@ -29,6 +29,7 @@ export { AccountFlowProvider } from "./components/account/AccountFlowProvider.js
 // Types
 export * from "./api/index.js";
 export type { DaimoPlatform } from "./platform.js";
+export type { DaimoWalletSource } from "./hooks/walletSource.js";
 export type {
   InjectedWallet,
   InjectedWalletInfo,
