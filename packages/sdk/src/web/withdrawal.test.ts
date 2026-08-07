@@ -10,7 +10,9 @@ import {
   getDaimoWithdrawalStorage,
   readDaimoWithdrawalContacts,
   removeDaimoWithdrawalContact,
+  resolveAndCreateWithdrawalSession,
   resolveWithdrawalIdentifier,
+  resolveWithdrawalIdentifierWithClient,
   saveDaimoWithdrawalContact,
   isValidManualWithdrawalAmountUnits,
   type DaimoWithdrawalContact,
@@ -48,6 +50,42 @@ describe("withdrawal identifiers", () => {
     expect(resolveEns).toHaveBeenCalledWith("vitalik.eth");
   });
 
+  it("defaults to the Daimo client while explicit callbacks take precedence", async () => {
+    const defaultResolver = vi.fn().mockResolvedValue({
+      name: "vitalik.eth",
+      address: EVM_ADDRESS,
+    });
+    const override = vi.fn().mockResolvedValue({ address: EVM_ADDRESS });
+    const client = {
+      internal: { ens: { resolve: defaultResolver } },
+    } as unknown as DaimoClient;
+
+    await resolveWithdrawalIdentifierWithClient("vitalik.eth", client);
+    expect(defaultResolver).toHaveBeenCalledWith("vitalik.eth");
+
+    await resolveWithdrawalIdentifierWithClient(
+      "VITALIK.ETH",
+      client,
+      override,
+    );
+    expect(override).toHaveBeenCalledWith("vitalik.eth");
+    expect(defaultResolver).toHaveBeenCalledTimes(1);
+  });
+
+  it("never requests ENS resolution for direct EVM or Solana addresses", async () => {
+    const defaultResolver = vi.fn();
+    const client = {
+      internal: { ens: { resolve: defaultResolver } },
+    } as unknown as DaimoClient;
+
+    await resolveWithdrawalIdentifierWithClient(EVM_ADDRESS, client);
+    await resolveWithdrawalIdentifierWithClient(
+      "Vote111111111111111111111111111111111111111",
+      client,
+    );
+    expect(defaultResolver).not.toHaveBeenCalled();
+  });
+
   it("rejects invalid identifiers and propagates ENS failures", async () => {
     await expect(
       resolveWithdrawalIdentifier("not-an-address", vi.fn()),
@@ -72,6 +110,45 @@ describe("withdrawal identifiers", () => {
     expect(() => buildDaimoWithdrawalDestination(identifier, route)).toThrow(
       "Solana recipients require the Solana network",
     );
+  });
+});
+
+describe("saved withdrawal identifiers", () => {
+  it("re-resolves ENS before creating a session", async () => {
+    const resolveIdentifier = vi.fn(async (input: string) =>
+      resolveWithdrawalIdentifier(
+        input,
+        vi.fn().mockResolvedValue({ address: EVM_ADDRESS }),
+      ),
+    );
+    const createSession = vi.fn().mockResolvedValue("session-1");
+
+    await expect(
+      resolveAndCreateWithdrawalSession(
+        "vitalik.eth",
+        resolveIdentifier,
+        createSession,
+      ),
+    ).resolves.toBe("session-1");
+    expect(resolveIdentifier).toHaveBeenCalledWith("vitalik.eth");
+    expect(createSession).toHaveBeenCalledWith({
+      identifier: "vitalik.eth",
+      identifierType: "ens",
+      address: EVM_ADDRESS,
+    });
+  });
+
+  it("does not create a session when saved ENS resolution fails", async () => {
+    const createSession = vi.fn();
+
+    await expect(
+      resolveAndCreateWithdrawalSession(
+        "missing.eth",
+        vi.fn().mockRejectedValue(new Error("ens name not found")),
+        createSession,
+      ),
+    ).rejects.toThrow("ens name not found");
+    expect(createSession).not.toHaveBeenCalled();
   });
 });
 

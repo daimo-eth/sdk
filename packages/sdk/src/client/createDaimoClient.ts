@@ -1,3 +1,5 @@
+import type { Address } from "viem";
+
 import type {
   AccountRail,
   CreateAccountResponse,
@@ -183,6 +185,10 @@ export type DaimoClient = {
     };
   };
   internal: {
+    ens: {
+      /** Resolve an ENS name on Ethereum mainnet through Daimo. */
+      resolve(name: string): Promise<{ name: string; address: Address }>;
+    };
     sessions: {
       retrieveWithNav(
         sessionId: string,
@@ -412,6 +418,15 @@ export function createDaimoClient(config: TransportConfig): DaimoClient {
     },
 
     internal: {
+      ens: {
+        resolve(name) {
+          return transport.request<{ name: string; address: Address }>({
+            method: "GET",
+            path: "/v1/internal/ens/resolve",
+            query: { name },
+          });
+        },
+      },
       sessions: {
         async retrieveWithNav(sessionId, clientSecret, params) {
           return transport.request<RetrieveSessionWithNavResponse>({

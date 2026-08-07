@@ -60,7 +60,8 @@ import {
   getDaimoWithdrawalStorage,
   readDaimoWithdrawalContacts,
   removeDaimoWithdrawalContact,
-  resolveWithdrawalIdentifier,
+  resolveAndCreateWithdrawalSession,
+  resolveWithdrawalIdentifierWithClient,
   saveDaimoWithdrawalContact,
   type DaimoWithdrawalContact,
   type DaimoWithdrawalManualTransferRequest,
@@ -86,8 +87,8 @@ type DaimoWithdrawalSessionRef = {
 type DaimoWithdrawalBaseProps = {
   /** Stable authenticated user/account scope for isolated saved destinations. */
   contactStorageScope: string;
-  /** Resolve a normalized ENS name through the host's authenticated backend. */
-  resolveEns: (name: string) => Promise<{ address: Address }>;
+  /** Override Daimo's built-in Ethereum-mainnet ENS resolution. */
+  resolveEns?: (name: string) => Promise<{ address: Address }>;
   createSession: (input: {
     destination: DaimoWithdrawalDestination;
     fundingMode: DaimoWithdrawalFundingMode;
@@ -157,6 +158,7 @@ export function DaimoWithdrawal(props: DaimoWithdrawalProps) {
 }
 
 function DaimoWithdrawalFlow(props: DaimoWithdrawalProps) {
+  const client = useDaimoClient();
   const theme = resolveDaimoSessionTheme(props.theme, props.themeMode);
   const embedded = props.embedded ?? true;
   const themeReady = useDaimoThemeReady(theme.themeCssUrl);
@@ -198,8 +200,9 @@ function DaimoWithdrawalFlow(props: DaimoWithdrawalProps) {
   }, [props.contactStorageScope]);
 
   const resolveIdentifierValue = useCallback(
-    (value: string) => resolveWithdrawalIdentifier(value, props.resolveEns),
-    [props.resolveEns],
+    (value: string) =>
+      resolveWithdrawalIdentifierWithClient(value, client, props.resolveEns),
+    [client, props.resolveEns],
   );
 
   const resolveIdentifier = useCallback(
@@ -289,8 +292,12 @@ function DaimoWithdrawalFlow(props: DaimoWithdrawalProps) {
       setBusy(true);
       setError(null);
       try {
-        const resolved = await resolveIdentifierValue(contact.identifier);
-        await createWithdrawalSession(resolved, contactRoute, contact);
+        await resolveAndCreateWithdrawalSession(
+          contact.identifier,
+          resolveIdentifierValue,
+          (resolved) =>
+            createWithdrawalSession(resolved, contactRoute, contact),
+        );
       } catch (err) {
         setError(formatWithdrawalUserError(err));
       } finally {
