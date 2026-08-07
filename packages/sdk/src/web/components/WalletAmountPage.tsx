@@ -12,7 +12,7 @@ type WalletAmountPageProps = {
   token: WalletPaymentOption;
   platform: DaimoPlatform;
   onBack: () => void;
-  onContinue: (amountUsd: number) => void;
+  onContinue: (amountUsd: number, amountUnits: string) => void;
   baseUrl: string;
 };
 
@@ -32,10 +32,12 @@ export function WalletAmountPage({
   );
 
   const [amountUsd, setAmountUsd] = useState(0);
+  const [amountUnits, setAmountUnits] = useState("");
   const [isValid, setIsValid] = useState(false);
   const handleChange = useCallback(
-    (value: { amountUsd: number; isValid: boolean }) => {
+    (value: { amountUsd: number; amountUnits: string; isValid: boolean }) => {
       setAmountUsd(value.amountUsd);
+      setAmountUnits(value.amountUnits);
       setIsValid(value.isValid);
     },
     [],
@@ -51,17 +53,18 @@ export function WalletAmountPage({
           maximumUsd={maximumUsd}
           nativeDisplay={{ kind: "suffix", symbol: balanceToken.symbol }}
           initialMode="usd"
-          onContinue={(value) => onContinue(value.amountUsd)}
+          onContinue={(value) => onContinue(value.amountUsd, value.amountUnits)}
           onChange={handleChange}
           balance={{
             usd: token.balance.usd,
             nativeAmountUnits: balanceNativeUnits,
           }}
+          showMax
           platform={platform}
           baseUrl={baseUrl}
         />
         <PrimaryButton
-          onClick={() => isValid && onContinue(amountUsd)}
+          onClick={() => isValid && onContinue(amountUsd, amountUnits)}
           disabled={!isValid}
           className="daimo-max-w-none"
         >

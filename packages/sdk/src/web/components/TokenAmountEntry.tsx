@@ -19,6 +19,8 @@ export type NativeDisplay =
 
 export type TokenAmountEntryValue = {
   amountUsd: number;
+  /** Exact decimal USD string shown by the amount entry. */
+  amountUnits: string;
   nativeAmount: number;
 };
 
@@ -74,7 +76,7 @@ export function TokenAmountEntry({
   onContinue,
   onChange,
   balance,
-  showMax = true,
+  showMax = false,
   iconLogoURI,
   iconAlt,
   badgeLogoURI,
@@ -107,19 +109,21 @@ export function TokenAmountEntry({
   const hasAmount = isEditingUsd ? usdStr !== "" : nativeStr !== "";
   const showMinWarning = hasAmount && validationAmountUsd < minimumUsd;
   const showMaxWarning = hasAmount && validationAmountUsd > maxUsdForValidation;
-  const showMaxButton = showMax && showMaxWarning;
+  const showMaxButton = showMax;
   const currentEntryValue = {
     amountUsd: validationAmountUsd,
+    amountUnits: usdStr,
     nativeAmount,
   };
 
   useEffect(() => {
     onChange?.({
       amountUsd: validationAmountUsd,
+      amountUnits: usdStr,
       nativeAmount,
       isValid,
     });
-  }, [validationAmountUsd, nativeAmount, isValid, onChange]);
+  }, [validationAmountUsd, usdStr, nativeAmount, isValid, onChange]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = parseDisplayAmount(e.target.value);

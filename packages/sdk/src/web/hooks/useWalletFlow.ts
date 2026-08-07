@@ -11,6 +11,7 @@ import { t } from "./locale.js";
 import type { InjectedWallet } from "./useInjectedWallets.js";
 import { prefixWalletError, WalletError } from "./walletError.js";
 import type { EthereumProvider, SolanaProvider } from "./walletProvider.js";
+import { getWalletTokenAmount } from "../walletAmount.js";
 
 const erc20TransferAbi = [
   {
@@ -643,18 +644,7 @@ async function sendEvmTransaction(
     }
   }
 
-  const tokenBalance = BigInt(token.balance.amount);
-  let tokenAmount: bigint;
-  if (token.required.usd > 0) {
-    tokenAmount = BigInt(token.required.amount);
-  } else {
-    const balanceUsd = token.balance.usd;
-    if (balanceUsd <= 0) throw new Error("balance must be positive");
-    const rawTokenAmount =
-      (tokenBalance * BigInt(Math.floor(amountUsd * 1e6))) /
-      BigInt(Math.floor(balanceUsd * 1e6));
-    tokenAmount = rawTokenAmount > tokenBalance ? tokenBalance : rawTokenAmount;
-  }
+  const tokenAmount = getWalletTokenAmount(token, amountUsd);
 
   const tokenAddress = getAddress(tokenInfo.token);
 

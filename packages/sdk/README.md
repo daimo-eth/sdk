@@ -67,9 +67,67 @@ its stylesheet.
 Use `connectToAddress` when the host already has an EVM wallet connected. In
 an injected-wallet flow, set `walletSource="evm"` to exclude Solana-only
 wallets and use only the EVM provider from a dual-chain wallet. The default is
-`"all"`, which preserves mixed EVM and Solana funding. In manual mode, provide
-`sendManualTransaction`; it receives a receiver address that the widget
-deliberately never renders:
+`"all"`, which preserves mixed EVM and Solana funding.
+
+Manual mode never submits an EIP-1193 provider transaction. The host owns the
+transfer through `sendManualTransaction`, while the SDK preserves receiver
+reuse, duplicate-submit protection, retries, polling, and lifecycle callbacks.
+Choose one manual amount mode:
+
+- Pass `amountUnits` for a positive fixed decimal amount. The SDK submits it
+  immediately after destination selection; this variant cannot also take
+  `connectToAddress`.
+- Omit both `amountUnits` and `connectToAddress` for generic USD entry. The SDK
+  accepts `$0.01+` with at most two decimal places.
+- Omit `amountUnits` and pass an EVM `connectToAddress` for read-only token and
+  balance selection. The callback receives the selected source token and exact
+  balance-capped raw amount.
+
+```tsx
+<DaimoWithdrawal
+  fundingMode="manual"
+  connectToAddress={embeddedWallet.address}
+  contactStorageScope={currentUser.id}
+  resolveEns={resolveWithdrawalEns}
+  createSession={createWithdrawalSession}
+  sendManualTransaction={async ({ receiverAddress, source }) => {
+    if (!source) throw new Error("source token is required");
+    const txHash = await embeddedWallet.sendToken({
+      chainId: source.token.chainId,
+      token: source.token.token,
+      to: receiverAddress,
+      amount: source.amount,
+    });
+    return { txHash };
+  }}
+/>
+```
+
+The complete adapter request is:
+
+```ts
+type DaimoWithdrawalManualTransferRequest = {
+  sessionId: string;
+  receiverAddress: Address;
+  destination: DaimoWithdrawalDestination;
+  expiresAt: number;
+  amountUnits: string;
+  source?: {
+    address: Address;
+    token: DaimoPayToken;
+    amount: bigint;
+  };
+};
+```
+
+`amountUnits` is the exact fixed or SDK-entered decimal string. `source` is
+always present in the address-aware path and omitted for fixed or generic
+manual entry. `source.amount` is the exact raw token amount. Resolve only after
+the transaction is submitted or handed off, and reject only when retrying the
+same session is safe. A retry reuses the same hidden receiver. Returning the
+transaction hash lets session polling detect the transfer sooner.
+
+For generic manual entry, omit the address:
 
 ```tsx
 <DaimoWithdrawal
@@ -77,9 +135,14 @@ deliberately never renders:
   contactStorageScope={currentUser.id}
   resolveEns={resolveWithdrawalEns}
   createSession={createWithdrawalSession}
-  sendManualTransaction={async ({ receiverAddress, expiresAt }) => {
+  sendManualTransaction={async ({
+    receiverAddress,
+    amountUnits,
+    expiresAt,
+  }) => {
     const txHash = await hostWallet.sendStablecoin({
       to: receiverAddress,
+      amountUnits,
       expiresAt,
     });
     return { txHash };
@@ -87,11 +150,8 @@ deliberately never renders:
 />
 ```
 
-The manual adapter owns source token, source network, amount selection, and
-transaction construction. It should send supported USDC or USDT from a
-supported EVM network, resolve only after the transaction is submitted or
-handed off, and reject only when retrying that same session is safe. Returning
-the transaction hash lets session polling detect the transfer sooner.
+Pass `amountUnits="25.00"` to the same component for fixed manual submission.
+`evmProvider` is forbidden in every manual variant.
 
 ### Account enrollment interactions
 

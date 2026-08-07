@@ -12,6 +12,7 @@ import {
   removeDaimoWithdrawalContact,
   resolveWithdrawalIdentifier,
   saveDaimoWithdrawalContact,
+  isValidManualWithdrawalAmountUnits,
   type DaimoWithdrawalContact,
 } from "./withdrawal.js";
 import { getDaimoWithdrawalDestinationRoute } from "../common/withdrawal.js";
@@ -238,8 +239,12 @@ describe("manual withdrawal session", () => {
       adapter,
     );
 
-    await expect(controller.start()).rejects.toThrow("cancelled");
-    await expect(controller.start()).resolves.toMatchObject({
+    await expect(controller.start({ amountUnits: "1.25" })).rejects.toThrow(
+      "cancelled",
+    );
+    await expect(
+      controller.start({ amountUnits: "1.25" }),
+    ).resolves.toMatchObject({
       txHash: "0x1234",
     });
     expect(createPaymentMethod).toHaveBeenCalledTimes(1);
@@ -249,6 +254,7 @@ describe("manual withdrawal session", () => {
       receiverAddress: RECEIVER_ADDRESS,
       destination,
       expiresAt: 100,
+      amountUnits: "1.25",
     });
   });
 
@@ -282,8 +288,11 @@ describe("manual withdrawal session", () => {
       adapter,
     );
 
-    await Promise.all([controller.start(), controller.start()]);
-    await controller.start();
+    await Promise.all([
+      controller.start({ amountUnits: "2" }),
+      controller.start({ amountUnits: "2" }),
+    ]);
+    await controller.start({ amountUnits: "2" });
     expect(adapter).toHaveBeenCalledTimes(1);
   });
 
@@ -320,12 +329,111 @@ describe("manual withdrawal session", () => {
       adapter,
     );
 
-    await expect(controller.start()).rejects.toThrow("network unavailable");
-    await expect(controller.start()).resolves.toMatchObject({
+    await expect(controller.start({ amountUnits: "3.00" })).rejects.toThrow(
+      "network unavailable",
+    );
+    await expect(
+      controller.start({ amountUnits: "3.00" }),
+    ).resolves.toMatchObject({
       session: { sessionId: "session-1" },
     });
     expect(createPaymentMethod).toHaveBeenCalledTimes(2);
     expect(adapter).toHaveBeenCalledTimes(1);
+  });
+
+  it("validates fixed amounts before initializing a receiver", async () => {
+    const createPaymentMethod = vi.fn();
+    const adapter = vi.fn();
+    const client = {
+      sessions: { paymentMethods: { create: createPaymentMethod } },
+    } as unknown as DaimoClient;
+    const controller = new ManualWithdrawalSession(
+      client,
+      "session-1",
+      "secret-1",
+      {
+        type: "evm",
+        address: EVM_ADDRESS,
+        chainId: 8453,
+        tokenAddress: getAddress(baseUSDC.token),
+      },
+      adapter,
+    );
+
+    await expect(controller.start({ amountUnits: "0" })).rejects.toThrow(
+      "enter a positive decimal amount",
+    );
+    expect(createPaymentMethod).not.toHaveBeenCalled();
+    expect(adapter).not.toHaveBeenCalled();
+  });
+
+  it("passes address-aware source details through exactly", async () => {
+    const createPaymentMethod = vi.fn().mockResolvedValue({
+      session: {
+        sessionId: "session-1",
+        status: "waiting_payment",
+        paymentMethod: {
+          type: "evm",
+          receiverAddress: RECEIVER_ADDRESS,
+          createdAt: 1,
+        },
+        expiresAt: 100,
+      },
+    });
+    const adapter = vi.fn().mockResolvedValue({});
+    const client = {
+      sessions: { paymentMethods: { create: createPaymentMethod } },
+    } as unknown as DaimoClient;
+    const destination = {
+      type: "evm" as const,
+      address: EVM_ADDRESS,
+      chainId: 8453,
+      tokenAddress: getAddress(baseUSDC.token),
+    };
+    const source = {
+      address: EVM_ADDRESS,
+      token: {
+        ...baseUSDC,
+        token: getAddress(baseUSDC.token),
+        usd: 1,
+        priceFromUsd: 1,
+        maxAcceptUsd: 1_000,
+        maxSendUsd: 1_000,
+        displayDecimals: 2,
+      },
+      amount: 1_250_000n,
+    };
+    const controller = new ManualWithdrawalSession(
+      client,
+      "session-1",
+      "secret-1",
+      destination,
+      adapter,
+    );
+
+    await controller.start({ amountUnits: "1.25", source });
+
+    expect(adapter).toHaveBeenCalledWith({
+      sessionId: "session-1",
+      receiverAddress: RECEIVER_ADDRESS,
+      destination,
+      expiresAt: 100,
+      amountUnits: "1.25",
+      source,
+    });
+  });
+});
+
+describe("manual withdrawal amount validation", () => {
+  it("accepts positive plain decimals and rejects non-positive syntax", () => {
+    expect(isValidManualWithdrawalAmountUnits("1")).toBe(true);
+    expect(isValidManualWithdrawalAmountUnits(".01")).toBe(true);
+    expect(isValidManualWithdrawalAmountUnits("1.2300")).toBe(true);
+    expect(isValidManualWithdrawalAmountUnits("0")).toBe(false);
+    expect(isValidManualWithdrawalAmountUnits("0.00")).toBe(false);
+    expect(isValidManualWithdrawalAmountUnits("-1")).toBe(false);
+    expect(isValidManualWithdrawalAmountUnits("1e2")).toBe(false);
+    expect(isValidManualWithdrawalAmountUnits(" 1 ")).toBe(false);
   });
 });
 
