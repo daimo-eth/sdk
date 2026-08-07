@@ -98,7 +98,7 @@ export function AccountAmountPage({
   );
 
   const handleSubmit = useCallback(
-    ({ nativeAmount }: TokenAmountEntryValue) => {
+    ({ nativeAmount }: Pick<TokenAmountEntryValue, "nativeAmount">) => {
       if (!accountFlow || !constraints || isStarting) return;
       const depositAmount = nativeAmount.toFixed(2);
       if (!startDepositOnAdvance) {
@@ -203,6 +203,7 @@ export function AccountAmountPage({
                 : constraints.badge.logoURI
             }
             badgeAlt={constraints.badge.alt}
+            showMax={false}
             platform={platform}
             baseUrl={baseUrl}
           />
@@ -212,7 +213,7 @@ export function AccountAmountPage({
 
         <PrimaryButton
           onClick={() =>
-            isValid && handleSubmit({ amountUsd, nativeAmount: amountNative })
+            isValid && handleSubmit({ nativeAmount: amountNative })
           }
           disabled={!isValid || !constraints || isStarting}
         >

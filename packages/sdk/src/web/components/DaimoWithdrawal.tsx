@@ -31,14 +31,19 @@ import { formatUserError } from "../hooks/formatUserError.js";
 import { autoDetectLocale, t } from "../hooks/locale.js";
 import type { EthereumProvider } from "../hooks/walletProvider.js";
 import type { DaimoWalletSource } from "../hooks/walletSource.js";
+import type { WalletPaymentOption } from "../api/walletTypes.js";
+import { detectPlatform } from "../platform.js";
 import { resolveDaimoSessionTheme, useDaimoThemeReady } from "../theme.js";
+import { getWalletTokenAmount } from "../walletAmount.js";
 import { PrimaryButton } from "./buttons.js";
 import { ConfirmationSpinner } from "./ConfirmationSpinner.js";
 import { DaimoModal } from "./DaimoModal.js";
 import { EmbeddedContainer } from "./containers.js";
 import { ExpiredIcon, PlusIcon, TrashIcon } from "./icons.js";
 import { Skeleton } from "./Skeleton.js";
+import { SelectTokenPage } from "./SelectTokenPage.js";
 import {
+  AmountInput,
   getChainLogoUrl,
   ListRow,
   PageHeader,
@@ -46,6 +51,7 @@ import {
   TextInput,
   useScrollBorder,
 } from "./shared.js";
+import { WalletAmountPage } from "./WalletAmountPage.js";
 import {
   ManualWithdrawalSession,
   buildDaimoWithdrawalDestination,
@@ -59,6 +65,7 @@ import {
   type DaimoWithdrawalManualTransferRequest,
   type DaimoWithdrawalManualTransferResult,
   type ManualWithdrawalSubmission,
+  type ManualWithdrawalTransfer,
   type ResolvedWithdrawalIdentifier,
 } from "../withdrawal.js";
 
@@ -103,14 +110,25 @@ export type DaimoWithdrawalProps = DaimoWithdrawalBaseProps &
         evmProvider?: DaimoWithdrawalEvmProvider;
         sendManualTransaction?: never;
       }
-    | {
+    | ({
         fundingMode: "manual";
-        connectToAddress?: never;
         evmProvider?: never;
         sendManualTransaction: (
           request: DaimoWithdrawalManualTransferRequest,
         ) => Promise<DaimoWithdrawalManualTransferResult>;
-      }
+      } & (
+        | {
+            /** Fixed destination amount submitted without SDK amount entry. */
+            amountUnits: string;
+            connectToAddress?: never;
+          }
+        | {
+            /** Collect the destination amount inside the SDK. */
+            amountUnits?: never;
+            /** EVM source address used for read-only token/balance selection. */
+            connectToAddress?: Address;
+          }
+      ))
   );
 
 type WithdrawalStep = "identifier" | "asset" | "chain" | "review";
@@ -317,6 +335,8 @@ function DaimoWithdrawalFlow(props: DaimoWithdrawalProps) {
       return (
         <ManualWithdrawalFlow
           session={session}
+          amountUnits={props.amountUnits}
+          connectToAddress={props.connectToAddress}
           sendManualTransaction={props.sendManualTransaction}
           themeMode={theme.themeMode}
           onPaymentStarted={props.onPaymentStarted}
@@ -739,6 +759,8 @@ function ReviewPage({
 
 function ManualWithdrawalFlow({
   session,
+  amountUnits,
+  connectToAddress,
   sendManualTransaction,
   themeMode,
   onPaymentStarted,
@@ -748,6 +770,8 @@ function ManualWithdrawalFlow({
     ref: DaimoWithdrawalSessionRef;
     destination: DaimoWithdrawalDestination;
   };
+  amountUnits?: string;
+  connectToAddress?: Address;
   sendManualTransaction: (
     request: DaimoWithdrawalManualTransferRequest,
   ) => Promise<DaimoWithdrawalManualTransferResult>;
@@ -780,32 +804,73 @@ function ManualWithdrawalFlow({
   const [currentSession, setCurrentSession] =
     useState<SessionPublicInfo | null>(null);
   const [adapterError, setAdapterError] = useState<string | null>(null);
-  const [adapterPending, setAdapterPending] = useState(true);
+  const [adapterPending, setAdapterPending] = useState(false);
+  const [transfer, setTransfer] = useState<ManualWithdrawalTransfer | null>(
+    null,
+  );
+  const [walletOptions, setWalletOptions] = useState<
+    WalletPaymentOption[] | null
+  >(null);
+  const [walletOptionsError, setWalletOptionsError] = useState<string | null>(
+    null,
+  );
+  const [selectedToken, setSelectedToken] =
+    useState<WalletPaymentOption | null>(null);
   const startedRef = useRef(false);
   const completedRef = useRef(false);
+  const fixedAmountStartedRef = useRef(false);
   const currentStatus = currentSession?.status;
 
-  const submit = useCallback(async () => {
-    setAdapterPending(true);
-    setAdapterError(null);
-    try {
-      const next = await controller.start();
-      setSubmission(next);
-      setCurrentSession(next.session);
-      if (!startedRef.current) {
-        startedRef.current = true;
-        onPaymentStartedRef.current?.();
+  const submit = useCallback(
+    async (nextTransfer: ManualWithdrawalTransfer) => {
+      setTransfer(nextTransfer);
+      setAdapterPending(true);
+      setAdapterError(null);
+      try {
+        const next = await controller.start(nextTransfer);
+        setSubmission(next);
+        setCurrentSession(next.session);
+        if (!startedRef.current) {
+          startedRef.current = true;
+          onPaymentStartedRef.current?.();
+        }
+      } catch (err) {
+        setAdapterError(formatWithdrawalUserError(err));
+      } finally {
+        setAdapterPending(false);
       }
-    } catch (err) {
-      setAdapterError(formatWithdrawalUserError(err));
-    } finally {
-      setAdapterPending(false);
-    }
-  }, [controller]);
+    },
+    [controller],
+  );
 
   useEffect(() => {
-    void submit();
-  }, [submit]);
+    if (amountUnits == null || fixedAmountStartedRef.current) return;
+    fixedAmountStartedRef.current = true;
+    void submit({ amountUnits });
+  }, [amountUnits, submit]);
+
+  const loadWalletOptions = useCallback(async () => {
+    if (!connectToAddress) return;
+    setWalletOptions(null);
+    setWalletOptionsError(null);
+    try {
+      const options = await client.internal.sessions.walletOptions(sessionId, {
+        clientSecret,
+        evmAddress: connectToAddress,
+      });
+      setWalletOptions(
+        options.filter(
+          (option) => option.balance.token.chainId !== solana.chainId,
+        ),
+      );
+    } catch (err) {
+      setWalletOptionsError(formatWithdrawalUserError(err));
+    }
+  }, [client, clientSecret, connectToAddress, sessionId]);
+
+  useEffect(() => {
+    void loadWalletOptions();
+  }, [loadWalletOptions]);
 
   useEffect(() => {
     if (!submission || !currentStatus) return;
@@ -836,15 +901,107 @@ function ManualWithdrawalFlow({
     onPaymentCompletedRef.current?.();
   }, [currentSession?.status]);
 
-  return (
-    <EmbeddedContainer showFooterSpacer={false} themeMode={themeMode}>
+  let content: React.ReactNode;
+  if (amountUnits != null || transfer || adapterError) {
+    content = (
       <ManualStatusPage
         session={currentSession}
-        adapterPending={adapterPending}
+        adapterPending={adapterPending || transfer == null}
         adapterError={adapterError}
-        onRetry={() => void submit()}
+        onRetry={() => transfer && void submit(transfer)}
       />
+    );
+  } else if (!connectToAddress) {
+    content = (
+      <ManualWithdrawalAmountPage
+        onContinue={(nextAmountUnits) =>
+          void submit({ amountUnits: nextAmountUnits })
+        }
+      />
+    );
+  } else if (walletOptionsError) {
+    content = (
+      <WithdrawalPage title={t.selectToken}>
+        <WithdrawalError message={walletOptionsError} />
+        <PrimaryButton
+          className="daimo-mx-auto"
+          onClick={() => void loadWalletOptions()}
+        >
+          {t.tryAgain}
+        </PrimaryButton>
+      </WithdrawalPage>
+    );
+  } else if (selectedToken) {
+    content = (
+      <WalletAmountPage
+        token={selectedToken}
+        platform={detectPlatform()}
+        onBack={() => setSelectedToken(null)}
+        onContinue={(amountUsd, nextAmountUnits) =>
+          void submit({
+            amountUnits: nextAmountUnits,
+            source: {
+              address: connectToAddress,
+              token: selectedToken.balance.token,
+              amount: getWalletTokenAmount(selectedToken, amountUsd),
+            },
+          })
+        }
+        baseUrl={DAIMO_BASE_URL}
+      />
+    );
+  } else {
+    content = (
+      <SelectTokenPage
+        options={walletOptions}
+        showRequired={false}
+        isLoading={walletOptions === null}
+        skeletonCount={1}
+        onSelect={setSelectedToken}
+        onBack={null}
+        baseUrl={DAIMO_BASE_URL}
+        sessionId={sessionId}
+      />
+    );
+  }
+
+  return (
+    <EmbeddedContainer showFooterSpacer={false} themeMode={themeMode}>
+      {content}
     </EmbeddedContainer>
+  );
+}
+
+export function ManualWithdrawalAmountPage({
+  onContinue,
+}: {
+  onContinue: (amountUnits: string) => void;
+}) {
+  const [amountUnits, setAmountUnits] = useState("");
+  const [isValid, setIsValid] = useState(false);
+  return (
+    <div className="daimo-flex daimo-min-h-[360px] daimo-flex-col">
+      <PageHeader title={t.enterAmount} />
+      <div className="daimo-flex daimo-flex-1 daimo-flex-col daimo-items-center daimo-justify-center daimo-gap-6 daimo-p-6">
+        <AmountInput
+          minimum={0.01}
+          maximum={Number.MAX_SAFE_INTEGER}
+          decimals={2}
+          onSubmit={(_amount, nextAmountUnits) => onContinue(nextAmountUnits)}
+          onChange={(_amount, nextIsValid, nextAmountUnits) => {
+            setAmountUnits(nextAmountUnits);
+            setIsValid(nextIsValid);
+          }}
+        />
+        <PrimaryButton
+          onClick={() => isValid && onContinue(amountUnits)}
+          disabled={!isValid}
+          className="daimo-max-w-none"
+        >
+          {t.continue}
+        </PrimaryButton>
+      </div>
+    </div>
   );
 }
 

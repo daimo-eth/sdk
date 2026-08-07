@@ -5,6 +5,7 @@ import { normalize } from "viem/ens";
 import type { DaimoClient } from "../client/createDaimoClient.js";
 import { solana } from "../common/chain.js";
 import type { SessionPublicInfo } from "../common/session.js";
+import type { DaimoPayToken } from "../common/token.js";
 import {
   getDaimoWithdrawalDestinationRoute,
   type DaimoWithdrawalDestination,
@@ -37,6 +38,15 @@ export type DaimoWithdrawalManualTransferRequest = {
   receiverAddress: Address;
   destination: DaimoWithdrawalDestination;
   expiresAt: number;
+  /** Exact fixed or user-entered destination amount. */
+  amountUnits: string;
+  /** Selected source details for an address-aware manual transfer. */
+  source?: {
+    address: Address;
+    token: DaimoPayToken;
+    /** Exact source token amount in raw token units. */
+    amount: bigint;
+  };
 };
 
 export type DaimoWithdrawalManualTransferResult = void | {
@@ -49,6 +59,10 @@ type EnsResolver = (name: string) => Promise<{ address: Address }>;
 type ManualTransferAdapter = (
   request: DaimoWithdrawalManualTransferRequest,
 ) => Promise<DaimoWithdrawalManualTransferResult>;
+export type ManualWithdrawalTransfer = Pick<
+  DaimoWithdrawalManualTransferRequest,
+  "amountUnits" | "source"
+>;
 
 const CONTACTS_STORAGE_KEY = "daimo.withdrawal.contacts";
 const CONTACTS_VERSION = 1;
@@ -202,11 +216,13 @@ export class ManualWithdrawalSession {
     private sendManualTransaction: ManualTransferAdapter,
   ) {}
 
-  start(): Promise<ManualWithdrawalSubmission> {
+  start(
+    transfer: ManualWithdrawalTransfer,
+  ): Promise<ManualWithdrawalSubmission> {
     if (this.submission) return Promise.resolve(this.submission);
     if (this.submissionPromise) return this.submissionPromise;
 
-    const promise = this.submit();
+    const promise = this.submit(transfer);
     this.submissionPromise = promise;
     void promise
       .then(
@@ -221,13 +237,19 @@ export class ManualWithdrawalSession {
     return promise;
   }
 
-  private async submit(): Promise<ManualWithdrawalSubmission> {
+  private async submit(
+    transfer: ManualWithdrawalTransfer,
+  ): Promise<ManualWithdrawalSubmission> {
+    if (!isValidManualWithdrawalAmountUnits(transfer.amountUnits)) {
+      throw new Error("enter a positive decimal amount");
+    }
     const paymentMethod = await this.getPaymentMethod();
     const result = await this.sendManualTransaction({
       sessionId: this.sessionId,
       receiverAddress: paymentMethod.receiverAddress,
       destination: this.destination,
       expiresAt: paymentMethod.expiresAt,
+      ...transfer,
     });
     return { session: paymentMethod.session, txHash: result?.txHash };
   }
@@ -258,6 +280,12 @@ export class ManualWithdrawalSession {
     }
     return this.paymentMethodPromise;
   }
+}
+
+export function isValidManualWithdrawalAmountUnits(amountUnits: string) {
+  if (amountUnits !== amountUnits.trim()) return false;
+  if (!/^(?:\d+(?:\.\d*)?|\.\d+)$/.test(amountUnits)) return false;
+  return /[1-9]/.test(amountUnits);
 }
 
 export type ManualWithdrawalSubmission = {
