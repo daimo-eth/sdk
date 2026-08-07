@@ -901,6 +901,13 @@ function ManualWithdrawalFlow({
     onPaymentCompletedRef.current?.();
   }, [currentSession?.status]);
 
+  const showFooterSpacer =
+    connectToAddress != null &&
+    amountUnits == null &&
+    transfer == null &&
+    adapterError == null &&
+    walletOptionsError == null;
+
   let content: React.ReactNode;
   if (amountUnits != null || transfer || adapterError) {
     content = (
@@ -966,7 +973,7 @@ function ManualWithdrawalFlow({
   }
 
   return (
-    <EmbeddedContainer showFooterSpacer={false} themeMode={themeMode}>
+    <EmbeddedContainer showFooterSpacer={showFooterSpacer} themeMode={themeMode}>
       {content}
     </EmbeddedContainer>
   );
