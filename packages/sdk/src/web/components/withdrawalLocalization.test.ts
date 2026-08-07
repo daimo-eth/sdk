@@ -72,4 +72,20 @@ describe("withdrawal localization", () => {
 
     expect(html).toContain('data-theme="light"');
   });
+
+  it("renders the recipient flow as a dismissible modal", () => {
+    const html = renderToStaticMarkup(
+      createElement(DaimoWithdrawal, {
+        fundingMode: "injected-wallet",
+        contactStorageScope: "account-1",
+        resolveEns: vi.fn(),
+        createSession: vi.fn(),
+        embedded: false,
+        onClose: vi.fn(),
+      }),
+    );
+
+    expect(html).toContain("daimo-modal-backdrop");
+    expect(html).toContain('aria-label="Close"');
+  });
 });
