@@ -101,7 +101,7 @@ type DaimoWithdrawalBaseProps = {
   themeMode?: DaimoThemeMode;
   /** Render inline instead of as a floating modal. Default: true. */
   embedded?: boolean;
-  /** Called when the floating modal is dismissed. */
+  /** Called after the floating modal dismisses itself. */
   onClose?: () => void;
   onPaymentStarted?: () => void;
   onPaymentCompleted?: () => void;
@@ -162,6 +162,7 @@ function DaimoWithdrawalFlow(props: DaimoWithdrawalProps) {
   const theme = resolveDaimoSessionTheme(props.theme, props.themeMode);
   const embedded = props.embedded ?? true;
   const themeReady = useDaimoThemeReady(theme.themeCssUrl);
+  const [isOpen, setIsOpen] = useState(true);
   const [step, setStep] = useState<WithdrawalStep>("identifier");
   const [identifierInput, setIdentifierInput] = useState("");
   const [identifier, setIdentifier] =
@@ -333,12 +334,19 @@ function DaimoWithdrawalFlow(props: DaimoWithdrawalProps) {
     }
   }, [createWithdrawalSession, identifier, route, saveContact]);
 
+  const handleClose = useCallback(() => {
+    setIsOpen(false);
+    props.onClose?.();
+  }, [props.onClose]);
+
+  if (!isOpen) return null;
+
   if (!themeReady) {
     return (
       <div style={{ visibility: "hidden" }}>
         <WithdrawalContainer
           embedded={embedded}
-          onClose={props.onClose}
+          onClose={handleClose}
           themeMode={theme.themeMode}
         >
           <WithdrawalPage title={t.withdrawalAction} compact>
@@ -359,7 +367,7 @@ function DaimoWithdrawalFlow(props: DaimoWithdrawalProps) {
           sendManualTransaction={props.sendManualTransaction}
           sourceTokenFilter={props.sourceTokenFilter}
           embedded={embedded}
-          onClose={props.onClose}
+          onClose={handleClose}
           themeMode={theme.themeMode}
           onPaymentStarted={props.onPaymentStarted}
           onPaymentCompleted={props.onPaymentCompleted}
@@ -376,7 +384,7 @@ function DaimoWithdrawalFlow(props: DaimoWithdrawalProps) {
         connectToEvmProvider={props.evmProvider}
         walletSource={props.walletSource}
         themeMode={theme.themeMode}
-        onClose={props.onClose}
+        onClose={handleClose}
         onPaymentStarted={props.onPaymentStarted}
         onPaymentCompleted={props.onPaymentCompleted}
         confirmationMode="withdrawal"
@@ -387,7 +395,7 @@ function DaimoWithdrawalFlow(props: DaimoWithdrawalProps) {
   return (
     <WithdrawalContainer
       embedded={embedded}
-      onClose={props.onClose}
+      onClose={handleClose}
       pageKey={step}
       themeMode={theme.themeMode}
     >
@@ -808,7 +816,7 @@ function ManualWithdrawalFlow({
   ) => Promise<DaimoWithdrawalManualTransferResult>;
   sourceTokenFilter?: (token: DaimoPayToken) => boolean;
   embedded: boolean;
-  onClose?: () => void;
+  onClose: () => void;
   themeMode?: DaimoThemeMode;
   onPaymentStarted?: () => void;
   onPaymentCompleted?: () => void;
@@ -1049,7 +1057,7 @@ function WithdrawalContainer({
 }: {
   children: React.ReactNode;
   embedded: boolean;
-  onClose?: () => void;
+  onClose: () => void;
   pageKey?: string;
   showFooterSpacer?: boolean;
   themeMode?: DaimoThemeMode;
@@ -1065,9 +1073,7 @@ function WithdrawalContainer({
     );
   }
 
-  const controls: ModalChromeControls = onClose
-    ? { type: "close", close: { onClose } }
-    : { type: "none" };
+  const controls: ModalChromeControls = { type: "close", close: { onClose } };
   return (
     <ModalContainer
       onClose={onClose}
