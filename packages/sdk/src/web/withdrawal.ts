@@ -68,6 +68,28 @@ const CONTACTS_STORAGE_KEY = "daimo.withdrawal.contacts";
 const CONTACTS_VERSION = 1;
 const MAX_CONTACTS = 12;
 
+/** Resolve with an explicit override or the provider's configured Daimo API. */
+export function resolveWithdrawalIdentifierWithClient(
+  input: string,
+  client: DaimoClient,
+  resolveEns?: EnsResolver,
+): Promise<ResolvedWithdrawalIdentifier> {
+  return resolveWithdrawalIdentifier(
+    input,
+    resolveEns ?? client.internal.ens.resolve,
+  );
+}
+
+/** Re-resolve a saved identifier before creating a session from its address. */
+export async function resolveAndCreateWithdrawalSession<T>(
+  input: string,
+  resolveIdentifier: (value: string) => Promise<ResolvedWithdrawalIdentifier>,
+  createSession: (identifier: ResolvedWithdrawalIdentifier) => Promise<T>,
+): Promise<T> {
+  const identifier = await resolveIdentifier(input);
+  return createSession(identifier);
+}
+
 /** Normalize an EVM address, Solana address, or ENS name for review. */
 export async function resolveWithdrawalIdentifier(
   input: string,

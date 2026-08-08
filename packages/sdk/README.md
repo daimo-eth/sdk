@@ -25,12 +25,12 @@ Import `@daimo/sdk/web/theme.css` for the built-in web UI. The distributed style
 
 `DaimoWithdrawal` collects a recipient address or ENS name, destination
 stablecoin, and destination network before asking your server to create an
-open-amount session. Wrap it in `DaimoSDKProvider` so session polling uses the
-Daimo API.
+open-amount session. Wrap it in `DaimoSDKProvider` so ENS resolution and session
+polling use the provider's configured Daimo API URL.
 
-The callbacks should call your authenticated backend, which resolves ENS and
-creates the session with your Daimo API key; never expose that key or a paid RPC
-endpoint in browser code.
+ENS works without additional configuration. The `createSession` callback must
+call your authenticated backend with your Daimo API key; never expose that key
+in browser code.
 
 ```tsx
 import "@daimo/sdk/web/theme.css";
@@ -43,7 +43,6 @@ export function Withdrawal() {
         fundingMode="injected-wallet"
         contactStorageScope={currentUser.id}
         theme={accountTheme}
-        resolveEns={resolveWithdrawalEns}
         createSession={(input) =>
           fetch("/api/withdrawal/session", {
             method: "POST",
@@ -58,12 +57,17 @@ export function Withdrawal() {
 ```
 
 `contactStorageScope` must be a stable authenticated user or account ID. The
-widget uses it to isolate saved destinations in local storage. `resolveEns`
-must authenticate the caller before forwarding a name to an upstream resolver.
+widget uses it to isolate saved destinations in local storage. ENS is always
+resolved on Ethereum mainnet, regardless of the selected destination network.
 Pass the organization theme returned by your backend through `theme`; the
 widget waits for a custom stylesheet before showing recipient UI. An explicit
 `themeMode` prop overrides the theme's light/dark/system mode while retaining
 its stylesheet.
+
+Pass `resolveEns` only when your integration intentionally needs custom ENS
+resolution. The callback receives an ENSIP-15-normalized name and takes
+precedence over Daimo's hosted resolver. Keep paid RPC credentials behind your
+own authenticated backend.
 Use `connectToAddress` when the host already has an EVM wallet connected. In
 an injected-wallet flow, set `walletSource="evm"` to exclude Solana-only
 wallets and use only the EVM provider from a dual-chain wallet. The default is
@@ -88,7 +92,6 @@ Choose one manual amount mode:
   fundingMode="manual"
   connectToAddress={embeddedWallet.address}
   contactStorageScope={currentUser.id}
-  resolveEns={resolveWithdrawalEns}
   createSession={createWithdrawalSession}
   sendManualTransaction={async ({ receiverAddress, source }) => {
     if (!source) throw new Error("source token is required");
@@ -133,7 +136,6 @@ For generic manual entry, omit the address:
 <DaimoWithdrawal
   fundingMode="manual"
   contactStorageScope={currentUser.id}
-  resolveEns={resolveWithdrawalEns}
   createSession={createWithdrawalSession}
   sendManualTransaction={async ({
     receiverAddress,

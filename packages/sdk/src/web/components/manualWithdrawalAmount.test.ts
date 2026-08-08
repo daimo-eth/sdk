@@ -10,6 +10,7 @@ import type {
 } from "../api/walletTypes.js";
 import { setLocale } from "../hooks/locale.js";
 import {
+  filterWithdrawalWalletOptions,
   ManualWithdrawalAmountPage,
   type DaimoWithdrawalProps,
 } from "./DaimoWithdrawal.js";
@@ -79,12 +80,40 @@ describe("manual withdrawal amount pages", () => {
 
     expect(html).not.toContain(">Max<");
   });
+
+  it("filters unsupported manual source tokens before rendering", () => {
+    const worldToken = {
+      ...token,
+      chainId: 480,
+      token: getAddress("0x1111111111111111111111111111111111111111"),
+    };
+    const solanaToken = {
+      ...token,
+      chainId: 501,
+      token: getAddress("0x2222222222222222222222222222222222222222"),
+    };
+
+    expect(
+      filterWithdrawalWalletOptions(
+        [
+          makeWalletOption(token),
+          makeWalletOption(worldToken),
+          makeWalletOption(solanaToken),
+        ],
+        (candidate) => candidate.chainId === 480,
+      ),
+    ).toEqual([makeWalletOption(worldToken)]);
+  });
 });
 
-function makeWalletOption(): WalletPaymentOption {
-  const zero: DaimoPayTokenAmount = { token, amount: "0", usd: 0 };
+function makeWalletOption(sourceToken = token): WalletPaymentOption {
+  const zero: DaimoPayTokenAmount = {
+    token: sourceToken,
+    amount: "0",
+    usd: 0,
+  };
   return {
-    balance: { token, amount: "10000000", usd: 10 },
+    balance: { token: sourceToken, amount: "10000000", usd: 10 },
     required: zero,
     minimumRequired: { token, amount: "10000", usd: 0.01 },
     fees: zero,

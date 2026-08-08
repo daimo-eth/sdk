@@ -31,15 +31,16 @@ import { formatUserError } from "../hooks/formatUserError.js";
 import { autoDetectLocale, t } from "../hooks/locale.js";
 import type { EthereumProvider } from "../hooks/walletProvider.js";
 import type { DaimoWalletSource } from "../hooks/walletSource.js";
-import type { WalletPaymentOption } from "../api/walletTypes.js";
+import type { DaimoPayToken, WalletPaymentOption } from "../api/walletTypes.js";
 import { detectPlatform } from "../platform.js";
 import { resolveDaimoSessionTheme, useDaimoThemeReady } from "../theme.js";
 import { getWalletTokenAmount } from "../walletAmount.js";
 import { PrimaryButton } from "./buttons.js";
 import { ConfirmationSpinner } from "./ConfirmationSpinner.js";
 import { DaimoModal } from "./DaimoModal.js";
-import { EmbeddedContainer } from "./containers.js";
+import { EmbeddedContainer, ModalContainer } from "./containers.js";
 import { ExpiredIcon, PlusIcon, TrashIcon } from "./icons.js";
+import { ModalChrome, type ModalChromeControls } from "./ModalChrome.js";
 import { Skeleton } from "./Skeleton.js";
 import { SelectTokenPage } from "./SelectTokenPage.js";
 import {
@@ -59,7 +60,8 @@ import {
   getDaimoWithdrawalStorage,
   readDaimoWithdrawalContacts,
   removeDaimoWithdrawalContact,
-  resolveWithdrawalIdentifier,
+  resolveAndCreateWithdrawalSession,
+  resolveWithdrawalIdentifierWithClient,
   saveDaimoWithdrawalContact,
   type DaimoWithdrawalContact,
   type DaimoWithdrawalManualTransferRequest,
@@ -85,8 +87,8 @@ type DaimoWithdrawalSessionRef = {
 type DaimoWithdrawalBaseProps = {
   /** Stable authenticated user/account scope for isolated saved destinations. */
   contactStorageScope: string;
-  /** Resolve a normalized ENS name through the host's authenticated backend. */
-  resolveEns: (name: string) => Promise<{ address: Address }>;
+  /** Override Daimo's built-in Ethereum-mainnet ENS resolution. */
+  resolveEns?: (name: string) => Promise<{ address: Address }>;
   createSession: (input: {
     destination: DaimoWithdrawalDestination;
     fundingMode: DaimoWithdrawalFundingMode;
@@ -97,6 +99,10 @@ type DaimoWithdrawalBaseProps = {
   theme?: DaimoSessionTheme;
   /** Explicit light/dark/system override for the supplied or session theme. */
   themeMode?: DaimoThemeMode;
+  /** Render inline instead of as a floating modal. Default: true. */
+  embedded?: boolean;
+  /** Called after the floating modal dismisses itself. */
+  onClose?: () => void;
   onPaymentStarted?: () => void;
   onPaymentCompleted?: () => void;
 };
@@ -116,6 +122,8 @@ export type DaimoWithdrawalProps = DaimoWithdrawalBaseProps &
         sendManualTransaction: (
           request: DaimoWithdrawalManualTransferRequest,
         ) => Promise<DaimoWithdrawalManualTransferResult>;
+        /** Keep only source tokens the host wallet can submit. */
+        sourceTokenFilter?: (token: DaimoPayToken) => boolean;
       } & (
         | {
             /** Fixed destination amount submitted without SDK amount entry. */
@@ -150,8 +158,11 @@ export function DaimoWithdrawal(props: DaimoWithdrawalProps) {
 }
 
 function DaimoWithdrawalFlow(props: DaimoWithdrawalProps) {
+  const client = useDaimoClient();
   const theme = resolveDaimoSessionTheme(props.theme, props.themeMode);
+  const embedded = props.embedded ?? true;
   const themeReady = useDaimoThemeReady(theme.themeCssUrl);
+  const [isOpen, setIsOpen] = useState(true);
   const [step, setStep] = useState<WithdrawalStep>("identifier");
   const [identifierInput, setIdentifierInput] = useState("");
   const [identifier, setIdentifier] =
@@ -190,8 +201,9 @@ function DaimoWithdrawalFlow(props: DaimoWithdrawalProps) {
   }, [props.contactStorageScope]);
 
   const resolveIdentifierValue = useCallback(
-    (value: string) => resolveWithdrawalIdentifier(value, props.resolveEns),
-    [props.resolveEns],
+    (value: string) =>
+      resolveWithdrawalIdentifierWithClient(value, client, props.resolveEns),
+    [client, props.resolveEns],
   );
 
   const resolveIdentifier = useCallback(
@@ -281,8 +293,12 @@ function DaimoWithdrawalFlow(props: DaimoWithdrawalProps) {
       setBusy(true);
       setError(null);
       try {
-        const resolved = await resolveIdentifierValue(contact.identifier);
-        await createWithdrawalSession(resolved, contactRoute, contact);
+        await resolveAndCreateWithdrawalSession(
+          contact.identifier,
+          resolveIdentifierValue,
+          (resolved) =>
+            createWithdrawalSession(resolved, contactRoute, contact),
+        );
       } catch (err) {
         setError(formatWithdrawalUserError(err));
       } finally {
@@ -318,14 +334,25 @@ function DaimoWithdrawalFlow(props: DaimoWithdrawalProps) {
     }
   }, [createWithdrawalSession, identifier, route, saveContact]);
 
+  const handleClose = useCallback(() => {
+    setIsOpen(false);
+    props.onClose?.();
+  }, [props.onClose]);
+
+  if (!isOpen) return null;
+
   if (!themeReady) {
     return (
       <div style={{ visibility: "hidden" }}>
-        <EmbeddedContainer themeMode={theme.themeMode}>
+        <WithdrawalContainer
+          embedded={embedded}
+          onClose={handleClose}
+          themeMode={theme.themeMode}
+        >
           <WithdrawalPage title={t.withdrawalAction} compact>
             <Skeleton className="daimo-h-16 daimo-w-full" rounded="lg" />
           </WithdrawalPage>
-        </EmbeddedContainer>
+        </WithdrawalContainer>
       </div>
     );
   }
@@ -338,6 +365,9 @@ function DaimoWithdrawalFlow(props: DaimoWithdrawalProps) {
           amountUnits={props.amountUnits}
           connectToAddress={props.connectToAddress}
           sendManualTransaction={props.sendManualTransaction}
+          sourceTokenFilter={props.sourceTokenFilter}
+          embedded={embedded}
+          onClose={handleClose}
           themeMode={theme.themeMode}
           onPaymentStarted={props.onPaymentStarted}
           onPaymentCompleted={props.onPaymentCompleted}
@@ -348,12 +378,13 @@ function DaimoWithdrawalFlow(props: DaimoWithdrawalProps) {
       <DaimoModal
         sessionId={session.ref.sessionId}
         clientSecret={session.ref.clientSecret}
-        embedded
+        embedded={embedded}
         connectToInjectedWallets={props.connectToAddress == null}
         connectToAddress={props.connectToAddress}
         connectToEvmProvider={props.evmProvider}
         walletSource={props.walletSource}
         themeMode={theme.themeMode}
+        onClose={handleClose}
         onPaymentStarted={props.onPaymentStarted}
         onPaymentCompleted={props.onPaymentCompleted}
         confirmationMode="withdrawal"
@@ -362,7 +393,12 @@ function DaimoWithdrawalFlow(props: DaimoWithdrawalProps) {
   }
 
   return (
-    <EmbeddedContainer themeMode={theme.themeMode}>
+    <WithdrawalContainer
+      embedded={embedded}
+      onClose={handleClose}
+      pageKey={step}
+      themeMode={theme.themeMode}
+    >
       {step === "identifier" && !contactsLoaded && (
         <WithdrawalPage title={t.withdrawalAction} compact>
           <Skeleton className="daimo-h-16 daimo-w-full" rounded="lg" />
@@ -464,7 +500,7 @@ function DaimoWithdrawalFlow(props: DaimoWithdrawalProps) {
           onContinue={() => void continueFromReview()}
         />
       )}
-    </EmbeddedContainer>
+    </WithdrawalContainer>
   );
 }
 
@@ -762,6 +798,9 @@ function ManualWithdrawalFlow({
   amountUnits,
   connectToAddress,
   sendManualTransaction,
+  sourceTokenFilter,
+  embedded,
+  onClose,
   themeMode,
   onPaymentStarted,
   onPaymentCompleted,
@@ -775,15 +814,20 @@ function ManualWithdrawalFlow({
   sendManualTransaction: (
     request: DaimoWithdrawalManualTransferRequest,
   ) => Promise<DaimoWithdrawalManualTransferResult>;
+  sourceTokenFilter?: (token: DaimoPayToken) => boolean;
+  embedded: boolean;
+  onClose: () => void;
   themeMode?: DaimoThemeMode;
   onPaymentStarted?: () => void;
   onPaymentCompleted?: () => void;
 }) {
   const client = useDaimoClient();
   const sendManualTransactionRef = useRef(sendManualTransaction);
+  const sourceTokenFilterRef = useRef(sourceTokenFilter);
   const onPaymentStartedRef = useRef(onPaymentStarted);
   const onPaymentCompletedRef = useRef(onPaymentCompleted);
   sendManualTransactionRef.current = sendManualTransaction;
+  sourceTokenFilterRef.current = sourceTokenFilter;
   onPaymentStartedRef.current = onPaymentStarted;
   onPaymentCompletedRef.current = onPaymentCompleted;
   const { sessionId, clientSecret } = session.ref;
@@ -859,9 +903,7 @@ function ManualWithdrawalFlow({
         evmAddress: connectToAddress,
       });
       setWalletOptions(
-        options.filter(
-          (option) => option.balance.token.chainId !== solana.chainId,
-        ),
+        filterWithdrawalWalletOptions(options, sourceTokenFilterRef.current),
       );
     } catch (err) {
       setWalletOptionsError(formatWithdrawalUserError(err));
@@ -973,9 +1015,74 @@ function ManualWithdrawalFlow({
   }
 
   return (
-    <EmbeddedContainer showFooterSpacer={showFooterSpacer} themeMode={themeMode}>
+    <WithdrawalContainer
+      embedded={embedded}
+      onClose={onClose}
+      pageKey={
+        amountUnits != null || transfer || adapterError
+          ? "status"
+          : walletOptionsError
+            ? "error"
+            : selectedToken
+              ? "amount"
+              : "token"
+      }
+      showFooterSpacer={showFooterSpacer}
+      themeMode={themeMode}
+    >
       {content}
-    </EmbeddedContainer>
+    </WithdrawalContainer>
+  );
+}
+
+/** Filter address-aware manual sources before they are rendered. */
+export function filterWithdrawalWalletOptions(
+  options: WalletPaymentOption[],
+  sourceTokenFilter?: (token: DaimoPayToken) => boolean,
+): WalletPaymentOption[] {
+  return options.filter(
+    (option) =>
+      option.balance.token.chainId !== solana.chainId &&
+      (sourceTokenFilter?.(option.balance.token) ?? true),
+  );
+}
+
+function WithdrawalContainer({
+  children,
+  embedded,
+  onClose,
+  pageKey,
+  showFooterSpacer,
+  themeMode,
+}: {
+  children: React.ReactNode;
+  embedded: boolean;
+  onClose: () => void;
+  pageKey?: string;
+  showFooterSpacer?: boolean;
+  themeMode?: DaimoThemeMode;
+}) {
+  if (embedded) {
+    return (
+      <EmbeddedContainer
+        showFooterSpacer={showFooterSpacer}
+        themeMode={themeMode}
+      >
+        {children}
+      </EmbeddedContainer>
+    );
+  }
+
+  const controls: ModalChromeControls = { type: "close", close: { onClose } };
+  return (
+    <ModalContainer
+      onClose={onClose}
+      pageKey={pageKey}
+      showFooterSpacer={showFooterSpacer}
+      themeMode={themeMode}
+    >
+      <ModalChrome controls={controls}>{() => children}</ModalChrome>
+    </ModalContainer>
   );
 }
 
