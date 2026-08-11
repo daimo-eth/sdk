@@ -45,7 +45,10 @@ import {
   interactionRequiresPopup,
   isFramed,
 } from "../components/account/fiatPopup.js";
-import { pruneCompletedAccountAuth } from "./accountAuthNav.js";
+import {
+  getAccountAuthDecision,
+  pruneCompletedAccountAuth,
+} from "./accountAuthNav.js";
 import { useDaimoClient } from "./DaimoClientContext.js";
 import { t } from "./locale.js";
 import { createNavLogger, type NavNodeType } from "./navEvent.js";
@@ -523,114 +526,152 @@ export function useSessionNav(
       // which always has the latest Privy state.
       const token = await accountFlow.getAccessToken();
 
-      // If user has an active Privy session, check their account status
-      // to skip onboarding steps they've already completed.
-      if (token) {
-        const sessionCtx = {
-          sessionId: session.sessionId,
-          clientSecret: session.clientSecret,
-        };
-        const result = await accountFlow.getAccount(client, sessionCtx, {
+      const sessionCtx = {
+        sessionId: session.sessionId,
+        clientSecret: session.clientSecret,
+      };
+      const accountResponse = token
+        ? await accountFlow.getAccount(client, sessionCtx, { rail })
+        : null;
+      const authDecision = getAccountAuthDecision({
+        isAuthenticated: accountFlow.isAuthenticated,
+        accessToken: token,
+        accountResponse,
+      });
+
+      if (authDecision.type === "error") {
+        replaceLoading({
+          type: "account-error",
+          nodeId,
           rail,
+          paymentInteraction,
+          autoNav,
+          message: t.errorGeneric,
         });
-        if (result) {
-          if (result.nextAction === "ready_for_payment") {
-            if (
-              existingDeposit &&
-              shouldRecoverExpiredPayment(
-                existingDeposit.status,
-                paymentInteraction,
-              )
-            ) {
-              accountFlow.setDepositState(session.sessionId, {
-                depositAmount: existingDeposit.fiatAmount,
-                kind: "idle",
-              });
-              replaceLoading({
-                type: "account-payment-resume",
-                nodeId,
-                rail,
-                paymentInteraction,
-                autoNav,
-              });
-              return;
-            }
-
-            if (
-              existingDeposit &&
-              (existingDeposit.status === "initiated" ||
-                existingDeposit.status === "awaiting_payment") &&
-              (paymentInteraction === "request-to-pay" ||
-                paymentInteraction === "institution-picker" ||
-                paymentInteraction === "hosted-approval" ||
-                paymentInteraction === "external-app-approval")
-            ) {
-              accountFlow.setDepositState(session.sessionId, {
-                depositAmount: existingDeposit.fiatAmount,
-                kind: "idle",
-              });
-              replaceLoading({
-                type: "account-payment-resume",
-                nodeId,
-                rail,
-                paymentInteraction,
-                autoNav,
-              });
-              return;
-            }
-
-            const recreatedAmount = recreatedAmountRef.current;
-            if (recreatedAmount?.sessionId === session.sessionId) {
-              recreatedAmountRef.current = undefined;
-              if (paymentInteraction === "request-to-pay") {
-                replaceLoading({
-                  type: "account-request-to-pay",
-                  nodeId,
-                  rail,
-                  paymentInteraction,
-                  autoNav,
-                });
-                return;
-              }
-            }
-
-            // Some rails skip the amount-first step and go straight to a
-            // unified payment page.
-            const entryType = getAccountPaymentEntryTarget(paymentInteraction);
-            replaceLoading({
-              type: entryType,
-              nodeId,
-              rail,
-              paymentInteraction,
-              autoNav,
-            });
-            return;
-          }
-          if (result.nextAction === "enrollment") {
-            replaceLoading({
-              type: "account-enrollment",
-              nodeId,
-              rail,
-              paymentInteraction,
-              autoNav,
-            });
-            return;
-          }
-          if (result.nextAction === "enrollment_update") {
-            replaceLoading({
-              type: "account-enrollment-update",
-              nodeId,
-              rail,
-              paymentInteraction,
-              autoNav,
-              update: result.enrollmentUpdate,
-            });
-            return;
-          }
-        }
+        return;
       }
 
-      if (accountAuth?.email) {
+      if (authDecision.type === "create-account") {
+        replaceLoading({
+          type: "account-creating-wallet",
+          nodeId,
+          rail,
+          paymentInteraction,
+          autoNav,
+        });
+        return;
+      }
+
+      if (authDecision.type === "existing-account") {
+        const result = authDecision.response;
+        if (result.nextAction === "ready_for_payment") {
+          if (
+            existingDeposit &&
+            shouldRecoverExpiredPayment(
+              existingDeposit.status,
+              paymentInteraction,
+            )
+          ) {
+            accountFlow.setDepositState(session.sessionId, {
+              depositAmount: existingDeposit.fiatAmount,
+              kind: "idle",
+            });
+            replaceLoading({
+              type: "account-payment-resume",
+              nodeId,
+              rail,
+              paymentInteraction,
+              autoNav,
+            });
+            return;
+          }
+
+          if (
+            existingDeposit &&
+            (existingDeposit.status === "initiated" ||
+              existingDeposit.status === "awaiting_payment") &&
+            (paymentInteraction === "request-to-pay" ||
+              paymentInteraction === "institution-picker" ||
+              paymentInteraction === "hosted-approval" ||
+              paymentInteraction === "external-app-approval")
+          ) {
+            accountFlow.setDepositState(session.sessionId, {
+              depositAmount: existingDeposit.fiatAmount,
+              kind: "idle",
+            });
+            replaceLoading({
+              type: "account-payment-resume",
+              nodeId,
+              rail,
+              paymentInteraction,
+              autoNav,
+            });
+            return;
+          }
+
+          const recreatedAmount = recreatedAmountRef.current;
+          if (recreatedAmount?.sessionId === session.sessionId) {
+            recreatedAmountRef.current = undefined;
+            if (paymentInteraction === "request-to-pay") {
+              replaceLoading({
+                type: "account-request-to-pay",
+                nodeId,
+                rail,
+                paymentInteraction,
+                autoNav,
+              });
+              return;
+            }
+          }
+
+          // Some rails skip the amount-first step and go straight to a
+          // unified payment page.
+          const entryType = getAccountPaymentEntryTarget(paymentInteraction);
+          replaceLoading({
+            type: entryType,
+            nodeId,
+            rail,
+            paymentInteraction,
+            autoNav,
+          });
+          return;
+        }
+        if (
+          result.nextAction === "enrollment" ||
+          result.nextAction === "suspended"
+        ) {
+          replaceLoading({
+            type: "account-enrollment",
+            nodeId,
+            rail,
+            paymentInteraction,
+            autoNav,
+          });
+          return;
+        }
+        if (result.nextAction === "enrollment_update") {
+          replaceLoading({
+            type: "account-enrollment-update",
+            nodeId,
+            rail,
+            paymentInteraction,
+            autoNav,
+            update: result.enrollmentUpdate,
+          });
+          return;
+        }
+        replaceLoading({
+          type: "account-error",
+          nodeId,
+          rail,
+          paymentInteraction,
+          autoNav,
+          message: t.errorGeneric,
+        });
+        return;
+      }
+
+      if (authDecision.type === "email-hint" && accountAuth?.email) {
         await accountFlow.logout();
         accountFlow.setEmail(accountAuth.email);
         const sent = await accountFlow.sendOtp(accountAuth.email);

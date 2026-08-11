@@ -1,4 +1,13 @@
+import type { GetAccountResponse } from "../../common/account.js";
 import type { NavEntry } from "./types.js";
+
+type ExistingAccountResponse = Exclude<GetAccountResponse, { account: null }>;
+
+export type AccountAuthDecision =
+  | { type: "email-hint" }
+  | { type: "error" }
+  | { type: "create-account" }
+  | { type: "existing-account"; response: ExistingAccountResponse };
 
 type AccountAuthChallengeEntryType = Extract<
   NavEntry["type"],
@@ -18,6 +27,22 @@ const ACCOUNT_AUTH_ENTRY_TYPES = new Set<AccountAuthEntryType>([
   "account-phone",
   "account-phone-otp",
 ]);
+
+/** An authenticated Privy identity always takes priority over session hints. */
+export function getAccountAuthDecision(params: {
+  isAuthenticated: boolean;
+  accessToken: string | null;
+  accountResponse: GetAccountResponse | null;
+}): AccountAuthDecision {
+  const hasAuthenticatedIdentity =
+    params.isAuthenticated || params.accessToken != null;
+  if (!hasAuthenticatedIdentity) return { type: "email-hint" };
+  if (!params.accessToken || !params.accountResponse) return { type: "error" };
+  if (params.accountResponse.nextAction === "create_account") {
+    return { type: "create-account" };
+  }
+  return { type: "existing-account", response: params.accountResponse };
+}
 
 function isAccountAuthChallengeEntryType(
   type: NavEntry["type"],
