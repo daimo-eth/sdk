@@ -1,6 +1,8 @@
 import {
   type MouseEvent,
   type ReactNode,
+  type RefObject,
+  useCallback,
   useEffect,
   useRef,
   useState,
@@ -12,8 +14,9 @@ import type {
   NavLocationOption,
 } from "../api/index.js";
 import { t } from "../hooks/locale.js";
-import { CloseIcon } from "./icons.js";
+import { CloseIcon, EllipsisIcon, EmailIcon, LogoutIcon } from "./icons.js";
 
+type AccountControl = { email: string; onLogout: () => Promise<void> };
 type CloseControl = { onClose: () => void };
 type CountryControl = {
   location: NavLocation;
@@ -23,6 +26,8 @@ type CountryControl = {
 };
 
 export type ModalChromeControls =
+  | { type: "account"; account: AccountControl }
+  | { type: "account-close"; account: AccountControl; close: CloseControl }
   | { type: "close"; close: CloseControl }
   | { type: "none" };
 
@@ -33,6 +38,40 @@ type ModalChromeProps = {
 };
 
 export function ModalChrome({ controls, country, children }: ModalChromeProps) {
+  const [accountOpen, setAccountOpen] = useState(false);
+  const accountButtonRef = useRef<HTMLButtonElement | null>(null);
+
+  useEffect(() => {
+    if (controls.type === "none" || controls.type === "close") {
+      setAccountOpen(false);
+    }
+  }, [controls.type]);
+
+  useEffect(() => {
+    if (!accountOpen) return;
+
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      setAccountOpen(false);
+      accountButtonRef.current?.focus();
+    };
+
+    document.addEventListener("keydown", closeOnEscape);
+    return () => document.removeEventListener("keydown", closeOnEscape);
+  }, [accountOpen]);
+
+  const dismissAccount = useCallback(() => setAccountOpen(false), []);
+  const accountButton = () => (
+    <ChromeIconButton
+      buttonRef={accountButtonRef}
+      label={t.accountMenu}
+      expanded={accountOpen}
+      haspopup="dialog"
+      onClick={() => setAccountOpen(true)}
+    >
+      <EllipsisIcon />
+    </ChromeIconButton>
+  );
   const closeButton = (close: CloseControl) => (
     <ChromeIconButton label={t.close} onClick={close.onClose}>
       <CloseIcon />
@@ -40,9 +79,23 @@ export function ModalChrome({ controls, country, children }: ModalChromeProps) {
   );
 
   let actions: ReactNode = null;
+  let account: AccountControl | null = null;
 
   switch (controls.type) {
     case "none":
+      break;
+    case "account":
+      account = controls.account;
+      actions = accountButton();
+      break;
+    case "account-close":
+      account = controls.account;
+      actions = (
+        <>
+          {accountButton()}
+          {closeButton(controls.close)}
+        </>
+      );
       break;
     case "close":
       actions = closeButton(controls.close);
@@ -62,12 +115,100 @@ export function ModalChrome({ controls, country, children }: ModalChromeProps) {
         />
       )}
       {actions && (
-        <div className="daimo-absolute daimo-right-[24px] daimo-top-[22px] daimo-z-20 daimo-flex daimo-h-8 daimo-items-center daimo-gap-0">
+        <div className="daimo-absolute daimo-right-[24px] daimo-top-[22px] daimo-z-20 daimo-flex daimo-h-8 daimo-items-center daimo-gap-3">
           {actions}
         </div>
       )}
-      {children(null)}
+      {account && (
+        <AccountBanner
+          account={account}
+          open={accountOpen}
+          onDismiss={dismissAccount}
+        />
+      )}
+      {children(account && accountOpen ? dismissAccount : null)}
     </>
+  );
+}
+
+function AccountBanner({
+  account,
+  open,
+  onDismiss,
+}: {
+  account: AccountControl;
+  open: boolean;
+  onDismiss: () => void;
+}) {
+  const [loggingOut, setLoggingOut] = useState(false);
+  const [logoutFailed, setLogoutFailed] = useState(false);
+  const logoutButtonRef = useRef<HTMLButtonElement | null>(null);
+
+  useEffect(() => {
+    if (open) logoutButtonRef.current?.focus();
+    else setLogoutFailed(false);
+  }, [open]);
+
+  const handleLogout = useCallback(async () => {
+    setLoggingOut(true);
+    setLogoutFailed(false);
+    try {
+      await account.onLogout();
+      onDismiss();
+    } catch {
+      setLogoutFailed(true);
+    } finally {
+      setLoggingOut(false);
+    }
+  }, [account, onDismiss]);
+
+  return (
+    <div
+      role="dialog"
+      aria-label={t.accountMenu}
+      aria-hidden={!open}
+      onClick={(event) => event.stopPropagation()}
+      className={`daimo-account-banner daimo-absolute daimo-inset-x-0 daimo-top-0 daimo-z-40 daimo-h-[76px] daimo-bg-[var(--daimo-surface)] ${
+        open
+          ? "daimo-pointer-events-auto daimo-translate-y-0 daimo-opacity-100"
+          : "daimo-pointer-events-none -daimo-translate-y-full daimo-opacity-0"
+      }`}
+    >
+      <div className="daimo-flex daimo-h-full daimo-items-center daimo-gap-3 daimo-px-6">
+        <div className="daimo-flex daimo-min-w-0 daimo-flex-1 daimo-items-center daimo-gap-2.5">
+          <span className="daimo-flex daimo-h-8 daimo-w-8 daimo-shrink-0 daimo-items-center daimo-justify-center daimo-rounded-full daimo-bg-[var(--daimo-surface-secondary)]">
+            <EmailIcon />
+          </span>
+          <span className="daimo-min-w-0 daimo-leading-tight">
+            <span
+              aria-live="polite"
+              className="daimo-block daimo-text-xs daimo-font-medium daimo-text-[var(--daimo-text-secondary)]"
+            >
+              {logoutFailed ? t.accountLogoutFailed : t.accountLabel}
+            </span>
+            <span
+              className="daimo-block daimo-truncate daimo-text-sm daimo-font-medium daimo-text-[var(--daimo-text)]"
+              title={account.email}
+            >
+              {account.email}
+            </span>
+          </span>
+        </div>
+        <button
+          ref={logoutButtonRef}
+          type="button"
+          tabIndex={open ? 0 : -1}
+          disabled={loggingOut}
+          aria-busy={loggingOut}
+          aria-label={t.accountLogout}
+          title={t.accountLogout}
+          onClick={() => void handleLogout()}
+          className="daimo-flex daimo-h-11 daimo-w-11 daimo-shrink-0 daimo-touch-action-manipulation daimo-items-center daimo-justify-center daimo-rounded-full daimo-bg-[var(--daimo-surface-secondary)] daimo-text-[var(--daimo-text)] daimo-transition-[background-color,opacity,transform] daimo-duration-100 daimo-ease hover:[@media(hover:hover)]:daimo-bg-[var(--daimo-surface-hover)] active:daimo-scale-[0.97] focus-visible:daimo-outline-none focus-visible:daimo-ring-2 focus-visible:daimo-ring-[var(--daimo-accent)] disabled:daimo-opacity-60"
+        >
+          <LogoutIcon />
+        </button>
+      </div>
+    </div>
   );
 }
 
@@ -158,6 +299,7 @@ function CountryPicker({
 }
 
 function ChromeIconButton({
+  buttonRef,
   label,
   expanded,
   title,
@@ -166,22 +308,24 @@ function ChromeIconButton({
   className = "",
   onClick,
 }: {
+  buttonRef?: RefObject<HTMLButtonElement | null>;
   label: string;
   expanded?: boolean;
   title?: string;
-  haspopup?: "menu";
+  haspopup?: "dialog" | "menu";
   children: ReactNode;
   className?: string;
   onClick: (event: MouseEvent<HTMLButtonElement>) => void;
 }) {
   return (
     <button
+      ref={buttonRef}
       type="button"
       onClick={(event) => {
         event.stopPropagation();
         onClick(event);
       }}
-      className={`daimo-flex daimo-h-8 daimo-w-8 daimo-shrink-0 daimo-items-center daimo-justify-center daimo-rounded-full daimo-bg-[var(--daimo-surface)] daimo-text-[var(--daimo-text-muted)] hover:[@media(hover:hover)]:daimo-bg-[var(--daimo-surface-secondary)] active:daimo-scale-[0.9] daimo-transition-[background-color,transform] daimo-[transition-duration:200ms,100ms] daimo-ease daimo-touch-action-manipulation ${className}`}
+      className={`daimo-chrome-icon-button daimo-relative daimo-flex daimo-h-8 daimo-w-8 daimo-shrink-0 daimo-items-center daimo-justify-center daimo-rounded-full daimo-bg-[var(--daimo-surface)] daimo-text-[var(--daimo-text-muted)] hover:[@media(hover:hover)]:daimo-bg-[var(--daimo-surface-secondary)] active:daimo-scale-[0.9] daimo-transition-[background-color,transform] daimo-[transition-duration:200ms,100ms] daimo-ease daimo-touch-action-manipulation ${className}`}
       aria-label={label}
       aria-expanded={expanded}
       aria-haspopup={haspopup}

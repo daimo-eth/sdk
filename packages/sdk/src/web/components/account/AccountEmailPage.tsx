@@ -37,7 +37,9 @@ export function AccountEmailPage({
 }: AccountEmailPageProps) {
   const account = useAccountFlow();
   const logoutDone = useRef(false);
-  const [isPreparingAuth, setIsPreparingAuth] = useState(true);
+  const [isPreparingAuth, setIsPreparingAuth] = useState(
+    account?.isAuthenticated === true,
+  );
   const {
     formState: { errors, isValid },
     handleSubmit,
@@ -48,14 +50,15 @@ export function AccountEmailPage({
     defaultValues: { email: account?.email ?? "" },
   });
 
-  // Clear stale Privy sessions on mount so we get a clean login flow
+  // Clear an authenticated Privy session before a new login. An explicit
+  // logout already did this work, so do not start a second provider logout.
   useEffect(() => {
-    if (logoutDone.current) return;
-    logoutDone.current = true;
-    if (!account) {
+    if (!account?.isAuthenticated) {
       setIsPreparingAuth(false);
       return;
     }
+    if (logoutDone.current) return;
+    logoutDone.current = true;
     let cancelled = false;
     void account.logout().finally(() => {
       if (!cancelled) setIsPreparingAuth(false);
@@ -63,7 +66,7 @@ export function AccountEmailPage({
     return () => {
       cancelled = true;
     };
-  }, [account?.logout]);
+  }, [account?.isAuthenticated, account?.logout]);
 
   const submit = handleSubmit(
     useCallback(

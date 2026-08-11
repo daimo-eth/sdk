@@ -129,6 +129,10 @@ export const en = {
   // containers
   close: "Close",
   changeCountry: "Change country",
+  accountMenu: "Daimo Account menu",
+  accountLabel: "Logged in as",
+  accountLogout: "Log out",
+  accountLogoutFailed: "Could not log out. Try again.",
 
   // flows
   flowError: "Error:",

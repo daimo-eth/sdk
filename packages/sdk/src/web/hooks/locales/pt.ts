@@ -130,6 +130,10 @@ export const pt: typeof en = {
   // containers
   close: "Fechar",
   changeCountry: "Mudar país",
+  accountMenu: "Menu da conta Daimo",
+  accountLabel: "Conectado como",
+  accountLogout: "Sair",
+  accountLogoutFailed: "Não foi possível sair. Tente novamente.",
 
   // flows
   flowError: "Erro:",

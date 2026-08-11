@@ -124,6 +124,10 @@ export const zh: typeof en = {
   // containers
   close: "关闭",
   changeCountry: "更改国家/地区",
+  accountMenu: "Daimo 账户菜单",
+  accountLabel: "已登录为",
+  accountLogout: "退出登录",
+  accountLogoutFailed: "无法退出登录。请重试。",
 
   // flows
   flowError: "错误：",
