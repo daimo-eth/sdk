@@ -198,7 +198,10 @@ export type DaimoClient = {
       recreate(
         sessionId: string,
         clientSecret: string,
-        params?: { countryCode?: DaimoCountryCode },
+        params?: {
+          countryCode?: DaimoCountryCode;
+          accountBinding?: "preserve" | "clear";
+        },
       ): Promise<RecreateSessionWithNavResponse>;
       walletOptions(
         sessionId: string,
@@ -444,7 +447,11 @@ export function createDaimoClient(config: TransportConfig): DaimoClient {
             method: "POST",
             path: `/v1/sessions/${sessionId}/internal/recreate`,
             query: { country: params?.countryCode },
-            body: { clientSecret, locale: getLocale() },
+            body: {
+              clientSecret,
+              locale: getLocale(),
+              accountBinding: params?.accountBinding,
+            },
           });
         },
         async walletOptions(sessionId, params) {
