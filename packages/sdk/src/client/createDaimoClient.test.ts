@@ -29,6 +29,35 @@ describe("internal ENS resolution", () => {
   });
 });
 
+describe("internal session recreation", () => {
+  test("sends Account binding isolation for logout", async () => {
+    let requestUrl = "";
+    let requestBody: unknown;
+    const response = { session: { sessionId: "session-new" } };
+    const client = createDaimoClient({
+      baseUrl: "https://api.example.test",
+      fetchImpl: async (input, init) => {
+        requestUrl = String(input);
+        requestBody = JSON.parse(String(init?.body));
+        return Response.json(response);
+      },
+    });
+
+    await expect(
+      client.internal.sessions.recreate("session-old", "secret", {
+        accountBinding: "clear",
+      }),
+    ).resolves.toEqual(response);
+    expect(requestUrl).toBe(
+      "https://api.example.test/v1/sessions/session-old/internal/recreate",
+    );
+    expect(requestBody).toMatchObject({
+      clientSecret: "secret",
+      accountBinding: "clear",
+    });
+  });
+});
+
 describe("account wallet provisioning", () => {
   test("posts bearer auth to the idempotent wallet route", async () => {
     let requestUrl = "";

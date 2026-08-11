@@ -1335,7 +1335,7 @@ export function useSessionNav(
         client.internal.sessions.recreate(
           session.sessionId,
           session.clientSecret,
-          { countryCode },
+          { countryCode, accountBinding: "clear" },
         ),
       selectRail: async (sessionId, clientSecret, selectedRail) => {
         await client.sessions.paymentMethods.create(sessionId, {
