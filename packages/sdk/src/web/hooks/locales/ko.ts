@@ -129,6 +129,10 @@ export const ko: typeof en = {
   // containers
   close: "닫기",
   changeCountry: "국가 변경",
+  accountMenu: "Daimo 계정 메뉴",
+  accountLabel: "로그인 계정",
+  accountLogout: "로그아웃",
+  accountLogoutFailed: "로그아웃할 수 없습니다. 다시 시도하세요.",
 
   // flows
   flowError: "오류:",

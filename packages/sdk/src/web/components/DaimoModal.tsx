@@ -658,6 +658,19 @@ function DaimoModalInner({
 
   const closeVisible =
     (!embedded || embeddedClose) && showClose && pageCloseVisible;
+  const account =
+    accountFlow?.isAuthenticated && accountFlow.email && pageCloseVisible
+      ? {
+          email: accountFlow.email,
+          onLogout: async () => {
+            if (isAccountFlow) {
+              await nav.handleAccountLogout();
+              return;
+            }
+            await accountFlow.logout();
+          },
+        }
+      : null;
   const close = closeVisible ? { onClose: handleClose } : null;
   const showCountryPicker =
     // Server sends locations only when switching affects the nav
@@ -670,7 +683,11 @@ function DaimoModalInner({
     (!nav.topEntry ||
       (nav.topEntry.type === "choose-option" && !nav.canGoBack));
   let chrome: ModalChromeControls = { type: "none" };
-  if (close) {
+  if (account && close) {
+    chrome = { type: "account-close", account, close };
+  } else if (account) {
+    chrome = { type: "account", account };
+  } else if (close) {
     chrome = { type: "close", close };
   }
   const isFirstPage = useRef(true);

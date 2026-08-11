@@ -36,6 +36,7 @@ import {
 } from "../components/account/accountNav.js";
 import { getNodePaymentInteraction } from "../components/account/accountPaymentCompatibility.js";
 import {
+  recreateAccountLogoutSession,
   recreateAccountPaymentSession,
   runAccountSessionRecreateOnce,
 } from "../components/account/accountSessionRecreate.js";
@@ -87,8 +88,8 @@ type SessionNavResult = {
     nextType: AccountNavEntry["type"],
     options?: { initialStatus?: AccountDepositStatus },
   ) => void;
-  /** Reset the current account rail after logout. */
-  handleAccountLogout: () => void;
+  /** Log out onto a recreated session pinned to the current Account rail. */
+  handleAccountLogout: () => Promise<void>;
 };
 
 function isExchangeNode(node: NavNode | null): node is ExchangeNode {
@@ -169,14 +170,6 @@ function replacePendingAccountEntry(
     }
   }
   return stack;
-}
-
-function isSameAccountRailEntry(
-  entry: NavEntry,
-  nodeId: string,
-  rail: AccountRail,
-) {
-  return "rail" in entry && entry.nodeId === nodeId && entry.rail === rail;
 }
 
 function accountEntry(entry: NavEntry | null): AccountNavEntry {
@@ -1332,14 +1325,48 @@ export function useSessionNav(
     [accountAuth, accountFlow, topEntry],
   );
 
-  const handleAccountLogout = useCallback(() => {
+  const handleAccountLogout = useCallback(async () => {
     const { nodeId, rail, paymentInteraction, autoNav } =
       accountEntry(topEntry);
-    setStack((prev) => [
-      ...prev.filter((entry) => !isSameAccountRailEntry(entry, nodeId, rail)),
+    const oldSessionId = session.sessionId;
+    const response = await recreateAccountLogoutSession({
+      rail,
+      recreate: () =>
+        client.internal.sessions.recreate(
+          session.sessionId,
+          session.clientSecret,
+          { countryCode },
+        ),
+      selectRail: async (sessionId, clientSecret, selectedRail) => {
+        await client.sessions.paymentMethods.create(sessionId, {
+          clientSecret,
+          paymentMethod: { type: "fiat", fiatMethod: selectedRail },
+        });
+      },
+      retrieve: (sessionId, clientSecret) =>
+        client.internal.sessions.retrieveWithNav(sessionId, clientSecret, {
+          countryCode,
+        }),
+      logout: () => accountFlow?.logout() ?? Promise.resolve(),
+    });
+
+    accountFlow?.clearDepositState(oldSessionId);
+    autoNavRef.current = null;
+    setSession(response.session);
+    setStack([
       { type: "account-email", nodeId, rail, paymentInteraction, autoNav },
     ]);
-  }, [topEntry]);
+    onRecreate?.(response);
+  }, [
+    accountFlow,
+    client,
+    countryCode,
+    onRecreate,
+    session.clientSecret,
+    session.sessionId,
+    setSession,
+    topEntry,
+  ]);
 
   return useMemo(
     () => ({

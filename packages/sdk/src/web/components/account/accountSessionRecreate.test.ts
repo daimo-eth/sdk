@@ -5,6 +5,7 @@ import {
   type RecreateSessionWithNavResponse,
 } from "../../api/index.js";
 import {
+  recreateAccountLogoutSession,
   recreateAccountPaymentSession,
   runAccountSessionRecreateOnce,
 } from "./accountSessionRecreate.js";
@@ -94,5 +95,74 @@ describe("recreateAccountPaymentSession", () => {
       undefined,
     );
     expect(recreate).toHaveBeenCalledTimes(3);
+  });
+});
+
+describe("recreateAccountLogoutSession", () => {
+  test("recreates and pins the same Account rail", async () => {
+    const operations: string[] = [];
+    const selectRail = vi.fn(async () => {
+      operations.push("select rail");
+    });
+    const retrieve = vi.fn(async () => {
+      operations.push("retrieve");
+      return {
+        ...RESPONSE,
+        session: {
+          ...RESPONSE.session,
+          clientSecret: undefined,
+        },
+      };
+    });
+    const logout = vi.fn(async () => {
+      operations.push("logout");
+    });
+
+    const result = await recreateAccountLogoutSession({
+      rail: "apple_pay",
+      recreate: vi.fn(async () => {
+        operations.push("recreate");
+        return RESPONSE;
+      }),
+      selectRail,
+      retrieve,
+      logout,
+    });
+
+    expect(selectRail).toHaveBeenCalledWith(
+      RESPONSE.session.sessionId,
+      RESPONSE.session.clientSecret,
+      "apple_pay",
+    );
+    expect(retrieve).toHaveBeenCalledWith(
+      RESPONSE.session.sessionId,
+      RESPONSE.session.clientSecret,
+    );
+    expect(result.session.clientSecret).toBe(RESPONSE.session.clientSecret);
+    expect(operations).toEqual([
+      "recreate",
+      "select rail",
+      "retrieve",
+      "logout",
+    ]);
+  });
+
+  test("does not commit navigation when rail selection fails", async () => {
+    const retrieve = vi.fn();
+    const logout = vi.fn();
+
+    await expect(
+      recreateAccountLogoutSession({
+        rail: "apple_pay",
+        recreate: vi.fn(async () => RESPONSE),
+        selectRail: vi.fn(async () => {
+          throw new Error("rail selection failed");
+        }),
+        retrieve,
+        logout,
+      }),
+    ).rejects.toThrow("rail selection failed");
+    expect(retrieve).not.toHaveBeenCalled();
+    expect(logout).not.toHaveBeenCalled();
   });
 });

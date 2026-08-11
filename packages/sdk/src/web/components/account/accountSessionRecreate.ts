@@ -1,4 +1,8 @@
-import type { RecreateSessionWithNavResponse } from "../../api/index.js";
+import type { AccountRail } from "../../../common/account.js";
+import type {
+  RecreateSessionWithNavResponse,
+  RetrieveSessionWithNavResponse,
+} from "../../api/index.js";
 import type { DepositStateInput } from "../../hooks/useAccountFlow.js";
 
 type AccountSessionRecreateState = {
@@ -17,6 +21,32 @@ export async function recreateAccountPaymentSession(params: {
     kind: "idle",
   });
   return response;
+}
+
+/** Recreate and pin the same Account rail before committing logout. */
+export async function recreateAccountLogoutSession(params: {
+  rail: AccountRail;
+  recreate: () => Promise<RecreateSessionWithNavResponse>;
+  selectRail: (
+    sessionId: string,
+    clientSecret: string,
+    rail: AccountRail,
+  ) => Promise<void>;
+  retrieve: (
+    sessionId: string,
+    clientSecret: string,
+  ) => Promise<RetrieveSessionWithNavResponse>;
+  logout: () => Promise<void>;
+}): Promise<RecreateSessionWithNavResponse> {
+  const recreated = await params.recreate();
+  const { sessionId, clientSecret } = recreated.session;
+  await params.selectRail(sessionId, clientSecret, params.rail);
+  const retrieved = await params.retrieve(sessionId, clientSecret);
+  await params.logout();
+  return {
+    ...retrieved,
+    session: { ...retrieved.session, clientSecret },
+  };
 }
 
 /** Share one in-flight recreation and allow a fresh attempt after it settles. */

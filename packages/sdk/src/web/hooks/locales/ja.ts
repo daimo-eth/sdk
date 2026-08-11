@@ -130,6 +130,10 @@ export const ja: typeof en = {
   // containers
   close: "閉じる",
   changeCountry: "国を変更",
+  accountMenu: "Daimoアカウントメニュー",
+  accountLabel: "ログイン中",
+  accountLogout: "ログアウト",
+  accountLogoutFailed: "ログアウトできませんでした。もう一度お試しください。",
 
   // flows
   flowError: "エラー：",
