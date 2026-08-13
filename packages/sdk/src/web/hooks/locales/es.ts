@@ -153,6 +153,13 @@ export const es: typeof en = {
   accountEnrollmentRejected: "No se pudo completar la verificación",
   accountSuspended: "Cuenta suspendida",
   accountEnrollmentError: "No se pudo configurar la cuenta",
+  accountEmailChangeMessage: (email: string) => ({
+    beforeEmail: "No podemos usar ",
+    email,
+    afterEmail: "",
+    reason: "Está vinculado a otra empresa en PayTrie",
+  }),
+  accountEmailChangeCta: "Usar otro email",
   accountRegionUnavailableTitle: "Región no disponible",
   accountRegionUnavailableHeading: "No eres elegible para esta región",
   accountRegionUnavailableDescription: "Esta cuenta no puede usar esta región.",

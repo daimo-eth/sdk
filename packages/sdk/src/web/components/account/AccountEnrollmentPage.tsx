@@ -47,6 +47,7 @@ import {
   shouldLoadEnrollmentTarget,
   submitEnrollmentStep,
 } from "./enrollmentProtocol.js";
+import { runAccountSessionRecreateOnce } from "./accountSessionRecreate.js";
 import { getKycRequirement, KycIndicator } from "./kycRequirement.js";
 import {
   PaginatedEnrollmentForm,
@@ -61,6 +62,7 @@ type AccountEnrollmentPageProps = {
   onBack: () => void;
   onReady: () => void;
   onPhoneRequired: () => void;
+  onLogout: () => Promise<void>;
 };
 
 export function AccountEnrollmentPage({
@@ -71,6 +73,7 @@ export function AccountEnrollmentPage({
   onBack,
   onReady,
   onPhoneRequired,
+  onLogout,
 }: AccountEnrollmentPageProps) {
   const rail = node.fiatMethod;
   const target = `${sessionId}:${rail}`;
@@ -393,6 +396,14 @@ export function AccountEnrollmentPage({
         />
       );
     }
+    case "account-email-change":
+      return (
+        <EnrollmentEmailChangePage
+          email={account?.email ?? ""}
+          onBack={onBack}
+          onUseAnotherEmail={onLogout}
+        />
+      );
     case "active":
       return null;
   }
@@ -620,6 +631,101 @@ function EnrollmentExternalActionPage({
   );
 }
 
+function WarningGlyph({ neutral = false }: { neutral?: boolean }) {
+  return (
+    <div
+      className="daimo-flex daimo-h-16 daimo-w-16 daimo-items-center daimo-justify-center daimo-rounded-full daimo-text-[var(--daimo-text)]"
+      style={{
+        backgroundColor: neutral
+          ? "var(--daimo-surface-secondary)"
+          : "var(--daimo-warning-light, var(--daimo-surface-secondary))",
+      }}
+    >
+      <svg
+        width="30"
+        height="30"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.9"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        style={neutral ? undefined : { color: "var(--daimo-warning, #f59e0b)" }}
+        aria-hidden="true"
+      >
+        <path d="M12 3 2.8 19a1 1 0 0 0 .87 1.5h16.66A1 1 0 0 0 21.2 19z" />
+        <path d="M12 9v4.5" />
+        <path d="M12 17h.01" />
+      </svg>
+    </div>
+  );
+}
+
+export function EnrollmentEmailChangePage({
+  email,
+  onBack,
+  onUseAnotherEmail,
+}: {
+  email: string;
+  onBack: () => void;
+  onUseAnotherEmail: () => Promise<void>;
+}) {
+  const logoutState = useRef({ current: null as Promise<void> | null });
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [logoutFailed, setLogoutFailed] = useState(false);
+  const message = t.accountEmailChangeMessage(email);
+
+  const handleUseAnotherEmail = async () => {
+    setLogoutFailed(false);
+    setIsLoggingOut(true);
+    try {
+      await runAccountSessionRecreateOnce(
+        logoutState.current,
+        onUseAnotherEmail,
+      );
+    } catch {
+      setLogoutFailed(true);
+    } finally {
+      setIsLoggingOut(false);
+    }
+  };
+
+  return (
+    <div className="daimo-flex daimo-flex-col daimo-flex-1 daimo-min-h-0">
+      <PageHeader title={t.accountEnrollment} onBack={onBack} />
+      <CenteredContent>
+        <div className="daimo-flex daimo-flex-col daimo-items-center daimo-gap-4 daimo-px-6 daimo-text-center">
+          <WarningGlyph neutral />
+          <p className="daimo-text-sm daimo-leading-relaxed daimo-text-[var(--daimo-text-secondary)]">
+            <span>
+              {message.beforeEmail}
+              <strong className="daimo-font-semibold daimo-text-[var(--daimo-text)]">
+                {message.email}
+              </strong>
+              {message.afterEmail}
+            </span>
+            <br />
+            <span>{message.reason}</span>
+          </p>
+          {logoutFailed ? (
+            <p className="daimo-text-sm daimo-text-[var(--daimo-error)]">
+              {t.accountLogoutFailed}
+            </p>
+          ) : null}
+        </div>
+      </CenteredContent>
+      <div className="daimo-flex daimo-flex-col daimo-items-center daimo-gap-3 daimo-px-6 daimo-pb-6">
+        <PrimaryButton
+          onClick={() => void handleUseAnotherEmail()}
+          disabled={isLoggingOut}
+        >
+          {isLoggingOut ? t.loading : t.accountEmailChangeCta}
+        </PrimaryButton>
+      </div>
+    </div>
+  );
+}
+
 function EnrollmentIneligible({
   message,
   sessionId,
@@ -634,30 +740,7 @@ function EnrollmentIneligible({
       <PageHeader title={t.accountRegionUnavailableTitle} onBack={onBack} />
       <CenteredContent>
         <div className="daimo-flex daimo-flex-col daimo-items-center daimo-gap-4 daimo-px-6 daimo-text-center">
-          <div
-            className="daimo-flex daimo-h-16 daimo-w-16 daimo-items-center daimo-justify-center daimo-rounded-full"
-            style={{
-              backgroundColor:
-                "var(--daimo-warning-light, var(--daimo-surface-secondary))",
-            }}
-          >
-            <svg
-              width="30"
-              height="30"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.9"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              style={{ color: "var(--daimo-warning, #f59e0b)" }}
-              aria-hidden="true"
-            >
-              <path d="M12 3 2.8 19a1 1 0 0 0 .87 1.5h16.66A1 1 0 0 0 21.2 19z" />
-              <path d="M12 9v4.5" />
-              <path d="M12 17h.01" />
-            </svg>
-          </div>
+          <WarningGlyph />
           <div className="daimo-flex daimo-flex-col daimo-gap-2">
             <h2 className="daimo-text-xl daimo-font-semibold daimo-text-[var(--daimo-text)]">
               {t.accountRegionUnavailableHeading}

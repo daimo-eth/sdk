@@ -22,6 +22,8 @@ import type {
   StartEnrollmentRequest,
 } from "../common/account.js";
 import {
+  ENROLLMENT_INTERACTION_VERSION_HEADER,
+  CURRENT_ENROLLMENT_INTERACTION_VERSION,
   zEnrollmentActionSubmitRequest,
   zEnrollmentInteraction,
 } from "../common/account.js";
@@ -49,6 +51,15 @@ type BearerAuth = { bearerToken: string };
 
 function authHeaders(auth: BearerAuth): Record<string, string> {
   return { Authorization: `Bearer ${auth.bearerToken}` };
+}
+
+function enrollmentInteractionHeaders(auth: BearerAuth): Record<string, string> {
+  return {
+    ...authHeaders(auth),
+    [ENROLLMENT_INTERACTION_VERSION_HEADER]: String(
+      CURRENT_ENROLLMENT_INTERACTION_VERSION,
+    ),
+  };
 }
 
 type SessionContext = { sessionId: string; clientSecret: string };
@@ -257,7 +268,7 @@ export function createDaimoClient(config: TransportConfig): DaimoClient {
           method: "POST",
           path: "/v1/internal/account/enrollment/interaction",
           body: { ...input, locale: input.locale ?? getLocale() },
-          headers: authHeaders(auth),
+          headers: enrollmentInteractionHeaders(auth),
         });
         return zEnrollmentInteraction.parse(result);
       },
@@ -270,7 +281,7 @@ export function createDaimoClient(config: TransportConfig): DaimoClient {
           method: "POST",
           path: "/v1/internal/account/enrollment/action",
           body,
-          headers: authHeaders(auth),
+          headers: enrollmentInteractionHeaders(auth),
         });
         return zEnrollmentInteraction.parse(result);
       },
