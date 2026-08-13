@@ -237,11 +237,17 @@ export type EnrollmentResponse =
   | { action: "phone_required"; reason?: string }
   | { action: "active" }
   | { action: "suspended"; reason: string }
-  | { action: "error"; message: string; retryable: boolean };
+  | { action: "error"; message: string; retryable: boolean }
+  | { action: "account_email_change_required" };
 
 // --- Versioned enrollment interaction contract ---
 
 export const ENROLLMENT_INTERACTION_VERSION = 1 as const;
+export const ENROLLMENT_INTERACTION_VERSION_V2 = 2 as const;
+export const CURRENT_ENROLLMENT_INTERACTION_VERSION =
+  ENROLLMENT_INTERACTION_VERSION_V2;
+export const ENROLLMENT_INTERACTION_VERSION_HEADER =
+  "x-daimo-enrollment-interaction-version";
 
 export type EnrollmentInteractionAction = {
   /** Opaque identity for exactly one enrollment checkpoint and input kind. */
@@ -254,8 +260,13 @@ export type EnrollmentInteractionPolling =
   | { status: "none" }
   | { status: "poll"; delayMs: number };
 
-type EnrollmentInteractionBase = {
+type EnrollmentInteractionBaseV1 = {
   version: typeof ENROLLMENT_INTERACTION_VERSION;
+  polling: EnrollmentInteractionPolling;
+};
+
+type EnrollmentInteractionBaseV2 = {
+  version: typeof ENROLLMENT_INTERACTION_VERSION_V2;
   polling: EnrollmentInteractionPolling;
 };
 
@@ -266,12 +277,12 @@ export type EnrollmentHostedCopy = {
 };
 
 export type EnrollmentInteraction =
-  | (EnrollmentInteractionBase & {
+  | (EnrollmentInteractionBaseV1 & {
       kind: "form";
       action: EnrollmentInteractionAction;
       form: EnrollmentForm;
     })
-  | (EnrollmentInteractionBase & {
+  | (EnrollmentInteractionBaseV1 & {
       kind: "otp";
       destination: "email";
       copy: ProviderOtpCopy;
@@ -282,12 +293,12 @@ export type EnrollmentInteraction =
         action: EnrollmentInteractionAction;
       };
     })
-  | (EnrollmentInteractionBase & {
+  | (EnrollmentInteractionBaseV1 & {
       kind: "account-phone-verification";
       reason?: string;
       returnBehavior: { kind: "refresh" };
     })
-  | (EnrollmentInteractionBase & {
+  | (EnrollmentInteractionBaseV1 & {
       kind: "hosted";
       mode: "link" | "hosted";
       purpose: "identity-verification" | "agreement";
@@ -299,26 +310,27 @@ export type EnrollmentInteraction =
         autoSubmitDelayMs?: number;
       };
     })
-  | (EnrollmentInteractionBase & {
+  | (EnrollmentInteractionBaseV1 & {
       kind: "wait";
       reason: "processing" | "review";
     })
-  | (EnrollmentInteractionBase & {
+  | (EnrollmentInteractionBaseV1 & {
       kind: "retry";
       reason: string;
       action: EnrollmentInteractionAction;
       link?: { url: string; copy: EnrollmentHostedCopy };
     })
-  | (EnrollmentInteractionBase & { kind: "rejection"; reason: string })
-  | (EnrollmentInteractionBase & { kind: "ineligible"; reason: string })
-  | (EnrollmentInteractionBase & { kind: "suspended"; reason: string })
-  | (EnrollmentInteractionBase & {
+  | (EnrollmentInteractionBaseV1 & { kind: "rejection"; reason: string })
+  | (EnrollmentInteractionBaseV1 & { kind: "ineligible"; reason: string })
+  | (EnrollmentInteractionBaseV1 & { kind: "suspended"; reason: string })
+  | (EnrollmentInteractionBaseV1 & {
       kind: "error";
       message: string;
       retryable: boolean;
       retryAction?: EnrollmentInteractionAction;
     })
-  | (EnrollmentInteractionBase & { kind: "active" });
+  | (EnrollmentInteractionBaseV1 & { kind: "active" })
+  | (EnrollmentInteractionBaseV2 & { kind: "account-email-change" });
 
 const zEnrollmentAction = z
   .object({
@@ -441,8 +453,13 @@ const zEnrollmentForm = z
   })
   .strict();
 
-const enrollmentInteractionBase = {
+const enrollmentInteractionBaseV1 = {
   version: z.literal(ENROLLMENT_INTERACTION_VERSION),
+  polling: zEnrollmentPolling,
+};
+
+const enrollmentInteractionBaseV2 = {
+  version: z.literal(ENROLLMENT_INTERACTION_VERSION_V2),
   polling: zEnrollmentPolling,
 };
 
@@ -451,7 +468,7 @@ export const zEnrollmentInteraction: z.ZodType<EnrollmentInteraction> =
   z.discriminatedUnion("kind", [
     z
       .object({
-        ...enrollmentInteractionBase,
+        ...enrollmentInteractionBaseV1,
         kind: z.literal("form"),
         action: zEnrollmentAction,
         form: zEnrollmentForm,
@@ -459,7 +476,7 @@ export const zEnrollmentInteraction: z.ZodType<EnrollmentInteraction> =
       .strict(),
     z
       .object({
-        ...enrollmentInteractionBase,
+        ...enrollmentInteractionBaseV1,
         kind: z.literal("otp"),
         destination: z.literal("email"),
         copy: z
@@ -481,7 +498,7 @@ export const zEnrollmentInteraction: z.ZodType<EnrollmentInteraction> =
       .strict(),
     z
       .object({
-        ...enrollmentInteractionBase,
+        ...enrollmentInteractionBaseV1,
         kind: z.literal("account-phone-verification"),
         reason: z.string().optional(),
         returnBehavior: z.object({ kind: z.literal("refresh") }).strict(),
@@ -489,7 +506,7 @@ export const zEnrollmentInteraction: z.ZodType<EnrollmentInteraction> =
       .strict(),
     z
       .object({
-        ...enrollmentInteractionBase,
+        ...enrollmentInteractionBaseV1,
         kind: z.literal("hosted"),
         mode: z.enum(["link", "hosted"]),
         purpose: z.enum(["identity-verification", "agreement"]),
@@ -506,14 +523,14 @@ export const zEnrollmentInteraction: z.ZodType<EnrollmentInteraction> =
       .strict(),
     z
       .object({
-        ...enrollmentInteractionBase,
+        ...enrollmentInteractionBaseV1,
         kind: z.literal("wait"),
         reason: z.enum(["processing", "review"]),
       })
       .strict(),
     z
       .object({
-        ...enrollmentInteractionBase,
+        ...enrollmentInteractionBaseV1,
         kind: z.literal("retry"),
         reason: z.string(),
         action: zEnrollmentAction,
@@ -525,28 +542,28 @@ export const zEnrollmentInteraction: z.ZodType<EnrollmentInteraction> =
       .strict(),
     z
       .object({
-        ...enrollmentInteractionBase,
+        ...enrollmentInteractionBaseV1,
         kind: z.literal("rejection"),
         reason: z.string(),
       })
       .strict(),
     z
       .object({
-        ...enrollmentInteractionBase,
+        ...enrollmentInteractionBaseV1,
         kind: z.literal("ineligible"),
         reason: z.string(),
       })
       .strict(),
     z
       .object({
-        ...enrollmentInteractionBase,
+        ...enrollmentInteractionBaseV1,
         kind: z.literal("suspended"),
         reason: z.string(),
       })
       .strict(),
     z
       .object({
-        ...enrollmentInteractionBase,
+        ...enrollmentInteractionBaseV1,
         kind: z.literal("error"),
         message: z.string(),
         retryable: z.boolean(),
@@ -555,8 +572,14 @@ export const zEnrollmentInteraction: z.ZodType<EnrollmentInteraction> =
       .strict(),
     z
       .object({
-        ...enrollmentInteractionBase,
+        ...enrollmentInteractionBaseV1,
         kind: z.literal("active"),
+      })
+      .strict(),
+    z
+      .object({
+        ...enrollmentInteractionBaseV2,
+        kind: z.literal("account-email-change"),
       })
       .strict(),
   ]);

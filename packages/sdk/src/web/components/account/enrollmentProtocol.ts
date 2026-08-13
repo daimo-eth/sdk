@@ -270,6 +270,13 @@ export function toLegacyEnrollmentInteraction(
           : {}),
       };
       break;
+    case "account_email_change_required":
+      interaction = {
+        version: 2,
+        kind: "account-email-change",
+        polling: noPolling,
+      };
+      break;
     case "active":
       interaction = { version, kind: "active", polling: noPolling };
       break;
@@ -302,6 +309,8 @@ export function enrollmentInteractionIdentity(
       return `${step.protocol}:${interaction.kind}:${interaction.reason}`;
     case "error":
       return `${step.protocol}:error:${interaction.retryAction?.id ?? "terminal"}`;
+    case "account-email-change":
+      return `${step.protocol}:account-email-change`;
     case "active":
       return `${step.protocol}:active`;
   }
@@ -324,6 +333,7 @@ export function enrollmentNavigationEffect(
     case "ineligible":
     case "suspended":
     case "error":
+    case "account-email-change":
       return "render";
   }
 }

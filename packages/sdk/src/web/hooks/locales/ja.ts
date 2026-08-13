@@ -182,6 +182,13 @@ export const ja: typeof en = {
   accountEnrollmentRejected: "確認を完了できませんでした",
   accountSuspended: "アカウントが停止されました",
   accountEnrollmentError: "アカウント設定に失敗しました",
+  accountEmailChangeMessage: (email: string) => ({
+    beforeEmail: "",
+    email,
+    afterEmail: " は使用できません",
+    reason: "PayTrie上の別の会社にリンクされています",
+  }),
+  accountEmailChangeCta: "別のメールアドレスを使う",
   accountRegionUnavailableTitle: "地域が利用できません",
   accountRegionUnavailableHeading: "この地域ではご利用いただけません",
   accountRegionUnavailableDescription:

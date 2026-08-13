@@ -194,6 +194,11 @@ describe("legacy enrollment compatibility", () => {
       kind: "error",
       polls: false,
     },
+    {
+      response: { action: "account_email_change_required" },
+      kind: "account-email-change",
+      polls: false,
+    },
     { response: { action: "active" }, kind: "active", polls: false },
   ])("maps $response.action to $kind", ({ response, kind, polls }) => {
     const interaction = toLegacyEnrollmentInteraction(response, legacyCopy);
@@ -235,6 +240,39 @@ describe("legacy enrollment compatibility", () => {
       "https://api.example.test/v1/internal/account/enrollment/interaction",
       "https://api.example.test/v1/internal/account/enrollment/start",
     ]);
+  });
+
+  test("requests interaction version 2 on the generic route", async () => {
+    let versionHeader = "";
+    const fetchImpl: typeof fetch = async (_input, init) => {
+      versionHeader = new Headers(init?.headers).get(
+        "x-daimo-enrollment-interaction-version",
+      ) ?? "";
+      return jsonResponse({
+        version: 2,
+        kind: "account-email-change",
+        polling: { status: "none" },
+      });
+    };
+    const client = createDaimoClient({
+      baseUrl: "https://api.example.test",
+      fetchImpl,
+    });
+
+    const result = await loadEnrollmentStep({
+      client,
+      rail: "interac",
+      locale: "en",
+      auth: { bearerToken: "token" },
+      legacyCopy,
+    });
+
+    expect(versionHeader).toBe("2");
+    expect(result.interaction).toEqual({
+      version: 2,
+      kind: "account-email-change",
+      polling: { status: "none" },
+    });
   });
 
   test("submits the legacy legal-name form without a rail gate", async () => {
@@ -399,6 +437,15 @@ describe("generic enrollment contract", () => {
       pollDelay: null,
     },
     {
+      interaction: {
+        version: 2,
+        kind: "account-email-change",
+        polling: { status: "none" },
+      },
+      navigation: "render",
+      pollDelay: null,
+    },
+    {
       interaction: { version: 1, kind: "active", polling: { status: "none" } },
       navigation: "ready",
       pollDelay: null,
@@ -474,6 +521,21 @@ describe("generic enrollment contract", () => {
       zEnrollmentInteraction.safeParse({
         version: 1,
         kind: "provider-widget",
+        polling: { status: "none" },
+      }).success,
+    ).toBe(false);
+    expect(
+      zEnrollmentInteraction.safeParse({
+        version: 2,
+        kind: "account-email-change",
+        polling: { status: "none" },
+        email: "user@example.com",
+      }).success,
+    ).toBe(false);
+    expect(
+      zEnrollmentInteraction.safeParse({
+        version: 1,
+        kind: "account-email-change",
         polling: { status: "none" },
       }).success,
     ).toBe(false);

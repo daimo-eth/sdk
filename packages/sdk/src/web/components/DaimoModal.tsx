@@ -652,6 +652,7 @@ function DaimoModalInner({
       onWalletSelectToken: nav.handleWalletSelectToken,
       onWalletSending: nav.handleWalletSending,
       onAccountAdvance: nav.handleAccountAdvance,
+      onAccountLogout: nav.handleAccountLogout,
       setModalCloseVisible: setPageCloseVisible,
     });
   }
@@ -783,6 +784,7 @@ type RenderContext = {
     nextType: AccountNavEntry["type"],
     options?: { initialStatus?: AccountDepositStatus },
   ) => void;
+  onAccountLogout: () => Promise<void>;
   setModalCloseVisible: (show: boolean) => void;
 };
 
@@ -967,6 +969,7 @@ function renderEntry(
             )
           }
           onPhoneRequired={() => ctx.onAccountAdvance("account-phone")}
+          onLogout={ctx.onAccountLogout}
         />
       );
     }

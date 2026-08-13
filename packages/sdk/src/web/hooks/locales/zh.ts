@@ -174,6 +174,13 @@ export const zh: typeof en = {
   accountEnrollmentRejected: "无法完成验证",
   accountSuspended: "账户已暂停",
   accountEnrollmentError: "账户设置失败",
+  accountEmailChangeMessage: (email: string) => ({
+    beforeEmail: "无法使用 ",
+    email,
+    afterEmail: "",
+    reason: "此邮箱已关联到 PayTrie 上的另一家公司",
+  }),
+  accountEmailChangeCta: "使用其他邮箱",
   accountRegionUnavailableTitle: "地区不可用",
   accountRegionUnavailableHeading: "您不符合该地区的条件",
   accountRegionUnavailableDescription: "此账户无法在该地区使用。",

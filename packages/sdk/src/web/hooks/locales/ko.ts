@@ -181,6 +181,13 @@ export const ko: typeof en = {
   accountEnrollmentRejected: "인증을 완료할 수 없습니다",
   accountSuspended: "계정이 정지되었습니다",
   accountEnrollmentError: "계정 설정 실패",
+  accountEmailChangeMessage: (email: string) => ({
+    beforeEmail: "",
+    email,
+    afterEmail: "을 사용할 수 없습니다",
+    reason: "PayTrie의 다른 회사에 연결되어 있습니다",
+  }),
+  accountEmailChangeCta: "다른 이메일 사용",
   accountRegionUnavailableTitle: "지역 이용 불가",
   accountRegionUnavailableHeading: "이 지역에서는 이용할 수 없습니다",
   accountRegionUnavailableDescription:

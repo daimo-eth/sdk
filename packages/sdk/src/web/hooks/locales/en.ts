@@ -181,6 +181,13 @@ export const en = {
   accountEnrollmentRejected: "Verification could not be completed",
   accountSuspended: "Account suspended",
   accountEnrollmentError: "Account setup failed",
+  accountEmailChangeMessage: (email: string) => ({
+    beforeEmail: "We can't use ",
+    email,
+    afterEmail: "",
+    reason: "It is linked to another company on PayTrie",
+  }),
+  accountEmailChangeCta: "Use another email",
   accountRegionUnavailableTitle: "Region unavailable",
   accountRegionUnavailableHeading: "You are not eligible for this region",
   accountRegionUnavailableDescription: "This account cannot use this region.",
