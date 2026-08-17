@@ -968,6 +968,17 @@ export type DepositPaymentOnchainTransfer = {
   expiresAt: number;
 };
 
+/** Server-owned copy for a direct bank-transfer acknowledgement flow. */
+export type DepositBankTransferUi = {
+  arrivalNotice: string;
+  providerDisclosure: string;
+  actionLabel: string;
+  confirmation: {
+    title: string;
+    description: string;
+  };
+};
+
 /**
  * Server-provided payment flow configuration.
  * - `bank-picker`: user picks an institution, then continues in their bank flow
@@ -992,6 +1003,8 @@ export type DepositPaymentInfo =
       flow: Extract<DepositPaymentInteraction, "bank-transfer">;
       instructions: string;
       fields: DepositPaymentField[];
+      /** Optional acknowledgement and confirmation copy for this transfer. */
+      ui?: DepositBankTransferUi;
       /** Present while provider-owned transfer instructions are not ready yet. */
       instructionReadiness?: {
         status: "pending";
