@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import type {
   AccountRail,
+  DepositBankTransferUi,
   DepositPaymentInfo,
   DepositPaymentInteraction,
   DepositPaymentReference,
@@ -16,6 +17,8 @@ import { useCopyToClipboard } from "../../hooks/useCopyToClipboard.js";
 import { useDepositPoller } from "../../hooks/useDepositPoller.js";
 import { useDraftDeposit } from "../../hooks/useDraftDeposit.js";
 import { ErrorPage } from "../ErrorPage.js";
+import { PrimaryButton } from "../buttons.js";
+import { ConfirmationSpinner } from "../ConfirmationSpinner.js";
 import {
   ChevronIcon,
   CopyIcon,
@@ -159,14 +162,17 @@ export function AccountPaymentInstructionsPage({
           emphasized: field.emphasized === true,
         }))
       : parseInstructions(instructions);
-  const bankTransferDetails = bankTransferFields.filter((field) => field.label);
-  const bankTransferNotes = bankTransferFields.filter((field) => !field.label);
   const directionsPayment = payment?.flow === "directions" ? payment : null;
   const directionsLocale = getLocale();
   const bankTransferAmount =
     payment && !directionsPayment
       ? formatFiatAmount(depositAmount, payment.currency, directionsLocale)
       : "";
+  const bankTransferUi =
+    payment?.flow === "bank-transfer" ? payment.ui : undefined;
+  const bankTransferSummary = bankTransferUi
+    ? instructions
+    : t.accountBankDetailsAutoDetect(bankTransferAmount);
   const directionsStepIndex = directionsView.stepIndex;
   const directionsDeposit =
     directionsView.type === "deposit" && directionsPayment
@@ -245,6 +251,18 @@ export function AccountPaymentInstructionsPage({
     return <BankDetailsSkeleton title={pageTitle} onBack={onBack} />;
   }
 
+  if (!directionsDeposit && !directionsPayment) {
+    return (
+      <BankTransferFlowPage
+        title={pageTitle}
+        fields={bankTransferFields}
+        summary={bankTransferSummary}
+        ui={bankTransferUi}
+        onBack={onBack}
+      />
+    );
+  }
+
   return (
     <div className="daimo-flex daimo-flex-col daimo-flex-1 daimo-min-h-0">
       <PageHeader
@@ -303,36 +321,112 @@ export function AccountPaymentInstructionsPage({
             }
           />
         </div>
-      ) : (
-        <div className="daimo-flex daimo-flex-col daimo-px-6 daimo-pt-4 daimo-pb-12">
-          <div className="daimo-flex daimo-flex-col daimo-gap-2">
-            {bankTransferDetails.map((field, i) => (
-              <FieldRow
-                key={i}
-                label={field.label}
-                value={field.value}
-                emphasized={field.emphasized}
+      ) : null}
+    </div>
+  );
+}
+
+type BankTransferFlowPageProps = {
+  title: string;
+  fields: InstructionField[];
+  summary: string;
+  ui?: DepositBankTransferUi;
+  onBack?: (() => void) | null;
+};
+
+/** Direct bank-transfer instructions followed by an optional acknowledgement. */
+export function BankTransferFlowPage({
+  title,
+  fields,
+  summary,
+  ui,
+  onBack,
+}: BankTransferFlowPageProps) {
+  const [acknowledged, setAcknowledged] = useState(false);
+  const details = fields.filter((field) => field.label);
+  const notes = fields.filter((field) => !field.label);
+
+  if (acknowledged && ui) {
+    return (
+      <BankTransferConfirmationPage
+        ui={ui}
+        onBack={() => setAcknowledged(false)}
+      />
+    );
+  }
+
+  return (
+    <div className="daimo-flex daimo-flex-col daimo-flex-1 daimo-min-h-0">
+      <PageHeader title={title} onBack={onBack} />
+      <div className="daimo-flex-1 daimo-min-h-0 daimo-overflow-y-auto daimo-px-6 daimo-pt-4 daimo-pb-6">
+        <div className="daimo-flex daimo-flex-col daimo-gap-2">
+          {details.map((field, index) => (
+            <FieldRow
+              key={`${field.label}-${index}`}
+              label={field.label}
+              value={field.value}
+              emphasized={field.emphasized}
+            />
+          ))}
+        </div>
+        <div className="daimo-mx-auto daimo-mt-6 daimo-flex daimo-max-w-xs daimo-flex-col daimo-items-center daimo-text-center daimo-text-sm daimo-leading-relaxed daimo-text-[var(--daimo-text-secondary)]">
+          <p>{summary}</p>
+          {notes.length > 0 && (
+            <>
+              <div
+                aria-hidden="true"
+                className="daimo-my-4 daimo-h-px daimo-w-10 daimo-bg-[var(--daimo-border)]"
               />
-            ))}
+              <div className="daimo-flex daimo-flex-col daimo-gap-2">
+                {notes.map((field, index) => (
+                  <p key={`${field.value}-${index}`}>{field.value}</p>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+        {ui && (
+          <div className="daimo-mx-auto daimo-mt-4 daimo-max-w-xs daimo-text-center daimo-text-sm daimo-leading-relaxed daimo-text-[var(--daimo-text-secondary)]">
+            <p>
+              {ui.arrivalNotice} {ui.providerDisclosure}
+            </p>
           </div>
-          <div className="daimo-mx-auto daimo-mt-8 daimo-flex daimo-max-w-xs daimo-flex-col daimo-items-center daimo-text-center daimo-text-sm daimo-leading-relaxed daimo-text-[var(--daimo-text-secondary)]">
-            <p>{t.accountBankDetailsAutoDetect(bankTransferAmount)}</p>
-            {bankTransferNotes.length > 0 && (
-              <>
-                <div
-                  aria-hidden="true"
-                  className="daimo-my-4 daimo-h-px daimo-w-10 daimo-bg-[var(--daimo-border)]"
-                />
-                <div className="daimo-flex daimo-flex-col daimo-gap-2">
-                  {bankTransferNotes.map((field, i) => (
-                    <p key={i}>{field.value}</p>
-                  ))}
-                </div>
-              </>
-            )}
-          </div>
+        )}
+      </div>
+      {ui && (
+        <div className="daimo-flex daimo-justify-center daimo-px-6 daimo-pt-3 daimo-pb-6">
+          <PrimaryButton onClick={() => setAcknowledged(true)}>
+            {ui.actionLabel}
+          </PrimaryButton>
         </div>
       )}
+    </div>
+  );
+}
+
+function BankTransferConfirmationPage({
+  ui,
+  onBack,
+}: {
+  ui: DepositBankTransferUi;
+  onBack: () => void;
+}) {
+  return (
+    <div className="daimo-flex daimo-flex-col daimo-flex-1 daimo-min-h-0">
+      <PageHeader title={ui.confirmation.title} onBack={onBack} />
+      <div className="daimo-flex daimo-flex-1 daimo-items-center daimo-justify-center daimo-px-6 daimo-pb-12">
+        <div
+          role="status"
+          aria-live="polite"
+          className="daimo-flex daimo-w-full daimo-max-w-xs daimo-flex-col daimo-items-center daimo-text-center"
+        >
+          <ConfirmationSpinner done size={96} />
+          <div className="daimo-mt-6 daimo-flex daimo-flex-col daimo-gap-2 daimo-text-sm daimo-leading-relaxed daimo-text-[var(--daimo-text-secondary)]">
+            <p>{ui.confirmation.description}</p>
+            <p>{ui.providerDisclosure}</p>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
