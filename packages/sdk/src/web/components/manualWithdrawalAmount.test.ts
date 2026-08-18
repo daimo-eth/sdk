@@ -69,8 +69,8 @@ describe("manual withdrawal amount pages", () => {
       ...token,
       maxAcceptUsd: 5_000,
     });
-    option.balance.usd = 6_000;
-    option.balance.amount = "6000000000";
+    option.balance.usd = 50;
+    option.balance.amount = "50000000";
     option.minimumRequired.usd = 5;
 
     const html = renderToStaticMarkup(
@@ -85,7 +85,7 @@ describe("manual withdrawal amount pages", () => {
     );
 
     expect(html).toContain("Minimum $5.00 · Maximum $5,000.00");
-    expect(html).not.toContain("Balance");
+    expect(html).toContain("Balance: $50.00");
   });
 
   it("hides Max when account and fiat entry disable it", () => {

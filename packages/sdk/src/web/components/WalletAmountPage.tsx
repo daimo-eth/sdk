@@ -62,7 +62,7 @@ export function WalletAmountPage({
             usd: token.balance.usd,
             nativeAmountUnits: balanceNativeUnits,
           }}
-          helperContent={showLimits ? "limits" : "balance"}
+          limitMaximumUsd={showLimits ? balanceToken.maxAcceptUsd : undefined}
           showMax
           platform={platform}
           baseUrl={baseUrl}
