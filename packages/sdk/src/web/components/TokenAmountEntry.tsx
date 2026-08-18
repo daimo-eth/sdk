@@ -47,6 +47,8 @@ type TokenAmountEntryProps = {
    * exceeds bounds.
    */
   balance?: { usd: number; nativeAmountUnits: number };
+  /** Server maximum shown separately from the balance-capped validation max. */
+  limitMaximumUsd?: number;
   /** Show the "Max" pill. Clicking sets the input to `maximumUsd`. */
   showMax?: boolean;
   /** Override for the primary icon. Fiat flows use a country/region icon. */
@@ -76,6 +78,7 @@ export function TokenAmountEntry({
   onContinue,
   onChange,
   balance,
+  limitMaximumUsd,
   showMax = false,
   iconLogoURI,
   iconAlt,
@@ -109,6 +112,7 @@ export function TokenAmountEntry({
   const hasAmount = isEditingUsd ? usdStr !== "" : nativeStr !== "";
   const showMinWarning = hasAmount && validationAmountUsd < minimumUsd;
   const showMaxWarning = hasAmount && validationAmountUsd > maxUsdForValidation;
+  const hasBoundsWarning = showMinWarning || showMaxWarning;
   const showMaxButton = showMax;
   const currentEntryValue = {
     amountUsd: validationAmountUsd,
@@ -199,10 +203,19 @@ export function TokenAmountEntry({
     nativeDisplay,
     balance,
   });
-  const messageColor =
-    showMinWarning || showMaxWarning
-      ? "daimo-text-[var(--daimo-text)]"
-      : "daimo-text-[var(--daimo-text-secondary)]";
+  const limitsMessage =
+    limitMaximumUsd == null
+      ? null
+      : buildLimitsMessage({
+          minimumUsd,
+          maximumUsd: limitMaximumUsd,
+          isEditingUsd,
+          token,
+          nativeDisplay,
+        });
+  const messageColor = hasBoundsWarning
+    ? "daimo-text-[var(--daimo-text)]"
+    : "daimo-text-[var(--daimo-text-secondary)]";
 
   // Secondary amount for the switch button.
   const secondaryAmount = isEditingUsd
@@ -280,11 +293,14 @@ export function TokenAmountEntry({
         />
       )}
 
-      <p
-        className={`${messageColor} daimo-min-h-[21px] daimo-text-base daimo-font-normal daimo-leading-[21px] daimo-tabular-nums daimo-mb-6`}
-      >
-        {message}
-      </p>
+      <div className="daimo-min-h-[21px] daimo-text-base daimo-font-normal daimo-leading-[21px] daimo-text-center daimo-tabular-nums daimo-mb-6">
+        <p className={messageColor}>{message}</p>
+        {limitsMessage && (
+          <p className="daimo-text-[var(--daimo-text-secondary)]">
+            {hasBoundsWarning ? "\u00a0" : limitsMessage}
+          </p>
+        )}
+      </div>
     </div>
   );
 }
@@ -357,6 +373,21 @@ function buildMessage(args: {
     return `${t.balance} ${formatNative(roundNative(balance.nativeAmountUnits, token), nativeDisplay)}`;
   }
   return "";
+}
+
+function buildLimitsMessage(args: {
+  minimumUsd: number;
+  maximumUsd: number;
+  isEditingUsd: boolean;
+  token: DaimoPayToken;
+  nativeDisplay: NativeDisplay;
+}): string {
+  const { minimumUsd, maximumUsd, isEditingUsd, token, nativeDisplay } = args;
+  const fmt = (usd: number) =>
+    isEditingUsd
+      ? `$${formatFixedAmount(usd)}`
+      : formatNative(usdToNativeStr(usd, token), nativeDisplay);
+  return `${t.minimum} ${fmt(minimumUsd)} · ${t.maximum} ${fmt(maximumUsd)}`;
 }
 
 function SwitchButton({
