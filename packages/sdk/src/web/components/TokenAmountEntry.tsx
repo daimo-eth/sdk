@@ -112,6 +112,7 @@ export function TokenAmountEntry({
   const hasAmount = isEditingUsd ? usdStr !== "" : nativeStr !== "";
   const showMinWarning = hasAmount && validationAmountUsd < minimumUsd;
   const showMaxWarning = hasAmount && validationAmountUsd > maxUsdForValidation;
+  const hasBoundsWarning = showMinWarning || showMaxWarning;
   const showMaxButton = showMax;
   const currentEntryValue = {
     amountUsd: validationAmountUsd,
@@ -212,10 +213,9 @@ export function TokenAmountEntry({
           token,
           nativeDisplay,
         });
-  const messageColor =
-    showMinWarning || showMaxWarning
-      ? "daimo-text-[var(--daimo-text)]"
-      : "daimo-text-[var(--daimo-text-secondary)]";
+  const messageColor = hasBoundsWarning
+    ? "daimo-text-[var(--daimo-text)]"
+    : "daimo-text-[var(--daimo-text-secondary)]";
 
   // Secondary amount for the switch button.
   const secondaryAmount = isEditingUsd
@@ -297,7 +297,7 @@ export function TokenAmountEntry({
         <p className={messageColor}>{message}</p>
         {limitsMessage && (
           <p className="daimo-text-[var(--daimo-text-secondary)]">
-            {limitsMessage}
+            {hasBoundsWarning ? "\u00a0" : limitsMessage}
           </p>
         )}
       </div>

@@ -88,6 +88,26 @@ describe("manual withdrawal amount pages", () => {
     expect(html).toContain("Balance: $50.00");
   });
 
+  it("hides server limits while a balance-capped warning is shown", () => {
+    const html = renderToStaticMarkup(
+      createElement(TokenAmountEntry, {
+        token,
+        minimumUsd: 5,
+        maximumUsd: 50,
+        limitMaximumUsd: 5_000,
+        initialAmountUsd: 100,
+        nativeDisplay: { kind: "suffix", symbol: token.symbol },
+        balance: { usd: 50, nativeAmountUnits: 50 },
+        onContinue: () => {},
+        platform: "mobile",
+        baseUrl: "https://daimo.com",
+      }),
+    );
+
+    expect(html).toContain("Maximum $50.00");
+    expect(html).not.toContain("Maximum $5,000.00");
+  });
+
   it("hides Max when account and fiat entry disable it", () => {
     const html = renderToStaticMarkup(
       createElement(TokenAmountEntry, {
