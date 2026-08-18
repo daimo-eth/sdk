@@ -14,6 +14,8 @@ type WalletAmountPageProps = {
   onBack: () => void;
   onContinue: (amountUsd: number, amountUnits: string) => void;
   baseUrl: string;
+  /** Show the server-provided range below the amount input. */
+  showLimits?: boolean;
 };
 
 /** Amount entry page for wallet payment flow. */
@@ -23,6 +25,7 @@ export function WalletAmountPage({
   onBack,
   onContinue,
   baseUrl,
+  showLimits = false,
 }: WalletAmountPageProps) {
   const balanceToken = token.balance.token;
   const minimumUsd = token.minimumRequired.usd;
@@ -59,6 +62,7 @@ export function WalletAmountPage({
             usd: token.balance.usd,
             nativeAmountUnits: balanceNativeUnits,
           }}
+          helperContent={showLimits ? "limits" : "balance"}
           showMax
           platform={platform}
           baseUrl={baseUrl}

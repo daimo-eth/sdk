@@ -47,6 +47,8 @@ type TokenAmountEntryProps = {
    * exceeds bounds.
    */
   balance?: { usd: number; nativeAmountUnits: number };
+  /** Helper content shown for an amount within bounds. */
+  helperContent?: "balance" | "limits";
   /** Show the "Max" pill. Clicking sets the input to `maximumUsd`. */
   showMax?: boolean;
   /** Override for the primary icon. Fiat flows use a country/region icon. */
@@ -76,6 +78,7 @@ export function TokenAmountEntry({
   onContinue,
   onChange,
   balance,
+  helperContent = "balance",
   showMax = false,
   iconLogoURI,
   iconAlt,
@@ -198,6 +201,7 @@ export function TokenAmountEntry({
     token,
     nativeDisplay,
     balance,
+    helperContent,
   });
   const messageColor =
     showMinWarning || showMaxWarning
@@ -330,6 +334,7 @@ function buildMessage(args: {
   token: DaimoPayToken;
   nativeDisplay: NativeDisplay;
   balance?: { usd: number; nativeAmountUnits: number };
+  helperContent: "balance" | "limits";
 }): string {
   const {
     showMinWarning,
@@ -340,6 +345,7 @@ function buildMessage(args: {
     token,
     nativeDisplay,
     balance,
+    helperContent,
   } = args;
   const fmt = (usd: number) =>
     isEditingUsd
@@ -347,6 +353,9 @@ function buildMessage(args: {
       : formatNative(usdToNativeStr(usd, token), nativeDisplay);
   if (showMaxWarning) return `${t.maximum} ${fmt(maximumUsd)}`;
   if (showMinWarning) return `${t.minimum} ${fmt(minimumUsd)}`;
+  if (helperContent === "limits") {
+    return `${t.minimum} ${fmt(minimumUsd)} · ${t.maximum} ${fmt(maximumUsd)}`;
+  }
   if (balance) {
     if (isEditingUsd) {
       const isUsdPegged = token.fiatISO === "USD";

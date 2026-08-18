@@ -64,6 +64,30 @@ describe("manual withdrawal amount pages", () => {
     expect(html).toContain("USDC");
   });
 
+  it("shows server-provided limits on withdrawal wallet amount pages", () => {
+    const option = makeWalletOption({
+      ...token,
+      maxAcceptUsd: 5_000,
+    });
+    option.balance.usd = 6_000;
+    option.balance.amount = "6000000000";
+    option.minimumRequired.usd = 5;
+
+    const html = renderToStaticMarkup(
+      createElement(WalletAmountPage, {
+        token: option,
+        platform: "mobile",
+        onBack: () => {},
+        onContinue: () => {},
+        baseUrl: "https://daimo.com",
+        showLimits: true,
+      }),
+    );
+
+    expect(html).toContain("Minimum $5.00 · Maximum $5,000.00");
+    expect(html).not.toContain("Balance");
+  });
+
   it("hides Max when account and fiat entry disable it", () => {
     const html = renderToStaticMarkup(
       createElement(TokenAmountEntry, {
