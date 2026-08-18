@@ -11,6 +11,7 @@ import { DaimoRequestError } from "../../../common/errors.js";
 
 const LEGACY_POLL_DELAY_MS = 2_000;
 const LEGAL_NAME_FORM_ID = "account-legal-name";
+const ENROLLMENT_REFRESH_RETRY_DELAYS_MS = [500, 1_500] as const;
 
 type BearerAuth = { bearerToken: string };
 
@@ -346,6 +347,38 @@ export function enrollmentPollingDelay(
     : null;
 }
 
+/** Keep established enrollment UI in place when a request fails. */
+export function enrollmentRequestFailureBehavior(
+  step: EnrollmentStep | null,
+): "show-error" | "retry-poll" | "preserve-step" {
+  if (!step) return "show-error";
+  return enrollmentPollingDelay(step.interaction) == null
+    ? "preserve-step"
+    : "retry-poll";
+}
+
+/** Retry idempotent enrollment refreshes before replacing the current UI. */
+export async function retryEnrollmentRefresh<T>(
+  request: () => Promise<T>,
+  wait: (delayMs: number) => Promise<void> = waitForEnrollmentRetry,
+): Promise<T> {
+  for (const delayMs of ENROLLMENT_REFRESH_RETRY_DELAYS_MS) {
+    try {
+      return await request();
+    } catch (error) {
+      if (!isRetryableEnrollmentRefreshError(error)) throw error;
+      await wait(delayMs);
+    }
+  }
+  return request();
+}
+
+/** Authentication and missing-route errors need a user or protocol change. */
+export function isRetryableEnrollmentRefreshError(error: unknown): boolean {
+  if (!(error instanceof DaimoRequestError)) return false;
+  return error.status !== 401 && error.status !== 403 && error.status !== 404;
+}
+
 export function enrollmentHostedReturnTiming(
   autoSubmitDelayMs: number | undefined,
 ): { kind: "auto"; delayMs: number } | { kind: "focus" } {
@@ -453,4 +486,8 @@ function pollingIdentity(interaction: EnrollmentInteraction): string {
   return interaction.polling.status === "poll"
     ? String(interaction.polling.delayMs)
     : "none";
+}
+
+function waitForEnrollmentRetry(delayMs: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, delayMs));
 }

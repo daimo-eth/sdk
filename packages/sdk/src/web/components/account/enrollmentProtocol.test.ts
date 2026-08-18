@@ -6,6 +6,7 @@ import {
   zEnrollmentActionInput,
   zEnrollmentInteraction,
 } from "../../../common/account.js";
+import { DaimoRequestError } from "../../../common/errors.js";
 import { createDaimoClient } from "../../../client/createDaimoClient.js";
 import { describe, expect, expectTypeOf, test } from "vitest";
 
@@ -15,8 +16,11 @@ import {
   enrollmentInteractionIdentity,
   enrollmentNavigationEffect,
   enrollmentPollingDelay,
+  enrollmentRequestFailureBehavior,
+  isRetryableEnrollmentRefreshError,
   isEnrollmentResponseCurrent,
   loadEnrollmentStep,
+  retryEnrollmentRefresh,
   shouldLoadEnrollmentTarget,
   submitEnrollmentStep,
   toLegacyEnrollmentInteraction,
@@ -325,6 +329,82 @@ describe("legacy enrollment compatibility", () => {
 });
 
 describe("generic enrollment contract", () => {
+  test("preserves established UI and retries polling steps", () => {
+    expect(enrollmentRequestFailureBehavior(null)).toBe("show-error");
+    expect(
+      enrollmentRequestFailureBehavior({
+        protocol: "generic",
+        interaction: hosted,
+      }),
+    ).toBe("preserve-step");
+    expect(
+      enrollmentRequestFailureBehavior({
+        protocol: "generic",
+        interaction: {
+          version: 1,
+          kind: "wait",
+          polling: { status: "poll", delayMs: 2_000 },
+          reason: "processing",
+        },
+      }),
+    ).toBe("retry-poll");
+  });
+
+  test("retries an idempotent refresh after transient 400 responses", async () => {
+    let attempts = 0;
+    const waits: number[] = [];
+    const client = createDaimoClient({
+      baseUrl: "https://api.example.test",
+      fetchImpl: async () => {
+        attempts += 1;
+        if (attempts < 3) {
+          return new Response("bad request", { status: 400 });
+        }
+        return jsonResponse({
+          version: 1,
+          kind: "active",
+          polling: { status: "none" },
+        });
+      },
+    });
+
+    const result = await retryEnrollmentRefresh(
+      () =>
+        loadEnrollmentStep({
+          client,
+          rail: "sepa",
+          locale: "en",
+          auth: { bearerToken: "token" },
+          legacyCopy,
+        }),
+      async (delayMs) => {
+        waits.push(delayMs);
+      },
+    );
+
+    expect(result.interaction.kind).toBe("active");
+    expect(attempts).toBe(3);
+    expect(waits).toEqual([500, 1_500]);
+  });
+
+  test("does not retry authentication or missing-route errors", () => {
+    expect(
+      isRetryableEnrollmentRefreshError(
+        new DaimoRequestError({ status: 401, message: "unauthorized" }),
+      ),
+    ).toBe(false);
+    expect(
+      isRetryableEnrollmentRefreshError(
+        new DaimoRequestError({ status: 404, message: "not found" }),
+      ),
+    ).toBe(false);
+    expect(
+      isRetryableEnrollmentRefreshError(
+        new DaimoRequestError({ status: 400, message: "bad request" }),
+      ),
+    ).toBe(true);
+  });
+
   test.each<{
     interaction: EnrollmentInteraction;
     navigation: "render" | "phone" | "ready";

@@ -11,6 +11,7 @@ import type {
   EnrollmentActionInput,
   EnrollmentInteraction,
 } from "../../../common/account.js";
+import { DaimoRequestError } from "../../../common/errors.js";
 import type { NavNodeFiat } from "../../api/navTree.js";
 import { useDaimoClient } from "../../hooks/DaimoClientContext.js";
 import { getLocale, t } from "../../hooks/locale.js";
@@ -40,10 +41,12 @@ import {
   enrollmentHostedReturnTiming,
   enrollmentNavigationEffect,
   enrollmentPollingDelay,
+  enrollmentRequestFailureBehavior,
   type EnrollmentStep,
   isEnrollmentResponseCurrent,
   type LegacyEnrollmentCopy,
   loadEnrollmentStep,
+  retryEnrollmentRefresh,
   shouldLoadEnrollmentTarget,
   submitEnrollmentStep,
 } from "./enrollmentProtocol.js";
@@ -83,7 +86,8 @@ export function AccountEnrollmentPage({
   const legacyCopy = useMemo(() => getLegacyCopy(platform), [platform]);
   const [step, setStep] = useState<EnrollmentStep | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [requestError, setRequestError] = useState<unknown | null>(null);
+  const [pollRetryVersion, setPollRetryVersion] = useState(0);
   const latestRequestRef = useRef(0);
   const targetRef = useRef(target);
   const stepRef = useRef<EnrollmentStep | null>(null);
@@ -106,7 +110,7 @@ export function AccountEnrollmentPage({
     stepRef.current = result;
     setStep(result);
     setIsLoading(false);
-    setErrorMessage(null);
+    setRequestError(null);
 
     switch (enrollmentNavigationEffect(result.interaction)) {
       case "ready":
@@ -131,7 +135,7 @@ export function AccountEnrollmentPage({
       let result: EnrollmentStep;
       try {
         result = await request();
-      } catch {
+      } catch (error) {
         if (
           mountedRef.current &&
           isEnrollmentResponseCurrent({
@@ -144,7 +148,18 @@ export function AccountEnrollmentPage({
           })
         ) {
           setIsLoading(false);
-          setErrorMessage(t.errorGeneric);
+          switch (enrollmentRequestFailureBehavior(stepRef.current)) {
+            case "show-error":
+              setRequestError(
+                error ?? new Error("unknown enrollment request error"),
+              );
+              break;
+            case "retry-poll":
+              setPollRetryVersion((version) => version + 1);
+              break;
+            case "preserve-step":
+              break;
+          }
         }
         return null;
       }
@@ -172,17 +187,21 @@ export function AccountEnrollmentPage({
   const refreshEnrollment = useCallback(
     async (expectedInteraction: string | null = null) => {
       if (!getAccessToken) return null;
-      return runRequest(async () => {
-        const token = await getAccessToken();
-        if (!token) throw new Error("not authenticated");
-        return loadEnrollmentStep({
-          client,
-          rail,
-          locale: getLocale(),
-          auth: { bearerToken: token },
-          legacyCopy,
-        });
-      }, expectedInteraction);
+      return runRequest(
+        () =>
+          retryEnrollmentRefresh(async () => {
+            const token = await getAccessToken();
+            if (!token) throw new Error("not authenticated");
+            return loadEnrollmentStep({
+              client,
+              rail,
+              locale: getLocale(),
+              auth: { bearerToken: token },
+              legacyCopy,
+            });
+          }),
+        expectedInteraction,
+      );
     },
     [client, getAccessToken, legacyCopy, rail, runRequest],
   );
@@ -230,7 +249,7 @@ export function AccountEnrollmentPage({
     latestRequestRef.current += 1;
     stepRef.current = null;
     setStep(null);
-    setErrorMessage(null);
+    setRequestError(null);
     setIsLoading(true);
     void refreshEnrollmentRef.current();
   }, [getAccessToken, target]);
@@ -244,7 +263,7 @@ export function AccountEnrollmentPage({
       void refreshEnrollmentRef.current(expectedInteraction);
     }, delayMs);
     return () => window.clearTimeout(timeout);
-  }, [step]);
+  }, [pollRetryVersion, step]);
 
   if (isLoading) {
     return (
@@ -252,10 +271,13 @@ export function AccountEnrollmentPage({
     );
   }
 
-  if (errorMessage) {
+  if (requestError) {
     return (
       <ErrorPage
-        message={errorMessage}
+        message={t.errorGeneric}
+        eventError={requestError}
+        errorCode={enrollmentRequestErrorCode(requestError)}
+        errorStage="enrollment_refresh"
         onBack={onBack}
         sessionId={sessionId}
         clientSecret={clientSecret}
@@ -407,6 +429,11 @@ export function AccountEnrollmentPage({
     case "active":
       return null;
   }
+}
+
+function enrollmentRequestErrorCode(error: unknown): string | undefined {
+  if (!(error instanceof DaimoRequestError)) return undefined;
+  return error.code ?? (error.status > 0 ? String(error.status) : undefined);
 }
 
 function AccountEnrollmentFormPage({
