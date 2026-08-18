@@ -128,6 +128,7 @@ export function AccountEnrollmentPage({
     async (
       request: () => Promise<EnrollmentStep>,
       expectedInteraction: string | null,
+      intent: "poll" | "user-action",
     ): Promise<EnrollmentStep | null> => {
       const requestId = ++latestRequestRef.current;
       const requestTarget = targetRef.current;
@@ -148,7 +149,9 @@ export function AccountEnrollmentPage({
           })
         ) {
           setIsLoading(false);
-          switch (enrollmentRequestFailureBehavior(stepRef.current)) {
+          switch (
+            enrollmentRequestFailureBehavior(intent, stepRef.current != null)
+          ) {
             case "show-error":
               setRequestError(
                 error ?? new Error("unknown enrollment request error"),
@@ -156,8 +159,6 @@ export function AccountEnrollmentPage({
               break;
             case "retry-poll":
               setPollRetryVersion((version) => version + 1);
-              break;
-            case "preserve-step":
               break;
           }
         }
@@ -199,8 +200,9 @@ export function AccountEnrollmentPage({
               auth: { bearerToken: token },
               legacyCopy,
             });
-          }),
+        }),
         expectedInteraction,
+        expectedInteraction == null ? "user-action" : "poll",
       );
     },
     [client, getAccessToken, legacyCopy, rail, runRequest],
@@ -214,20 +216,24 @@ export function AccountEnrollmentPage({
     ) => {
       if (!getAccessToken) return null;
       const expectedInteraction = enrollmentInteractionIdentity(source);
-      return runRequest(async () => {
-        const token = await getAccessToken();
-        if (!token) throw new Error("not authenticated");
-        return submitEnrollmentStep({
-          client,
-          rail,
-          locale: getLocale(),
-          auth: { bearerToken: token },
-          step: source,
-          actionId,
-          input,
-          legacyCopy,
-        });
-      }, expectedInteraction);
+      return runRequest(
+        async () => {
+          const token = await getAccessToken();
+          if (!token) throw new Error("not authenticated");
+          return submitEnrollmentStep({
+            client,
+            rail,
+            locale: getLocale(),
+            auth: { bearerToken: token },
+            step: source,
+            actionId,
+            input,
+            legacyCopy,
+          });
+        },
+        expectedInteraction,
+        "user-action",
+      );
     },
     [client, getAccessToken, legacyCopy, rail, runRequest],
   );

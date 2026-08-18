@@ -329,25 +329,16 @@ describe("legacy enrollment compatibility", () => {
 });
 
 describe("generic enrollment contract", () => {
-  test("preserves established UI and retries polling steps", () => {
-    expect(enrollmentRequestFailureBehavior(null)).toBe("show-error");
-    expect(
-      enrollmentRequestFailureBehavior({
-        protocol: "generic",
-        interaction: hosted,
-      }),
-    ).toBe("preserve-step");
-    expect(
-      enrollmentRequestFailureBehavior({
-        protocol: "generic",
-        interaction: {
-          version: 1,
-          kind: "wait",
-          polling: { status: "poll", delayMs: 2_000 },
-          reason: "processing",
-        },
-      }),
-    ).toBe("retry-poll");
+  test("preserves only background polls", () => {
+    expect(enrollmentRequestFailureBehavior("poll", true)).toBe(
+      "retry-poll",
+    );
+    expect(enrollmentRequestFailureBehavior("poll", false)).toBe(
+      "show-error",
+    );
+    expect(enrollmentRequestFailureBehavior("user-action", true)).toBe(
+      "show-error",
+    );
   });
 
   test("retries an idempotent refresh after transient 400 responses", async () => {

@@ -347,14 +347,12 @@ export function enrollmentPollingDelay(
     : null;
 }
 
-/** Keep established enrollment UI in place when a request fails. */
+/** Keep established enrollment UI only when a background poll fails. */
 export function enrollmentRequestFailureBehavior(
-  step: EnrollmentStep | null,
-): "show-error" | "retry-poll" | "preserve-step" {
-  if (!step) return "show-error";
-  return enrollmentPollingDelay(step.interaction) == null
-    ? "preserve-step"
-    : "retry-poll";
+  intent: "poll" | "user-action",
+  hasCurrentStep: boolean,
+): "show-error" | "retry-poll" {
+  return intent === "poll" && hasCurrentStep ? "retry-poll" : "show-error";
 }
 
 /** Retry idempotent enrollment refreshes before replacing the current UI. */
