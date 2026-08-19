@@ -1635,7 +1635,6 @@ function renderWalletSelectAmount(
       onBack={ctx.onBack}
       onContinue={(amountUsd) => ctx.onWalletSending(entry.token, amountUsd)}
       baseUrl={ctx.session.baseUrl}
-      showLimits={ctx.confirmationMode === "withdrawal"}
     />
   );
 }

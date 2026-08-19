@@ -85,8 +85,7 @@ Choose one manual amount mode:
   accepts `$0.01+` with at most two decimal places.
 - Omit `amountUnits` and pass an EVM `connectToAddress` for read-only token and
   balance selection. The callback receives the selected source token and exact
-  balance-capped raw amount. The amount page shows and enforces the minimum and
-  maximum returned by Daimo wallet options.
+  balance-capped raw amount.
 
 ```tsx
 <DaimoWithdrawal

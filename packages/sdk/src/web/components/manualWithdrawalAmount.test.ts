@@ -64,50 +64,6 @@ describe("manual withdrawal amount pages", () => {
     expect(html).toContain("USDC");
   });
 
-  it("shows server-provided limits on withdrawal wallet amount pages", () => {
-    const option = makeWalletOption({
-      ...token,
-      maxAcceptUsd: 5_000,
-    });
-    option.balance.usd = 50;
-    option.balance.amount = "50000000";
-    option.minimumRequired.usd = 5;
-
-    const html = renderToStaticMarkup(
-      createElement(WalletAmountPage, {
-        token: option,
-        platform: "mobile",
-        onBack: () => {},
-        onContinue: () => {},
-        baseUrl: "https://daimo.com",
-        showLimits: true,
-      }),
-    );
-
-    expect(html).toContain("Minimum $5.00 · Maximum $5,000.00");
-    expect(html).toContain("Balance: $50.00");
-  });
-
-  it("hides server limits while a balance-capped warning is shown", () => {
-    const html = renderToStaticMarkup(
-      createElement(TokenAmountEntry, {
-        token,
-        minimumUsd: 5,
-        maximumUsd: 50,
-        limitMaximumUsd: 5_000,
-        initialAmountUsd: 100,
-        nativeDisplay: { kind: "suffix", symbol: token.symbol },
-        balance: { usd: 50, nativeAmountUnits: 50 },
-        onContinue: () => {},
-        platform: "mobile",
-        baseUrl: "https://daimo.com",
-      }),
-    );
-
-    expect(html).toContain("Maximum $50.00");
-    expect(html).not.toContain("Maximum $5,000.00");
-  });
-
   it("hides Max when account and fiat entry disable it", () => {
     const html = renderToStaticMarkup(
       createElement(TokenAmountEntry, {

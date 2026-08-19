@@ -997,7 +997,6 @@ function ManualWithdrawalFlow({
           })
         }
         baseUrl={DAIMO_BASE_URL}
-        showLimits
       />
     );
   } else {
