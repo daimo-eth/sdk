@@ -34,3 +34,34 @@ test("connected wallet uses the session action verb inside a group", () => {
   expect(html).toContain("Deposit with 0xE267...70E9");
   expect(html).not.toContain("Other with 0xE267...70E9");
 });
+
+test("renders server-provided option subtitle", () => {
+  const node: NavNodeChooseOption = {
+    type: "ChooseOption",
+    id: "Root",
+    title: "Pay",
+    options: [
+      {
+        type: "Stripe",
+        id: "Stripe",
+        title: "Pay with Card",
+        label: "Card",
+        subtitle: "Credit or debit card",
+        minimumUsd: 1,
+        maximumUsd: 10000,
+      },
+    ],
+  };
+
+  const html = renderToStaticMarkup(
+    createElement(ChooseOptionPage, {
+      node,
+      onNavigate: () => {},
+      onBack: () => {},
+      baseUrl: "",
+    }),
+  );
+
+  expect(html).toContain("Card");
+  expect(html).toContain("Credit or debit card");
+});

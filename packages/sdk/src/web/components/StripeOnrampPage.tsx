@@ -44,7 +44,7 @@ export function StripeOnrampPage({
       platform={platform}
       url={redirectUrl}
       icon={node.icon}
-      message={`Deposit exactly $${formatFixedAmount(amountUsd)} with Stripe, then return to this page.`}
+      message={`Deposit exactly $${formatFixedAmount(amountUsd)} with Card, then return to this page.`}
       isLoading={isLoading}
       onBack={onBack}
       baseUrl={baseUrl}

@@ -25,6 +25,7 @@ type NavNodeCommon = {
   id: string;
   title: string;
   label?: string;
+  subtitle?: string;
   icons?: string[];
   /** When set, option is shown but not selectable, with this reason displayed. */
   disabledReason?: string;

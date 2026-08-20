@@ -173,15 +173,17 @@ function OptionRow({
   disabled?: boolean;
 }) {
   const label = option.label ?? option.title;
-  const subtitle =
-    option.type === "Fiat"
-      ? getKycRequirement(option.kycRequirement).rowLabel
-      : undefined;
+  const subtitle = disabled
+    ? option.disabledReason
+    : (option.subtitle ??
+      (option.type === "Fiat"
+        ? getKycRequirement(option.kycRequirement).rowLabel
+        : undefined));
 
   return (
     <ListRow
       label={label}
-      subtitle={disabled ? option.disabledReason : subtitle}
+      subtitle={subtitle}
       right={<OptionIcons option={option} baseUrl={baseUrl} />}
       onClick={onClick}
       disabled={disabled}
