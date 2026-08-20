@@ -41,7 +41,6 @@ import {
   enrollmentHostedReturnTiming,
   enrollmentNavigationEffect,
   enrollmentPollingDelay,
-  enrollmentRequestFailureBehavior,
   type EnrollmentStep,
   isEnrollmentResponseCurrent,
   type LegacyEnrollmentCopy,
@@ -68,6 +67,11 @@ type AccountEnrollmentPageProps = {
   onLogout: () => Promise<void>;
 };
 
+type EnrollmentRequestError = {
+  error: unknown;
+  stage: "enrollment_refresh" | "enrollment_action";
+};
+
 export function AccountEnrollmentPage({
   node,
   sessionId,
@@ -86,8 +90,8 @@ export function AccountEnrollmentPage({
   const legacyCopy = useMemo(() => getLegacyCopy(platform), [platform]);
   const [step, setStep] = useState<EnrollmentStep | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [requestError, setRequestError] = useState<unknown | null>(null);
-  const [pollRetryVersion, setPollRetryVersion] = useState(0);
+  const [requestError, setRequestError] =
+    useState<EnrollmentRequestError | null>(null);
   const latestRequestRef = useRef(0);
   const targetRef = useRef(target);
   const stepRef = useRef<EnrollmentStep | null>(null);
@@ -128,7 +132,7 @@ export function AccountEnrollmentPage({
     async (
       request: () => Promise<EnrollmentStep>,
       expectedInteraction: string | null,
-      intent: "poll" | "user-action",
+      errorStage: EnrollmentRequestError["stage"],
     ): Promise<EnrollmentStep | null> => {
       const requestId = ++latestRequestRef.current;
       const requestTarget = targetRef.current;
@@ -149,18 +153,10 @@ export function AccountEnrollmentPage({
           })
         ) {
           setIsLoading(false);
-          switch (
-            enrollmentRequestFailureBehavior(intent, stepRef.current != null)
-          ) {
-            case "show-error":
-              setRequestError(
-                error ?? new Error("unknown enrollment request error"),
-              );
-              break;
-            case "retry-poll":
-              setPollRetryVersion((version) => version + 1);
-              break;
-          }
+          setRequestError({
+            error: error ?? new Error("unknown enrollment request error"),
+            stage: errorStage,
+          });
         }
         return null;
       }
@@ -200,13 +196,20 @@ export function AccountEnrollmentPage({
               auth: { bearerToken: token },
               legacyCopy,
             });
-        }),
+          }),
         expectedInteraction,
-        expectedInteraction == null ? "user-action" : "poll",
+        "enrollment_refresh",
       );
     },
     [client, getAccessToken, legacyCopy, rail, runRequest],
   );
+
+  const retryEnrollment = useCallback(() => {
+    if (!getAccessToken) return;
+    setRequestError(null);
+    setIsLoading(true);
+    void refreshEnrollment();
+  }, [getAccessToken, refreshEnrollment]);
 
   const submitAction = useCallback(
     async (
@@ -232,7 +235,7 @@ export function AccountEnrollmentPage({
           });
         },
         expectedInteraction,
-        "user-action",
+        "enrollment_action",
       );
     },
     [client, getAccessToken, legacyCopy, rail, runRequest],
@@ -261,7 +264,7 @@ export function AccountEnrollmentPage({
   }, [getAccessToken, target]);
 
   useEffect(() => {
-    if (!step) return;
+    if (isLoading || requestError || !step) return;
     const delayMs = enrollmentPollingDelay(step.interaction);
     if (delayMs == null) return;
     const expectedInteraction = enrollmentInteractionIdentity(step);
@@ -269,7 +272,7 @@ export function AccountEnrollmentPage({
       void refreshEnrollmentRef.current(expectedInteraction);
     }, delayMs);
     return () => window.clearTimeout(timeout);
-  }, [pollRetryVersion, step]);
+  }, [isLoading, requestError, step]);
 
   if (isLoading) {
     return (
@@ -281,14 +284,14 @@ export function AccountEnrollmentPage({
     return (
       <ErrorPage
         message={t.errorGeneric}
-        eventError={requestError}
-        errorCode={enrollmentRequestErrorCode(requestError)}
-        errorStage="enrollment_refresh"
+        eventError={requestError.error}
+        errorCode={enrollmentRequestErrorCode(requestError.error)}
+        errorStage={requestError.stage}
         onBack={onBack}
         sessionId={sessionId}
         clientSecret={clientSecret}
         retryText={t.tryAgain}
-        onRetry={() => void refreshEnrollment()}
+        onRetry={retryEnrollment}
       />
     );
   }

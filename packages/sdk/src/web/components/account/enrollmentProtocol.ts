@@ -347,14 +347,6 @@ export function enrollmentPollingDelay(
     : null;
 }
 
-/** Keep established enrollment UI only when a background poll fails. */
-export function enrollmentRequestFailureBehavior(
-  intent: "poll" | "user-action",
-  hasCurrentStep: boolean,
-): "show-error" | "retry-poll" {
-  return intent === "poll" && hasCurrentStep ? "retry-poll" : "show-error";
-}
-
 /** Retry idempotent enrollment refreshes before replacing the current UI. */
 export async function retryEnrollmentRefresh<T>(
   request: () => Promise<T>,

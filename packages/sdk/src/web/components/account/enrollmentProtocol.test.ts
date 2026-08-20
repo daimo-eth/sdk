@@ -16,7 +16,6 @@ import {
   enrollmentInteractionIdentity,
   enrollmentNavigationEffect,
   enrollmentPollingDelay,
-  enrollmentRequestFailureBehavior,
   isRetryableEnrollmentRefreshError,
   isEnrollmentResponseCurrent,
   loadEnrollmentStep,
@@ -329,18 +328,6 @@ describe("legacy enrollment compatibility", () => {
 });
 
 describe("generic enrollment contract", () => {
-  test("preserves only background polls", () => {
-    expect(enrollmentRequestFailureBehavior("poll", true)).toBe(
-      "retry-poll",
-    );
-    expect(enrollmentRequestFailureBehavior("poll", false)).toBe(
-      "show-error",
-    );
-    expect(enrollmentRequestFailureBehavior("user-action", true)).toBe(
-      "show-error",
-    );
-  });
-
   test("retries an idempotent refresh after transient 400 responses", async () => {
     let attempts = 0;
     const waits: number[] = [];
@@ -378,22 +365,56 @@ describe("generic enrollment contract", () => {
     expect(waits).toEqual([500, 1_500]);
   });
 
-  test("does not retry authentication or missing-route errors", () => {
-    expect(
-      isRetryableEnrollmentRefreshError(
-        new DaimoRequestError({ status: 401, message: "unauthorized" }),
+  test("stops after three failed refresh attempts", async () => {
+    const error = new DaimoRequestError({
+      status: 500,
+      message: "provider unavailable",
+    });
+    const waits: number[] = [];
+    let attempts = 0;
+
+    await expect(
+      retryEnrollmentRefresh(
+        async () => {
+          attempts += 1;
+          throw error;
+        },
+        async (delayMs) => {
+          waits.push(delayMs);
+        },
       ),
+    ).rejects.toBe(error);
+
+    expect(attempts).toBe(3);
+    expect(waits).toEqual([500, 1_500]);
+  });
+
+  test.each([401, 403, 404])(
+    "does not retry permanent HTTP %i errors",
+    (status) => {
+      expect(
+        isRetryableEnrollmentRefreshError(
+          new DaimoRequestError({ status, message: "request failed" }),
+        ),
+      ).toBe(false);
+    },
+  );
+
+  test.each([0, 400, 429, 500])(
+    "retries transient HTTP %i errors",
+    (status) => {
+      expect(
+        isRetryableEnrollmentRefreshError(
+          new DaimoRequestError({ status, message: "request failed" }),
+        ),
+      ).toBe(true);
+    },
+  );
+
+  test("does not retry unknown errors", () => {
+    expect(
+      isRetryableEnrollmentRefreshError(new Error("request failed")),
     ).toBe(false);
-    expect(
-      isRetryableEnrollmentRefreshError(
-        new DaimoRequestError({ status: 404, message: "not found" }),
-      ),
-    ).toBe(false);
-    expect(
-      isRetryableEnrollmentRefreshError(
-        new DaimoRequestError({ status: 400, message: "bad request" }),
-      ),
-    ).toBe(true);
   });
 
   test.each<{
