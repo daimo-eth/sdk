@@ -6,6 +6,7 @@ import {
   zEnrollmentActionInput,
   zEnrollmentInteraction,
 } from "../../../common/account.js";
+import { DaimoRequestError } from "../../../common/errors.js";
 import { createDaimoClient } from "../../../client/createDaimoClient.js";
 import { describe, expect, expectTypeOf, test } from "vitest";
 
@@ -15,8 +16,10 @@ import {
   enrollmentInteractionIdentity,
   enrollmentNavigationEffect,
   enrollmentPollingDelay,
+  isRetryableEnrollmentRefreshError,
   isEnrollmentResponseCurrent,
   loadEnrollmentStep,
+  retryEnrollmentRefresh,
   shouldLoadEnrollmentTarget,
   submitEnrollmentStep,
   toLegacyEnrollmentInteraction,
@@ -325,6 +328,95 @@ describe("legacy enrollment compatibility", () => {
 });
 
 describe("generic enrollment contract", () => {
+  test("retries an idempotent refresh after transient 400 responses", async () => {
+    let attempts = 0;
+    const waits: number[] = [];
+    const client = createDaimoClient({
+      baseUrl: "https://api.example.test",
+      fetchImpl: async () => {
+        attempts += 1;
+        if (attempts < 3) {
+          return new Response("bad request", { status: 400 });
+        }
+        return jsonResponse({
+          version: 1,
+          kind: "active",
+          polling: { status: "none" },
+        });
+      },
+    });
+
+    const result = await retryEnrollmentRefresh(
+      () =>
+        loadEnrollmentStep({
+          client,
+          rail: "sepa",
+          locale: "en",
+          auth: { bearerToken: "token" },
+          legacyCopy,
+        }),
+      async (delayMs) => {
+        waits.push(delayMs);
+      },
+    );
+
+    expect(result.interaction.kind).toBe("active");
+    expect(attempts).toBe(3);
+    expect(waits).toEqual([500, 1_500]);
+  });
+
+  test("stops after three failed refresh attempts", async () => {
+    const error = new DaimoRequestError({
+      status: 500,
+      message: "provider unavailable",
+    });
+    const waits: number[] = [];
+    let attempts = 0;
+
+    await expect(
+      retryEnrollmentRefresh(
+        async () => {
+          attempts += 1;
+          throw error;
+        },
+        async (delayMs) => {
+          waits.push(delayMs);
+        },
+      ),
+    ).rejects.toBe(error);
+
+    expect(attempts).toBe(3);
+    expect(waits).toEqual([500, 1_500]);
+  });
+
+  test.each([401, 403, 404])(
+    "does not retry permanent HTTP %i errors",
+    (status) => {
+      expect(
+        isRetryableEnrollmentRefreshError(
+          new DaimoRequestError({ status, message: "request failed" }),
+        ),
+      ).toBe(false);
+    },
+  );
+
+  test.each([0, 400, 429, 500])(
+    "retries transient HTTP %i errors",
+    (status) => {
+      expect(
+        isRetryableEnrollmentRefreshError(
+          new DaimoRequestError({ status, message: "request failed" }),
+        ),
+      ).toBe(true);
+    },
+  );
+
+  test("does not retry unknown errors", () => {
+    expect(
+      isRetryableEnrollmentRefreshError(new Error("request failed")),
+    ).toBe(false);
+  });
+
   test.each<{
     interaction: EnrollmentInteraction;
     navigation: "render" | "phone" | "ready";

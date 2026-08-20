@@ -11,6 +11,7 @@ import type {
   EnrollmentActionInput,
   EnrollmentInteraction,
 } from "../../../common/account.js";
+import { DaimoRequestError } from "../../../common/errors.js";
 import type { NavNodeFiat } from "../../api/navTree.js";
 import { useDaimoClient } from "../../hooks/DaimoClientContext.js";
 import { getLocale, t } from "../../hooks/locale.js";
@@ -44,6 +45,7 @@ import {
   isEnrollmentResponseCurrent,
   type LegacyEnrollmentCopy,
   loadEnrollmentStep,
+  retryEnrollmentRefresh,
   shouldLoadEnrollmentTarget,
   submitEnrollmentStep,
 } from "./enrollmentProtocol.js";
@@ -65,6 +67,11 @@ type AccountEnrollmentPageProps = {
   onLogout: () => Promise<void>;
 };
 
+type EnrollmentRequestError = {
+  error: unknown;
+  stage: "enrollment_refresh" | "enrollment_action";
+};
+
 export function AccountEnrollmentPage({
   node,
   sessionId,
@@ -83,7 +90,8 @@ export function AccountEnrollmentPage({
   const legacyCopy = useMemo(() => getLegacyCopy(platform), [platform]);
   const [step, setStep] = useState<EnrollmentStep | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [requestError, setRequestError] =
+    useState<EnrollmentRequestError | null>(null);
   const latestRequestRef = useRef(0);
   const targetRef = useRef(target);
   const stepRef = useRef<EnrollmentStep | null>(null);
@@ -106,7 +114,7 @@ export function AccountEnrollmentPage({
     stepRef.current = result;
     setStep(result);
     setIsLoading(false);
-    setErrorMessage(null);
+    setRequestError(null);
 
     switch (enrollmentNavigationEffect(result.interaction)) {
       case "ready":
@@ -124,6 +132,7 @@ export function AccountEnrollmentPage({
     async (
       request: () => Promise<EnrollmentStep>,
       expectedInteraction: string | null,
+      errorStage: EnrollmentRequestError["stage"],
     ): Promise<EnrollmentStep | null> => {
       const requestId = ++latestRequestRef.current;
       const requestTarget = targetRef.current;
@@ -131,7 +140,7 @@ export function AccountEnrollmentPage({
       let result: EnrollmentStep;
       try {
         result = await request();
-      } catch {
+      } catch (error) {
         if (
           mountedRef.current &&
           isEnrollmentResponseCurrent({
@@ -144,7 +153,10 @@ export function AccountEnrollmentPage({
           })
         ) {
           setIsLoading(false);
-          setErrorMessage(t.errorGeneric);
+          setRequestError({
+            error: error ?? new Error("unknown enrollment request error"),
+            stage: errorStage,
+          });
         }
         return null;
       }
@@ -172,20 +184,32 @@ export function AccountEnrollmentPage({
   const refreshEnrollment = useCallback(
     async (expectedInteraction: string | null = null) => {
       if (!getAccessToken) return null;
-      return runRequest(async () => {
-        const token = await getAccessToken();
-        if (!token) throw new Error("not authenticated");
-        return loadEnrollmentStep({
-          client,
-          rail,
-          locale: getLocale(),
-          auth: { bearerToken: token },
-          legacyCopy,
-        });
-      }, expectedInteraction);
+      return runRequest(
+        () =>
+          retryEnrollmentRefresh(async () => {
+            const token = await getAccessToken();
+            if (!token) throw new Error("not authenticated");
+            return loadEnrollmentStep({
+              client,
+              rail,
+              locale: getLocale(),
+              auth: { bearerToken: token },
+              legacyCopy,
+            });
+          }),
+        expectedInteraction,
+        "enrollment_refresh",
+      );
     },
     [client, getAccessToken, legacyCopy, rail, runRequest],
   );
+
+  const retryEnrollment = useCallback(() => {
+    if (!getAccessToken) return;
+    setRequestError(null);
+    setIsLoading(true);
+    void refreshEnrollment();
+  }, [getAccessToken, refreshEnrollment]);
 
   const submitAction = useCallback(
     async (
@@ -195,20 +219,24 @@ export function AccountEnrollmentPage({
     ) => {
       if (!getAccessToken) return null;
       const expectedInteraction = enrollmentInteractionIdentity(source);
-      return runRequest(async () => {
-        const token = await getAccessToken();
-        if (!token) throw new Error("not authenticated");
-        return submitEnrollmentStep({
-          client,
-          rail,
-          locale: getLocale(),
-          auth: { bearerToken: token },
-          step: source,
-          actionId,
-          input,
-          legacyCopy,
-        });
-      }, expectedInteraction);
+      return runRequest(
+        async () => {
+          const token = await getAccessToken();
+          if (!token) throw new Error("not authenticated");
+          return submitEnrollmentStep({
+            client,
+            rail,
+            locale: getLocale(),
+            auth: { bearerToken: token },
+            step: source,
+            actionId,
+            input,
+            legacyCopy,
+          });
+        },
+        expectedInteraction,
+        "enrollment_action",
+      );
     },
     [client, getAccessToken, legacyCopy, rail, runRequest],
   );
@@ -230,13 +258,13 @@ export function AccountEnrollmentPage({
     latestRequestRef.current += 1;
     stepRef.current = null;
     setStep(null);
-    setErrorMessage(null);
+    setRequestError(null);
     setIsLoading(true);
     void refreshEnrollmentRef.current();
   }, [getAccessToken, target]);
 
   useEffect(() => {
-    if (!step) return;
+    if (isLoading || requestError || !step) return;
     const delayMs = enrollmentPollingDelay(step.interaction);
     if (delayMs == null) return;
     const expectedInteraction = enrollmentInteractionIdentity(step);
@@ -244,7 +272,7 @@ export function AccountEnrollmentPage({
       void refreshEnrollmentRef.current(expectedInteraction);
     }, delayMs);
     return () => window.clearTimeout(timeout);
-  }, [step]);
+  }, [isLoading, requestError, step]);
 
   if (isLoading) {
     return (
@@ -252,15 +280,18 @@ export function AccountEnrollmentPage({
     );
   }
 
-  if (errorMessage) {
+  if (requestError) {
     return (
       <ErrorPage
-        message={errorMessage}
+        message={t.errorGeneric}
+        eventError={requestError.error}
+        errorCode={enrollmentRequestErrorCode(requestError.error)}
+        errorStage={requestError.stage}
         onBack={onBack}
         sessionId={sessionId}
         clientSecret={clientSecret}
         retryText={t.tryAgain}
-        onRetry={() => void refreshEnrollment()}
+        onRetry={retryEnrollment}
       />
     );
   }
@@ -407,6 +438,11 @@ export function AccountEnrollmentPage({
     case "active":
       return null;
   }
+}
+
+function enrollmentRequestErrorCode(error: unknown): string | undefined {
+  if (!(error instanceof DaimoRequestError)) return undefined;
+  return error.code ?? (error.status > 0 ? String(error.status) : undefined);
 }
 
 function AccountEnrollmentFormPage({
