@@ -1,5 +1,6 @@
 const MAX_ERROR_MESSAGE_LENGTH = 300;
 const MAX_ERROR_CODE_LENGTH = 100;
+const INVALID_CLIENT_SECRET_CODE = "invalid_client_secret";
 
 export type AccountSetupStage = "wallet_preparation" | "account_creation";
 
@@ -21,6 +22,12 @@ export function getAccountSetupFailure(
     eventError: `${stage.replace("_", " ")} failed: ${message}`,
     ...(errorCode ? { errorCode } : {}),
   };
+}
+
+export function isInvalidSessionFailure(
+  failure: AccountSetupFailure,
+): boolean {
+  return failure.errorCode === INVALID_CLIENT_SECRET_CODE;
 }
 
 function getErrorMessage(error: unknown): string {

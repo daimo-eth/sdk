@@ -256,6 +256,7 @@ export const zh: typeof en = {
   errorGeneric: "出了点问题，请重试。",
   errorDepositFailed: "无法处理您的充值，请重试。",
   errorAccountSetup: "无法设置您的账户，请重试。",
+  errorSessionInvalid: "此会话已失效。请关闭此页面并重新开始。",
   errorConnectionLost: "连接已断开，请检查网络后重试。",
 
   // session page

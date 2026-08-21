@@ -272,6 +272,8 @@ export const pt: typeof en = {
   errorDepositFailed:
     "Não foi possível processar seu depósito. Tente novamente.",
   errorAccountSetup: "Não foi possível configurar sua conta. Tente novamente.",
+  errorSessionInvalid:
+    "Esta sessão não é mais válida. Feche esta página e comece novamente.",
   errorConnectionLost: "Conexão perdida. Verifique sua rede e tente novamente.",
 
   // session page

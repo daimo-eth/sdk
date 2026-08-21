@@ -1,6 +1,9 @@
 import { describe, expect, test } from "vitest";
 
-import { getAccountSetupFailure } from "./accountSetupFailure.js";
+import {
+  getAccountSetupFailure,
+  isInvalidSessionFailure,
+} from "./accountSetupFailure.js";
 
 describe("getAccountSetupFailure", () => {
   test("preserves the Privy error code and normalizes its message", () => {
@@ -40,5 +43,15 @@ describe("getAccountSetupFailure", () => {
       stage: "wallet_preparation",
       eventError: "wallet preparation failed: unknown error",
     });
+  });
+
+  test("identifies an invalid session client secret", () => {
+    expect(
+      isInvalidSessionFailure({
+        stage: "account_creation",
+        eventError: "account creation failed: invalid client secret",
+        errorCode: "invalid_client_secret",
+      }),
+    ).toBe(true);
   });
 });
