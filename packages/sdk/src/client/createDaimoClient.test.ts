@@ -136,4 +136,37 @@ describe("prepareDeposit authorization compatibility", () => {
       ),
     ).resolves.toEqual({ kind: "direct" });
   });
+
+  test("preserves a v2 transaction response", async () => {
+    const response = {
+      kind: "transaction" as const,
+      transaction: {
+        chainId: 8453,
+        to: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913" as const,
+        data: "0x095ea7b3" as const,
+      },
+      deliverySignData: {
+        domain: {},
+        types: {},
+        primaryType: "DeliveryConsent",
+        message: {},
+      },
+    };
+    const client = createDaimoClient({
+      baseUrl: "https://api.example.test",
+      fetchImpl: async () => Response.json(response),
+    });
+
+    await expect(
+      client.account.prepareDeposit(
+        {
+          sessionId: "session-3",
+          rail: "apple_pay",
+          depositAmount: "49.88",
+          authorizationVersion: 2,
+        },
+        { bearerToken: "token" },
+      ),
+    ).resolves.toEqual(response);
+  });
 });
