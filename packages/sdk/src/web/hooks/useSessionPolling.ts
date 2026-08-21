@@ -1,4 +1,8 @@
-import { isSessionActive, isSessionTerminal } from "../../common/session.js";
+import {
+  isSessionActive,
+  isSessionTerminal,
+  type SessionPublicInfo,
+} from "../../common/session.js";
 import { useEffect, useState } from "react";
 
 import { useDaimoClient } from "./DaimoClientContext.js";
@@ -6,6 +10,8 @@ import { createNavLogger } from "./navEvent.js";
 import type { SessionWithNav } from "../api/navTree.js";
 
 const POLL_INTERVAL_MS = 3000;
+
+type SessionCredentials = Pick<SessionWithNav, "sessionId" | "clientSecret">;
 
 const terminalAction = {
   expired: "session_expired",
@@ -44,16 +50,18 @@ export function useSessionPolling(
     if (!isOpen || !isSessionActive(session.status)) return;
 
     const poll = async () => {
+      const credentials = {
+        sessionId: session.sessionId,
+        clientSecret: session.clientSecret,
+      };
       try {
-        const result = await client.sessions.check(session.sessionId, {
-          clientSecret: session.clientSecret,
+        const result = await client.sessions.check(credentials.sessionId, {
+          clientSecret: credentials.clientSecret,
           txHash,
         });
-        setSession((prev) => ({
-          ...prev,
-          ...result.session,
-          navTree: prev.navTree,
-        }));
+        setSession((current) =>
+          mergeSessionPollResult(current, credentials, result.session),
+        );
       } catch (error) {
         console.error("failed to poll session:", error);
       }
@@ -64,4 +72,25 @@ export function useSessionPolling(
   }, [isOpen, session.sessionId, session.status, session.clientSecret, client, txHash]);
 
   return { session, setSession };
+}
+
+/** Ignore a poll result when session credentials changed during the request. */
+export function mergeSessionPollResult(
+  current: SessionWithNav,
+  credentials: SessionCredentials,
+  update: SessionPublicInfo,
+): SessionWithNav {
+  if (
+    current.sessionId !== credentials.sessionId ||
+    current.clientSecret !== credentials.clientSecret ||
+    update.sessionId !== credentials.sessionId
+  ) {
+    return current;
+  }
+
+  return {
+    ...current,
+    ...update,
+    navTree: current.navTree,
+  };
 }

@@ -272,6 +272,8 @@ export const ja: typeof en = {
   errorDepositFailed: "入金を処理できませんでした。もう一度お試しください。",
   errorAccountSetup:
     "アカウントを設定できませんでした。もう一度お試しください。",
+  errorSessionInvalid:
+    "このセッションは無効になりました。このページを閉じて、もう一度開始してください。",
   errorConnectionLost:
     "接続が切れました。ネットワークを確認してもう一度お試しください。",
 

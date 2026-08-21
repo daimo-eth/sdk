@@ -9,6 +9,7 @@ import { CenteredContent, PageHeader } from "../shared.js";
 
 import {
   getAccountSetupFailure,
+  isInvalidSessionFailure,
   type AccountSetupFailure,
   type AccountSetupStage,
 } from "./accountSetupFailure.js";
@@ -58,9 +59,12 @@ export function AccountCreatingWalletPage({
   }, [account, run]);
 
   if (error) {
+    const invalidSession = isInvalidSessionFailure(error);
     return (
       <ErrorPage
-        message={t.errorAccountSetup}
+        message={
+          invalidSession ? t.errorSessionInvalid : t.errorAccountSetup
+        }
         eventError={error.eventError}
         errorCode={error.errorCode}
         errorStage={error.stage}
@@ -69,10 +73,11 @@ export function AccountCreatingWalletPage({
         supportInfo={{
           stage: error.stage,
           details: error.eventError,
-          ...(error.errorCode ? { providerErrorCode: error.errorCode } : {}),
+          ...(error.errorCode ? { errorCode: error.errorCode } : {}),
         }}
         retryText={t.tryAgain}
         onRetry={run}
+        hideRetry={invalidSession}
       />
     );
   }

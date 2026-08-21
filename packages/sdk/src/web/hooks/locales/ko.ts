@@ -268,6 +268,8 @@ export const ko: typeof en = {
   errorGeneric: "문제가 발생했습니다. 다시 시도해 주세요.",
   errorDepositFailed: "입금을 처리할 수 없습니다. 다시 시도해 주세요.",
   errorAccountSetup: "계정을 설정할 수 없습니다. 다시 시도해 주세요.",
+  errorSessionInvalid:
+    "이 세션은 더 이상 유효하지 않습니다. 이 페이지를 닫고 다시 시작해 주세요.",
   errorConnectionLost:
     "연결이 끊어졌습니다. 네트워크를 확인하고 다시 시도해 주세요.",
 

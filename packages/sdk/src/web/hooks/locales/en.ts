@@ -269,6 +269,8 @@ export const en = {
   errorGeneric: "Something went wrong. Please try again.",
   errorDepositFailed: "We couldn't process your deposit. Please try again.",
   errorAccountSetup: "We couldn't set up your account. Please try again.",
+  errorSessionInvalid:
+    "This session is no longer valid. Close this page and start again.",
   errorConnectionLost:
     "Connection lost. Please check your network and try again.",
 

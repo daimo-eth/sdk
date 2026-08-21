@@ -239,6 +239,8 @@ export const es: typeof en = {
     "No pudimos procesar tu depósito. Por favor, intenta de nuevo.",
   errorAccountSetup:
     "No pudimos configurar tu cuenta. Por favor, intenta de nuevo.",
+  errorSessionInvalid:
+    "Esta sesión ya no es válida. Cierra esta página y vuelve a empezar.",
   errorConnectionLost: "Conexión perdida. Verifica tu red e intenta de nuevo.",
   connect: "Conectar",
   connectWallet: "Conectar billetera",
