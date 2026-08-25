@@ -24,6 +24,7 @@ import {
   ExternalLinkIcon,
   PrimaryButton,
   SecondaryButton,
+  SecondaryLinkButton,
 } from "../buttons.js";
 import { ErrorPage } from "../ErrorPage.js";
 import { DaimoFormField, DaimoTextField } from "../formFields.js";
@@ -554,8 +555,9 @@ export function EnrollmentCodePage({
   const [code, setCode] = useState("");
   const [error, setError] = useState<string | undefined>(interaction.error);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { canResend, restart: restartResendCooldown } =
-    useResendCooldown(interaction.resend.delayMs);
+  const { canResend, restart: restartResendCooldown } = useResendCooldown(
+    interaction.resend.delayMs,
+  );
   const actionInFlightRef = useRef(false);
   const normalizedCode = code.trim();
   const isValid =
@@ -630,18 +632,17 @@ export function EnrollmentCodePage({
               )}
             </DaimoFormField>
           </div>
-        </CenteredContent>
-        <div className="daimo-px-6 daimo-pb-6 daimo-flex daimo-flex-col daimo-items-center daimo-gap-2">
-          <PrimaryButton type="submit" disabled={!isValid || isSubmitting}>
-            {interaction.copy.submitLabel}
-          </PrimaryButton>
-          <SecondaryButton
-            type="button"
+          <SecondaryLinkButton
             onClick={() => void handleResend()}
             disabled={isSubmitting || !canResend}
           >
             {interaction.copy.resendLabel}
-          </SecondaryButton>
+          </SecondaryLinkButton>
+        </CenteredContent>
+        <div className="daimo-px-6 daimo-pb-6 daimo-flex daimo-flex-col daimo-items-center">
+          <PrimaryButton type="submit" disabled={!isValid || isSubmitting}>
+            {interaction.copy.submitLabel}
+          </PrimaryButton>
         </div>
       </form>
     </div>

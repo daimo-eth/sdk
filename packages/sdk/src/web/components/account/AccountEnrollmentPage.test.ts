@@ -158,6 +158,9 @@ describe("EnrollmentCodePage", () => {
       (button) => button.textContent === interaction.copy.resendLabel,
     );
     if (!resend) throw new Error("missing resend button");
+    expect(resend.className).toContain("daimo-text-sm");
+    expect(resend.className).toContain("daimo-underline");
+    expect(resend.className).not.toContain("daimo-bg-");
     expect(resend.disabled).toBe(true);
 
     await act(async () => vi.advanceTimersByTime(1_000));
