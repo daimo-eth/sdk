@@ -17,6 +17,7 @@ import type { NavNodeFiat } from "../../api/navTree.js";
 import { useDaimoClient } from "../../hooks/DaimoClientContext.js";
 import { getLocale, t } from "../../hooks/locale.js";
 import { useAccountFlow } from "../../hooks/useAccountFlow.js";
+import { useResendCooldown } from "../../hooks/useResendCooldown.js";
 import type { DaimoPlatform } from "../../platform.js";
 import { isDesktop } from "../../platform.js";
 import {
@@ -541,7 +542,7 @@ function EnrollmentOtpPage({
   );
 }
 
-function EnrollmentCodePage({
+export function EnrollmentCodePage({
   interaction,
   onBack,
   onSubmit,
@@ -553,6 +554,8 @@ function EnrollmentCodePage({
   const [code, setCode] = useState("");
   const [error, setError] = useState<string | undefined>(interaction.error);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { canResend, restart: restartResendCooldown } =
+    useResendCooldown(interaction.resend.delayMs);
   const normalizedCode = code.trim();
   const isValid =
     /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
@@ -578,13 +581,16 @@ function EnrollmentCodePage({
   };
 
   const handleResend = async () => {
-    if (isSubmitting) return;
+    if (isSubmitting || !canResend) return;
     setError(undefined);
     setIsSubmitting(true);
     const result = await onSubmit(interaction.resend.action.id, {
       kind: "resend-code",
     });
-    if (result?.interaction.kind === "code") setIsSubmitting(false);
+    if (result?.interaction.kind === "code") {
+      restartResendCooldown();
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -626,7 +632,7 @@ function EnrollmentCodePage({
           <SecondaryButton
             type="button"
             onClick={() => void handleResend()}
-            disabled={isSubmitting}
+            disabled={isSubmitting || !canResend}
           >
             {interaction.copy.resendLabel}
           </SecondaryButton>

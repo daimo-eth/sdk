@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 
 import { t } from "../../hooks/locale.js";
 import { useAccountFlow } from "../../hooks/useAccountFlow.js";
+import { useResendCooldown } from "../../hooks/useResendCooldown.js";
 import { PrimaryButton, SecondaryLinkButton } from "../buttons.js";
 import { CenteredContent, PageHeader } from "../shared.js";
 import { AccountAuthErrorMessage } from "./AccountAuthErrorMessage.js";
@@ -48,19 +49,9 @@ export function AccountOtpCodeEntry({
   const [status, setStatus] = useState<OtpStatus>("idle");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
-  const [canResend, setCanResend] = useState(resendDelayMs === 0);
-  const [resendVersion, setResendVersion] = useState(0);
+  const { canResend, restart: restartResendCooldown } =
+    useResendCooldown(resendDelayMs);
   const inputRef = useRef<HTMLInputElement | null>(null);
-
-  useEffect(() => {
-    if (resendDelayMs === 0) {
-      setCanResend(true);
-      return;
-    }
-    setCanResend(false);
-    const timeout = window.setTimeout(() => setCanResend(true), resendDelayMs);
-    return () => window.clearTimeout(timeout);
-  }, [resendDelayMs, resendVersion]);
 
   const digits = codeToDigits(code);
   const isComplete = code.length === OTP_LENGTH;
@@ -128,16 +119,15 @@ export function AccountOtpCodeEntry({
 
   const handleResend = useCallback(async () => {
     if (!canResend || busy) return;
-    setCanResend(false);
     setCode("");
     setStatus("idle");
     try {
       await onResend();
     } finally {
-      setResendVersion((version) => version + 1);
+      restartResendCooldown();
       inputRef.current?.focus();
     }
-  }, [busy, canResend, onResend, resendDelayMs]);
+  }, [busy, canResend, onResend, restartResendCooldown]);
 
   const focusInputEnd = useCallback(() => {
     const input = inputRef.current;

@@ -5,7 +5,11 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { setLocale, t } from "../../hooks/locale.js";
-import { EnrollmentEmailChangePage } from "./AccountEnrollmentPage.js";
+import type { EnrollmentInteraction } from "../../../common/account.js";
+import {
+  EnrollmentCodePage,
+  EnrollmentEmailChangePage,
+} from "./AccountEnrollmentPage.js";
 
 const roots: Root[] = [];
 
@@ -90,5 +94,82 @@ describe("EnrollmentEmailChangePage", () => {
 
     expect(container.textContent).toContain(t.accountLogoutFailed);
     expect(cta(container).disabled).toBe(false);
+  });
+});
+
+describe("EnrollmentCodePage", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    for (const root of roots.splice(0)) {
+      act(() => root.unmount());
+    }
+    document.body.replaceChildren();
+  });
+
+  it("enforces the server-provided resend delay after load and resend", async () => {
+    const interaction: Extract<EnrollmentInteraction, { kind: "code" }> = {
+      version: 3,
+      kind: "code",
+      polling: { status: "none" },
+      destination: "email",
+      format: "uuid",
+      copy: {
+        title: "Connect account",
+        message: "Check your email",
+        invalidMessage: "Invalid code",
+        inputLabel: "Link code",
+        submitLabel: "Connect",
+        resendLabel: "Send a new code",
+      },
+      submitAction: { id: "submit-link", revision: "1" },
+      resend: {
+        status: "available",
+        delayMs: 1_000,
+        action: { id: "resend-link", revision: "1" },
+      },
+    };
+    const onSubmit = vi.fn(async () => ({
+      interaction,
+      protocol: "generic" as const,
+    }));
+    const container = document.createElement("div");
+    document.body.append(container);
+    const root = createRoot(container);
+    roots.push(root);
+
+    act(() => {
+      root.render(
+        createElement(EnrollmentCodePage, {
+          interaction,
+          onBack: vi.fn(),
+          onSubmit,
+        }),
+      );
+    });
+
+    const resend = [...container.querySelectorAll("button")].find(
+      (button) => button.textContent === interaction.copy.resendLabel,
+    );
+    if (!resend) throw new Error("missing resend button");
+    expect(resend.disabled).toBe(true);
+
+    await act(async () => vi.advanceTimersByTime(1_000));
+    expect(resend.disabled).toBe(false);
+
+    await act(async () => resend.click());
+    expect(onSubmit).toHaveBeenCalledTimes(1);
+    expect(onSubmit).toHaveBeenCalledWith("resend-link", {
+      kind: "resend-code",
+    });
+    expect(resend.disabled).toBe(true);
+
+    await act(async () => vi.advanceTimersByTime(999));
+    expect(resend.disabled).toBe(true);
+    await act(async () => vi.advanceTimersByTime(1));
+    expect(resend.disabled).toBe(false);
   });
 });
