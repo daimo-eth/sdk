@@ -48,14 +48,20 @@ export function AccountOtpCodeEntry({
   const [code, setCode] = useState("");
   const [status, setStatus] = useState<OtpStatus>("idle");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isResending, setIsResending] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
   const { canResend, restart: restartResendCooldown } =
     useResendCooldown(resendDelayMs);
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const resendInFlightRef = useRef(false);
 
   const digits = codeToDigits(code);
   const isComplete = code.length === OTP_LENGTH;
-  const busy = status !== "idle" || isSubmitting || !!account?.isLoggingIn;
+  const busy =
+    status !== "idle" ||
+    isSubmitting ||
+    isResending ||
+    !!account?.isLoggingIn;
 
   const handleVerify = useCallback(
     async (codeToVerify?: string) => {
@@ -118,13 +124,17 @@ export function AccountOtpCodeEntry({
   );
 
   const handleResend = useCallback(async () => {
-    if (!canResend || busy) return;
+    if (!canResend || busy || resendInFlightRef.current) return;
+    resendInFlightRef.current = true;
+    setIsResending(true);
     setCode("");
     setStatus("idle");
     try {
       await onResend();
     } finally {
+      resendInFlightRef.current = false;
       restartResendCooldown();
+      setIsResending(false);
       inputRef.current?.focus();
     }
   }, [busy, canResend, onResend, restartResendCooldown]);

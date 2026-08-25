@@ -1,12 +1,27 @@
-import { createElement } from "react";
-import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, test } from "vitest";
+// @vitest-environment happy-dom
 
+import { act, createElement } from "react";
+import { createRoot, type Root } from "react-dom/client";
+import { renderToStaticMarkup } from "react-dom/server";
+import { afterEach, describe, expect, test, vi } from "vitest";
+
+import { t } from "../../hooks/locale.js";
 import {
   AccountOtpCodeEntry,
   normalizeOtpCode,
 } from "./AccountOtpCodeEntry.js";
 import { AccountOtpPage } from "./AccountOtpPage.js";
+
+const roots: Root[] = [];
+
+Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
+
+afterEach(() => {
+  for (const root of roots.splice(0)) {
+    act(() => root.unmount());
+  }
+  document.body.replaceChildren();
+});
 
 describe("OTP input semantics", () => {
   test("keeps a visible native input without a group focus ring", () => {
@@ -60,5 +75,40 @@ describe("OTP input normalization", () => {
 
   test("limits input to one six-digit code", () => {
     expect(normalizeOtpCode("123456789")).toBe("123456");
+  });
+});
+
+describe("OTP resend", () => {
+  test("single-flights a resend while the request is pending", async () => {
+    const onResend = vi.fn(() => new Promise<void>(() => undefined));
+    const container = document.createElement("div");
+    document.body.append(container);
+    const root = createRoot(container);
+    roots.push(root);
+
+    act(() => {
+      root.render(
+        createElement(AccountOtpCodeEntry, {
+          destination: "test@example.com",
+          onBack: vi.fn(),
+          onVerified: vi.fn(),
+          onVerify: async () => ({ ok: true }),
+          onResend,
+        }),
+      );
+    });
+
+    const resend = [...container.querySelectorAll("button")].find(
+      (button) => button.textContent === t.accountResendCode,
+    );
+    if (!resend) throw new Error("missing resend button");
+
+    await act(async () => {
+      resend.click();
+      resend.click();
+    });
+
+    expect(onResend).toHaveBeenCalledTimes(1);
+    expect(resend.disabled).toBe(true);
   });
 });
