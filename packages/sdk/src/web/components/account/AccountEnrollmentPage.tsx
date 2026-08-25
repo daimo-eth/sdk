@@ -556,6 +556,7 @@ export function EnrollmentCodePage({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { canResend, restart: restartResendCooldown } =
     useResendCooldown(interaction.resend.delayMs);
+  const actionInFlightRef = useRef(false);
   const normalizedCode = code.trim();
   const isValid =
     /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
@@ -564,10 +565,12 @@ export function EnrollmentCodePage({
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!isValid || isSubmitting) {
+    if (!isValid) {
       setError(interaction.copy.invalidMessage);
       return;
     }
+    if (isSubmitting || actionInFlightRef.current) return;
+    actionInFlightRef.current = true;
     setError(undefined);
     setIsSubmitting(true);
     const result = await onSubmit(interaction.submitAction.id, {
@@ -575,19 +578,22 @@ export function EnrollmentCodePage({
       code: normalizedCode,
     });
     if (result?.interaction.kind === "code") {
+      actionInFlightRef.current = false;
       setError(result.interaction.error ?? interaction.copy.invalidMessage);
       setIsSubmitting(false);
     }
   };
 
   const handleResend = async () => {
-    if (isSubmitting || !canResend) return;
+    if (isSubmitting || !canResend || actionInFlightRef.current) return;
+    actionInFlightRef.current = true;
     setError(undefined);
     setIsSubmitting(true);
     const result = await onSubmit(interaction.resend.action.id, {
       kind: "resend-code",
     });
     if (result?.interaction.kind === "code") {
+      actionInFlightRef.current = false;
       restartResendCooldown();
       setIsSubmitting(false);
     }

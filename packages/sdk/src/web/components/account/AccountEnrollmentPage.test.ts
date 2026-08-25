@@ -5,7 +5,10 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { setLocale, t } from "../../hooks/locale.js";
-import type { EnrollmentInteraction } from "../../../common/account.js";
+import type {
+  EnrollmentActionInput,
+  EnrollmentInteraction,
+} from "../../../common/account.js";
 import {
   EnrollmentCodePage,
   EnrollmentEmailChangePage,
@@ -172,4 +175,89 @@ describe("EnrollmentCodePage", () => {
     await act(async () => vi.advanceTimersByTime(1));
     expect(resend.disabled).toBe(false);
   });
+
+  it("single-flights rapid code submit and resend actions", async () => {
+    const interaction: Extract<EnrollmentInteraction, { kind: "code" }> = {
+      version: 3,
+      kind: "code",
+      polling: { status: "none" },
+      destination: "email",
+      format: "uuid",
+      copy: {
+        title: "Connect account",
+        message: "Check your email",
+        invalidMessage: "Invalid code",
+        inputLabel: "Link code",
+        submitLabel: "Connect",
+        resendLabel: "Send a new code",
+      },
+      submitAction: { id: "submit-link", revision: "1" },
+      resend: {
+        status: "available",
+        delayMs: 0,
+        action: { id: "resend-link", revision: "1" },
+      },
+    };
+    const pendingSubmit = vi.fn(() => new Promise<null>(() => undefined));
+    const submitContainer = renderCodePage(interaction, pendingSubmit);
+    const input = submitContainer.querySelector("input");
+    const form = submitContainer.querySelector("form");
+    if (!input || !form) throw new Error("missing code form");
+
+    act(() => {
+      const valueSetter = Object.getOwnPropertyDescriptor(
+        HTMLInputElement.prototype,
+        "value",
+      )?.set;
+      if (!valueSetter) throw new Error("missing input value setter");
+      valueSetter.call(input, "550e8400-e29b-41d4-a716-446655440000");
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    await act(async () => {
+      form.requestSubmit();
+      form.requestSubmit();
+    });
+
+    expect(pendingSubmit).toHaveBeenCalledTimes(1);
+    expect(pendingSubmit).toHaveBeenCalledWith("submit-link", {
+      kind: "code",
+      code: "550e8400-e29b-41d4-a716-446655440000",
+    });
+
+    const pendingResend = vi.fn(() => new Promise<null>(() => undefined));
+    const resendContainer = renderCodePage(interaction, pendingResend);
+    const resend = [...resendContainer.querySelectorAll("button")].find(
+      (button) => button.textContent === interaction.copy.resendLabel,
+    );
+    if (!resend) throw new Error("missing resend button");
+    await act(async () => {
+      resend.click();
+      resend.click();
+    });
+
+    expect(pendingResend).toHaveBeenCalledTimes(1);
+    expect(pendingResend).toHaveBeenCalledWith("resend-link", {
+      kind: "resend-code",
+    });
+  });
+
+  function renderCodePage(
+    interaction: Extract<EnrollmentInteraction, { kind: "code" }>,
+    onSubmit: (actionId: string, input: EnrollmentActionInput) => Promise<null>,
+  ): HTMLElement {
+    const container = document.createElement("div");
+    document.body.append(container);
+    const root = createRoot(container);
+    roots.push(root);
+    act(() => {
+      root.render(
+        createElement(EnrollmentCodePage, {
+          interaction,
+          onBack: vi.fn(),
+          onSubmit,
+        }),
+      );
+    });
+    return container;
+  }
 });
