@@ -217,6 +217,19 @@ export type ProviderOtpCopy = {
   invalidMessage: string;
 };
 
+export type VerificationCodeCopy = ProviderOtpCopy & {
+  inputLabel: string;
+  submitLabel: string;
+  resendLabel: string;
+};
+
+type VerificationCodeEnrollmentResponse = {
+  destination: "email";
+  format: "uuid";
+  copy: VerificationCodeCopy;
+  error?: string;
+};
+
 type ProviderOtpEnrollmentResponse = {
   destination: "email";
   copy: ProviderOtpCopy;
@@ -232,6 +245,9 @@ export type EnrollmentResponse =
   | ({ action: "hosted_agreement_required" } & HostedEnrollmentResponse)
   | ({ action: "hosted_kyc_required" } & LinkOutEnrollmentResponse)
   | ({ action: "provider_otp_required" } & ProviderOtpEnrollmentResponse)
+  | ({
+      action: "verification_code_required";
+    } & VerificationCodeEnrollmentResponse)
   | { action: "provider_pending" }
   /** User must verify a phone number before continuing. */
   | { action: "phone_required"; reason?: string }
@@ -244,8 +260,9 @@ export type EnrollmentResponse =
 
 export const ENROLLMENT_INTERACTION_VERSION = 1 as const;
 export const ENROLLMENT_INTERACTION_VERSION_V2 = 2 as const;
+export const ENROLLMENT_INTERACTION_VERSION_V3 = 3 as const;
 export const CURRENT_ENROLLMENT_INTERACTION_VERSION =
-  ENROLLMENT_INTERACTION_VERSION_V2;
+  ENROLLMENT_INTERACTION_VERSION_V3;
 export const ENROLLMENT_INTERACTION_VERSION_HEADER =
   "x-daimo-enrollment-interaction-version";
 
@@ -267,6 +284,11 @@ type EnrollmentInteractionBaseV1 = {
 
 type EnrollmentInteractionBaseV2 = {
   version: typeof ENROLLMENT_INTERACTION_VERSION_V2;
+  polling: EnrollmentInteractionPolling;
+};
+
+type EnrollmentInteractionBaseV3 = {
+  version: typeof ENROLLMENT_INTERACTION_VERSION_V3;
   polling: EnrollmentInteractionPolling;
 };
 
@@ -330,7 +352,20 @@ export type EnrollmentInteraction =
       retryAction?: EnrollmentInteractionAction;
     })
   | (EnrollmentInteractionBaseV1 & { kind: "active" })
-  | (EnrollmentInteractionBaseV2 & { kind: "account-email-change" });
+  | (EnrollmentInteractionBaseV2 & { kind: "account-email-change" })
+  | (EnrollmentInteractionBaseV3 & {
+      kind: "code";
+      destination: "email";
+      format: "uuid";
+      copy: VerificationCodeCopy;
+      error?: string;
+      submitAction: EnrollmentInteractionAction;
+      resend: {
+        status: "available";
+        delayMs: number;
+        action: EnrollmentInteractionAction;
+      };
+    });
 
 const zEnrollmentAction = z
   .object({
@@ -463,6 +498,11 @@ const enrollmentInteractionBaseV2 = {
   polling: zEnrollmentPolling,
 };
 
+const enrollmentInteractionBaseV3 = {
+  version: z.literal(ENROLLMENT_INTERACTION_VERSION_V3),
+  polling: zEnrollmentPolling,
+};
+
 /** Runtime validation for the closed, server-provided interaction vocabulary. */
 export const zEnrollmentInteraction: z.ZodType<EnrollmentInteraction> =
   z.discriminatedUnion("kind", [
@@ -582,6 +622,33 @@ export const zEnrollmentInteraction: z.ZodType<EnrollmentInteraction> =
         kind: z.literal("account-email-change"),
       })
       .strict(),
+    z
+      .object({
+        ...enrollmentInteractionBaseV3,
+        kind: z.literal("code"),
+        destination: z.literal("email"),
+        format: z.literal("uuid"),
+        copy: z
+          .object({
+            title: z.string(),
+            message: z.string(),
+            invalidMessage: z.string(),
+            inputLabel: z.string(),
+            submitLabel: z.string(),
+            resendLabel: z.string(),
+          })
+          .strict(),
+        error: z.string().optional(),
+        submitAction: zEnrollmentAction,
+        resend: z
+          .object({
+            status: z.literal("available"),
+            delayMs: z.number().int().min(0).max(60_000),
+            action: zEnrollmentAction,
+          })
+          .strict(),
+      })
+      .strict(),
   ]);
 
 const zEnrollmentActionFormValues = z
@@ -612,6 +679,13 @@ export const zEnrollmentActionInput = z.discriminatedUnion("kind", [
     })
     .strict(),
   z.object({ kind: z.literal("resend-otp") }).strict(),
+  z
+    .object({
+      kind: z.literal("code"),
+      code: z.string().trim().uuid(),
+    })
+    .strict(),
+  z.object({ kind: z.literal("resend-code") }).strict(),
   z.object({ kind: z.literal("continue") }).strict(),
   z.object({ kind: z.literal("retry") }).strict(),
 ]);

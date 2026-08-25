@@ -1,4 +1,5 @@
 import {
+  type FormEvent,
   type ReactNode,
   useCallback,
   useEffect,
@@ -24,6 +25,7 @@ import {
   SecondaryButton,
 } from "../buttons.js";
 import { ErrorPage } from "../ErrorPage.js";
+import { DaimoFormField, DaimoTextField } from "../formFields.js";
 import { CheckIcon, ErrorIcon } from "../icons.js";
 import { Skeleton, SkeletonText } from "../Skeleton.js";
 import {
@@ -318,6 +320,15 @@ export function AccountEnrollmentPage({
           onSubmit={(actionId, input) => submitAction(step, actionId, input)}
         />
       );
+    case "code":
+      return (
+        <EnrollmentCodePage
+          key={enrollmentInteractionIdentity(step)}
+          interaction={interaction}
+          onBack={onBack}
+          onSubmit={(actionId, input) => submitAction(step, actionId, input)}
+        />
+      );
     case "account-phone-verification":
       return <EnrollmentWaiting title={t.accountPhone} onBack={onBack} />;
     case "hosted":
@@ -527,6 +538,101 @@ function EnrollmentOtpPage({
       onVerify={handleVerify}
       onResend={handleResend}
     />
+  );
+}
+
+function EnrollmentCodePage({
+  interaction,
+  onBack,
+  onSubmit,
+}: {
+  interaction: Extract<EnrollmentInteraction, { kind: "code" }>;
+  onBack: () => void;
+  onSubmit: EnrollmentActionSubmitter;
+}) {
+  const [code, setCode] = useState("");
+  const [error, setError] = useState<string | undefined>(interaction.error);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const normalizedCode = code.trim();
+  const isValid =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+      normalizedCode,
+    );
+
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!isValid || isSubmitting) {
+      setError(interaction.copy.invalidMessage);
+      return;
+    }
+    setError(undefined);
+    setIsSubmitting(true);
+    const result = await onSubmit(interaction.submitAction.id, {
+      kind: "code",
+      code: normalizedCode,
+    });
+    if (result?.interaction.kind === "code") {
+      setError(result.interaction.error ?? interaction.copy.invalidMessage);
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleResend = async () => {
+    if (isSubmitting) return;
+    setError(undefined);
+    setIsSubmitting(true);
+    const result = await onSubmit(interaction.resend.action.id, {
+      kind: "resend-code",
+    });
+    if (result?.interaction.kind === "code") setIsSubmitting(false);
+  };
+
+  return (
+    <div className="daimo-flex daimo-flex-col daimo-flex-1 daimo-min-h-0">
+      <PageHeader title={interaction.copy.title} onBack={onBack} />
+      <form
+        className="daimo-flex daimo-flex-col daimo-flex-1 daimo-min-h-0"
+        onSubmit={handleSubmit}
+      >
+        <CenteredContent>
+          <p className="daimo-text-sm daimo-text-[var(--daimo-text-secondary)] daimo-text-center daimo-max-w-xs">
+            {interaction.copy.message}
+          </p>
+          <div className="daimo-w-full daimo-max-w-sm">
+            <DaimoFormField label={interaction.copy.inputLabel} error={error}>
+              {({ id, describedBy, invalid }) => (
+                <DaimoTextField
+                  id={id}
+                  value={code}
+                  onChange={(event) => setCode(event.target.value)}
+                  type="text"
+                  inputMode="text"
+                  autoComplete="one-time-code"
+                  autoCapitalize="none"
+                  spellCheck={false}
+                  aria-describedby={describedBy}
+                  invalid={invalid}
+                  autoFocus
+                  className="daimo-px-4 daimo-py-3 daimo-text-base daimo-font-mono"
+                />
+              )}
+            </DaimoFormField>
+          </div>
+        </CenteredContent>
+        <div className="daimo-px-6 daimo-pb-6 daimo-flex daimo-flex-col daimo-items-center daimo-gap-2">
+          <PrimaryButton type="submit" disabled={!isValid || isSubmitting}>
+            {interaction.copy.submitLabel}
+          </PrimaryButton>
+          <SecondaryButton
+            type="button"
+            onClick={() => void handleResend()}
+            disabled={isSubmitting}
+          >
+            {interaction.copy.resendLabel}
+          </SecondaryButton>
+        </div>
+      </form>
+    </div>
   );
 }
 
