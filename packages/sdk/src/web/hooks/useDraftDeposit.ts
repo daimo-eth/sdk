@@ -204,6 +204,28 @@ export async function signAndUpsertDeposit({
       auth,
     );
   }
+  if (authorization.kind === "transaction") {
+    const transactionHash = authorization.transaction
+      ? await accountFlow.sendSponsoredTransaction(authorization.transaction)
+      : undefined;
+    const deliverySig = await accountFlow.signTypedData({
+      ...authorization.deliverySignData,
+    });
+    return client.account.upsertDeposit(
+      {
+        sessionId,
+        rail,
+        depositAmount,
+        locale: getLocale(),
+        authorizationVersion: 2,
+        deliverySig,
+        deliverySigData: authorization.deliverySignData,
+        routingApproval: { transactionHash },
+        paymentInput,
+      },
+      auth,
+    );
+  }
   const { routingSignData, deliverySignData } = authorization;
   const routingSig = await accountFlow.signTypedData({
     ...routingSignData,

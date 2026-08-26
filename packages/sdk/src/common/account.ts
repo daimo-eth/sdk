@@ -835,10 +835,23 @@ export type SignatureDepositAuthorization = {
   deliverySignData: EIP712TypedData;
 };
 
+/** Headless transaction authorization for a wallet -> deposit-address pull. */
+export type TransactionDepositAuthorization = {
+  kind: "transaction";
+  transaction: {
+    chainId: number;
+    to: `0x${string}`;
+    data: `0x${string}`;
+  } | null;
+  /** Typed data for the delivery commitment (destination chain/token/amount). */
+  deliverySignData: EIP712TypedData;
+};
+
 /** Normalized authorization required to start an account deposit. */
 export type DepositAuthorizationResponse =
   | { kind: "direct" }
-  | SignatureDepositAuthorization;
+  | SignatureDepositAuthorization
+  | TransactionDepositAuthorization;
 
 /** Legacy wire response returned by servers before authorization protocol v2. */
 export type RoutingSignDataResponse = Omit<

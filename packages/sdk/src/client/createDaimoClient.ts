@@ -78,6 +78,7 @@ export type UpsertDepositRequest = {
   deliverySigData?: Record<string, unknown>;
   routingSig?: string;
   routingSigData?: Record<string, unknown>;
+  routingApproval?: { transactionHash?: `0x${string}` };
   paymentInput?: DepositPreCreatePaymentInput;
 };
 
