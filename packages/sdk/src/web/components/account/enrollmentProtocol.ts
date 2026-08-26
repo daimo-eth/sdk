@@ -147,6 +147,15 @@ export function toLegacyEnrollmentInteraction(
         },
       };
       break;
+    case "verification_code_required":
+      interaction = {
+        version,
+        kind: "error",
+        polling: noPolling,
+        message: "Update the app to finish enrollment.",
+        retryable: false,
+      };
+      break;
     case "phone_required":
       interaction = {
         version,
@@ -296,6 +305,8 @@ export function enrollmentInteractionIdentity(
       return `${step.protocol}:form:${interaction.action.id}`;
     case "otp":
       return `${step.protocol}:otp:${interaction.submitAction.id}:${interaction.resend.action.id}`;
+    case "code":
+      return `${step.protocol}:code:${interaction.submitAction.id}:${interaction.resend.action.id}`;
     case "account-phone-verification":
       return `${step.protocol}:account-phone-verification`;
     case "hosted":
@@ -327,6 +338,7 @@ export function enrollmentNavigationEffect(
       return "ready";
     case "form":
     case "otp":
+    case "code":
     case "hosted":
     case "wait":
     case "retry":
@@ -440,6 +452,9 @@ async function submitLegacyEnrollmentAction(
         { rail: "ars", locale: args.locale },
         args.auth,
       );
+    case "code":
+    case "resend-code":
+      throw new Error("verification code requires the enrollment action API");
     case "continue":
     case "retry":
       return args.client.account.startEnrollment(

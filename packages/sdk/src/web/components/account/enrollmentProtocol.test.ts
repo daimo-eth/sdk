@@ -245,12 +245,13 @@ describe("legacy enrollment compatibility", () => {
     ]);
   });
 
-  test("requests interaction version 2 on the generic route", async () => {
+  test("requests interaction version 3 on the generic route", async () => {
     let versionHeader = "";
     const fetchImpl: typeof fetch = async (_input, init) => {
-      versionHeader = new Headers(init?.headers).get(
-        "x-daimo-enrollment-interaction-version",
-      ) ?? "";
+      versionHeader =
+        new Headers(init?.headers).get(
+          "x-daimo-enrollment-interaction-version",
+        ) ?? "";
       return jsonResponse({
         version: 2,
         kind: "account-email-change",
@@ -270,7 +271,7 @@ describe("legacy enrollment compatibility", () => {
       legacyCopy,
     });
 
-    expect(versionHeader).toBe("2");
+    expect(versionHeader).toBe("3");
     expect(result.interaction).toEqual({
       version: 2,
       kind: "account-email-change",
@@ -412,9 +413,9 @@ describe("generic enrollment contract", () => {
   );
 
   test("does not retry unknown errors", () => {
-    expect(
-      isRetryableEnrollmentRefreshError(new Error("request failed")),
-    ).toBe(false);
+    expect(isRetryableEnrollmentRefreshError(new Error("request failed"))).toBe(
+      false,
+    );
   });
 
   test.each<{
@@ -688,6 +689,16 @@ describe("generic enrollment contract", () => {
   test("rejects invalid OTP input and mismatched form revisions", () => {
     expect(
       zEnrollmentActionInput.safeParse({ kind: "otp", code: "12ab" }).success,
+    ).toBe(false);
+    expect(
+      zEnrollmentActionInput.safeParse({
+        kind: "code",
+        code: "550e8400-e29b-41d4-a716-446655440000",
+      }).success,
+    ).toBe(true);
+    expect(
+      zEnrollmentActionInput.safeParse({ kind: "code", code: "123456" })
+        .success,
     ).toBe(false);
     const interaction = zEnrollmentInteraction.parse({
       version: 1,

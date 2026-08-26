@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 
 import { t } from "../../hooks/locale.js";
 import { useAccountFlow } from "../../hooks/useAccountFlow.js";
+import { useResendCooldown } from "../../hooks/useResendCooldown.js";
 import { PrimaryButton, SecondaryLinkButton } from "../buttons.js";
 import { CenteredContent, PageHeader } from "../shared.js";
 import { AccountAuthErrorMessage } from "./AccountAuthErrorMessage.js";
@@ -47,24 +48,20 @@ export function AccountOtpCodeEntry({
   const [code, setCode] = useState("");
   const [status, setStatus] = useState<OtpStatus>("idle");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isResending, setIsResending] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
-  const [canResend, setCanResend] = useState(resendDelayMs === 0);
-  const [resendVersion, setResendVersion] = useState(0);
+  const { canResend, restart: restartResendCooldown } =
+    useResendCooldown(resendDelayMs);
   const inputRef = useRef<HTMLInputElement | null>(null);
-
-  useEffect(() => {
-    if (resendDelayMs === 0) {
-      setCanResend(true);
-      return;
-    }
-    setCanResend(false);
-    const timeout = window.setTimeout(() => setCanResend(true), resendDelayMs);
-    return () => window.clearTimeout(timeout);
-  }, [resendDelayMs, resendVersion]);
+  const resendInFlightRef = useRef(false);
 
   const digits = codeToDigits(code);
   const isComplete = code.length === OTP_LENGTH;
-  const busy = status !== "idle" || isSubmitting || !!account?.isLoggingIn;
+  const busy =
+    status !== "idle" ||
+    isSubmitting ||
+    isResending ||
+    !!account?.isLoggingIn;
 
   const handleVerify = useCallback(
     async (codeToVerify?: string) => {
@@ -127,17 +124,20 @@ export function AccountOtpCodeEntry({
   );
 
   const handleResend = useCallback(async () => {
-    if (!canResend || busy) return;
-    setCanResend(false);
+    if (!canResend || busy || resendInFlightRef.current) return;
+    resendInFlightRef.current = true;
+    setIsResending(true);
     setCode("");
     setStatus("idle");
     try {
       await onResend();
     } finally {
-      setResendVersion((version) => version + 1);
+      resendInFlightRef.current = false;
+      restartResendCooldown();
+      setIsResending(false);
       inputRef.current?.focus();
     }
-  }, [busy, canResend, onResend, resendDelayMs]);
+  }, [busy, canResend, onResend, restartResendCooldown]);
 
   const focusInputEnd = useCallback(() => {
     const input = inputRef.current;
