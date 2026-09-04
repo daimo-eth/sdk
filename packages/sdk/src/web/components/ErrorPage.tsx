@@ -92,6 +92,32 @@ export function ErrorPage({
     logNavEvent,
   ]);
 
+  return (
+    <ErrorPageContent
+      message={displayMessage}
+      onBack={onBack}
+      retryText={retryText}
+      onRetry={onRetry}
+      supportSubject={supportSubject}
+      supportInfo={supportInfo}
+      sessionId={sessionId}
+      hideRetry={hideRetry}
+    />
+  );
+}
+
+/** Error presentation without telemetry or a client dependency. */
+export function ErrorPageContent({
+  message,
+  onBack,
+  retryText = t.reload,
+  onRetry,
+  supportSubject = t.error,
+  supportInfo = {},
+  sessionId,
+  hideRetry = false,
+}: ErrorPageProps) {
+  const displayMessage = extractMessage(message);
   const handleRetry = () => {
     if (onRetry) {
       onRetry();
