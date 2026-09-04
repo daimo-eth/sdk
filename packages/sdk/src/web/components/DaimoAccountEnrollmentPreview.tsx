@@ -4,6 +4,7 @@ import type {
   DepositConstraints,
   EnrollmentInteraction,
 } from "../../common/account.js";
+import { AccountFlowContext } from "../hooks/useAccountFlow.js";
 import type { DaimoPlatform } from "../platform.js";
 import { AccountEnrollmentInteractionPage } from "./account/AccountEnrollmentPage.js";
 import { AccountAmountContent } from "./account/AccountPaymentPage.js";
@@ -27,7 +28,7 @@ export function DaimoAccountEnrollmentPreview({
   platform = "desktop",
   baseUrl = "",
 }: DaimoAccountEnrollmentPreviewProps) {
-  return (
+  const preview = (
     <EmbeddedContainer showFooterSpacer={false}>
       <ModalChrome controls={{ type: "none" }}>
         {() =>
@@ -74,5 +75,11 @@ export function DaimoAccountEnrollmentPreview({
         }
       </ModalChrome>
     </EmbeddedContainer>
+  );
+  // A snapshot must not inherit another account's auth state from its host.
+  return (
+    <AccountFlowContext.Provider value={null}>
+      {preview}
+    </AccountFlowContext.Provider>
   );
 }

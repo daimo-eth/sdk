@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 
-import { act, createElement, type ReactElement } from "react";
+import { act, createElement, type ReactElement, type ReactNode } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -8,6 +8,11 @@ import type {
   DepositConstraints,
   EnrollmentInteraction,
 } from "../../common/account.js";
+import {
+  AccountFlowContext,
+  useAccountFlowState,
+} from "../hooks/useAccountFlow.js";
+import { AccountOtpCodeEntry } from "./account/AccountOtpCodeEntry.js";
 import { setLocale, t } from "../hooks/locale.js";
 import { DaimoAccountEnrollmentPreview } from "./DaimoAccountEnrollmentPreview.js";
 import { AccountAmountContent } from "./account/AccountPaymentPage.js";
@@ -54,6 +59,77 @@ describe("DaimoAccountEnrollmentPreview", () => {
     await act(async () => vi.advanceTimersByTime(60_000));
     expect(fetchMock).not.toHaveBeenCalled();
   });
+
+  it.each([false, true])(
+    "isolates OTP preview from host auth errors and loggingIn=%s",
+    async (isLoggingIn) => {
+      const setAuthError = vi.fn();
+      const interaction: EnrollmentInteraction = {
+        version: 1,
+        kind: "otp",
+        destination: "email",
+        copy: {
+          title: "Verify your email",
+          message: "Enter the enrollment code",
+          invalidMessage: "Invalid code",
+        },
+        submitAction: { id: "otp-submit", revision: "1" },
+        resend: {
+          status: "available",
+          delayMs: 0,
+          action: { id: "otp-resend", revision: "1" },
+        },
+        polling: { status: "none" },
+      };
+      const container = render(
+        createElement(
+          HostAccount,
+          { isLoggingIn, setAuthError },
+          createElement(
+            "section",
+            { "data-preview": true },
+            createElement(DaimoAccountEnrollmentPreview, {
+              email: "customer@example.test",
+              interaction,
+            }),
+          ),
+          createElement(
+            "section",
+            { "data-live": true },
+            createElement(AccountOtpCodeEntry, {
+              destination: "host@example.test",
+              onBack: () => undefined,
+              onVerified: () => undefined,
+              onVerify: async () => ({ ok: true }),
+              onResend: async () => undefined,
+            }),
+          ),
+        ),
+      );
+      const preview = container.querySelector("[data-preview]");
+      const live = container.querySelector("[data-live]");
+      if (!preview || !live) throw new Error("missing otp test views");
+      expect(preview?.textContent).toContain("Enter the enrollment code");
+      expect([...preview.querySelectorAll("button")].at(-1)?.textContent).toBe(
+        t.accountVerify,
+      );
+      expect(preview?.textContent).not.toContain("host login failed");
+      expect(
+        preview?.querySelector("input")?.getAttribute("aria-invalid"),
+      ).toBe("false");
+      expect(preview?.querySelector("fieldset:disabled")).not.toBeNull();
+      expect(live?.textContent).toContain("host login failed");
+      expect([...live.querySelectorAll("button")].at(-1)?.textContent).toBe(
+        isLoggingIn ? t.loading : t.accountVerify,
+      );
+      expect(live?.querySelector("input")?.getAttribute("aria-invalid")).toBe(
+        "true",
+      );
+      await act(async () => vi.advanceTimersByTime(60_000));
+      expect(setAuthError).not.toHaveBeenCalled();
+      expect(fetchMock).not.toHaveBeenCalled();
+    },
+  );
 
   it("shows review copy without a finalizing skeleton", () => {
     const container = renderPreview({
@@ -227,4 +303,34 @@ function constraints(currency: string): DepositConstraints {
       displayDecimals: 2,
     },
   };
+}
+
+function HostAccount({
+  children,
+  isLoggingIn,
+  setAuthError,
+}: {
+  children?: ReactNode;
+  isLoggingIn: boolean;
+  setAuthError: (error: string | null) => void;
+}) {
+  const account = useAccountFlowState();
+  return createElement(
+    AccountFlowContext.Provider,
+    {
+      value: {
+        ...account,
+        email: "host@example.test",
+        authError: "host login failed",
+        authErrorDetails: {
+          stage: "email_code_verify",
+          eventError: "email code verify failed",
+          errorCode: "host_auth_failure",
+        },
+        isLoggingIn,
+        setAuthError,
+      },
+    },
+    children,
+  );
 }
