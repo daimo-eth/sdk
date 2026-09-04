@@ -26,7 +26,7 @@ import {
   SecondaryButton,
   SecondaryLinkButton,
 } from "../buttons.js";
-import { ErrorPage } from "../ErrorPage.js";
+import { ErrorPage, ErrorPageContent } from "../ErrorPage.js";
 import { DaimoFormField, DaimoTextField } from "../formFields.js";
 import { CheckIcon, ErrorIcon } from "../icons.js";
 import { Skeleton, SkeletonText } from "../Skeleton.js";
@@ -301,7 +301,47 @@ export function AccountEnrollmentPage({
   }
 
   if (!step) return null;
+  return (
+    <AccountEnrollmentInteractionPage
+      step={step}
+      node={node}
+      platform={platform}
+      sessionId={sessionId}
+      clientSecret={clientSecret}
+      email={account?.email ?? ""}
+      onBack={onBack}
+      onUseAnotherEmail={onLogout}
+      onSubmit={(actionId, input) => submitAction(step, actionId, input)}
+    />
+  );
+}
+
+/** Shared enrollment presentation; the caller owns requests and navigation. */
+export function AccountEnrollmentInteractionPage({
+  step,
+  node,
+  platform,
+  sessionId,
+  clientSecret,
+  email,
+  onBack,
+  onUseAnotherEmail,
+  onSubmit,
+  readOnly = false,
+}: {
+  step: EnrollmentStep;
+  node?: NavNodeFiat;
+  platform: DaimoPlatform;
+  sessionId: string;
+  clientSecret: string;
+  email: string;
+  onBack: () => void;
+  onUseAnotherEmail: () => Promise<void>;
+  onSubmit: EnrollmentActionSubmitter;
+  readOnly?: boolean;
+}) {
   const interaction = step.interaction;
+  const EnrollmentErrorPage = readOnly ? ErrorPageContent : ErrorPage;
 
   switch (interaction.kind) {
     case "form":
@@ -310,7 +350,7 @@ export function AccountEnrollmentPage({
           key={enrollmentInteractionIdentity(step)}
           interaction={interaction}
           onBack={onBack}
-          onSubmit={(actionId, input) => submitAction(step, actionId, input)}
+          onSubmit={onSubmit}
         />
       );
     case "otp":
@@ -319,7 +359,7 @@ export function AccountEnrollmentPage({
           key={enrollmentInteractionIdentity(step)}
           interaction={interaction}
           onBack={onBack}
-          onSubmit={(actionId, input) => submitAction(step, actionId, input)}
+          onSubmit={onSubmit}
         />
       );
     case "code":
@@ -328,7 +368,7 @@ export function AccountEnrollmentPage({
           key={enrollmentInteractionIdentity(step)}
           interaction={interaction}
           onBack={onBack}
-          onSubmit={(actionId, input) => submitAction(step, actionId, input)}
+          onSubmit={onSubmit}
         />
       );
     case "account-phone-verification":
@@ -338,6 +378,7 @@ export function AccountEnrollmentPage({
         <EnrollmentHostedActionPage
           key={enrollmentInteractionIdentity(step)}
           node={node}
+          readOnly={readOnly}
           platform={platform}
           url={interaction.url}
           title={interaction.copy.title}
@@ -347,7 +388,7 @@ export function AccountEnrollmentPage({
           autoSubmitDelayMs={interaction.returnBehavior.autoSubmitDelayMs}
           onBack={onBack}
           onReturn={() =>
-            submitAction(step, interaction.returnBehavior.action.id, {
+            onSubmit(interaction.returnBehavior.action.id, {
               kind: "continue",
             })
           }
@@ -372,6 +413,7 @@ export function AccountEnrollmentPage({
         <EnrollmentHostedActionPage
           key={enrollmentInteractionIdentity(step)}
           node={node}
+          readOnly={readOnly}
           platform={platform}
           url={interaction.link.url}
           title={interaction.link.copy.title}
@@ -379,19 +421,17 @@ export function AccountEnrollmentPage({
           actionLabel={interaction.link.copy.openExternalLabel}
           purpose="identity-verification"
           onBack={onBack}
-          onReturn={() =>
-            submitAction(step, interaction.action.id, { kind: "retry" })
-          }
+          onReturn={() => onSubmit(interaction.action.id, { kind: "retry" })}
         />
       ) : (
-        <ErrorPage
+        <EnrollmentErrorPage
           message={interaction.reason}
           onBack={onBack}
           sessionId={sessionId}
           clientSecret={clientSecret}
           retryText={t.tryAgain}
           onRetry={() =>
-            void submitAction(step, interaction.action.id, { kind: "retry" })
+            void onSubmit(interaction.action.id, { kind: "retry" })
           }
         />
       );
@@ -422,7 +462,7 @@ export function AccountEnrollmentPage({
     case "error": {
       const retryAction = interaction.retryAction;
       return (
-        <ErrorPage
+        <EnrollmentErrorPage
           message={interaction.message}
           onBack={onBack}
           sessionId={sessionId}
@@ -431,7 +471,7 @@ export function AccountEnrollmentPage({
           onRetry={
             interaction.retryable && retryAction
               ? () =>
-                  void submitAction(step, retryAction.id, {
+                  void onSubmit(retryAction.id, {
                     kind: "retry",
                   })
               : undefined
@@ -443,9 +483,9 @@ export function AccountEnrollmentPage({
     case "account-email-change":
       return (
         <EnrollmentEmailChangePage
-          email={account?.email ?? ""}
+          email={email}
           onBack={onBack}
-          onUseAnotherEmail={onLogout}
+          onUseAnotherEmail={onUseAnotherEmail}
         />
       );
     case "active":
@@ -656,6 +696,7 @@ type EnrollmentActionSubmitter = (
 
 function EnrollmentHostedActionPage({
   node,
+  readOnly = false,
   platform,
   url,
   title,
@@ -666,7 +707,8 @@ function EnrollmentHostedActionPage({
   onBack,
   onReturn,
 }: {
-  node: NavNodeFiat;
+  node?: NavNodeFiat;
+  readOnly?: boolean;
   platform: DaimoPlatform;
   url: string;
   title: string;
@@ -692,6 +734,7 @@ function EnrollmentHostedActionPage({
   }, [onReturn]);
 
   const openHostedStep = useCallback(() => {
+    if (readOnly) return;
     cleanupRef.current();
     returnSubmittedRef.current = false;
     openExternalUrl(
@@ -726,7 +769,7 @@ function EnrollmentHostedActionPage({
       window.removeEventListener("pageshow", handleReturn);
       document.removeEventListener("visibilitychange", handleReturn);
     };
-  }, [autoSubmitDelayMs, platform, purpose, submitReturn, url]);
+  }, [autoSubmitDelayMs, platform, purpose, readOnly, submitReturn, url]);
 
   return (
     <EnrollmentExternalActionPage
@@ -736,7 +779,7 @@ function EnrollmentHostedActionPage({
       icon={
         purpose === "identity-verification" ? (
           <KycIndicator
-            requirement={getKycRequirement(node.kycRequirement)}
+            requirement={getKycRequirement(node?.kycRequirement)}
             size="xl"
             variant="badge"
           />
@@ -744,7 +787,7 @@ function EnrollmentHostedActionPage({
       }
       onBack={onBack}
       onOpen={openHostedStep}
-      disabled={isSubmitting}
+      disabled={isSubmitting || readOnly}
     />
   );
 }

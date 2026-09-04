@@ -1,3 +1,5 @@
+export { DaimoAccountEnrollmentPreview } from "./components/DaimoAccountEnrollmentPreview.js";
+export type { DaimoAccountEnrollmentPreviewProps } from "./components/DaimoAccountEnrollmentPreview.js";
 // Components
 export { DaimoFrame } from "./components/DaimoFrame.js";
 export type {

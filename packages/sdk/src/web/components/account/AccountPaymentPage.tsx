@@ -82,21 +82,9 @@ export function AccountAmountPage({
     })();
   }, [accountFlow, client, rail, sessionId]);
 
-  const [amountUsd, setAmountUsd] = useState(0);
-  const [amountNative, setAmountNative] = useState(0);
-  const [isValid, setIsValid] = useState(false);
   const [isStarting, setIsStarting] = useState(false);
   const [startError, setStartError] = useState<string | null>(null);
-  const handleChange = useCallback(
-    (value: { amountUsd: number; nativeAmount: number; isValid: boolean }) => {
-      setAmountUsd(value.amountUsd);
-      setAmountNative(value.nativeAmount);
-      setIsValid(value.isValid);
-      setStartError(null);
-    },
-    [],
-  );
-
+  const clearStartError = useCallback(() => setStartError(null), []);
   const handleSubmit = useCallback(
     ({ nativeAmount }: Pick<TokenAmountEntryValue, "nativeAmount">) => {
       if (!accountFlow || !constraints || isStarting) return;
@@ -173,6 +161,55 @@ export function AccountAmountPage({
         : undefined;
 
   return (
+    <AccountAmountContent
+      constraints={constraints}
+      platform={platform}
+      baseUrl={baseUrl}
+      initialAmountUsd={initialAmountUsd}
+      onBack={onBack}
+      onSubmit={handleSubmit}
+      isStarting={isStarting}
+      startError={startError}
+      onAmountChange={clearStartError}
+    />
+  );
+}
+
+/** Amount entry without account access or deposit creation. */
+export function AccountAmountContent({
+  constraints,
+  platform,
+  baseUrl,
+  initialAmountUsd,
+  onBack,
+  onSubmit,
+  isStarting = false,
+  startError,
+  onAmountChange,
+}: {
+  constraints: DepositConstraints | null;
+  platform: DaimoPlatform;
+  baseUrl: string;
+  initialAmountUsd?: number;
+  onBack?: (() => void) | null;
+  onSubmit?: (value: Pick<TokenAmountEntryValue, "nativeAmount">) => void;
+  isStarting?: boolean;
+  startError?: string | null;
+  onAmountChange?: () => void;
+}) {
+  const [amountNative, setAmountNative] = useState(0);
+  const [isValid, setIsValid] = useState(false);
+  const handleChange = useCallback(
+    (value: { nativeAmount: number; isValid: boolean }) => {
+      setAmountNative(value.nativeAmount);
+      setIsValid(value.isValid);
+      onAmountChange?.();
+    },
+    [onAmountChange],
+  );
+  const handleSubmit = (value: Pick<TokenAmountEntryValue, "nativeAmount">) =>
+    onSubmit?.(value);
+  return (
     <div className="daimo-flex daimo-flex-col daimo-flex-1 daimo-min-h-0">
       <PageHeader title={t.accountPayment} onBack={onBack} />
       <div className="daimo-flex-1 daimo-flex daimo-flex-col daimo-items-center daimo-p-6">
@@ -215,7 +252,7 @@ export function AccountAmountPage({
           onClick={() =>
             isValid && handleSubmit({ nativeAmount: amountNative })
           }
-          disabled={!isValid || !constraints || isStarting}
+          disabled={!isValid || !constraints || isStarting || !onSubmit}
         >
           {t.continue}
         </PrimaryButton>
