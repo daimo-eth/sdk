@@ -1,6 +1,5 @@
 import {
   type FormEvent,
-  type ReactNode,
   useCallback,
   useEffect,
   useMemo,
@@ -776,15 +775,8 @@ function EnrollmentHostedActionPage({
       title={title}
       description={description}
       actionLabel={isSubmitting ? t.loading : actionLabel}
-      icon={
-        purpose === "identity-verification" ? (
-          <KycIndicator
-            requirement={getKycRequirement(node?.kycRequirement)}
-            size="xl"
-            variant="badge"
-          />
-        ) : null
-      }
+      purpose={purpose}
+      kycRequirement={node?.kycRequirement}
       onBack={onBack}
       onOpen={openHostedStep}
       disabled={isSubmitting || readOnly}
@@ -792,11 +784,12 @@ function EnrollmentHostedActionPage({
   );
 }
 
-function EnrollmentExternalActionPage({
+export function EnrollmentExternalActionPage({
   title,
   description,
   actionLabel,
-  icon,
+  purpose,
+  kycRequirement,
   onBack,
   onOpen,
   disabled,
@@ -804,7 +797,8 @@ function EnrollmentExternalActionPage({
   title: string;
   description: string;
   actionLabel: string;
-  icon: ReactNode;
+  purpose: "identity-verification" | "agreement";
+  kycRequirement?: NavNodeFiat["kycRequirement"];
   onBack: () => void;
   onOpen: () => void;
   disabled: boolean;
@@ -813,7 +807,13 @@ function EnrollmentExternalActionPage({
     <div className="daimo-flex daimo-flex-col daimo-flex-1 daimo-min-h-0">
       <PageHeader title={title} onBack={onBack} />
       <CenteredContent>
-        {icon}
+        {purpose === "identity-verification" ? (
+          <KycIndicator
+            requirement={getKycRequirement(kycRequirement)}
+            size="xl"
+            variant="badge"
+          />
+        ) : null}
         <p className="daimo-text-[var(--daimo-text-secondary)] daimo-text-center daimo-max-w-xs daimo-text-sm daimo-whitespace-pre-line">
           {description}
         </p>
