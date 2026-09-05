@@ -14,7 +14,11 @@ import {
 } from "../hooks/useAccountFlow.js";
 import { AccountOtpCodeEntry } from "./account/AccountOtpCodeEntry.js";
 import { setLocale, t } from "../hooks/locale.js";
-import { DaimoAccountEnrollmentPreview } from "./DaimoAccountEnrollmentPreview.js";
+import {
+  DaimoAccountEnrollmentPreview,
+  type DaimoAccountEnrollmentHostedStep,
+} from "./DaimoAccountEnrollmentPreview.js";
+import { AccountEnrollmentInteractionPage } from "./account/AccountEnrollmentPage.js";
 import { AccountAmountContent } from "./account/AccountPaymentPage.js";
 
 const roots: Root[] = [];
@@ -128,6 +132,81 @@ describe("DaimoAccountEnrollmentPreview", () => {
       await act(async () => vi.advanceTimersByTime(60_000));
       expect(setAuthError).not.toHaveBeenCalled();
       expect(fetchMock).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each(["identity-verification", "agreement"] as const)(
+    "shows saved hosted %s copy with the real page and no action capability",
+    async (purpose) => {
+      const open = vi.spyOn(window, "open").mockImplementation(() => null);
+      const hostedStep: DaimoAccountEnrollmentHostedStep = {
+        purpose,
+        copy: {
+          title: "More information needed",
+          description:
+            "Complete the requested information, then return to this page.",
+          openExternalLabel: "Continue verification",
+        },
+      };
+      const preview = render(
+        createElement(DaimoAccountEnrollmentPreview, {
+          email: "customer@example.test",
+          hostedStep,
+        }),
+      );
+      expect(preview.textContent).toContain(hostedStep.copy.title);
+      expect(preview.textContent).toContain(hostedStep.copy.description);
+      expect(preview.querySelector("a[href]")).toBeNull();
+      expect(preview.querySelector('[aria-busy="true"]')).toBeNull();
+      expect(preview.querySelector("[inert]")).toBeNull();
+      expect(preview.querySelector("fieldset:disabled")).not.toBeNull();
+      expect(preview.querySelector('[role="img"]') != null).toBe(
+        purpose === "identity-verification",
+      );
+      const action = [...preview.querySelectorAll("button")].find(
+        (button) => button.textContent === hostedStep.copy.openExternalLabel,
+      );
+      expect(action?.disabled).toBe(true);
+      await act(async () => {
+        action?.click();
+        action?.dispatchEvent(
+          new KeyboardEvent("keydown", { key: "Enter", bubbles: true }),
+        );
+        vi.advanceTimersByTime(60_000);
+      });
+      expect(open).not.toHaveBeenCalled();
+      expect(fetchMock).not.toHaveBeenCalled();
+
+      // Both modes use the same page; only live data has a URL and return action.
+      const live = render(
+        createElement(AccountEnrollmentInteractionPage, {
+          step: {
+            protocol: "generic",
+            interaction: {
+              version: 1,
+              kind: "hosted",
+              mode: "hosted",
+              purpose,
+              copy: hostedStep.copy,
+              polling: { status: "none" },
+              url: "https://example.test/verification",
+              returnBehavior: {
+                kind: "submit",
+                action: { id: "fixture-action", revision: "1" },
+              },
+            },
+          },
+          platform: "desktop",
+          sessionId: "test-session",
+          clientSecret: "test-secret",
+          email: "customer@example.test",
+          onBack: () => undefined,
+          onUseAnotherEmail: async () => undefined,
+          onSubmit: async () => null,
+          readOnly: true,
+        }),
+      );
+      expect(preview.querySelector("fieldset")?.innerHTML).toBe(live.innerHTML);
     },
   );
 
