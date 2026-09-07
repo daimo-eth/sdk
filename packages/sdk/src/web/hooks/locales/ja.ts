@@ -292,6 +292,11 @@ export const ja: typeof en = {
   retryPayment: "支払いを再試行",
   closeAndReturn: "このページを閉じてアプリに戻る",
 
+  fiatUnavailableTitle: "一時的に利用できません",
+  fiatUnavailableMessage:
+    "この支払い方法は一時的に利用できません。別の支払い方法を選ぶか、後でもう一度お試しください。",
+  fiatUnavailableBack: "別の支払い方法を選ぶ",
+
   // FiatPopupPage / popup surface
   popupCloseThisPage: "このページを閉じてください。",
 };

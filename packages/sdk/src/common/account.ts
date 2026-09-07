@@ -26,7 +26,19 @@ export const zAccountLegalName = z.object({
 });
 export type AccountLegalName = z.infer<typeof zAccountLegalName>;
 
+/** Optional for account-wide integrations; modal calls include their session. */
+export const zEnrollmentSessionContext = z
+  .object({
+    sessionId: z.string().min(1),
+    clientSecret: z.string().min(1),
+  })
+  .strict();
+export type EnrollmentSessionContext = z.infer<
+  typeof zEnrollmentSessionContext
+>;
+
 export type StartEnrollmentRequest = {
+  session?: EnrollmentSessionContext;
   rail: AccountRail;
   legalName?: AccountLegalName;
   /** Client UI locale (short code, e.g. "es"). Server localizes step copy. */
@@ -693,6 +705,7 @@ export type EnrollmentActionInput = z.infer<typeof zEnrollmentActionInput>;
 
 export const zEnrollmentActionSubmitRequest = z
   .object({
+    session: zEnrollmentSessionContext.optional(),
     rail: zAccountRail,
     actionId: z.string().trim().min(1).max(128),
     input: zEnrollmentActionInput,

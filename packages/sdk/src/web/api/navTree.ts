@@ -158,6 +158,8 @@ export type NavNodeConnectedWallet = NavNodeCommon & {
 export type NavNodeFiat = NavNodeCommon & {
   type: "Fiat";
   fiatMethod: AccountRail;
+  /** Keep this method selectable and show a temporary outage page. */
+  temporarilyUnavailable?: boolean;
   /** Semantic entry flow. Optional only while old servers remain supported. */
   paymentInteraction?: DepositPaymentInteraction;
   icon?: string;

@@ -288,6 +288,11 @@ export const en = {
   retryPayment: "Retry Payment",
   closeAndReturn: "Close this page and return to app",
 
+  fiatUnavailableTitle: "Temporarily unavailable",
+  fiatUnavailableMessage:
+    "This payment method is temporarily unavailable. Please choose another payment method or try again later.",
+  fiatUnavailableBack: "Choose another payment method",
+
   // FiatPopupPage / popup surface
   popupCloseThisPage: "You can close this page.",
 };

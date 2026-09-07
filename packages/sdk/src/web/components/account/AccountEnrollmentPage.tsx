@@ -193,6 +193,7 @@ export function AccountEnrollmentPage({
             const token = await getAccessToken();
             if (!token) throw new Error("not authenticated");
             return loadEnrollmentStep({
+              session: { sessionId, clientSecret },
               client,
               rail,
               locale: getLocale(),
@@ -204,7 +205,15 @@ export function AccountEnrollmentPage({
         "enrollment_refresh",
       );
     },
-    [client, getAccessToken, legacyCopy, rail, runRequest],
+    [
+      client,
+      getAccessToken,
+      legacyCopy,
+      rail,
+      runRequest,
+      sessionId,
+      clientSecret,
+    ],
   );
 
   const retryEnrollment = useCallback(() => {
@@ -227,6 +236,7 @@ export function AccountEnrollmentPage({
           const token = await getAccessToken();
           if (!token) throw new Error("not authenticated");
           return submitEnrollmentStep({
+            session: { sessionId, clientSecret },
             client,
             rail,
             locale: getLocale(),
@@ -241,7 +251,15 @@ export function AccountEnrollmentPage({
         "enrollment_action",
       );
     },
-    [client, getAccessToken, legacyCopy, rail, runRequest],
+    [
+      client,
+      getAccessToken,
+      legacyCopy,
+      rail,
+      runRequest,
+      sessionId,
+      clientSecret,
+    ],
   );
 
   const refreshEnrollmentRef = useRef(refreshEnrollment);

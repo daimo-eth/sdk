@@ -79,6 +79,7 @@ import { AccountCreatingWalletPage } from "./account/AccountCreatingWalletPage.j
 import { AccountDeeplinkPage } from "./account/AccountDeeplinkPage.js";
 import { AccountInstitutionReviewPage } from "./account/AccountInteracConfirmPage.js";
 import { AccountWalletPayPage } from "./account/AccountApplePayPage.js";
+import { FiatUnavailablePage } from "./account/FiatUnavailablePage.js";
 import { FiatPopupPage } from "./account/FiatPopupPage.js";
 import { AccountEmailPage } from "./account/AccountEmailPage.js";
 import { AccountEnrollmentPage } from "./account/AccountEnrollmentPage.js";
@@ -923,6 +924,10 @@ function renderEntry(
     }
     case "account-loading":
       return <LoadingMessage />;
+    case "account-unavailable":
+      return (
+        <FiatUnavailablePage onBack={ctx.canGoBack ? ctx.onBack : undefined} />
+      );
     case "account-email": {
       const node = findNode(entry.nodeId, ctx.session.navTree);
       if (node?.type !== "Fiat") return null;

@@ -798,3 +798,33 @@ function jsonResponse(value: unknown): Response {
     headers: { "content-type": "application/json" },
   });
 }
+
+test("sends session context with enrollment reads and actions", async () => {
+  const requests: unknown[] = [];
+  const client = createDaimoClient({
+    baseUrl: "https://api.example.test",
+    fetchImpl: async (_input, init) => {
+      requests.push(JSON.parse(String(init?.body)));
+      return jsonResponse(hosted);
+    },
+  });
+  const session = { sessionId: "session", clientSecret: "secret" };
+  const args = {
+    client,
+    session,
+    rail: "sepa" as const,
+    locale: "en",
+    auth: { bearerToken: "token" },
+    legacyCopy,
+  };
+  const step = await loadEnrollmentStep(args);
+  await submitEnrollmentStep({
+    ...args,
+    step,
+    actionId: hosted.returnBehavior.action.id,
+    input: { kind: "continue" },
+  });
+  expect(requests).toHaveLength(2);
+  for (const request of requests)
+    expect(request).toMatchObject({ session, rail: "sepa" });
+});

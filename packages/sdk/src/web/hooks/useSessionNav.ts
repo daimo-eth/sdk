@@ -494,6 +494,17 @@ export function useSessionNav(
         // fall through to the normal enrollment/auth flow
       }
 
+      if (node.temporarilyUnavailable) {
+        replaceLoading({
+          type: "account-unavailable",
+          nodeId,
+          rail,
+          paymentInteraction,
+          autoNav,
+        });
+        return;
+      }
+
       if (options?.popupRequired) {
         replaceLoading({
           type: "fiat-popup",

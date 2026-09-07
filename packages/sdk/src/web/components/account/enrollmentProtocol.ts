@@ -1,6 +1,7 @@
 import type {
   AccountRail,
   EnrollmentActionInput,
+  EnrollmentSessionContext,
   EnrollmentFormValue,
   EnrollmentInteraction,
   EnrollmentResponse,
@@ -51,6 +52,7 @@ export function shouldLoadEnrollmentTarget(args: {
  */
 export async function loadEnrollmentStep(args: {
   client: DaimoClient;
+  session?: EnrollmentSessionContext;
   rail: AccountRail;
   locale: string;
   auth: BearerAuth;
@@ -58,7 +60,11 @@ export async function loadEnrollmentStep(args: {
 }): Promise<EnrollmentStep> {
   try {
     const interaction = await args.client.account.getEnrollmentInteraction(
-      { rail: args.rail, locale: args.locale },
+      {
+        rail: args.rail,
+        locale: args.locale,
+        ...(args.session ? { session: args.session } : {}),
+      },
       args.auth,
     );
     return { interaction, protocol: "generic" };
@@ -67,7 +73,11 @@ export async function loadEnrollmentStep(args: {
   }
 
   const response = await args.client.account.startEnrollment(
-    { rail: args.rail, locale: args.locale },
+    {
+      rail: args.rail,
+      locale: args.locale,
+      ...(args.session ? { session: args.session } : {}),
+    },
     args.auth,
   );
   return {
@@ -78,6 +88,7 @@ export async function loadEnrollmentStep(args: {
 
 export async function submitEnrollmentStep(args: {
   client: DaimoClient;
+  session?: EnrollmentSessionContext;
   rail: AccountRail;
   locale: string;
   auth: BearerAuth;
@@ -90,6 +101,7 @@ export async function submitEnrollmentStep(args: {
     const interaction = await args.client.account.submitEnrollmentAction(
       {
         rail: args.rail,
+        ...(args.session ? { session: args.session } : {}),
         actionId: args.actionId,
         input: args.input,
         locale: args.locale,
@@ -428,7 +440,12 @@ async function submitLegacyEnrollmentAction(
       const legalName = legacyLegalName(args.input);
       if (legalName) {
         return args.client.account.startEnrollment(
-          { rail: args.rail, legalName, locale: args.locale },
+          {
+            rail: args.rail,
+            legalName,
+            locale: args.locale,
+            ...(args.session ? { session: args.session } : {}),
+          },
           args.auth,
         );
       }
@@ -458,7 +475,11 @@ async function submitLegacyEnrollmentAction(
     case "continue":
     case "retry":
       return args.client.account.startEnrollment(
-        { rail: args.rail, locale: args.locale },
+        {
+          rail: args.rail,
+          locale: args.locale,
+          ...(args.session ? { session: args.session } : {}),
+        },
         args.auth,
       );
   }
