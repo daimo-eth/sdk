@@ -287,6 +287,11 @@ export const ko: typeof en = {
   retryPayment: "결제 재시도",
   closeAndReturn: "이 페이지를 닫고 앱으로 돌아가기",
 
+  fiatUnavailableTitle: "일시적으로 이용할 수 없음",
+  fiatUnavailableMessage:
+    "이 결제 수단은 일시적으로 이용할 수 없습니다. 다른 결제 수단을 선택하거나 나중에 다시 시도하세요.",
+  fiatUnavailableBack: "다른 결제 수단 선택",
+
   // FiatPopupPage / popup surface
   popupCloseThisPage: "이 페이지를 닫으셔도 됩니다.",
 };

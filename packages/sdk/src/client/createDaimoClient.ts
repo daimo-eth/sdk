@@ -53,7 +53,9 @@ function authHeaders(auth: BearerAuth): Record<string, string> {
   return { Authorization: `Bearer ${auth.bearerToken}` };
 }
 
-function enrollmentInteractionHeaders(auth: BearerAuth): Record<string, string> {
+function enrollmentInteractionHeaders(
+  auth: BearerAuth,
+): Record<string, string> {
   return {
     ...authHeaders(auth),
     [ENROLLMENT_INTERACTION_VERSION_HEADER]: String(
@@ -108,7 +110,7 @@ export type DaimoClient = {
     ): Promise<EnrollmentResponse>;
     /** Get the next versioned, provider-agnostic enrollment interaction. */
     getEnrollmentInteraction(
-      input: { rail: AccountRail; locale?: string },
+      input: { rail: AccountRail; locale?: string; session?: SessionContext },
       auth: BearerAuth,
     ): Promise<EnrollmentInteraction>;
     /** Submit one opaque interaction action and receive the next interaction. */

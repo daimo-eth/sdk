@@ -219,7 +219,10 @@ export function useSessionNav(
     return { nodeId, nodeType };
   }, [topEntry, session.navTree]);
 
-  const canGoBack = stack.length > 0 && stack.some((e) => !e.autoNav);
+  // An outage must let users leave even when the method opened automatically.
+  const canGoBack =
+    topEntry?.type === "account-unavailable" ||
+    (stack.length > 0 && stack.some((e) => !e.autoNav));
   const countryCode = options?.countryCode;
   const onRecreate = options?.onRecreate;
   const accountRecreateRef = useRef<Promise<void> | null>(null);
@@ -492,6 +495,17 @@ export function useSessionNav(
       } catch (err) {
         console.error("[account-nav] deposit resume check failed:", err);
         // fall through to the normal enrollment/auth flow
+      }
+
+      if (node.temporarilyUnavailable) {
+        replaceLoading({
+          type: "account-unavailable",
+          nodeId,
+          rail,
+          paymentInteraction,
+          autoNav,
+        });
+        return;
       }
 
       if (options?.popupRequired) {

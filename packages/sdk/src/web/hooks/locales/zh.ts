@@ -273,6 +273,11 @@ export const zh: typeof en = {
   retryPayment: "重试付款",
   closeAndReturn: "关闭此页面并返回应用",
 
+  fiatUnavailableTitle: "暂时无法使用",
+  fiatUnavailableMessage:
+    "此付款方式暂时无法使用。请选择其他付款方式或稍后重试。",
+  fiatUnavailableBack: "选择其他付款方式",
+
   // FiatPopupPage / popup surface
   popupCloseThisPage: "您可以关闭此页面。",
 };

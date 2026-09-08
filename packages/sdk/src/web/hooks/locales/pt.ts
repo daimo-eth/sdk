@@ -290,6 +290,11 @@ export const pt: typeof en = {
   retryPayment: "Tentar pagamento novamente",
   closeAndReturn: "Feche esta página e volte ao app",
 
+  fiatUnavailableTitle: "Temporariamente indisponível",
+  fiatUnavailableMessage:
+    "Este método de pagamento está temporariamente indisponível. Escolha outro método de pagamento ou tente novamente mais tarde.",
+  fiatUnavailableBack: "Escolher outro método de pagamento",
+
   // FiatPopupPage / popup surface
   popupCloseThisPage: "Você pode fechar esta página.",
 };

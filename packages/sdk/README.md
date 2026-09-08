@@ -171,3 +171,16 @@ supported compatibility window. The built-in renderer falls back to those
 legacy routes only when a server does not yet expose the additive generic HTTP
 routes; remove that adapter after one full supported release window shows no
 route-absence fallback in telemetry.
+
+### Temporarily unavailable fiat methods
+
+A fiat navigation node can include `temporarilyUnavailable: true`. The method
+stays selectable. The modal shows a temporary outage message before account
+login and lets the user return to the payment picker. Deposits past payment
+still open their status page.
+
+Modal enrollment requests include optional `session: { sessionId, clientSecret }`
+context so the server can apply the destination org's rail pause. Account-wide
+client calls can omit this field for compatibility. Deploy a server that accepts
+this context before rolling out this SDK. Deposit creation is always checked by
+the server; the navigation flag alone is not an access control.

@@ -255,6 +255,11 @@ export const es: typeof en = {
   retryPayment: "Reintentar pago",
   closeAndReturn: "Cierra esta página y vuelve a la app",
 
+  fiatUnavailableTitle: "Temporalmente no disponible",
+  fiatUnavailableMessage:
+    "Este método de pago no está disponible temporalmente. Elegí otro método de pago o intentá de nuevo más tarde.",
+  fiatUnavailableBack: "Elegir otro método de pago",
+
   // FiatPopupPage / popup surface
   popupCloseThisPage: "Puedes cerrar esta página.",
 };
