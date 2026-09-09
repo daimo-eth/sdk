@@ -342,7 +342,17 @@ export const celoCUSD: Token = token({
   logoURI: TokenLogo.cUSD,
 });
 
-const celoTokens: Token[] = [celoCelo, celoUSDC, celoUSDT, celoCUSD];
+export const celoWARS: Token = token({
+  chainId: celo.chainId,
+  token: getAddress("0x0DC4F92879B7670e5f4e4e6e3c801D229129D90D"),
+  decimals: 18,
+  fiatISO: "ARS",
+  name: "Peso Argentino",
+  symbol: "wARS",
+  logoURI: baseWARS.logoURI,
+});
+
+const celoTokens: Token[] = [celoCelo, celoUSDC, celoUSDT, celoCUSD, celoWARS];
 
 //
 // Ethereum
