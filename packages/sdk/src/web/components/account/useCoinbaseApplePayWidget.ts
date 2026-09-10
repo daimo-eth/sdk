@@ -1,16 +1,23 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import {
+  zCoinbaseWidgetErrorData,
+  type CoinbaseWidgetErrorData,
+} from "../../../common/api.js";
+
 type CoinbaseEventName = string;
 
 type CoinbaseEvent = {
   eventName: CoinbaseEventName;
-  data?: { errorCode?: string; errorMessage?: string; txHash?: string };
+  data?: { errorCode?: string; errorMessage?: string };
 };
 
 type UseCoinbaseApplePayWidgetArgs = {
   allowExpandedView: boolean;
   onRefreshDeposit: () => Promise<void>;
   paymentLinkUrl: string | null;
+  providerOrderId?: string;
+  onWidgetError?: (event: CoinbaseWidgetErrorData) => void;
 };
 
 type UseCoinbaseApplePayWidgetResult = {
@@ -30,15 +37,21 @@ export function useCoinbaseApplePayWidget({
   allowExpandedView,
   onRefreshDeposit,
   paymentLinkUrl,
+  providerOrderId,
+  onWidgetError,
 }: UseCoinbaseApplePayWidgetArgs): UseCoinbaseApplePayWidgetResult {
   const [widgetError, setWidgetError] = useState<string | null>(null);
   const [iframeReady, setIframeReady] = useState(false);
   const [iframeExpanded, setIframeExpanded] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const refreshRef = useRef(onRefreshDeposit);
+  const reportedRef = useRef({
+    orderId: providerOrderId,
+    errors: new Set<string>(),
+  });
 
   const resetWidget = useCallback(() => {
-    debugApplePay("reset widget", { paymentLinkUrl });
+    debugApplePay("reset widget", { hasPaymentLink: paymentLinkUrl != null });
     setWidgetError(null);
     setIframeReady(false);
     setIframeExpanded(false);
@@ -53,7 +66,9 @@ export function useCoinbaseApplePayWidget({
   }, [allowExpandedView]);
 
   useEffect(() => {
-    debugApplePay("payment link updated", { paymentLinkUrl });
+    debugApplePay("payment link updated", {
+      hasPaymentLink: paymentLinkUrl != null,
+    });
     resetWidget();
   }, [paymentLinkUrl, resetWidget]);
 
@@ -74,15 +89,34 @@ export function useCoinbaseApplePayWidget({
         return;
       }
       const iframeWindow = iframeRef.current?.contentWindow;
-      if (iframeWindow && event.source !== iframeWindow) {
+      if (!iframeWindow || event.source !== iframeWindow) {
         return;
       }
       const parsed = parseCoinbaseEvent(event.data);
       if (!parsed) return;
-      debugApplePay("coinbase event", {
+      const diagnostic = zCoinbaseWidgetErrorData.safeParse({
+        providerOrderId,
         eventName: parsed.eventName,
-        data: parsed.data,
+        errorCode: parsed.data?.errorCode ?? null,
       });
+      if (diagnostic.success)
+        debugApplePay("coinbase widget error", diagnostic.data);
+      if (diagnostic.success && onWidgetError) {
+        if (reportedRef.current.orderId !== providerOrderId) {
+          reportedRef.current = { orderId: providerOrderId, errors: new Set() };
+        }
+        const key = `${diagnostic.data.eventName}:${diagnostic.data.errorCode}`;
+        const reported = reportedRef.current.errors;
+        // Bound noisy/repeated widget events; a failed log never retries payment.
+        if (!reported.has(key) && reported.size < 10) {
+          reported.add(key);
+          try {
+            onWidgetError(diagnostic.data);
+          } catch {
+            console.warn("[apple-pay] widget diagnostic could not be reported");
+          }
+        }
+      }
 
       switch (parsed.eventName) {
         case "onramp_api.load_pending":
@@ -141,19 +175,15 @@ export function useCoinbaseApplePayWidget({
           );
           return;
         default:
-          debugApplePay("unhandled coinbase event", {
-            eventName: parsed.eventName,
-            data: parsed.data,
-          });
           return;
       }
     };
     window.addEventListener("message", handler);
     return () => window.removeEventListener("message", handler);
-  }, [updateExpandedView]);
+  }, [updateExpandedView, providerOrderId, onWidgetError]);
 
   const onIframeLoad = useCallback(() => {
-    debugApplePay("iframe load", { paymentLinkUrl });
+    debugApplePay("iframe load", { hasPaymentLink: paymentLinkUrl != null });
   }, [paymentLinkUrl]);
 
   return {
@@ -181,12 +211,26 @@ function parseCoinbaseEvent(raw: unknown): CoinbaseEvent | null {
   const maybe = parsed as Record<string, unknown>;
   if (typeof maybe.eventName !== "string") return null;
   if (!maybe.eventName.startsWith("onramp_api.")) return null;
-  return maybe as CoinbaseEvent;
+  const data = maybe.data;
+  const fields =
+    data && typeof data === "object" ? (data as Record<string, unknown>) : {};
+  return {
+    eventName: maybe.eventName,
+    data: {
+      errorCode:
+        typeof fields.errorCode === "string" ? fields.errorCode : undefined,
+      errorMessage:
+        typeof fields.errorMessage === "string"
+          ? fields.errorMessage.slice(0, 1000)
+          : undefined,
+    },
+  };
 }
 
 function isCoinbaseOrigin(origin: string): boolean {
   try {
-    const { hostname } = new URL(origin);
+    const { hostname, protocol } = new URL(origin);
+    if (protocol !== "https:") return false;
     return hostname === "coinbase.com" || hostname.endsWith(".coinbase.com");
   } catch {
     return false;

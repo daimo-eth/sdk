@@ -1,4 +1,5 @@
 import type { DaimoClient } from "../../client/createDaimoClient.js";
+import type { CoinbaseWidgetErrorData } from "../../common/api.js";
 import type { SourceAmount } from "../../common/money.js";
 import type { NavNode } from "../api/navTree.js";
 
@@ -13,6 +14,7 @@ export type NavEventContext = {
 
 /** All nav event actions with their data */
 export type NavEventAction =
+  | ({ action: "coinbase_widget_error" } & CoinbaseWidgetErrorData)
   | { action: "nav_open" }
   | { action: "nav_close" }
   | { action: "nav_select"; targetNodeId: string; targetNodeType: NavNodeType }

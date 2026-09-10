@@ -77,6 +77,26 @@ export const zTokenOptionsRequest = z
     message: "at least one of evmAddress or solanaAddress is required",
   });
 
+/** Client-observed widget failure; never evidence of payment or settlement. */
+export const zCoinbaseWidgetErrorData = z.object({
+  providerOrderId: z
+    .string()
+    .min(1)
+    .max(100)
+    .regex(/^[a-zA-Z0-9_-]+$/),
+  eventName: z.enum([
+    "onramp_api.load_error",
+    "onramp_api.commit_error",
+    "onramp_api.polling_error",
+  ]),
+  errorCode: z
+    .string()
+    .max(100)
+    .regex(/^[A-Z][A-Z0-9_]*$/)
+    .nullable(),
+});
+export type CoinbaseWidgetErrorData = z.output<typeof zCoinbaseWidgetErrorData>;
+
 export const zLogNavEventRequest = z.object({
   clientSecret: z.string(),
   event: z.string().min(1),

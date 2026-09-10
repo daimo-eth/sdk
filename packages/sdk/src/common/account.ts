@@ -1176,6 +1176,8 @@ export type DepositPaymentInfo =
       instructions: string;
       paymentLinkUrl: string;
       paymentLinkKind: "apple_pay" | "google_pay";
+      /** Exact order for client diagnostics; absent on older servers. */
+      providerOrderId?: string;
       /** Total fee in fiat units (e.g. "0.12"). */
       totalFeeUnits: string;
       /** Amount charged to card, inclusive of fees. */
