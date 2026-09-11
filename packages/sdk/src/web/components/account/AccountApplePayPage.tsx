@@ -23,6 +23,8 @@ import { useDepositPoller } from "../../hooks/useDepositPoller.js";
 import { AmountSummaryRows } from "../AmountSummary.js";
 import { AmountInput, PageHeader, useAmountInput } from "../shared.js";
 import { AccountEnrollmentUpdatePage } from "./AccountEnrollmentUpdatePage.js";
+import type { CoinbaseWidgetErrorData } from "../../../common/api.js";
+import { createNavLogger } from "../../hooks/navEvent.js";
 import { useCoinbaseApplePayWidget } from "./useCoinbaseApplePayWidget.js";
 import { isPaymentInteractionCompatible } from "./accountNav.js";
 import { getWalletPayName } from "./walletPayName.js";
@@ -57,7 +59,7 @@ const APPLE_PAY_COLLAPSED_CROP_Y = 6;
  * Coinbase Headless payment page — amount entry + Apple Pay in a single
  * screen. Amount edits keep the backend preview + signatures up to date.
  * Coinbase webhooks drive the deposit lifecycle; iframe events only affect
- * the widget layout.
+ * the widget layout and report diagnostics.
  *
  * **Iframing + CSP**: pay.coinbase.com serves a `frame-ancestors` CSP
  * header that only allows specific allowlisted domains. In sandbox we append
@@ -196,6 +198,17 @@ export function AccountWalletPayPage({
       console.error("[wallet-pay] refreshDeposit failed:", err);
     }
   }, [client, sessionId, clientSecret]);
+  const reportWidgetError = useCallback(
+    (event: CoinbaseWidgetErrorData) => {
+      createNavLogger(client)(sessionId, clientSecret, {
+        action: "coinbase_widget_error",
+        nodeId: null,
+        nodeType: null,
+        ...event,
+      });
+    },
+    [client, sessionId, clientSecret],
+  );
   const {
     iframeExpanded,
     onIframeLoad,
@@ -207,6 +220,11 @@ export function AccountWalletPayPage({
     allowExpandedView,
     onRefreshDeposit: refreshFromServer,
     paymentLinkUrl: rawPaymentLinkUrl,
+    providerOrderId:
+      payment?.flow === "wallet-pay-widget"
+        ? payment.providerOrderId
+        : undefined,
+    onWidgetError: reportWidgetError,
   });
   const isExpanded = allowExpandedView && iframeExpanded;
   const isPaymentUnavailable =
