@@ -1670,7 +1670,7 @@ function renderDepositAddressSetup(ctx: RenderContext): React.ReactNode {
     <FlowErrorMessage
       error={ctx.depositAddress.error}
       sessionId={ctx.session.sessionId}
-      onBack={ctx.onBack}
+      onBack={ctx.canGoBack ? ctx.onBack : undefined}
       onRetry={ctx.depositAddress.retry}
     />
   );
@@ -1740,7 +1740,7 @@ function FlowErrorMessage({
 }: {
   error: string;
   sessionId?: string;
-  onBack: () => void;
+  onBack?: () => void;
   onRetry: () => void;
 }) {
   return (

@@ -167,6 +167,7 @@ test("wallet modal waits for address setup, shows its error, and retries setup",
   expect(container.textContent).toContain(
     "payment method not allowed for fixed type: SEPA",
   );
+  expect(container.querySelector('button[aria-label="Go back"]')).toBeNull();
   expect(
     request.mock.calls.some(([call]) => call.method === "eth_sendTransaction"),
   ).toBe(false);
