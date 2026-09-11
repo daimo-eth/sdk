@@ -1,4 +1,5 @@
 // @vitest-environment happy-dom
+// @vitest-environment-options {"happyDOM":{"settings":{"disableIframePageLoading":true}}}
 
 import { act, createElement } from "react";
 import { createRoot, type Root } from "react-dom/client";

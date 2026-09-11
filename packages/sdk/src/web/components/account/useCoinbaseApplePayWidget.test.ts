@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 
-import { act, createElement } from "react";
+import { act, createElement, useLayoutEffect } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, expect, it, vi } from "vitest";
 import type { CoinbaseWidgetErrorData } from "../../../common/api.js";
@@ -20,7 +20,13 @@ const error = {
   },
 };
 
-function Harness({ orderId }: { orderId?: string }) {
+function Harness({
+  orderId,
+  earlyError = false,
+}: {
+  orderId?: string;
+  earlyError?: boolean;
+}) {
   const state = useCoinbaseApplePayWidget({
     allowExpandedView: true,
     paymentLinkUrl: `https://pay.coinbase.com/${orderId ?? "legacy"}`,
@@ -28,6 +34,16 @@ function Harness({ orderId }: { orderId?: string }) {
     onWidgetError: report,
     onRefreshDeposit: refresh,
   });
+  useLayoutEffect(() => {
+    if (!earlyError) return;
+    window.dispatchEvent(
+      new MessageEvent("message", {
+        origin: "https://pay.coinbase.com",
+        source: state.iframeRef.current?.contentWindow,
+        data: { ...error, eventName: "onramp_api.load_error" },
+      }),
+    );
+  }, [orderId, earlyError]);
   return createElement(
     "div",
     null,
@@ -138,4 +154,22 @@ it("keeps the payment UI working when diagnostics fail or the server supplies no
   send();
   expect(container.textContent).toBe("Card declined");
   expect(report).toHaveBeenCalledOnce();
+});
+
+it("captures early errors for the committed order before passive effects run", () => {
+  container = document.createElement("div");
+  document.body.append(container);
+  root = createRoot(container);
+  for (const orderId of ["order-one", "order-two"]) {
+    act(() =>
+      root?.render(createElement(Harness, { orderId, earlyError: true })),
+    );
+    expect(report).toHaveBeenLastCalledWith({
+      providerOrderId: orderId,
+      eventName: "onramp_api.load_error",
+      errorCode: error.data.errorCode,
+    });
+    expect(container.textContent).toBe("Card declined");
+  }
+  expect(report).toHaveBeenCalledTimes(2);
 });

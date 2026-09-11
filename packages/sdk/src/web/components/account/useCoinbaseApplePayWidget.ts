@@ -1,9 +1,19 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 
 import {
   zCoinbaseWidgetErrorData,
   type CoinbaseWidgetErrorData,
 } from "../../../common/api.js";
+
+// Bind committed iframe state before the browser can deliver postMessage tasks.
+const useBrowserLayoutEffect =
+  typeof window === "undefined" ? useEffect : useLayoutEffect;
 
 type CoinbaseEventName = string;
 
@@ -57,7 +67,7 @@ export function useCoinbaseApplePayWidget({
     setIframeExpanded(false);
   }, [paymentLinkUrl]);
 
-  useEffect(() => {
+  useBrowserLayoutEffect(() => {
     refreshRef.current = onRefreshDeposit;
   }, [onRefreshDeposit]);
 
@@ -65,7 +75,7 @@ export function useCoinbaseApplePayWidget({
     if (!allowExpandedView) setIframeExpanded(false);
   }, [allowExpandedView]);
 
-  useEffect(() => {
+  useBrowserLayoutEffect(() => {
     debugApplePay("payment link updated", {
       hasPaymentLink: paymentLinkUrl != null,
     });
@@ -83,7 +93,7 @@ export function useCoinbaseApplePayWidget({
     [allowExpandedView],
   );
 
-  useEffect(() => {
+  useBrowserLayoutEffect(() => {
     const handler = (event: MessageEvent) => {
       if (typeof event.origin !== "string" || !isCoinbaseOrigin(event.origin)) {
         return;
