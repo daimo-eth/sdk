@@ -64,7 +64,7 @@ export type WalletFlowResult = {
 
 export function useWalletFlow(
   sessionId: string,
-  destAddr: string,
+  destAddr: Address | null,
   connectMode: "auto" | "passive" | "none",
   clientSecret: string,
   injectedWallets: InjectedWallet[],
@@ -533,6 +533,7 @@ export function useWalletFlow(
         return { txHash };
       }
 
+      if (!destAddr) throw new Error("deposit address is not ready");
       const txHash = await sendEvmTransaction(
         wallet,
         destAddr,
@@ -607,7 +608,7 @@ async function requestSolanaConnect(
 
 async function sendEvmTransaction(
   wallet: WalletData,
-  destAddr: string,
+  destAddr: Address,
   token: WalletPaymentOption,
   amountUsd: number,
   ethereum: EthereumProvider | null | undefined,
@@ -661,7 +662,7 @@ async function sendEvmTransaction(
   const data = encodeFunctionData({
     abi: erc20TransferAbi,
     functionName: "transfer",
-    args: [destAddr as `0x${string}`, tokenAmount],
+    args: [destAddr, tokenAmount],
   });
 
   return send([{ from: wallet.evmAddress, to: tokenAddress, data }]);
