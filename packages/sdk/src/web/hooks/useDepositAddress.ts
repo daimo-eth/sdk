@@ -27,8 +27,15 @@ export function useDepositAddress(session: SessionWithNav) {
   }, []);
   const needsAddress = navTreeNeedsEvmPaymentMethod(session.navTree);
 
+  const current =
+    result?.sessionId === sessionId && result.clientSecret === clientSecret
+      ? result
+      : null;
+  const address = current?.address ?? null;
+
   useEffect(() => {
-    if (!needsAddress) return;
+    // Polling may select another rail; keep this session's validated receiver.
+    if (!needsAddress || address) return;
     let active = true;
     const load = async () => {
       try {
@@ -68,14 +75,18 @@ export function useDepositAddress(session: SessionWithNav) {
     return () => {
       active = false;
     };
-  }, [sessionId, clientSecret, initialAddress, needsAddress, client, attempt]);
+  }, [
+    sessionId,
+    clientSecret,
+    initialAddress,
+    needsAddress,
+    address,
+    client,
+    attempt,
+  ]);
 
-  const current =
-    result?.sessionId === sessionId && result.clientSecret === clientSecret
-      ? result
-      : null;
   return {
-    address: current?.address ?? null,
+    address,
     error: current?.error ?? null,
     retry,
   };

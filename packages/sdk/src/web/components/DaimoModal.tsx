@@ -814,27 +814,6 @@ function renderEntry(
     return null;
   }
 
-  const needsEvmAddress =
-    (entry.type === "wallet-select-token" &&
-      ctx.walletFlow.wallet?.evmAddress &&
-      !ctx.walletFlow.wallet.solAddress) ||
-    ((entry.type === "wallet-select-amount" ||
-      (entry.type === "wallet-sending" && !entry.txHash)) &&
-      entry.token.balance.token.chainId !== solana.chainId);
-  if (needsEvmAddress && !ctx.depositAddress.address) {
-    if (ctx.depositAddress.error) {
-      return (
-        <FlowErrorMessage
-          error={ctx.depositAddress.error}
-          sessionId={ctx.session.sessionId}
-          onBack={ctx.onBack}
-          onRetry={ctx.depositAddress.retry}
-        />
-      );
-    }
-    return <LoadingMessage />;
-  }
-
   switch (entry.type) {
     case "choose-option": {
       const node = findNode(
@@ -1577,7 +1556,14 @@ function renderWalletConnect(
 }
 
 function renderWalletSelectToken(ctx: RenderContext): React.ReactNode {
-  const { walletFlow } = ctx;
+  const { walletFlow, depositAddress } = ctx;
+  if (
+    walletFlow.wallet?.evmAddress &&
+    !walletFlow.wallet.solAddress &&
+    !depositAddress.address
+  ) {
+    return renderDepositAddressSetup(ctx);
+  }
   const isLoading =
     ctx.isLoadingWallets ||
     walletFlow.isConnecting ||
@@ -1637,17 +1623,55 @@ function renderWalletSelectToken(ctx: RenderContext): React.ReactNode {
     );
   }
 
-  // Loaded — show token list
-  const showRequired = !!ctx.session.destination.amountUnits;
+  const options = walletFlow.balances.map((option) => {
+    if (
+      depositAddress.address ||
+      option.balance.token.chainId === solana.chainId
+    )
+      return option;
+    return {
+      ...option,
+      disabledReason:
+        option.disabledReason ??
+        (depositAddress.error ? t.somethingWentWrong : t.loading),
+    };
+  });
   return (
-    <SelectTokenPage
-      options={walletFlow.balances}
-      isLoading={false}
-      showRequired={showRequired}
-      onSelect={ctx.onWalletSelectToken}
-      onBack={ctx.canGoBack ? ctx.onBack : null}
-      baseUrl={ctx.session.baseUrl}
+    <>
+      <SelectTokenPage
+        options={options}
+        showRequired={!!ctx.session.destination.amountUnits}
+        onSelect={ctx.onWalletSelectToken}
+        onBack={ctx.canGoBack ? ctx.onBack : null}
+        baseUrl={ctx.session.baseUrl}
+        sessionId={ctx.session.sessionId}
+      />
+      {depositAddress.error &&
+        options.some(
+          (option) => option.balance.token.chainId !== solana.chainId,
+        ) && (
+          <div className="daimo-px-6 daimo-pb-6 daimo-flex daimo-flex-col daimo-gap-3">
+            <SharedErrorMessage
+              message={formatUserError(depositAddress.error)}
+            />
+            <PrimaryButton onClick={depositAddress.retry}>
+              {t.tryAgain}
+            </PrimaryButton>
+          </div>
+        )}
+    </>
+  );
+}
+
+/** Loading and retry are shared by EVM-only token selection and amount entry. */
+function renderDepositAddressSetup(ctx: RenderContext): React.ReactNode {
+  if (!ctx.depositAddress.error) return <LoadingMessage />;
+  return (
+    <FlowErrorMessage
+      error={ctx.depositAddress.error}
       sessionId={ctx.session.sessionId}
+      onBack={ctx.onBack}
+      onRetry={ctx.depositAddress.retry}
     />
   );
 }
@@ -1656,6 +1680,12 @@ function renderWalletSelectAmount(
   entry: NavEntry & { type: "wallet-select-amount" },
   ctx: RenderContext,
 ): React.ReactNode {
+  if (
+    entry.token.balance.token.chainId !== solana.chainId &&
+    !ctx.depositAddress.address
+  ) {
+    return renderDepositAddressSetup(ctx);
+  }
   return (
     <WalletAmountPage
       token={entry.token}

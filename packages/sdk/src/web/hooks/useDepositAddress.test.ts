@@ -82,7 +82,8 @@ const request = vi.fn(
     method: string;
     params?: unknown[];
   }): Promise<unknown> => {
-    if (method === "eth_accounts") return [wallet];
+    if (method === "eth_accounts" || method === "eth_requestAccounts")
+      return [wallet];
     if (method === "eth_chainId") return "0x2105";
     if (method === "eth_sendTransaction") return "0xabc";
     throw new Error(`unexpected wallet method: ${method}`);
@@ -125,6 +126,7 @@ afterEach(() => {
   act(() => root.unmount());
   container.remove();
   vi.restoreAllMocks();
+  vi.unstubAllGlobals();
 });
 async function mountModal() {
   await act(async () =>
@@ -311,4 +313,106 @@ test("does not request an EVM payment method for fiat-only navigation", async ()
   }
   await act(async () => root.render(createElement(Harness)));
   expect(create).not.toHaveBeenCalled();
+});
+
+test("polling another payment method does not restart successful EVM setup", async () => {
+  const create = vi
+    .spyOn(client.sessions.paymentMethods, "create")
+    .mockResolvedValue(paymentResult());
+  function Harness({ value }: { value: SessionWithNav }) {
+    const result = useDepositAddress(value);
+    return createElement("p", null, result.address);
+  }
+  await act(async () =>
+    root.render(createElement(Harness, { value: session })),
+  );
+  await act(async () =>
+    root.render(
+      createElement(Harness, {
+        value: {
+          ...session,
+          paymentMethod: paymentResult().session.paymentMethod,
+        },
+      }),
+    ),
+  );
+  await act(async () =>
+    root.render(
+      createElement(Harness, {
+        value: { ...session, paymentMethod: { type: "solana", createdAt: 1 } },
+      }),
+    ),
+  );
+  expect(create).toHaveBeenCalledTimes(1);
+  expect(container.textContent).toBe(receiver);
+});
+
+test("dual-chain wallets keep Solana usable but disable EVM tokens until setup succeeds", async () => {
+  const pending = deferred<ReturnType<typeof paymentResult>>();
+  const create = vi
+    .spyOn(client.sessions.paymentMethods, "create")
+    .mockReturnValueOnce(pending.promise)
+    .mockResolvedValue(paymentResult());
+  const solToken = {
+    ...token,
+    chainId: 501,
+    symbol: "SOL",
+    token: "So11111111111111111111111111111111111111112",
+  };
+  const solOption = {
+    ...option,
+    balance: { ...option.balance, token: solToken },
+  };
+  vi.mocked(client.internal.sessions.walletOptions).mockResolvedValue([
+    { ...option, required: option.balance },
+    solOption,
+  ]);
+  vi.stubGlobal("ethereum", provider);
+  vi.stubGlobal("solana", {
+    publicKey: {
+      toBase58: () => "So11111111111111111111111111111111111111112",
+    },
+    connect: async () => ({
+      publicKey: {
+        toBase58: () => "So11111111111111111111111111111111111111112",
+      },
+    }),
+  });
+  await act(async () =>
+    root.render(
+      createElement(DaimoModal, {
+        sessionId: session.sessionId,
+        clientSecret: session.clientSecret,
+        embedded: true,
+        connectToInjectedWallets: true,
+      }),
+    ),
+  );
+  const buttonFor = (symbol: string) =>
+    [...container.querySelectorAll("button")].find((button) =>
+      button.textContent?.includes(symbol),
+    );
+  expect(buttonFor("EURC")?.disabled).toBe(true);
+  expect(buttonFor("SOL")?.disabled).toBe(false);
+  await act(async () => buttonFor("EURC")?.click());
+  expect(
+    request.mock.calls.some(([call]) => call.method === "eth_sendTransaction"),
+  ).toBe(false);
+  await act(async () => pending.reject(new Error("payment setup unavailable")));
+  expect(container.textContent).toContain("payment setup unavailable");
+  expect(buttonFor("SOL")?.disabled).toBe(false);
+  const retry = [...container.querySelectorAll("button")].find(
+    (button) => button.textContent === "Try again",
+  );
+  expect(retry).toBeDefined();
+  await act(async () => retry?.click());
+  expect(create).toHaveBeenCalledTimes(2);
+  expect(buttonFor("EURC")?.disabled).toBe(false);
+  await act(async () => buttonFor("EURC")?.click());
+  expect(
+    request.mock.calls.filter(
+      ([call]) => call.method === "eth_sendTransaction",
+    ),
+  ).toHaveLength(1);
+  expect(container.textContent).not.toContain("deposit address is not ready");
 });
