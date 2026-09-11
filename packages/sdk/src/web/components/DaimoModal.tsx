@@ -8,7 +8,7 @@ import {
 } from "react";
 import type { Address } from "viem";
 import type { AccountDepositStatus } from "../../common/account.js";
-import { tron } from "../../common/chain.js";
+import { solana, tron } from "../../common/chain.js";
 import { isSessionTerminal } from "../../common/session.js";
 import type {
   AccountAuthConfig,
@@ -480,7 +480,7 @@ function DaimoModalInner({
     : isLoadingDiscoveredWallets;
   const walletFlow = useWalletFlow(
     session.sessionId,
-    depositAddress ?? "",
+    depositAddress.address,
     connectMode,
     session.clientSecret,
     injectedWallets,
@@ -647,6 +647,7 @@ function DaimoModalInner({
       onChainSelect: nav.handleChainSelect,
       onShowMobileWallets: nav.handleShowMobileWallets,
       walletFlow,
+      depositAddress,
       selectTokenSkeletonCount:
         confirmationMode === "withdrawal" ? 1 : undefined,
       confirmationMode,
@@ -778,6 +779,7 @@ type RenderContext = {
     retryConnect: () => Promise<void>;
   };
   selectTokenSkeletonCount?: number;
+  depositAddress: ReturnType<typeof useDepositAddress>;
   confirmationMode?: ConfirmationMode;
   onWalletSelectToken: (token: WalletPaymentOption) => void;
   onWalletSending: (token: WalletPaymentOption, amountUsd: number) => void;
@@ -810,6 +812,27 @@ function renderEntry(
       );
     }
     return null;
+  }
+
+  const needsEvmAddress =
+    (entry.type === "wallet-select-token" &&
+      ctx.walletFlow.wallet?.evmAddress &&
+      !ctx.walletFlow.wallet.solAddress) ||
+    ((entry.type === "wallet-select-amount" ||
+      (entry.type === "wallet-sending" && !entry.txHash)) &&
+      entry.token.balance.token.chainId !== solana.chainId);
+  if (needsEvmAddress && !ctx.depositAddress.address) {
+    if (ctx.depositAddress.error) {
+      return (
+        <FlowErrorMessage
+          error={ctx.depositAddress.error}
+          sessionId={ctx.session.sessionId}
+          onBack={ctx.onBack}
+          onRetry={ctx.depositAddress.retry}
+        />
+      );
+    }
+    return <LoadingMessage />;
   }
 
   switch (entry.type) {
