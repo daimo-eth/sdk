@@ -88,6 +88,11 @@ for SCRIPT in "${SCRIPTS[@]}"; do
             FORGE_CMD="forge script $SCRIPT --sig run --fork-url $RPC_URL --private-key $PRIVATE_KEY --verify --verifier etherscan --verifier-url https://api.etherscan.io/v2/api?chainid=999& --etherscan-api-key $ETHERSCAN_API_KEY --broadcast"
         elif [[ "$RPC_URL" == *"megaeth"* ]]; then
             FORGE_CMD="forge script $SCRIPT --sig run --fork-url $RPC_URL --private-key $PRIVATE_KEY --verify --verifier etherscan --verifier-url https://api.etherscan.io/v2/api?chainid=4326& --etherscan-api-key $ETHERSCAN_API_KEY --broadcast"
+        elif [[ "$RPC_URL" == *"arc-mainnet"* ]]; then
+            # Arc has no public block explorer yet, so there is nothing to
+            # verify against. Omit every verification flag. Revisit once
+            # Circle ships a public explorer (explorer.arc.io is SSO-gated).
+            FORGE_CMD="forge script $SCRIPT --sig run --fork-url $RPC_URL --private-key $PRIVATE_KEY --broadcast"
         else
             FORGE_CMD="forge script $SCRIPT --sig run --fork-url $RPC_URL --private-key $PRIVATE_KEY --verify --etherscan-api-key $ETHERSCAN_API_KEY --broadcast"
         fi

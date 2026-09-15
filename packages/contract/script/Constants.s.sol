@@ -29,6 +29,7 @@ import {CREATE3Factory} from "../vendor/create3/CREATE3Factory.sol";
 
 // ----------------- Chain IDs ----------------- //
 uint256 constant ARBITRUM_MAINNET = 42161;
+uint256 constant ARC_MAINNET = 5042;
 uint256 constant BASE_MAINNET = 8453;
 uint256 constant BSC_MAINNET = 56;
 uint256 constant CELO_MAINNET = 42220;
@@ -144,6 +145,7 @@ address constant TOKEN_MESSENGER_V2 = 0x28b5a0e9C621a5BadaA536219b3a228C8168cf5d
 
 function _getTokenMessengerV2Address(uint256 chainId) pure returns (address) {
     if (chainId == ARBITRUM_MAINNET) return TOKEN_MESSENGER_V2;
+    if (chainId == ARC_MAINNET) return TOKEN_MESSENGER_V2;
     if (chainId == BASE_MAINNET) return TOKEN_MESSENGER_V2;
     if (chainId == ETH_MAINNET) return TOKEN_MESSENGER_V2;
     if (chainId == HYPEREVM_MAINNET) return TOKEN_MESSENGER_V2;
@@ -161,6 +163,7 @@ address constant TOKEN_MINTER_V2 = 0xfd78EE919681417d192449715b2594ab58f5D002;
 
 function _getTokenMinterV2Address(uint256 chainId) pure returns (address) {
     if (chainId == ARBITRUM_MAINNET) return TOKEN_MINTER_V2;
+    if (chainId == ARC_MAINNET) return TOKEN_MINTER_V2;
     if (chainId == BASE_MAINNET) return TOKEN_MINTER_V2;
     if (chainId == ETH_MAINNET) return TOKEN_MINTER_V2;
     if (chainId == HYPEREVM_MAINNET) return TOKEN_MINTER_V2;
