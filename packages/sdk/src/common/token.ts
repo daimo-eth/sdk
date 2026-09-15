@@ -1,6 +1,7 @@
 import { Address, getAddress, zeroAddress } from "viem";
 import {
   arbitrum,
+  arc,
   base,
   bsc,
   celo,
@@ -146,6 +147,39 @@ const arbitrumTokens: Token[] = [
   arbitrumUSDT0,
   arbitrumUSDCe,
 ];
+
+//
+// Arc
+//
+// USDC is the native gas token on Arc, at 18 decimals. It is ALSO an ERC-20
+// predeploy at 6 decimals, backed by the same balance:
+// erc20_balance == floor(native_balance / 1e12). We model only the 6-decimal
+// ERC-20 view, and deliberately register no TokenType.NATIVE — a NATIVE entry
+// would make the balance reader return the same funds twice. CCTP also mints
+// in 6-decimal units. See docs/agent/cctp-arc-integration.md.
+//
+
+export const arcUSDC: Token = token({
+  chainId: arc.chainId,
+  token: getAddress("0x3600000000000000000000000000000000000000"),
+  decimals: 6,
+  fiatISO: "USD",
+  name: "USD Coin",
+  symbol: "USDC",
+  logoURI: TokenLogo.USDC,
+});
+
+export const arcEURC: Token = token({
+  chainId: arc.chainId,
+  token: getAddress("0xbEf5f6d51CB62b58e6A8f77868681825C6fe21c1"),
+  decimals: 6,
+  fiatISO: "EUR",
+  name: "Euro Coin",
+  symbol: "EURC",
+  logoURI: TokenLogo.EURC,
+});
+
+const arcTokens: Token[] = [arcUSDC, arcEURC];
 
 //
 // Base Mainnet
@@ -947,6 +981,7 @@ const worldchainTokens: Token[] = [
 
 const knownTokensByChain = new Map<number, Token[]>([
   [arbitrum.chainId, arbitrumTokens],
+  [arc.chainId, arcTokens],
   [base.chainId, baseTokens],
   [bsc.chainId, bscTokens],
   [celo.chainId, celoTokens],
@@ -1007,6 +1042,15 @@ const tokensByChainAndType: Map<
       [TokenType.USDT]: arbitrumUSDT0,
       [TokenType.USDT0]: arbitrumUSDT0,
       [TokenType.DAI]: arbitrumDAI,
+    },
+  ],
+  [
+    arc.chainId,
+    {
+      // No TokenType.NATIVE on purpose. Arc's gas token is USDC itself, and a
+      // NATIVE entry would double-count the same balance in the balance reader
+      // and make getChainWrappedNativeToken throw (Arc has no WETH).
+      [TokenType.NATIVE_USDC]: arcUSDC,
     },
   ],
   [

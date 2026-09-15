@@ -14,6 +14,18 @@ export const arbitrum: Chain = {
   lzEid: 30110,
 };
 
+/**
+ * Arc, the Circle stablecoin chain. USDC is the native gas token.
+ * No LayerZero endpoint exists on Arc.
+ */
+export const arc: Chain = {
+  type: "evm",
+  chainId: 5042,
+  name: "Arc",
+  cctpDomain: 26,
+  lzEid: null,
+};
+
 export const base: Chain = {
   type: "evm",
   chainId: 8453,
@@ -140,6 +152,7 @@ export const solana: Chain = {
 
 export const supportedChains: Chain[] = [
   arbitrum,
+  arc,
   base,
   bsc,
   celo,

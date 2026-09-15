@@ -358,6 +358,69 @@ function getDACCTPV2BridgeRoutes(
         return (chainIds, bridgeRoutes);
     }
 
+    // Source chain 5042
+    if (sourceChainId == 5042) {
+        chainIds = new uint256[](9);
+        bridgeRoutes = new DaimoPayCCTPV2Bridger.CCTPBridgeRoute[](9);
+
+        // 5042 -> 1 USDC
+        chainIds[0] = 1;
+        bridgeRoutes[0] = DaimoPayCCTPV2Bridger.CCTPBridgeRoute({
+            domain: 0,
+            bridgeTokenOut: 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48
+        });
+        // 5042 -> 10 USDC
+        chainIds[1] = 10;
+        bridgeRoutes[1] = DaimoPayCCTPV2Bridger.CCTPBridgeRoute({
+            domain: 2,
+            bridgeTokenOut: 0x0b2C639c533813f4Aa9D7837CAf62653d097Ff85
+        });
+        // 5042 -> 137 USDC
+        chainIds[2] = 137;
+        bridgeRoutes[2] = DaimoPayCCTPV2Bridger.CCTPBridgeRoute({
+            domain: 7,
+            bridgeTokenOut: 0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359
+        });
+        // 5042 -> 143 USDC
+        chainIds[3] = 143;
+        bridgeRoutes[3] = DaimoPayCCTPV2Bridger.CCTPBridgeRoute({
+            domain: 15,
+            bridgeTokenOut: 0x754704Bc059F8C67012fEd69BC8A327a5aafb603
+        });
+        // 5042 -> 480 USDC
+        chainIds[4] = 480;
+        bridgeRoutes[4] = DaimoPayCCTPV2Bridger.CCTPBridgeRoute({
+            domain: 14,
+            bridgeTokenOut: 0x79A02482A880bCE3F13e09Da970dC34db4CD24d1
+        });
+        // 5042 -> 999 USDC
+        chainIds[5] = 999;
+        bridgeRoutes[5] = DaimoPayCCTPV2Bridger.CCTPBridgeRoute({
+            domain: 19,
+            bridgeTokenOut: 0xb88339CB7199b77E23DB6E890353E22632Ba630f
+        });
+        // 5042 -> 8453 USDC
+        chainIds[6] = 8453;
+        bridgeRoutes[6] = DaimoPayCCTPV2Bridger.CCTPBridgeRoute({
+            domain: 6,
+            bridgeTokenOut: 0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913
+        });
+        // 5042 -> 42161 USDC
+        chainIds[7] = 42161;
+        bridgeRoutes[7] = DaimoPayCCTPV2Bridger.CCTPBridgeRoute({
+            domain: 3,
+            bridgeTokenOut: 0xaf88d065e77c8cC2239327C5EDb3A432268e5831
+        });
+        // 5042 -> 59144 USDC
+        chainIds[8] = 59144;
+        bridgeRoutes[8] = DaimoPayCCTPV2Bridger.CCTPBridgeRoute({
+            domain: 11,
+            bridgeTokenOut: 0x176211869cA2b568f2A7D4EE941E073a821EE1ff
+        });
+
+        return (chainIds, bridgeRoutes);
+    }
+
     // Source chain 8453
     if (sourceChainId == 8453) {
         chainIds = new uint256[](8);

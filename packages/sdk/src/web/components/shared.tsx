@@ -8,6 +8,7 @@ import {
 } from "react";
 import {
   arbitrum,
+  arc,
   base,
   bsc,
   celo,
@@ -47,6 +48,7 @@ type SupportedChainId = (typeof supportedChains)[number]["chainId"];
 
 const CHAIN_LOGOS: Record<SupportedChainId, string> = {
   [arbitrum.chainId]: "arbitrum.svg",
+  [arc.chainId]: "arc.svg",
   [base.chainId]: "base.svg",
   [bsc.chainId]: "bsc.svg",
   [celo.chainId]: "celo.svg",
