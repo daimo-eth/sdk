@@ -3,14 +3,6 @@ pragma solidity ^0.8.12;
 
 import "../../../src/DaimoPayHopBridger.sol";
 import "../../../src/DestinationUtils.sol";
-import {
-    DEPLOY_SALT_CCTP_V2_BRIDGER,
-    DEPLOY_SALT_LEGACY_MESH_BRIDGER,
-    DEPLOY_SALT_STARGATE_USDC_BRIDGER,
-    DEPLOY_SALT_STARGATE_USDT_BRIDGER,
-    DEPLOY_SALT_USDT0_BRIDGER
-} from "../../DeploySalts.sol";
-
 // @title DAHopBridgeRouteConstants
 // @notice Auto-generated DA constants for Hop bridge routes
 
@@ -23,7 +15,7 @@ function getDAHopChain(
         uint256 hopChainId,
         address hopCoinAddr,
         uint256 hopCoinDecimals,
-        bytes32 hopBridgerSalt
+        address hopBridgerAddr
     )
 {
 
@@ -32,8 +24,8 @@ function getDAHopChain(
         hopChainId = 42161;
         hopCoinAddr = 0xaf88d065e77c8cC2239327C5EDb3A432268e5831;
         hopCoinDecimals = 6;
-        hopBridgerSalt = DEPLOY_SALT_CCTP_V2_BRIDGER;
-        return (hopChainId, hopCoinAddr, hopCoinDecimals, hopBridgerSalt);
+        hopBridgerAddr = 0xaec53EfDc5582DC78F52ed4CFa852BFa5BF0C1d3;
+        return (hopChainId, hopCoinAddr, hopCoinDecimals, hopBridgerAddr);
     }
 
     // Source chain 56
@@ -41,8 +33,8 @@ function getDAHopChain(
         hopChainId = 42161;
         hopCoinAddr = 0xaf88d065e77c8cC2239327C5EDb3A432268e5831;
         hopCoinDecimals = 6;
-        hopBridgerSalt = DEPLOY_SALT_STARGATE_USDC_BRIDGER;
-        return (hopChainId, hopCoinAddr, hopCoinDecimals, hopBridgerSalt);
+        hopBridgerAddr = 0x85B0b03ED6fc421ca55AAa3a55723a70701908B8;
+        return (hopChainId, hopCoinAddr, hopCoinDecimals, hopBridgerAddr);
     }
 
     // Source chain 100
@@ -50,8 +42,8 @@ function getDAHopChain(
         hopChainId = 42161;
         hopCoinAddr = 0xaf88d065e77c8cC2239327C5EDb3A432268e5831;
         hopCoinDecimals = 6;
-        hopBridgerSalt = DEPLOY_SALT_STARGATE_USDC_BRIDGER;
-        return (hopChainId, hopCoinAddr, hopCoinDecimals, hopBridgerSalt);
+        hopBridgerAddr = 0x85B0b03ED6fc421ca55AAa3a55723a70701908B8;
+        return (hopChainId, hopCoinAddr, hopCoinDecimals, hopBridgerAddr);
     }
 
     // Source chain 137
@@ -59,8 +51,8 @@ function getDAHopChain(
         hopChainId = 42161;
         hopCoinAddr = 0xaf88d065e77c8cC2239327C5EDb3A432268e5831;
         hopCoinDecimals = 6;
-        hopBridgerSalt = DEPLOY_SALT_CCTP_V2_BRIDGER;
-        return (hopChainId, hopCoinAddr, hopCoinDecimals, hopBridgerSalt);
+        hopBridgerAddr = 0xaec53EfDc5582DC78F52ed4CFa852BFa5BF0C1d3;
+        return (hopChainId, hopCoinAddr, hopCoinDecimals, hopBridgerAddr);
     }
 
     // Source chain 143
@@ -68,8 +60,8 @@ function getDAHopChain(
         hopChainId = 42161;
         hopCoinAddr = 0xaf88d065e77c8cC2239327C5EDb3A432268e5831;
         hopCoinDecimals = 6;
-        hopBridgerSalt = DEPLOY_SALT_CCTP_V2_BRIDGER;
-        return (hopChainId, hopCoinAddr, hopCoinDecimals, hopBridgerSalt);
+        hopBridgerAddr = 0xaec53EfDc5582DC78F52ed4CFa852BFa5BF0C1d3;
+        return (hopChainId, hopCoinAddr, hopCoinDecimals, hopBridgerAddr);
     }
 
     // Source chain 480
@@ -77,8 +69,8 @@ function getDAHopChain(
         hopChainId = 42161;
         hopCoinAddr = 0xaf88d065e77c8cC2239327C5EDb3A432268e5831;
         hopCoinDecimals = 6;
-        hopBridgerSalt = DEPLOY_SALT_CCTP_V2_BRIDGER;
-        return (hopChainId, hopCoinAddr, hopCoinDecimals, hopBridgerSalt);
+        hopBridgerAddr = 0xaec53EfDc5582DC78F52ed4CFa852BFa5BF0C1d3;
+        return (hopChainId, hopCoinAddr, hopCoinDecimals, hopBridgerAddr);
     }
 
     // Source chain 999
@@ -86,8 +78,8 @@ function getDAHopChain(
         hopChainId = 42161;
         hopCoinAddr = 0xaf88d065e77c8cC2239327C5EDb3A432268e5831;
         hopCoinDecimals = 6;
-        hopBridgerSalt = DEPLOY_SALT_CCTP_V2_BRIDGER;
-        return (hopChainId, hopCoinAddr, hopCoinDecimals, hopBridgerSalt);
+        hopBridgerAddr = 0xaec53EfDc5582DC78F52ed4CFa852BFa5BF0C1d3;
+        return (hopChainId, hopCoinAddr, hopCoinDecimals, hopBridgerAddr);
     }
 
     // Source chain 4217
@@ -95,8 +87,8 @@ function getDAHopChain(
         hopChainId = 42161;
         hopCoinAddr = 0xaf88d065e77c8cC2239327C5EDb3A432268e5831;
         hopCoinDecimals = 6;
-        hopBridgerSalt = DEPLOY_SALT_STARGATE_USDC_BRIDGER;
-        return (hopChainId, hopCoinAddr, hopCoinDecimals, hopBridgerSalt);
+        hopBridgerAddr = 0x85B0b03ED6fc421ca55AAa3a55723a70701908B8;
+        return (hopChainId, hopCoinAddr, hopCoinDecimals, hopBridgerAddr);
     }
 
     // Source chain 4326
@@ -104,8 +96,8 @@ function getDAHopChain(
         hopChainId = 42161;
         hopCoinAddr = 0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9;
         hopCoinDecimals = 6;
-        hopBridgerSalt = DEPLOY_SALT_USDT0_BRIDGER;
-        return (hopChainId, hopCoinAddr, hopCoinDecimals, hopBridgerSalt);
+        hopBridgerAddr = 0x9c62eEe55EC0f74F11f8B371ED605Ed088AD1597;
+        return (hopChainId, hopCoinAddr, hopCoinDecimals, hopBridgerAddr);
     }
 
     // Source chain 5042
@@ -113,8 +105,8 @@ function getDAHopChain(
         hopChainId = 42161;
         hopCoinAddr = 0xaf88d065e77c8cC2239327C5EDb3A432268e5831;
         hopCoinDecimals = 6;
-        hopBridgerSalt = DEPLOY_SALT_CCTP_V2_BRIDGER;
-        return (hopChainId, hopCoinAddr, hopCoinDecimals, hopBridgerSalt);
+        hopBridgerAddr = 0xaec53EfDc5582DC78F52ed4CFa852BFa5BF0C1d3;
+        return (hopChainId, hopCoinAddr, hopCoinDecimals, hopBridgerAddr);
     }
 
     // Source chain 8453
@@ -122,8 +114,8 @@ function getDAHopChain(
         hopChainId = 42161;
         hopCoinAddr = 0xaf88d065e77c8cC2239327C5EDb3A432268e5831;
         hopCoinDecimals = 6;
-        hopBridgerSalt = DEPLOY_SALT_CCTP_V2_BRIDGER;
-        return (hopChainId, hopCoinAddr, hopCoinDecimals, hopBridgerSalt);
+        hopBridgerAddr = 0xaec53EfDc5582DC78F52ed4CFa852BFa5BF0C1d3;
+        return (hopChainId, hopCoinAddr, hopCoinDecimals, hopBridgerAddr);
     }
 
     // Source chain 42220
@@ -131,8 +123,8 @@ function getDAHopChain(
         hopChainId = 42161;
         hopCoinAddr = 0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9;
         hopCoinDecimals = 6;
-        hopBridgerSalt = DEPLOY_SALT_LEGACY_MESH_BRIDGER;
-        return (hopChainId, hopCoinAddr, hopCoinDecimals, hopBridgerSalt);
+        hopBridgerAddr = 0x8de29A04DEe5894D7bd536a7b4c924560F2DfF57;
+        return (hopChainId, hopCoinAddr, hopCoinDecimals, hopBridgerAddr);
     }
 
     // Source chain 59144
@@ -140,11 +132,11 @@ function getDAHopChain(
         hopChainId = 42161;
         hopCoinAddr = 0xaf88d065e77c8cC2239327C5EDb3A432268e5831;
         hopCoinDecimals = 6;
-        hopBridgerSalt = DEPLOY_SALT_CCTP_V2_BRIDGER;
-        return (hopChainId, hopCoinAddr, hopCoinDecimals, hopBridgerSalt);
+        hopBridgerAddr = 0xaec53EfDc5582DC78F52ed4CFa852BFa5BF0C1d3;
+        return (hopChainId, hopCoinAddr, hopCoinDecimals, hopBridgerAddr);
     }
 
-    return (0, address(0), 0, 0);
+    return (0, address(0), 0, address(0));
 }
 
 // Return all DA Hop bridge routes for the given source chain as final coin specs.

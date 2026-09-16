@@ -19,6 +19,7 @@ import "../Constants.s.sol";
 import {
     getDACCTPV2BridgeRoutes
 } from "./constants/DACCTPV2BridgeRouteConstants.sol";
+import {getDALegacyAdapters} from "./constants/DALegacyAdapterConstants.sol";
 import {
     getDAHopChain,
     getDAHopBridgeRoutes
@@ -104,25 +105,20 @@ contract DeployDepositAddressBridger is Script {
             msg.sender,
             DEPLOY_SALT_CCTP_V2_BRIDGER
         );
-        address stargateUSDCBridger = CREATE3.getDeployed(
-            msg.sender,
-            DEPLOY_SALT_STARGATE_USDC_BRIDGER
-        );
-        address stargateUSDTBridger = CREATE3.getDeployed(
-            msg.sender,
-            DEPLOY_SALT_STARGATE_USDT_BRIDGER
-        );
-        address legacyMeshBridger = CREATE3.getDeployed(
-            msg.sender,
-            DEPLOY_SALT_LEGACY_MESH_BRIDGER
-        );
+        // Adapters that predate this deploy key come from codegen. A CREATE3
+        // address is f(deployer, salt), so deriving them from msg.sender only
+        // matches when the signer also deployed them; otherwise the aggregator
+        // whitelists an address with no code and those routes revert.
+        (
+            address stargateUSDCBridger,
+            address stargateUSDTBridger,
+            address legacyMeshBridger,
+            address usdt0Bridger
+        ) = getDALegacyAdapters();
+        // Deployed by this same cut, so deriving these is correct.
         address hopBridger = CREATE3.getDeployed(
             msg.sender,
             DEPLOY_SALT_HOP_BRIDGER
-        );
-        address usdt0Bridger = CREATE3.getDeployed(
-            msg.sender,
-            DEPLOY_SALT_USDT0_BRIDGER
         );
         address zeroXBridger = CREATE3.getDeployed(
             msg.sender,
@@ -183,6 +179,18 @@ contract DeployDepositAddressBridger is Script {
         ) = getDAZeroXBridgeRoutes(block.chainid);
 
         // Count total number of supported chains
+        // An adapter is only whitelisted if it has routes on this chain; require
+        // code for exactly those, so a wrong address fails the deploy instead of
+        // producing an aggregator that reverts at runtime.
+        _requireDeployed(cctpV2ChainIds.length, cctpV2Bridger, "cctpV2");
+        _requireDeployed(stargateUSDCChainIds.length, stargateUSDCBridger, "stargateUSDC");
+        _requireDeployed(stargateUSDTChainIds.length, stargateUSDTBridger, "stargateUSDT");
+        _requireDeployed(legacyMeshChainIds.length, legacyMeshBridger, "legacyMesh");
+        _requireDeployed(usdt0ChainIds.length, usdt0Bridger, "usdt0");
+        _requireDeployed(zeroXChainIds.length, zeroXBridger, "zeroX");
+        // Hop is deployed earlier in the same cut, so it may not have code yet
+        // during a dry run; its own script asserts its leg-1 bridger.
+
         uint256 totalChains = cctpV2ChainIds.length +
             stargateUSDCChainIds.length +
             stargateUSDTChainIds.length +
@@ -294,4 +302,16 @@ contract DeployDepositAddressBridger is Script {
 
     // Exclude from forge coverage
     function test() public {}
+
+    function _requireDeployed(
+        uint256 routeCount,
+        address adapter,
+        string memory name
+    ) internal view {
+        if (routeCount == 0) return;
+        require(
+            adapter.code.length > 0,
+            string.concat("DAB deploy: no code at ", name, " adapter")
+        );
+    }
 }
