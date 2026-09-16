@@ -101,10 +101,7 @@ contract DeployDepositAddressBridger is Script {
         )
     {
         // Get addresses of deployed bridger implementations
-        address cctpV2Bridger = CREATE3.getDeployed(
-            msg.sender,
-            DEPLOY_SALT_CCTP_V2_BRIDGER
-        );
+
         // Adapters that predate this deploy key come from codegen. A CREATE3
         // address is f(deployer, salt), so deriving them from msg.sender only
         // matches when the signer also deployed them; otherwise the aggregator
@@ -113,13 +110,10 @@ contract DeployDepositAddressBridger is Script {
             address stargateUSDCBridger,
             address stargateUSDTBridger,
             address legacyMeshBridger,
-            address usdt0Bridger
+            address usdt0Bridger,
+            address hopBridger,
+            address cctpV2Bridger
         ) = getDALegacyAdapters();
-        // Deployed by this same cut, so deriving these is correct.
-        address hopBridger = CREATE3.getDeployed(
-            msg.sender,
-            DEPLOY_SALT_HOP_BRIDGER
-        );
         address zeroXBridger = CREATE3.getDeployed(
             msg.sender,
             DEPLOY_SALT_ZEROX_BRIDGER
@@ -188,8 +182,7 @@ contract DeployDepositAddressBridger is Script {
         _requireDeployed(legacyMeshChainIds.length, legacyMeshBridger, "legacyMesh");
         _requireDeployed(usdt0ChainIds.length, usdt0Bridger, "usdt0");
         _requireDeployed(zeroXChainIds.length, zeroXBridger, "zeroX");
-        // Hop is deployed earlier in the same cut, so it may not have code yet
-        // during a dry run; its own script asserts its leg-1 bridger.
+        _requireDeployed(hopDestChainIds.length, hopBridger, "hop");
 
         uint256 totalChains = cctpV2ChainIds.length +
             stargateUSDCChainIds.length +
