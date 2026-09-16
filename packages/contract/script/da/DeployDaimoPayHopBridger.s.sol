@@ -17,14 +17,19 @@ contract DeployDaimoPayHopBridger is Script {
             uint256 hopChainId,
             address hopCoinAddr,
             uint256 hopCoinDecimals,
-            bytes32 hopBridgerSalt
+            address firstHopBridger
         ) = getDAHopChain(block.chainid);
         // No hops from this chain = don't deploy HopChainBridger.
         if (hopChainId == 0) return;
 
-        address firstHopBridger = CREATE3.getDeployed(
-            msg.sender,
-            hopBridgerSalt
+        // The leg-1 bridger address comes from codegen, not from
+        // CREATE3.getDeployed(msg.sender, salt). A CREATE3 address is
+        // f(deployer, salt), and leg-1 bridgers were not all deployed by the
+        // key signing this deployment, so deriving it here silently produced
+        // an address with no code on chains where the two differ.
+        require(
+            firstHopBridger.code.length > 0,
+            "DPHB: leg 1 bridger not deployed"
         );
 
         // Retrieve final chain coin specs

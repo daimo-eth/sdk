@@ -38,7 +38,7 @@ bytes32 constant DEPLOY_SALT_DAIMO_PAY_BRIDGER = keccak256(
     "DaimoPayBridger-deploy37"
 );
 bytes32 constant DEPLOY_SALT_DA_BRIDGER = keccak256(
-    "DepositAddressBridger-stage-2026-09-16"
+    "DepositAddressBridger-stage-2026-09-16-2"
 );
 // bytes32 constant DEPLOY_SALT_DA_BRIDGER = keccak256(
 //     "DepositAddressBridger-dev-sol1"
@@ -57,7 +57,7 @@ bytes32 constant DEPLOY_SALT_CCTP_V2_BRIDGER = keccak256(
     "DaimoPayCCTPV2Bridger-2026-09-16"
 );
 bytes32 constant DEPLOY_SALT_HOP_BRIDGER = keccak256(
-    "DaimoPayHopBridger-2026-09-16"
+    "DaimoPayHopBridger-2026-09-16-2"
 );
 bytes32 constant DEPLOY_SALT_PAY_ORDER_HOP_BRIDGER = keccak256(
     "DaimoPayHopBridger-pay-order2"
@@ -77,8 +77,10 @@ bytes32 constant DEPLOY_SALT_STARGATE_USDC_BRIDGER = keccak256(
 bytes32 constant DEPLOY_SALT_STARGATE_USDT_BRIDGER = keccak256(
     "DaimoPayStargateUSDTBridger-flexible3"
 );
+// Stage. The 2026-09-14 rotation redeployed the 0x adapter per environment;
+// switch to "DAZeroXBridger-prod-2026-09-14" for a production cut.
 bytes32 constant DEPLOY_SALT_ZEROX_BRIDGER = keccak256(
-    "DAZeroXBridger-prod-sol1"
+    "DAZeroXBridger-stage-2026-09-14"
 );
 // bytes32 constant DEPLOY_SALT_ZEROX_BRIDGER = keccak256(
 //     "DAZeroXBridger-dev-sol1"
