@@ -43,6 +43,7 @@ import type {
   RetrieveSessionWithNavResponse,
   WalletOptionsResponse,
 } from "../web/api/index.js";
+import { supportedChains } from "../common/chain.js";
 import { getLocale } from "../web/hooks/locale.js";
 
 import { createTransport, type TransportConfig } from "./transport.js";
@@ -469,7 +470,7 @@ export function createDaimoClient(config: TransportConfig): DaimoClient {
           });
         },
         async walletOptions(sessionId, params) {
-          return transport.request<WalletOptionsResponse>({
+          const options = await transport.request<WalletOptionsResponse>({
             method: "GET",
             path: `/v1/sessions/${sessionId}/internal/walletOptions`,
             query: {
@@ -478,6 +479,12 @@ export function createDaimoClient(config: TransportConfig): DaimoClient {
               solanaAddress: params.solanaAddress,
             },
           });
+          // The server can add chains before this SDK is upgraded.
+          return options.filter((option) =>
+            supportedChains.some(
+              (chain) => chain.chainId === option.balance.token.chainId,
+            ),
+          );
         },
         async logNavEvent(sessionId, input) {
           await transport.request<void>({

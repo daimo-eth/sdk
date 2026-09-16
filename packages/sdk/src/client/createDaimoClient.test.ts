@@ -1,6 +1,64 @@
 import { describe, expect, test } from "vitest";
 
+import { base, solana, supportedChains } from "../common/chain.js";
+import type { WalletPaymentOption } from "../web/api/walletTypes.js";
 import { createDaimoClient } from "./createDaimoClient.js";
+
+describe("wallet option chain compatibility", () => {
+  const unknownChainId = 987654321;
+  const optionForChain = (chainId: number): WalletPaymentOption => {
+    const balance = {
+      token: {
+        chainId,
+        token: "0x0000000000000000000000000000000000000001",
+        symbol: "USDC",
+        decimals: 6,
+        logoURI: "",
+        logoSourceURI: "",
+        usd: 1,
+        priceFromUsd: 1,
+        maxAcceptUsd: 1000,
+        maxSendUsd: 1000,
+        displayDecimals: 2,
+      },
+      amount: "5000000" as const,
+      usd: 5,
+    };
+    return {
+      balance,
+      required: balance,
+      minimumRequired: balance,
+      fees: balance,
+    };
+  };
+
+  test.each([
+    { chainIds: [unknownChainId, base.chainId, solana.chainId] },
+    { chainIds: [unknownChainId] },
+    { chainIds: [] },
+    { chainIds: supportedChains.map((chain) => chain.chainId) },
+  ])("ignores unknown chains in response $chainIds", async ({ chainIds }) => {
+    expect(
+      supportedChains.some((chain) => chain.chainId === unknownChainId),
+    ).toBe(false);
+    const options = chainIds.map(optionForChain);
+    const client = createDaimoClient({
+      baseUrl: "https://api.example.test",
+      fetchImpl: async () => Response.json(options),
+    });
+
+    await expect(
+      client.internal.sessions.walletOptions("session", {
+        clientSecret: "secret",
+        evmAddress: "0x0000000000000000000000000000000000000001",
+      }),
+    ).resolves.toEqual(
+      options.filter(
+        (option) => option.balance.token.chainId !== unknownChainId,
+      ),
+    );
+  });
+});
 
 describe("internal ENS resolution", () => {
   test("uses the configured API URL", async () => {
