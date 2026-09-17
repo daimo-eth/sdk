@@ -29,13 +29,12 @@ import {
 } from "../../common/chain.js";
 import { DAIMO_SUPPORT_EMAIL } from "../../common/constants.js";
 import type { DaimoPayToken } from "../api/walletTypes.js";
+import { getAmountInputHandlers } from "../amountInputHandlers.js";
 import { BankLogo, isBankLogo } from "./BankLogo.js";
 import {
   formatAmountInput,
   formatFixedAmount,
-  isValidAmountInput,
   normalizeFractionDigits,
-  parseDisplayAmount,
 } from "../formatAmount.js";
 
 import { t } from "../hooks/locale.js";
@@ -154,15 +153,16 @@ export function AmountInput({
   const showMinWarning = inputValue !== "" && amount > 0 && amount < minimum;
   const showMaxWarning = inputValue !== "" && amount > maximum;
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = parseDisplayAmount(e.target.value);
-    if (!isValidAmountInput(value, inputDecimals)) return;
-
-    setInputValue(value);
-    const newAmount = parseFloat(value) || 0;
-    const newIsValid = newAmount >= minimum && newAmount <= maximum;
-    onChange?.(newAmount, newIsValid, value);
-  };
+  const inputHandlers = getAmountInputHandlers(
+    inputValue,
+    inputDecimals,
+    (value) => {
+      setInputValue(value);
+      const newAmount = parseFloat(value) || 0;
+      const newIsValid = newAmount >= minimum && newAmount <= maximum;
+      onChange?.(newAmount, newIsValid, value);
+    },
+  );
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter" && isValid) {
@@ -213,7 +213,7 @@ export function AmountInput({
           inputMode="decimal"
           value={displayValue}
           disabled={disabled}
-          onChange={handleInputChange}
+          {...inputHandlers}
           onKeyDown={handleKeyDown}
           placeholder={placeholder}
           className="daimo-bg-transparent daimo-font-semibold daimo-text-[var(--daimo-text)] daimo-placeholder-[var(--daimo-placeholder)] daimo-outline-none daimo-border-none daimo-shadow-none daimo-caret-[var(--daimo-text-muted)] daimo-ring-0 focus:daimo-outline-none focus:daimo-ring-0 focus:daimo-border-none focus:daimo-shadow-none"

@@ -11,18 +11,52 @@ const MAX_FRACTION_DIGITS = 20;
 export function parseDisplayAmount(
   value: string,
   locale = getNumberLocale(),
-): string {
+): string | null {
   const trimmed = value.trim();
   if (trimmed === "") return "";
 
-  const separators = getAmountSeparators(locale);
-  const ungrouped =
-    separators.group === ""
-      ? trimmed
-      : trimmed.replaceAll(separators.group, "");
+  const candidates = new Set<string>();
+  for (const separators of [
+    getAmountSeparators(locale),
+    { decimal: ".", group: "," },
+    { decimal: ",", group: "." },
+  ]) {
+    const parsed = parseWithSeparators(trimmed, separators);
+    if (parsed != null) candidates.add(parsed);
+  }
+  // A pasted "1,234" could mean 1234 or 1.234. Do not guess with money.
+  return candidates.size === 1 ? [...candidates][0] : null;
+}
 
-  if (separators.decimal === CANONICAL_DECIMAL_SEPARATOR) return ungrouped;
-  return ungrouped.replaceAll(separators.decimal, CANONICAL_DECIMAL_SEPARATOR);
+/** Existing grouping is display-only; newly typed comma/period is decimal. */
+export function parseAmountEdit(
+  value: string,
+  previousValue: string,
+  locale = getNumberLocale(),
+): string {
+  const previousDisplay = formatAmountInput(previousValue, locale);
+  let start = 0;
+  while (start < value.length && value[start] === previousDisplay[start]) {
+    start++;
+  }
+  let end = value.length;
+  let previousEnd = previousDisplay.length;
+  while (
+    end > start &&
+    previousEnd > start &&
+    value[end - 1] === previousDisplay[previousEnd - 1]
+  ) {
+    end--;
+    previousEnd--;
+  }
+  const { decimal, group } = getAmountSeparators(locale);
+  const parseExisting = (part: string) =>
+    part.replaceAll(group, "").replaceAll(decimal, ".");
+  return (
+    parseExisting(value.slice(0, start)) +
+    value.slice(start, end).replaceAll(",", ".") +
+    parseExisting(value.slice(end))
+  );
 }
 
 export function isValidAmountInput(
@@ -80,4 +114,23 @@ function getAmountSeparators(locale: string): AmountSeparators {
 
 function countOccurrences(value: string, search: string): number {
   return value.split(search).length - 1;
+}
+
+function parseWithSeparators(
+  value: string,
+  { decimal, group }: AmountSeparators,
+): string | null {
+  const parts = value.split(decimal);
+  if (parts.length > 2) return null;
+  const [integer, fraction] = parts;
+  if (fraction != null && !/^\d*$/.test(fraction)) return null;
+
+  const groups = group ? integer.split(group) : [integer];
+  if (groups.length > 1) {
+    if (!/^\d{1,3}$/.test(groups[0])) return null;
+    if (groups.slice(1).some((part) => !/^\d{3}$/.test(part))) return null;
+  } else if (!/^\d*$/.test(integer)) {
+    return null;
+  }
+  return groups.join("") + (fraction == null ? "" : `.${fraction}`);
 }

@@ -1,12 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 
+import { getAmountInputHandlers } from "../amountInputHandlers.js";
 import type { DaimoPayToken } from "../api/walletTypes.js";
-import {
-  formatAmountInput,
-  formatFixedAmount,
-  isValidAmountInput,
-  parseDisplayAmount,
-} from "../formatAmount.js";
+import { formatAmountInput, formatFixedAmount } from "../formatAmount.js";
 import { t } from "../hooks/locale.js";
 import { isDesktop, type DaimoPlatform } from "../platform.js";
 import { SwitchArrowsIcon } from "./icons.js";
@@ -125,21 +121,21 @@ export function TokenAmountEntry({
     });
   }, [validationAmountUsd, usdStr, nativeAmount, isValid, onChange]);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = parseDisplayAmount(e.target.value);
-    const maxDecimals = isEditingUsd ? 2 : token.displayDecimals;
-    if (!isValidAmountInput(value, maxDecimals)) return;
-
-    if (isEditingUsd) {
-      const newUsd = parseFloat(value) || 0;
-      setUsdStr(value);
-      setNativeStr(newUsd === 0 ? "" : usdToNativeStr(newUsd, token));
-    } else {
-      const newNative = parseFloat(value) || 0;
-      setNativeStr(value);
-      setUsdStr(newNative === 0 ? "" : nativeToUsdStr(newNative, token));
-    }
-  };
+  const inputHandlers = getAmountInputHandlers(
+    isEditingUsd ? usdStr : nativeStr,
+    isEditingUsd ? 2 : token.displayDecimals,
+    (value) => {
+      if (isEditingUsd) {
+        const newUsd = parseFloat(value) || 0;
+        setUsdStr(value);
+        setNativeStr(newUsd === 0 ? "" : usdToNativeStr(newUsd, token));
+      } else {
+        const newNative = parseFloat(value) || 0;
+        setNativeStr(value);
+        setUsdStr(newNative === 0 ? "" : nativeToUsdStr(newNative, token));
+      }
+    },
+  );
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter" && isValid) {
@@ -243,7 +239,7 @@ export function TokenAmountEntry({
             type="text"
             inputMode="decimal"
             value={currentDisplayValue}
-            onChange={handleInputChange}
+            {...inputHandlers}
             onKeyDown={handleKeyDown}
             placeholder={amountPlaceholder}
             className="daimo-bg-transparent daimo-font-semibold daimo-text-[var(--daimo-text)] daimo-placeholder-[var(--daimo-placeholder)] daimo-outline-none daimo-border-none daimo-shadow-none daimo-caret-[var(--daimo-text-muted)] daimo-tabular-nums daimo-ring-0 focus:daimo-outline-none focus:daimo-ring-0 focus:daimo-border-none focus:daimo-shadow-none"
