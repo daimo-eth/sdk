@@ -3,6 +3,8 @@ import { getNumberLocale } from "./hooks/locale.js";
 type AmountSeparators = {
   decimal: string;
   group: string;
+  primaryGroupSize: number;
+  secondaryGroupSize: number;
 };
 
 const CANONICAL_DECIMAL_SEPARATOR = ".";
@@ -18,8 +20,8 @@ export function parseDisplayAmount(
   const candidates = new Set<string>();
   for (const separators of [
     getAmountSeparators(locale),
-    { decimal: ".", group: "," },
-    { decimal: ",", group: "." },
+    { decimal: ".", group: ",", primaryGroupSize: 3, secondaryGroupSize: 3 },
+    { decimal: ",", group: ".", primaryGroupSize: 3, secondaryGroupSize: 3 },
   ]) {
     const parsed = parseWithSeparators(trimmed, separators);
     if (parsed != null) candidates.add(parsed);
@@ -103,12 +105,15 @@ export function normalizeFractionDigits(fractionDigits: number): number {
 }
 
 function getAmountSeparators(locale: string): AmountSeparators {
-  const parts = new Intl.NumberFormat(locale).formatToParts(1000.1);
+  const parts = new Intl.NumberFormat(locale).formatToParts(123456789.1);
+  const integers = parts.filter((part) => part.type === "integer");
   return {
     decimal:
       parts.find((part) => part.type === "decimal")?.value ??
       CANONICAL_DECIMAL_SEPARATOR,
     group: parts.find((part) => part.type === "group")?.value ?? "",
+    primaryGroupSize: integers.at(-1)?.value.length ?? 3,
+    secondaryGroupSize: integers.at(-2)?.value.length ?? 3,
   };
 }
 
@@ -118,7 +123,7 @@ function countOccurrences(value: string, search: string): number {
 
 function parseWithSeparators(
   value: string,
-  { decimal, group }: AmountSeparators,
+  { decimal, group, primaryGroupSize, secondaryGroupSize }: AmountSeparators,
 ): string | null {
   const parts = value.split(decimal);
   if (parts.length > 2) return null;
@@ -127,8 +132,16 @@ function parseWithSeparators(
 
   const groups = group ? integer.split(group) : [integer];
   if (groups.length > 1) {
-    if (!/^\d{1,3}$/.test(groups[0])) return null;
-    if (groups.slice(1).some((part) => !/^\d{3}$/.test(part))) return null;
+    if (!/^\d+$/.test(groups[0]) || groups[0].length > secondaryGroupSize)
+      return null;
+    if (
+      groups.slice(1).some((part, index) => {
+        const size =
+          index === groups.length - 2 ? primaryGroupSize : secondaryGroupSize;
+        return !/^\d+$/.test(part) || part.length !== size;
+      })
+    )
+      return null;
   } else if (!/^\d*$/.test(integer)) {
     return null;
   }

@@ -105,6 +105,14 @@ describe.each(["amount", "fiat", "wallet"] as const)("%s input", (kind) => {
     },
   );
 
+  test("accepts Indian grouping in a dollar amount", () => {
+    setLocale("en-IN");
+    const { input, submitted, submit } = mountInput(kind);
+    paste(input, "12,34,567.89");
+    submit();
+    expect(submitted).toHaveBeenLastCalledWith(1234567.89);
+  });
+
   test("pastes into a selection without reinterpreting existing grouping", () => {
     const { input, submitted, submit } = mountInput(kind);
     paste(input, "1,234.50");

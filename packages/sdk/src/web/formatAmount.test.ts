@@ -124,3 +124,17 @@ describe("pasted amounts", () => {
     expect(parseDisplayAmount("1\u202f234,50", "fr-FR")).toBe("1234.50");
   });
 });
+
+describe("locale-specific pasted grouping", () => {
+  test.each(["en-IN", "hi-IN", "bn-IN-u-nu-latn"])(
+    "accepts Indian grouping for %s",
+    (locale) => {
+      expect(parseDisplayAmount("12,34,567.89", locale)).toBe("1234567.89");
+      expect(parseDisplayAmount("1,23,456", locale)).toBe("123456");
+      expect(parseDisplayAmount("1,234,567.89", locale)).toBe("1234567.89");
+      expect(parseDisplayAmount("1,234", locale)).toBeNull();
+      expect(parseDisplayAmount("123,45,678.90", locale)).toBeNull();
+      expect(parseDisplayAmount("12,34,56.78", locale)).toBeNull();
+    },
+  );
+});
