@@ -210,9 +210,12 @@ export function AccountAmountContent({
   const handleSubmit = (value: Pick<TokenAmountEntryValue, "nativeAmount">) =>
     onSubmit?.(value);
   return (
-    <div className="daimo-flex daimo-flex-col daimo-flex-1 daimo-min-h-0">
+    <div
+      className="daimo-flex daimo-flex-col daimo-flex-1 daimo-min-h-0"
+      aria-busy={!constraints}
+    >
       <PageHeader title={t.accountPayment} onBack={onBack} compact />
-      <div className="daimo-flex-1 daimo-flex daimo-flex-col daimo-items-center daimo-px-6 daimo-py-3">
+      <div className="daimo-flex-1 daimo-flex daimo-flex-col daimo-items-center daimo-p-6">
         {constraints ? (
           <TokenAmountEntry
             token={constraints.destinationToken}

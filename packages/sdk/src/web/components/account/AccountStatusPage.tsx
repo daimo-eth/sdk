@@ -7,6 +7,7 @@ import type {
 import { useDaimoClient } from "../../hooks/DaimoClientContext.js";
 import { t } from "../../hooks/locale.js";
 import { useDepositPoller } from "../../hooks/useDepositPoller.js";
+import { WaitingIndicator } from "../WaitingIndicator.js";
 import { ConfirmationSpinner } from "../ConfirmationSpinner.js";
 import { ErrorPage } from "../ErrorPage.js";
 import { CenteredContent, PageHeader, ShowReceiptButton } from "../shared.js";
@@ -25,20 +26,7 @@ const TERMINAL_STATUSES: AccountDepositStatus[] = [
   "expired",
 ];
 
-function getStatusLabel(status: AccountDepositStatus): string {
-  switch (status) {
-    case "payment_received":
-      return t.depositDetected;
-    case "token_delivered":
-      return t.depositFinalizing;
-    case "completed":
-      return t.depositFinalizing;
-    default:
-      return t.depositDetected;
-  }
-}
-
-/** Account deposit confirmation with spinner-led progress and account actions. */
+/** Account deposit status with a calm wait indicator and account actions. */
 export function AccountStatusPage({
   sessionId,
   clientSecret,
@@ -77,8 +65,9 @@ export function AccountStatusPage({
   const title = isComplete
     ? t.accountDepositComplete
     : t.accountDepositReceived;
-  const statusLabel = getStatusLabel(status);
-  const displayEta = eta ? getStatusEta(status, eta) : null;
+  const isFinalizing = status === "token_delivered";
+  const statusLabel = isFinalizing ? t.depositFinalizing : t.depositDetected;
+  const displayEta = (isFinalizing ? eta?.finalizing : eta?.payment) ?? null;
 
   return (
     <div className="daimo-flex daimo-flex-col daimo-flex-1 daimo-min-h-0">
@@ -86,7 +75,7 @@ export function AccountStatusPage({
 
       <CenteredContent>
         <div className="daimo-flex daimo-flex-col daimo-items-center daimo-gap-5">
-          <ConfirmationSpinner done={isComplete} />
+          {isComplete ? <ConfirmationSpinner done /> : <WaitingIndicator />}
           {!isComplete && <StatusLine label={statusLabel} eta={displayEta} />}
         </div>
       </CenteredContent>
@@ -98,18 +87,12 @@ export function AccountStatusPage({
   );
 }
 
-function getStatusEta(
-  status: AccountDepositStatus,
-  eta: AccountDepositEta,
-): string {
-  if (status === "token_delivered") return eta.finalizing;
-  return eta.payment;
-}
-
 function StatusLine({ label, eta }: { label: string; eta: string | null }) {
   return (
     <div
       className="daimo-flex daimo-min-h-[36px] daimo-w-full daimo-max-w-xs daimo-items-center daimo-justify-center daimo-gap-2 daimo-rounded-full daimo-px-4 daimo-py-2 daimo-text-sm daimo-font-medium"
+      role="status"
+      aria-live="polite"
       style={{
         backgroundColor: "var(--daimo-surface-secondary)",
         color: "var(--daimo-text-secondary)",
