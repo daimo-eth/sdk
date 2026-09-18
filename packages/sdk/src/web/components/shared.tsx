@@ -33,11 +33,9 @@ import type { DaimoPayToken } from "../api/walletTypes.js";
 import { ModalChromeContext } from "./ModalChrome.js";
 import { BankLogo, isBankLogo } from "./BankLogo.js";
 import {
-  formatAmountInput,
   formatFixedAmount,
   isValidAmountInput,
   normalizeFractionDigits,
-  parseDisplayAmount,
 } from "../formatAmount.js";
 
 import { t } from "../hooks/locale.js";
@@ -157,7 +155,7 @@ export function AmountInput({
   const showMaxWarning = inputValue !== "" && amount > maximum;
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = parseDisplayAmount(e.target.value);
+    const value = e.target.value.replaceAll(",", ".");
     if (!isValidAmountInput(value, inputDecimals)) return;
 
     setInputValue(value);
@@ -172,14 +170,12 @@ export function AmountInput({
     }
   };
 
-  const displayValue = formatAmountInput(inputValue);
-  const placeholder = formatAmountInput(
-    inputDecimals === 0 ? "0" : `0.${"0".repeat(inputDecimals)}`,
-  );
+  const placeholder =
+    inputDecimals === 0 ? "0" : `0.${"0".repeat(inputDecimals)}`;
   const inputWidth =
-    displayValue.length === 0
+    inputValue.length === 0
       ? "3.55ch"
-      : `${Math.min(displayValue.length - (displayValue.match(/\./g) || []).length * 0.55, 12)}ch`;
+      : `${Math.min(inputValue.length - (inputValue.match(/\./g) || []).length * 0.55, 12)}ch`;
 
   const label = showMinWarning
     ? `${t.minimum} ${currencySymbol}${formatFixedAmount(minimum, inputDecimals)}`
@@ -213,7 +209,7 @@ export function AmountInput({
           }}
           type="text"
           inputMode="decimal"
-          value={displayValue}
+          value={inputValue}
           disabled={disabled}
           onChange={handleInputChange}
           onKeyDown={handleKeyDown}

@@ -8,23 +8,6 @@ type AmountSeparators = {
 const CANONICAL_DECIMAL_SEPARATOR = ".";
 const MAX_FRACTION_DIGITS = 20;
 
-export function parseDisplayAmount(
-  value: string,
-  locale = getNumberLocale(),
-): string {
-  const trimmed = value.trim();
-  if (trimmed === "") return "";
-
-  const separators = getAmountSeparators(locale);
-  const ungrouped =
-    separators.group === ""
-      ? trimmed
-      : trimmed.replaceAll(separators.group, "");
-
-  if (separators.decimal === CANONICAL_DECIMAL_SEPARATOR) return ungrouped;
-  return ungrouped.replaceAll(separators.decimal, CANONICAL_DECIMAL_SEPARATOR);
-}
-
 export function isValidAmountInput(
   value: string,
   maxDecimals: number,
