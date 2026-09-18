@@ -130,6 +130,10 @@ describe("locale-specific pasted grouping", () => {
     "accepts Indian grouping for %s",
     (locale) => {
       expect(parseDisplayAmount("12,34,567.89", locale)).toBe("1234567.89");
+      expect(formatAmountInput("1234567.89", locale)).toBe("12,34,567.89");
+      expect(formatAmountInput("1234567.", locale)).toBe("12,34,567.");
+      expect(formatAmountInput("123456", locale)).toBe("1,23,456");
+      expect(formatAmountInput("12345", locale)).toBe("12,345");
       expect(parseDisplayAmount("1,23,456", locale)).toBe("123456");
       expect(parseDisplayAmount("1,234,567.89", locale)).toBe("1234567.89");
       expect(parseDisplayAmount("1,234", locale)).toBeNull();

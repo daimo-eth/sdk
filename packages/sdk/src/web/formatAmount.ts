@@ -84,9 +84,7 @@ export function formatAmountInput(
 
   const separators = getAmountSeparators(locale);
   const groupedInteger =
-    separators.group === ""
-      ? integer
-      : integer.replace(/\B(?=(\d{3})+(?!\d))/g, separators.group);
+    separators.group === "" ? integer : groupInteger(integer, separators);
   if (decimal == null) return groupedInteger;
   return `${groupedInteger}${separators.decimal}${decimal}`;
 }
@@ -146,4 +144,20 @@ function parseWithSeparators(
     return null;
   }
   return groups.join("") + (fraction == null ? "" : `.${fraction}`);
+}
+
+/** Preserve exact input digits and trailing decimals while applying locale grouping. */
+function groupInteger(
+  integer: string,
+  { group, primaryGroupSize, secondaryGroupSize }: AmountSeparators,
+): string {
+  if (integer.length <= primaryGroupSize) return integer;
+  const split = integer.length - primaryGroupSize;
+  const prefix = integer
+    .slice(0, split)
+    .replace(
+      new RegExp(`\\B(?=(\\d{${secondaryGroupSize}})+(?!\\d))`, "g"),
+      group,
+    );
+  return `${prefix}${group}${integer.slice(split)}`;
 }

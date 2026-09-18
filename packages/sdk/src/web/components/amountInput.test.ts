@@ -109,6 +109,7 @@ describe.each(["amount", "fiat", "wallet"] as const)("%s input", (kind) => {
     setLocale("en-IN");
     const { input, submitted, submit } = mountInput(kind);
     paste(input, "12,34,567.89");
+    expect(input.value).toBe("12,34,567.89");
     submit();
     expect(submitted).toHaveBeenLastCalledWith(1234567.89);
   });
