@@ -5,6 +5,7 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { ModalChrome } from "./ModalChrome.js";
+import { PageHeader } from "./shared.js";
 
 const roots: Root[] = [];
 
@@ -24,6 +25,12 @@ describe("ModalChrome account controls", () => {
     const accountButton = getButton(container, "Daimo Account menu");
     const accountPanel = getElement<HTMLElement>(container, '[role="dialog"]');
 
+    const header = getElement(container, "h1").parentElement?.parentElement;
+    expect(header?.contains(accountButton)).toBe(true);
+    expect(header?.contains(getButton(container, "Close"))).toBe(true);
+    expect(header?.contains(getButton(container, "Go back"))).toBe(true);
+    expect(header?.contains(getElement(container, "h1"))).toBe(true);
+    expect(header?.className).not.toContain("daimo-sticky");
     expect(accountButton.getAttribute("aria-expanded")).toBe("false");
     expect(accountPanel.getAttribute("aria-hidden")).toBe("true");
 
@@ -77,10 +84,14 @@ async function renderChrome(onLogout: () => Promise<void>) {
   const children: ComponentProps<typeof ModalChrome>["children"] = (
     dismissAccount,
   ) =>
-    createElement("div", {
-      "data-testid": "modal-body",
-      onClick: dismissAccount ?? undefined,
-    });
+    createElement(
+      "div",
+      {
+        "data-testid": "modal-body",
+        onClick: dismissAccount ?? undefined,
+      },
+      createElement(PageHeader, { title: "Enter amount", onBack: () => {} }),
+    );
 
   await act(async () => {
     root.render(

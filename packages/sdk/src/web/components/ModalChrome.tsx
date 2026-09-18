@@ -2,6 +2,7 @@ import {
   type MouseEvent,
   type ReactNode,
   type RefObject,
+  createContext,
   useCallback,
   useEffect,
   useRef,
@@ -36,6 +37,13 @@ type ModalChromeProps = {
   country?: CountryControl | null;
   children: (dismissAccount: (() => void) | null) => ReactNode;
 };
+
+/** Header controls supplied by the modal, rendered together by PageHeader. */
+export const ModalChromeContext = createContext<{
+  country: ReactNode;
+  actions: ReactNode;
+  banner: ReactNode;
+} | null>(null);
 
 export function ModalChrome({ controls, country, children }: ModalChromeProps) {
   const [accountOpen, setAccountOpen] = useState(false);
@@ -105,29 +113,32 @@ export function ModalChrome({ controls, country, children }: ModalChromeProps) {
   }
 
   return (
-    <>
-      {country && (
-        <CountryPicker
-          location={country.location}
-          options={country.options}
-          loadingCountryCode={country.loadingCountryCode}
-          onSelect={country.onSelect}
-        />
-      )}
-      {actions && (
-        <div className="daimo-absolute daimo-right-[24px] daimo-top-[22px] daimo-z-20 daimo-flex daimo-h-8 daimo-items-center daimo-gap-3">
-          {actions}
-        </div>
-      )}
-      {account && (
-        <AccountBanner
-          account={account}
-          open={accountOpen}
-          onDismiss={dismissAccount}
-        />
-      )}
+    <ModalChromeContext.Provider
+      value={{
+        country: country && (
+          <CountryPicker
+            location={country.location}
+            options={country.options}
+            loadingCountryCode={country.loadingCountryCode}
+            onSelect={country.onSelect}
+          />
+        ),
+        actions: actions && (
+          <div className="daimo-absolute daimo-right-6 daimo-inset-y-0 daimo-flex daimo-items-center daimo-gap-3">
+            {actions}
+          </div>
+        ),
+        banner: account && (
+          <AccountBanner
+            account={account}
+            open={accountOpen}
+            onDismiss={dismissAccount}
+          />
+        ),
+      }}
+    >
       {children(account && accountOpen ? dismissAccount : null)}
-    </>
+    </ModalChromeContext.Provider>
   );
 }
 
@@ -168,7 +179,7 @@ function AccountBanner({
       aria-label={t.accountMenu}
       aria-hidden={!open}
       onClick={(event) => event.stopPropagation()}
-      className={`daimo-account-banner daimo-absolute daimo-inset-x-0 daimo-top-0 daimo-z-40 daimo-h-[76px] daimo-bg-[var(--daimo-surface)] ${
+      className={`daimo-account-banner daimo-absolute daimo-inset-0 daimo-z-40 daimo-bg-[var(--daimo-surface)] ${
         open
           ? "daimo-pointer-events-auto daimo-translate-y-0 daimo-opacity-100"
           : "daimo-pointer-events-none -daimo-translate-y-full daimo-opacity-0"
@@ -247,7 +258,7 @@ function CountryPicker({
   return (
     <div
       ref={rootRef}
-      className="daimo-pointer-events-none daimo-absolute daimo-inset-x-6 daimo-top-[22px] daimo-z-30"
+      className="daimo-pointer-events-none daimo-absolute daimo-inset-x-6 daimo-inset-y-0 daimo-z-30 daimo-flex daimo-items-center"
     >
       <ChromeIconButton
         label={`${t.changeCountry}: ${displayed.countryName}`}
@@ -263,7 +274,7 @@ function CountryPicker({
       {open && (
         <div
           role="menu"
-          className="daimo-pointer-events-auto daimo-absolute daimo-inset-x-0 daimo-top-10 daimo-grid daimo-grid-cols-5 daimo-gap-2 daimo-rounded-[var(--daimo-radius-lg)] daimo-bg-[var(--daimo-surface)] daimo-p-3 daimo-shadow-lg daimo-ring-1 daimo-ring-black/10 sm:daimo-grid-cols-6"
+          className="daimo-pointer-events-auto daimo-absolute daimo-inset-x-0 daimo-top-full daimo-grid daimo-grid-cols-5 daimo-gap-2 daimo-rounded-[var(--daimo-radius-lg)] daimo-bg-[var(--daimo-surface)] daimo-p-3 daimo-shadow-lg daimo-ring-1 daimo-ring-black/10 sm:daimo-grid-cols-6"
           onClick={(event) => event.stopPropagation()}
         >
           {options.map((option) => {

@@ -2,6 +2,7 @@ import {
   forwardRef,
   ReactNode,
   useCallback,
+  useContext,
   useEffect,
   useRef,
   useState,
@@ -29,6 +30,7 @@ import {
 } from "../../common/chain.js";
 import { DAIMO_SUPPORT_EMAIL } from "../../common/constants.js";
 import type { DaimoPayToken } from "../api/walletTypes.js";
+import { ModalChromeContext } from "./ModalChrome.js";
 import { BankLogo, isBankLogo } from "./BankLogo.js";
 import {
   formatAmountInput,
@@ -300,15 +302,25 @@ export function resolveIconUrl(icon: string, baseUrl: string): string {
 
 /** Standard page header with optional back button and centered title */
 type PageHeaderProps = {
-  title: string;
+  title: ReactNode;
   onBack?: (() => void) | null;
   borderVisible?: boolean;
+  compact?: boolean;
 };
 
-export function PageHeader({ title, onBack, borderVisible }: PageHeaderProps) {
+export function PageHeader({
+  title,
+  onBack,
+  borderVisible,
+  compact = false,
+}: PageHeaderProps) {
+  const chrome = useContext(ModalChromeContext);
   return (
-    <div className="daimo-sticky daimo-top-0 daimo-z-10 daimo-shrink-0 daimo-bg-[var(--daimo-surface)]">
-      <div className="daimo-flex daimo-items-center daimo-justify-center daimo-p-6">
+    <header className="daimo-relative daimo-z-10 daimo-shrink-0 daimo-bg-[var(--daimo-surface)]">
+      <div
+        className={`daimo-relative daimo-flex daimo-items-center daimo-justify-center daimo-px-6 ${compact ? "daimo-py-4" : "daimo-py-6"}`}
+      >
+        {chrome?.country}
         {onBack && (
           <button
             onClick={onBack}
@@ -321,14 +333,16 @@ export function PageHeader({ title, onBack, borderVisible }: PageHeaderProps) {
         <h1 className="daimo-text-lg daimo-font-semibold daimo-text-[var(--daimo-title)] daimo-text-balance">
           {title}
         </h1>
+        {chrome?.actions}
       </div>
+      {chrome?.banner}
       <div
         className="daimo-mx-6 daimo-border-b daimo-transition-[border-color] daimo-duration-300 daimo-ease"
         style={{
           borderColor: borderVisible ? "var(--daimo-border)" : "transparent",
         }}
       />
-    </div>
+    </header>
   );
 }
 
