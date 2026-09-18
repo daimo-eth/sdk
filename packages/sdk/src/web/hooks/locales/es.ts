@@ -3,6 +3,7 @@ import type { en } from "./en.js";
 /** Spanish translations for DaimoModal UI. */
 export const es: typeof en = {
   confirmYourPayment: "Confirma tu pago",
+  reopenPayment: "Volver a abrir el pago",
   waitingForYourPayment: "Esperando tu pago",
   paymentReceived: "Pago recibido",
   processingYourPayment: "Procesando tu pago...",

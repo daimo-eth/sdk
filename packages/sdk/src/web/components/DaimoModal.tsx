@@ -47,6 +47,7 @@ import { useAccountFlow } from "../hooks/useAccountFlow.js";
 import { usePaymentCallbacks } from "../hooks/usePaymentCallbacks.js";
 import { useSessionNav } from "../hooks/useSessionNav.js";
 import { useSessionPolling } from "../hooks/useSessionPolling.js";
+import { AccountLoadingPage } from "./account/AccountLoadingPage.js";
 import { AccountFlowProvider } from "./account/AccountFlowProvider.js";
 import { AccountApprovalPage } from "./account/AccountApprovalPage.js";
 
@@ -320,7 +321,7 @@ export function DaimoModal(props: DaimoModalProps) {
   const handleClose = showCloseButton ? () => closeRef.current() : undefined;
   const reserveLoadingHeight =
     pageKey == null || pageKey.startsWith("account-loading-");
-  const showLoadingShell = reserveLoadingHeight;
+  const showLoadingShell = pageKey == null;
   const modalBody = (
     <>
       {showLoadingShell && (
@@ -926,7 +927,18 @@ function renderEntry(
       );
     }
     case "account-loading":
-      return <LoadingMessage />;
+      return (
+        <AccountLoadingPage
+          paymentInteraction={entry.paymentInteraction}
+          methodLabel={
+            findNode(entry.nodeId, ctx.session.navTree)?.title ??
+            t.accountPayment
+          }
+          platform={ctx.platform}
+          baseUrl={ctx.session.baseUrl}
+          onBack={ctx.canGoBack ? ctx.onBack : null}
+        />
+      );
     case "account-unavailable":
       return (
         <FiatUnavailablePage onBack={ctx.canGoBack ? ctx.onBack : undefined} />
@@ -1142,7 +1154,11 @@ function renderEntry(
           platform={ctx.platform}
           icon={accountNode?.type === "Fiat" ? accountNode.icon : undefined}
           onBack={ctx.onBack}
-          onAdvance={() => ctx.onAccountAdvance("account-status")}
+          onAdvance={(initialStatus) =>
+            ctx.onAccountAdvance("account-status", {
+              initialStatus,
+            })
+          }
         />
       );
     }

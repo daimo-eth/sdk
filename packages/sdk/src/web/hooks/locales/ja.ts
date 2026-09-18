@@ -4,6 +4,7 @@ import type { en } from "./en.js";
 export const ja: typeof en = {
   // ConfirmationPage
   confirmYourPayment: "お支払いの確認",
+  reopenPayment: "支払い画面を再度開く",
   waitingForYourPayment: "お支払いをお待ちしています",
   paymentReceived: "支払いを受け取りました",
   processingYourPayment: "お支払いを処理中...",
