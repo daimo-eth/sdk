@@ -4,6 +4,7 @@ import type { en } from "./en.js";
 export const ko: typeof en = {
   // ConfirmationPage
   confirmYourPayment: "결제 확인",
+  reopenPayment: "결제 다시 열기",
   waitingForYourPayment: "결제 대기 중",
   paymentReceived: "결제 수신 완료",
   processingYourPayment: "결제 처리 중...",

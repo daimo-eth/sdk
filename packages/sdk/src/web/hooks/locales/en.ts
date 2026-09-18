@@ -2,6 +2,7 @@
 export const en = {
   // ConfirmationPage
   confirmYourPayment: "Confirm Your Payment",
+  reopenPayment: "Reopen payment",
   waitingForYourPayment: "Waiting for Your Payment",
   paymentReceived: "Payment Received",
   processingYourPayment: "Processing Your Payment...",

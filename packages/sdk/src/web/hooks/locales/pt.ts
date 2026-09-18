@@ -4,6 +4,7 @@ import type { en } from "./en.js";
 export const pt: typeof en = {
   // ConfirmationPage
   confirmYourPayment: "Confirme seu pagamento",
+  reopenPayment: "Reabrir pagamento",
   waitingForYourPayment: "Aguardando seu pagamento",
   paymentReceived: "Pagamento recebido",
   processingYourPayment: "Processando seu pagamento...",

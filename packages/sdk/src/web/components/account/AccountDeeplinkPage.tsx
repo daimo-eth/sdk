@@ -1,12 +1,16 @@
-import type { DepositPaymentInteraction } from "../../../common/account.js";
+import type {
+  AccountDepositStatus,
+  DepositPaymentInteraction,
+} from "../../../common/account.js";
 import { useDaimoClient } from "../../hooks/DaimoClientContext.js";
 import { t } from "../../hooks/locale.js";
 import { useSessionDepositState } from "../../hooks/useAccountFlow.js";
 import { useDepositPoller } from "../../hooks/useDepositPoller.js";
 import { isDesktop, type DaimoPlatform } from "../../platform.js";
-import { PrimaryButton } from "../buttons.js";
+import { SecondaryButton } from "../buttons.js";
 import { ErrorPage } from "../ErrorPage.js";
 import { ExternalLinkIcon } from "../icons.js";
+import { WaitingIndicator } from "../WaitingIndicator.js";
 import { QRCode } from "../QRCode.js";
 import { CenteredContent, PageHeader, resolveIconUrl } from "../shared.js";
 import { openDeeplink } from "./openDeeplink.js";
@@ -21,7 +25,7 @@ type AccountDeeplinkPageProps = {
   platform: DaimoPlatform;
   icon?: string;
   onBack: () => void;
-  onAdvance: () => void;
+  onAdvance: (status: AccountDepositStatus) => void;
 };
 
 /** Waiting screen — bank was already opened. Polls deposit status. */
@@ -46,7 +50,6 @@ export function AccountDeeplinkPage({
   const bankUrl = payment?.qrUrl;
   const desktop = isDesktop(platform);
 
-  // Find the selected institution's deeplink for the "Open" button
   const selectedInstitution = payment?.institutions.find(
     (inst) => inst.id === started?.selectedInstitutionId,
   );
@@ -65,7 +68,7 @@ export function AccountDeeplinkPage({
         deposit.status !== "initiated" &&
         deposit.status !== "awaiting_payment"
       ) {
-        onAdvance();
+        onAdvance(deposit.status);
       }
     },
   });
@@ -80,7 +83,9 @@ export function AccountDeeplinkPage({
     );
   }
 
-  const fallbackDeeplink = paymentContract?.fallbackDeeplink;
+  const reopenDeeplink =
+    selectedInstitution?.deeplink ??
+    (!desktop ? paymentContract?.fallbackDeeplink : null);
 
   return (
     <div className="daimo-flex daimo-flex-col daimo-flex-1 daimo-min-h-0">
@@ -90,6 +95,7 @@ export function AccountDeeplinkPage({
       />
       <CenteredContent>
         <div className="daimo-flex daimo-flex-col daimo-items-center daimo-gap-4">
+          {!desktop && <WaitingIndicator />}
           {desktop && bankUrl && (
             <div className="daimo-w-full daimo-max-w-[200px]">
               <QRCode
@@ -106,31 +112,29 @@ export function AccountDeeplinkPage({
               />
             </div>
           )}
+          <p
+            role="status"
+            aria-live="polite"
+            className="daimo-text-center daimo-font-medium"
+          >
+            {t.waitingForYourPayment}
+          </p>
           <p className="daimo-text-sm daimo-text-[var(--daimo-text-secondary)] daimo-text-center daimo-max-w-xs">
             {paymentContract?.ui.waiting.instructions ?? payment?.instructions}
           </p>
-          {selectedInstitution && (
-            <PrimaryButton
+          {reopenDeeplink && (
+            <SecondaryButton
               onClick={() =>
-                openDeeplink(selectedInstitution.deeplink, platform)
+                openDeeplink(
+                  reopenDeeplink,
+                  platform,
+                  selectedInstitution ? undefined : { newWindow: true },
+                )
               }
               icon={<ExternalLinkIcon size={14} />}
             >
-              {paymentContract?.ui.waiting.openInstitutionLabel ?? t.open}{" "}
-              {selectedInstitution.name}
-            </PrimaryButton>
-          )}
-          {!selectedInstitution && !desktop && fallbackDeeplink && (
-            <PrimaryButton
-              onClick={() =>
-                openDeeplink(fallbackDeeplink, platform, {
-                  newWindow: true,
-                })
-              }
-              icon={<ExternalLinkIcon size={14} />}
-            >
-              {paymentContract.ui.waiting.openFallbackLabel}
-            </PrimaryButton>
+              {t.reopenPayment}
+            </SecondaryButton>
           )}
         </div>
       </CenteredContent>
