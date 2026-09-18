@@ -2,6 +2,7 @@ import {
   forwardRef,
   ReactNode,
   useCallback,
+  useContext,
   useEffect,
   useRef,
   useState,
@@ -29,11 +30,11 @@ import {
 } from "../../common/chain.js";
 import { DAIMO_SUPPORT_EMAIL } from "../../common/constants.js";
 import type { DaimoPayToken } from "../api/walletTypes.js";
-import { getAmountInputHandlers } from "../amountInputHandlers.js";
+import { ModalChromeContext } from "./ModalChrome.js";
 import { BankLogo, isBankLogo } from "./BankLogo.js";
 import {
-  formatAmountInput,
   formatFixedAmount,
+  isValidAmountInput,
   normalizeFractionDigits,
 } from "../formatAmount.js";
 
@@ -153,16 +154,15 @@ export function AmountInput({
   const showMinWarning = inputValue !== "" && amount > 0 && amount < minimum;
   const showMaxWarning = inputValue !== "" && amount > maximum;
 
-  const inputHandlers = getAmountInputHandlers(
-    inputValue,
-    inputDecimals,
-    (value) => {
-      setInputValue(value);
-      const newAmount = parseFloat(value) || 0;
-      const newIsValid = newAmount >= minimum && newAmount <= maximum;
-      onChange?.(newAmount, newIsValid, value);
-    },
-  );
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value.replaceAll(",", ".");
+    if (!isValidAmountInput(value, inputDecimals)) return;
+
+    setInputValue(value);
+    const newAmount = parseFloat(value) || 0;
+    const newIsValid = newAmount >= minimum && newAmount <= maximum;
+    onChange?.(newAmount, newIsValid, value);
+  };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter" && isValid) {
@@ -170,14 +170,12 @@ export function AmountInput({
     }
   };
 
-  const displayValue = formatAmountInput(inputValue);
-  const placeholder = formatAmountInput(
-    inputDecimals === 0 ? "0" : `0.${"0".repeat(inputDecimals)}`,
-  );
+  const placeholder =
+    inputDecimals === 0 ? "0" : `0.${"0".repeat(inputDecimals)}`;
   const inputWidth =
-    displayValue.length === 0
+    inputValue.length === 0
       ? "3.55ch"
-      : `${Math.min(displayValue.length - (displayValue.match(/\./g) || []).length * 0.55, 12)}ch`;
+      : `${Math.min(inputValue.length - (inputValue.match(/\./g) || []).length * 0.55, 12)}ch`;
 
   const label = showMinWarning
     ? `${t.minimum} ${currencySymbol}${formatFixedAmount(minimum, inputDecimals)}`
@@ -211,9 +209,9 @@ export function AmountInput({
           }}
           type="text"
           inputMode="decimal"
-          value={displayValue}
+          value={inputValue}
           disabled={disabled}
-          {...inputHandlers}
+          onChange={handleInputChange}
           onKeyDown={handleKeyDown}
           placeholder={placeholder}
           className="daimo-bg-transparent daimo-font-semibold daimo-text-[var(--daimo-text)] daimo-placeholder-[var(--daimo-placeholder)] daimo-outline-none daimo-border-none daimo-shadow-none daimo-caret-[var(--daimo-text-muted)] daimo-ring-0 focus:daimo-outline-none focus:daimo-ring-0 focus:daimo-border-none focus:daimo-shadow-none"
@@ -300,15 +298,25 @@ export function resolveIconUrl(icon: string, baseUrl: string): string {
 
 /** Standard page header with optional back button and centered title */
 type PageHeaderProps = {
-  title: string;
+  title: ReactNode;
   onBack?: (() => void) | null;
   borderVisible?: boolean;
+  compact?: boolean;
 };
 
-export function PageHeader({ title, onBack, borderVisible }: PageHeaderProps) {
+export function PageHeader({
+  title,
+  onBack,
+  borderVisible,
+  compact = false,
+}: PageHeaderProps) {
+  const chrome = useContext(ModalChromeContext);
   return (
-    <div className="daimo-sticky daimo-top-0 daimo-z-10 daimo-shrink-0 daimo-bg-[var(--daimo-surface)]">
-      <div className="daimo-flex daimo-items-center daimo-justify-center daimo-p-6">
+    <header className="daimo-relative daimo-z-10 daimo-shrink-0 daimo-bg-[var(--daimo-surface)]">
+      <div
+        className={`daimo-relative daimo-flex daimo-items-center daimo-justify-center daimo-px-6 ${compact ? "daimo-py-4" : "daimo-py-6"}`}
+      >
+        {chrome?.country}
         {onBack && (
           <button
             onClick={onBack}
@@ -321,14 +329,16 @@ export function PageHeader({ title, onBack, borderVisible }: PageHeaderProps) {
         <h1 className="daimo-text-lg daimo-font-semibold daimo-text-[var(--daimo-title)] daimo-text-balance">
           {title}
         </h1>
+        {chrome?.actions}
       </div>
+      {chrome?.banner}
       <div
         className="daimo-mx-6 daimo-border-b daimo-transition-[border-color] daimo-duration-300 daimo-ease"
         style={{
           borderColor: borderVisible ? "var(--daimo-border)" : "transparent",
         }}
       />
-    </div>
+    </header>
   );
 }
 

@@ -10,6 +10,7 @@ import { autoDetectLocale } from "../hooks/locale.js";
 import { ChooseOptionPage } from "./ChooseOptionPage.js";
 import { EmbeddedContainer } from "./containers.js";
 import { ModalChrome } from "./ModalChrome.js";
+import { PageHeader } from "./shared.js";
 import { Skeleton } from "./Skeleton.js";
 
 export type DaimoRampPreviewProps = {
@@ -65,9 +66,9 @@ export function DaimoRampPreview({
 function PreviewSkeleton() {
   return (
     <div className="daimo-flex daimo-flex-col">
-      <div className="daimo-flex daimo-items-center daimo-justify-center daimo-p-6">
-        <Skeleton className="daimo-h-5 daimo-w-32" rounded="sm" />
-      </div>
+      <PageHeader
+        title={<Skeleton className="daimo-h-5 daimo-w-32" rounded="sm" />}
+      />
       <div className="daimo-flex daimo-flex-col daimo-gap-3 daimo-px-6 daimo-pb-4">
         {[0, 1, 2, 3].map((index) => (
           <Skeleton

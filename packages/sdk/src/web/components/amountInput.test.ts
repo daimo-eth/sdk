@@ -32,115 +32,53 @@ afterEach(() => {
 });
 
 describe.each(["amount", "fiat", "wallet"] as const)("%s input", (kind) => {
-  test.each(["en-US", "de-DE"])(
-    "accepts either decimal key in %s",
-    (locale) => {
-      setLocale(locale);
-      const { input, submitted, submit } = mountInput(kind);
-      for (const separator of [",", "."]) {
-        edit(input, "");
-        for (const character of `12${separator}50`) type(input, character);
-        expect(input.value).toBe(locale === "en-US" ? "12.50" : "12,50");
-        submit();
-        expect(submitted).toHaveBeenLastCalledWith(12.5);
-      }
-    },
-  );
-
-  test.each(["en-US", "de-DE"])(
-    "keeps generated grouping while typing and deleting in %s",
-    (locale) => {
-      setLocale(locale);
-      const { input, submitted, submit } = mountInput(kind);
-      const decimal = locale === "en-US" ? "." : ",";
-      const group = locale === "en-US" ? "," : ".";
-      for (const character of `1234${group}50`) type(input, character);
-      expect(input.value).toBe(`1${group}234${decimal}50`);
+  test.each(["en-US", "de-DE"])("accepts decimal keys in %s", (locale) => {
+    setLocale(locale);
+    const { input, submitted, submit } = mountInput(kind);
+    for (const separator of [",", "."]) {
+      edit(input, "");
+      for (const character of `1234${separator}50`) type(input, character);
+      expect(input.value).toBe("1234.50");
       submit();
       expect(submitted).toHaveBeenLastCalledWith(1234.5);
+      edit(input, input.value.slice(0, -2));
+      expect(input.value).toBe("1234.");
       edit(input, input.value.slice(0, -1));
-      edit(input, input.value.slice(0, -1));
-      expect(input.value).toBe(`1${group}234${decimal}`);
-      edit(input, input.value.slice(0, -1));
-      expect(input.value).toBe(`1${group}234`);
-      type(input, group);
-      type(input, "2");
-      submit();
-      expect(submitted).toHaveBeenLastCalledWith(1234.2);
+      expect(input.value).toBe("1234");
       edit(input, "");
-      type(input, group);
-      type(input, "5");
+      expect(input.value).toBe("");
+      for (const character of `${separator}5`) type(input, character);
       submit();
       expect(submitted).toHaveBeenLastCalledWith(0.5);
-    },
-  );
-
-  test.each(["en-US", "de-DE"])(
-    "pastes either format and rejects ambiguous or malformed input in %s",
-    (locale) => {
-      setLocale(locale);
-      const { input, submitted, submit } = mountInput(kind);
-      for (const value of ["12,50", "12.50", "1,234.50", "1.234,50"]) {
-        paste(input, value);
-        submit();
-        expect(submitted).toHaveBeenLastCalledWith(
-          value.length > 5 ? 1234.5 : 12.5,
-        );
-      }
-      const before = input.value;
-      for (const value of [
-        "1,234",
-        "1.234",
-        "1,,2",
-        "12,34.50",
-        "1.23.456",
-        "12.3456",
-        "-12",
-        "1e3",
-        "",
-      ]) {
-        paste(input, value);
-        expect(input.value).toBe(before);
-      }
-    },
-  );
-
-  test("accepts Indian grouping in a dollar amount", () => {
-    setLocale("en-IN");
-    const { input, submitted, submit } = mountInput(kind);
-    paste(input, "12,34,567.89");
-    expect(input.value).toBe("12,34,567.89");
-    submit();
-    expect(submitted).toHaveBeenLastCalledWith(1234567.89);
+    }
   });
 
-  test("pastes into a selection without reinterpreting existing grouping", () => {
+  test("normalizes whole-value edits and rejects invalid amounts", () => {
     const { input, submitted, submit } = mountInput(kind);
-    paste(input, "1,234.50");
-    paste(input, "9", 2, 3);
-    expect(input.value).toBe("1,934.50");
-    paste(input, "25", 6, 8);
-    expect(input.value).toBe("1,934.25");
-    submit();
-    expect(submitted).toHaveBeenLastCalledWith(1934.25);
+    for (const value of ["1234,50", "1234.50"]) {
+      edit(input, value);
+      expect(input.value).toBe("1234.50");
+      submit();
+      expect(submitted).toHaveBeenLastCalledWith(1234.5);
+    }
+    for (const value of [
+      "1,234.50",
+      "1.234,50",
+      "1,,2",
+      "12.345",
+      "-12",
+      "1e3",
+    ]) {
+      edit(input, value);
+      expect(input.value).toBe("1234.50");
+    }
   });
 
-  test.each([0, 6])("respects %s configured fractional digits", (decimals) => {
+  test.each([0, 6])("respects %s fractional digits", (decimals) => {
     const { input } = mountInput(kind, decimals);
     const expectedDecimals = kind === "wallet" ? 2 : decimals;
     for (const character of "12,1234567") type(input, character);
     expect(input.value).toBe(`12.${"1234567".slice(0, expectedDecimals)}`);
-    paste(input, "12.1234567");
-    expect(input.value).toBe(`12.${"1234567".slice(0, expectedDecimals)}`);
-  });
-
-  test("enforces decimal limits and rejects a second separator", () => {
-    const { input } = mountInput(kind);
-    for (const character of "12,50") type(input, character);
-    for (const character of ["1", ",", ".", "e", "-"]) {
-      type(input, character);
-      expect(input.value).toBe("12.50");
-    }
   });
 });
 
@@ -199,24 +137,4 @@ function edit(input: HTMLInputElement, value: string) {
 
 function type(input: HTMLInputElement, character: string) {
   edit(input, input.value + character);
-}
-
-function paste(
-  input: HTMLInputElement,
-  value: string,
-  start = 0,
-  end = input.value.length,
-) {
-  input.setSelectionRange(start, end);
-  const clipboardData = new DataTransfer();
-  clipboardData.setData("text", value);
-  act(() =>
-    input.dispatchEvent(
-      new ClipboardEvent("paste", {
-        clipboardData,
-        bubbles: true,
-        cancelable: true,
-      }),
-    ),
-  );
 }

@@ -627,7 +627,8 @@ function DaimoModalInner({
     showFooterSpacer = !(
       !nav.topEntry ||
       (nav.topEntry.type === "choose-option" && !nav.canGoBack) ||
-      nav.topEntry.type === "account-payment-instructions"
+      nav.topEntry.type === "account-payment-instructions" ||
+      nav.topEntry.type === "account-amount"
     );
     content = renderEntry(nav.topEntry, {
       session,
@@ -1770,9 +1771,9 @@ function SkeletonContent({
 }) {
   return (
     <div className="daimo-flex daimo-flex-col">
-      <div className="daimo-flex daimo-items-center daimo-justify-center daimo-p-6">
-        <Skeleton className="daimo-h-5 daimo-w-32" rounded="sm" />
-      </div>
+      <PageHeader
+        title={<Skeleton className="daimo-h-5 daimo-w-32" rounded="sm" />}
+      />
       <div className="daimo-px-6 daimo-pb-4 daimo-flex daimo-flex-col daimo-gap-3">
         {[...Array(rowCount)].map((_, i) => (
           <Skeleton
