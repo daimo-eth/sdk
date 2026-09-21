@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
 import type { DaimoClient } from "../../client/createDaimoClient.js";
 import type {
@@ -18,6 +18,9 @@ import {
   getAuthorizedRoutingAmount,
   isExpiredRequestToPay,
 } from "../components/account/accountPaymentCompatibility.js";
+
+const useBrowserLayoutEffect =
+  typeof window === "undefined" ? useEffect : useLayoutEffect;
 
 type UseDraftDepositArgs = {
   client: DaimoClient;
@@ -53,12 +56,39 @@ export function useDraftDeposit({
 }: UseDraftDepositArgs): UseDraftDepositResult {
   const { depositState, setDepositState } = useSessionDepositState(sessionId);
   const [error, setError] = useState<string | null>(null);
-  const requestSeqRef = useRef(0);
+  const requestControllerRef = useRef<AbortController | null>(null);
+  const setDepositStateRef = useRef(setDepositState);
+  useBrowserLayoutEffect(() => {
+    setDepositStateRef.current = setDepositState;
+  }, [setDepositState]);
+  const hasAccountFlow = accountFlow != null;
+  const walletAddress = accountFlow?.walletAddress;
+  const isAuthenticated = accountFlow?.isAuthenticated;
+  const hasStartedDeposit = depositState?.kind === "started";
+
+  // Cancel on input changes, not on the workflow's own drafting-state render.
+  useBrowserLayoutEffect(() => {
+    requestControllerRef.current = new AbortController();
+    setError(null);
+    if (!hasStartedDeposit) {
+      setDepositStateRef.current({ depositAmount, kind: "idle" });
+    }
+    return () => requestControllerRef.current?.abort();
+  }, [
+    client,
+    sessionId,
+    rail,
+    depositAmount,
+    enabled,
+    draftMode,
+    hasAccountFlow,
+    walletAddress,
+    isAuthenticated,
+    hasStartedDeposit,
+  ]);
 
   const matchesAmount =
     depositState != null && depositState.depositAmount === depositAmount;
-  const hasStartedCurrentAmount =
-    matchesAmount && depositState?.kind === "started";
   const isCreating = matchesAmount && depositState?.kind === "drafting";
   const payment =
     matchesAmount && depositState?.kind === "drafted"
@@ -70,7 +100,7 @@ export function useDraftDeposit({
       : null;
 
   useEffect(() => {
-    if (!enabled || hasStartedCurrentAmount) {
+    if (!enabled || hasStartedDeposit) {
       setError(null);
       return;
     }
@@ -82,8 +112,9 @@ export function useDraftDeposit({
     if (!accountFlow || !depositAmount) return;
 
     setError(null);
+    const signal = requestControllerRef.current?.signal;
     const timeout = window.setTimeout(() => {
-      const seq = ++requestSeqRef.current;
+      if (signal?.aborted) return;
       setDepositState({ depositAmount, kind: "drafting" });
 
       void (async () => {
@@ -96,6 +127,7 @@ export function useDraftDeposit({
                   sessionId,
                   rail,
                   depositAmount,
+                  signal,
                 })
               : await upsertPlainDraftDeposit({
                   client,
@@ -103,8 +135,9 @@ export function useDraftDeposit({
                   sessionId,
                   rail,
                   depositAmount,
+                  signal,
                 });
-          if (seq !== requestSeqRef.current) return;
+          if (signal?.aborted) return;
           if (result.payment === null) {
             setDepositState({
               depositAmount,
@@ -122,7 +155,7 @@ export function useDraftDeposit({
             payment: result.payment,
           });
         } catch (err) {
-          if (seq !== requestSeqRef.current) return;
+          if (signal?.aborted) return;
           console.error("[account-deposit] failed to draft deposit", {
             sessionId,
             rail,
@@ -144,7 +177,7 @@ export function useDraftDeposit({
     depositState,
     enabled,
     error,
-    hasStartedCurrentAmount,
+    hasStartedDeposit,
     matchesAmount,
     rail,
     sessionId,
@@ -158,6 +191,8 @@ export function useDraftDeposit({
     isCreating,
     error,
     retry: () => {
+      requestControllerRef.current?.abort();
+      requestControllerRef.current = new AbortController();
       setError(null);
       setDepositState({ depositAmount, kind: "idle" });
     },
@@ -170,6 +205,8 @@ type SignAndUpsertDepositArgs = {
   sessionId: string;
   depositAmount: string;
   authorizedAmount?: string;
+  expectedProviderOrderId?: string;
+  signal?: AbortSignal;
   paymentInput?: DepositPreCreatePaymentInput;
   rail: AccountRail;
 };
@@ -182,8 +219,12 @@ export async function signAndUpsertDeposit({
   authorizedAmount,
   paymentInput,
   rail,
+  signal,
+  expectedProviderOrderId,
 }: SignAndUpsertDepositArgs): Promise<CreateDepositResponse> {
+  assertActiveRequest(signal);
   const token = await accountFlow.getAccessToken();
+  assertActiveRequest(signal);
   if (!token) throw new Error("not authenticated");
   const auth = { bearerToken: token };
   const signedAmount = authorizedAmount ?? depositAmount;
@@ -191,6 +232,7 @@ export async function signAndUpsertDeposit({
     { sessionId, rail, depositAmount: signedAmount, authorizationVersion: 2 },
     auth,
   );
+  assertActiveRequest(signal);
   if (authorization.kind === "direct") {
     return client.account.upsertDeposit(
       {
@@ -199,6 +241,7 @@ export async function signAndUpsertDeposit({
         depositAmount,
         locale: getLocale(),
         authorizationVersion: 2,
+        expectedProviderOrderId,
         paymentInput,
       },
       auth,
@@ -208,9 +251,11 @@ export async function signAndUpsertDeposit({
     const transactionHash = authorization.transaction
       ? await accountFlow.sendSponsoredTransaction(authorization.transaction)
       : undefined;
+    assertActiveRequest(signal);
     const deliverySig = await accountFlow.signTypedData({
       ...authorization.deliverySignData,
     });
+    assertActiveRequest(signal);
     return client.account.upsertDeposit(
       {
         sessionId,
@@ -218,6 +263,7 @@ export async function signAndUpsertDeposit({
         depositAmount,
         locale: getLocale(),
         authorizationVersion: 2,
+        expectedProviderOrderId,
         deliverySig,
         deliverySigData: authorization.deliverySignData,
         routingApproval: { transactionHash },
@@ -230,9 +276,11 @@ export async function signAndUpsertDeposit({
   const routingSig = await accountFlow.signTypedData({
     ...routingSignData,
   });
+  assertActiveRequest(signal);
   const deliverySig = await accountFlow.signTypedData({
     ...deliverySignData,
   });
+  assertActiveRequest(signal);
   return client.account.upsertDeposit(
     {
       sessionId,
@@ -240,6 +288,7 @@ export async function signAndUpsertDeposit({
       depositAmount,
       locale: getLocale(),
       authorizationVersion: 2,
+      expectedProviderOrderId,
       deliverySig,
       deliverySigData: deliverySignData,
       routingSig,
@@ -265,8 +314,11 @@ async function upsertPlainDraftDeposit({
   sessionId,
   rail,
   depositAmount,
+  signal,
 }: SignAndUpsertDepositArgs): Promise<CreateDepositResponse> {
+  assertActiveRequest(signal);
   const token = await accountFlow.getAccessToken();
+  assertActiveRequest(signal);
   if (!token) throw new Error("not authenticated");
   return client.account.upsertDeposit(
     {
@@ -286,6 +338,7 @@ async function createSignedDraftDeposit({
   sessionId,
   rail,
   depositAmount,
+  signal,
 }: SignAndUpsertDepositArgs): Promise<CreateDepositResponse> {
   const preview = await upsertPlainDraftDeposit({
     client,
@@ -293,7 +346,9 @@ async function createSignedDraftDeposit({
     sessionId,
     rail,
     depositAmount,
+    signal,
   });
+  assertActiveRequest(signal);
   if (preview.payment === null) return preview;
   if (preview.payment.flow === "institution-picker") return preview;
   if (isExpiredRequestToPay(preview.payment)) {
@@ -310,5 +365,14 @@ async function createSignedDraftDeposit({
     rail,
     depositAmount,
     authorizedAmount: signedAmount,
+    signal,
+    expectedProviderOrderId:
+      preview.payment.flow === "wallet-pay-widget"
+        ? preview.payment.providerOrderId
+        : undefined,
   });
+}
+
+function assertActiveRequest(signal?: AbortSignal): void {
+  if (signal?.aborted) throw new Error("deposit request cancelled");
 }

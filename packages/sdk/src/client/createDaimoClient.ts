@@ -73,6 +73,8 @@ type AccountPhoneOtpResponse = { ok: true };
 /** Request shape for `account.upsertDeposit`. */
 export type UpsertDepositRequest = {
   sessionId: string;
+  /** Reject authorization for a provider order replaced since preview. */
+  expectedProviderOrderId?: string;
   depositAmount: string;
   rail: AccountRail;
   locale?: string;

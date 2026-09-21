@@ -197,3 +197,81 @@ describe("signAndUpsertDeposit", () => {
     expect(signTypedData).not.toHaveBeenCalled();
   });
 });
+
+test.each([
+  "token",
+  "prepare",
+  "approval",
+  "routing signature",
+  "delivery signature",
+])("stops a cancelled authorization after %s", async (stage) => {
+  const controller = new AbortController();
+  const upserts = vi.fn();
+  const client = createDaimoClient({
+    baseUrl: "https://api.example.test",
+    fetchImpl: async (input) => {
+      if (String(input).endsWith("/deposit/prepare")) {
+        if (stage === "prepare") controller.abort();
+        const data = {
+          domain: {},
+          types: {},
+          primaryType: "Consent",
+          message: {},
+        };
+        return Response.json(
+          stage === "approval"
+            ? {
+                kind: "transaction",
+                transaction: {
+                  chainId: 8453,
+                  to: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+                  data: "0x",
+                },
+                deliverySignData: data,
+              }
+            : {
+                kind: "signatures",
+                routingSignData: data,
+                deliverySignData: data,
+              },
+        );
+      }
+      upserts();
+      return Response.json({ deposit: { id: "deposit" }, payment: null });
+    },
+  });
+  let signatures = 0;
+  const accountFlow = {
+    getAccessToken: async () => {
+      if (stage === "token") controller.abort();
+      return "token";
+    },
+    sendSponsoredTransaction: vi.fn(async () => {
+      controller.abort();
+      return "0xapproval" as const;
+    }),
+    signTypedData: vi.fn(async () => {
+      signatures++;
+      if (
+        (stage === "routing signature" && signatures === 1) ||
+        (stage === "delivery signature" && signatures === 2)
+      )
+        controller.abort();
+      return "0xsig";
+    }),
+  } as unknown as AccountFlowState;
+  await expect(
+    signAndUpsertDeposit({
+      client,
+      accountFlow,
+      sessionId: "session",
+      rail: "apple_pay",
+      depositAmount: "5",
+      signal: controller.signal,
+    }),
+  ).rejects.toThrow("deposit request cancelled");
+  expect(upserts).not.toHaveBeenCalled();
+  if (stage === "token" || stage === "prepare" || stage === "approval")
+    expect(signatures).toBe(0);
+  if (stage === "routing signature") expect(signatures).toBe(1);
+});
