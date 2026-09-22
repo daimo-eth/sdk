@@ -4,6 +4,7 @@ import type { en } from "./en.js";
 export const zh: typeof en = {
   // ConfirmationPage
   confirmYourPayment: "确认付款",
+  reopenPayment: "重新打开付款页面",
   waitingForYourPayment: "等待付款",
   paymentReceived: "已收到付款",
   processingYourPayment: "正在处理付款...",
