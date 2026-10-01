@@ -18,8 +18,8 @@ function getDAStargateUSDCBridgeRoutes(
 {
     // Source chain 1
     if (sourceChainId == 1) {
-        chainIds = new uint256[](3);
-        bridgeRoutes = new DaimoPayLayerZeroBridger.LZBridgeRoute[](3);
+        chainIds = new uint256[](2);
+        bridgeRoutes = new DaimoPayLayerZeroBridger.LZBridgeRoute[](2);
 
         // 1 -> 56 USDC
         chainIds[0] = 56;
@@ -30,18 +30,9 @@ function getDAStargateUSDCBridgeRoutes(
             bridgeTokenOut: 0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d,
             bridgeTokenOutDecimals: 18
         });
-        // 1 -> 100 USDC
-        chainIds[1] = 100;
-        bridgeRoutes[1] = DaimoPayLayerZeroBridger.LZBridgeRoute({
-            dstEid: 30145,
-            app: 0xc026395860Db2d07ee33e05fE50ed7bD583189C7,
-            bridgeTokenIn: 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48,
-            bridgeTokenOut: 0x2a22f9c3b484c3629090FeED35F17Ff8F88f76F0,
-            bridgeTokenOutDecimals: 6
-        });
         // 1 -> 4217 USDC
-        chainIds[2] = 4217;
-        bridgeRoutes[2] = DaimoPayLayerZeroBridger.LZBridgeRoute({
+        chainIds[1] = 4217;
+        bridgeRoutes[1] = DaimoPayLayerZeroBridger.LZBridgeRoute({
             dstEid: 30410,
             app: 0xc026395860Db2d07ee33e05fE50ed7bD583189C7,
             bridgeTokenIn: 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48,
@@ -72,8 +63,8 @@ function getDAStargateUSDCBridgeRoutes(
 
     // Source chain 56
     if (sourceChainId == 56) {
-        chainIds = new uint256[](6);
-        bridgeRoutes = new DaimoPayLayerZeroBridger.LZBridgeRoute[](6);
+        chainIds = new uint256[](5);
+        bridgeRoutes = new DaimoPayLayerZeroBridger.LZBridgeRoute[](5);
 
         // 56 -> 1 USDC
         chainIds[0] = 1;
@@ -84,18 +75,9 @@ function getDAStargateUSDCBridgeRoutes(
             bridgeTokenOut: 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48,
             bridgeTokenOutDecimals: 6
         });
-        // 56 -> 100 USDC
-        chainIds[1] = 100;
-        bridgeRoutes[1] = DaimoPayLayerZeroBridger.LZBridgeRoute({
-            dstEid: 30145,
-            app: 0x962Bd449E630b0d928f308Ce63f1A21F02576057,
-            bridgeTokenIn: 0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d,
-            bridgeTokenOut: 0x2a22f9c3b484c3629090FeED35F17Ff8F88f76F0,
-            bridgeTokenOutDecimals: 6
-        });
         // 56 -> 137 USDC
-        chainIds[2] = 137;
-        bridgeRoutes[2] = DaimoPayLayerZeroBridger.LZBridgeRoute({
+        chainIds[1] = 137;
+        bridgeRoutes[1] = DaimoPayLayerZeroBridger.LZBridgeRoute({
             dstEid: 30109,
             app: 0x962Bd449E630b0d928f308Ce63f1A21F02576057,
             bridgeTokenIn: 0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d,
@@ -103,8 +85,8 @@ function getDAStargateUSDCBridgeRoutes(
             bridgeTokenOutDecimals: 6
         });
         // 56 -> 4217 USDC
-        chainIds[3] = 4217;
-        bridgeRoutes[3] = DaimoPayLayerZeroBridger.LZBridgeRoute({
+        chainIds[2] = 4217;
+        bridgeRoutes[2] = DaimoPayLayerZeroBridger.LZBridgeRoute({
             dstEid: 30410,
             app: 0x962Bd449E630b0d928f308Ce63f1A21F02576057,
             bridgeTokenIn: 0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d,
@@ -112,8 +94,8 @@ function getDAStargateUSDCBridgeRoutes(
             bridgeTokenOutDecimals: 6
         });
         // 56 -> 8453 USDC
-        chainIds[4] = 8453;
-        bridgeRoutes[4] = DaimoPayLayerZeroBridger.LZBridgeRoute({
+        chainIds[3] = 8453;
+        bridgeRoutes[3] = DaimoPayLayerZeroBridger.LZBridgeRoute({
             dstEid: 30184,
             app: 0x962Bd449E630b0d928f308Ce63f1A21F02576057,
             bridgeTokenIn: 0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d,
@@ -121,74 +103,11 @@ function getDAStargateUSDCBridgeRoutes(
             bridgeTokenOutDecimals: 6
         });
         // 56 -> 42161 USDC
-        chainIds[5] = 42161;
-        bridgeRoutes[5] = DaimoPayLayerZeroBridger.LZBridgeRoute({
+        chainIds[4] = 42161;
+        bridgeRoutes[4] = DaimoPayLayerZeroBridger.LZBridgeRoute({
             dstEid: 30110,
             app: 0x962Bd449E630b0d928f308Ce63f1A21F02576057,
             bridgeTokenIn: 0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d,
-            bridgeTokenOut: 0xaf88d065e77c8cC2239327C5EDb3A432268e5831,
-            bridgeTokenOutDecimals: 6
-        });
-
-        return (chainIds, bridgeRoutes);
-    }
-
-    // Source chain 100
-    if (sourceChainId == 100) {
-        chainIds = new uint256[](6);
-        bridgeRoutes = new DaimoPayLayerZeroBridger.LZBridgeRoute[](6);
-
-        // 100 -> 1 USDC
-        chainIds[0] = 1;
-        bridgeRoutes[0] = DaimoPayLayerZeroBridger.LZBridgeRoute({
-            dstEid: 30101,
-            app: 0xB1EeAD6959cb5bB9B20417d6689922523B2B86C3,
-            bridgeTokenIn: 0x2a22f9c3b484c3629090FeED35F17Ff8F88f76F0,
-            bridgeTokenOut: 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48,
-            bridgeTokenOutDecimals: 6
-        });
-        // 100 -> 56 USDC
-        chainIds[1] = 56;
-        bridgeRoutes[1] = DaimoPayLayerZeroBridger.LZBridgeRoute({
-            dstEid: 30102,
-            app: 0xB1EeAD6959cb5bB9B20417d6689922523B2B86C3,
-            bridgeTokenIn: 0x2a22f9c3b484c3629090FeED35F17Ff8F88f76F0,
-            bridgeTokenOut: 0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d,
-            bridgeTokenOutDecimals: 18
-        });
-        // 100 -> 137 USDC
-        chainIds[2] = 137;
-        bridgeRoutes[2] = DaimoPayLayerZeroBridger.LZBridgeRoute({
-            dstEid: 30109,
-            app: 0xB1EeAD6959cb5bB9B20417d6689922523B2B86C3,
-            bridgeTokenIn: 0x2a22f9c3b484c3629090FeED35F17Ff8F88f76F0,
-            bridgeTokenOut: 0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359,
-            bridgeTokenOutDecimals: 6
-        });
-        // 100 -> 4217 USDC
-        chainIds[3] = 4217;
-        bridgeRoutes[3] = DaimoPayLayerZeroBridger.LZBridgeRoute({
-            dstEid: 30410,
-            app: 0xB1EeAD6959cb5bB9B20417d6689922523B2B86C3,
-            bridgeTokenIn: 0x2a22f9c3b484c3629090FeED35F17Ff8F88f76F0,
-            bridgeTokenOut: 0x20C000000000000000000000b9537d11c60E8b50,
-            bridgeTokenOutDecimals: 6
-        });
-        // 100 -> 8453 USDC
-        chainIds[4] = 8453;
-        bridgeRoutes[4] = DaimoPayLayerZeroBridger.LZBridgeRoute({
-            dstEid: 30184,
-            app: 0xB1EeAD6959cb5bB9B20417d6689922523B2B86C3,
-            bridgeTokenIn: 0x2a22f9c3b484c3629090FeED35F17Ff8F88f76F0,
-            bridgeTokenOut: 0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913,
-            bridgeTokenOutDecimals: 6
-        });
-        // 100 -> 42161 USDC
-        chainIds[5] = 42161;
-        bridgeRoutes[5] = DaimoPayLayerZeroBridger.LZBridgeRoute({
-            dstEid: 30110,
-            app: 0xB1EeAD6959cb5bB9B20417d6689922523B2B86C3,
-            bridgeTokenIn: 0x2a22f9c3b484c3629090FeED35F17Ff8F88f76F0,
             bridgeTokenOut: 0xaf88d065e77c8cC2239327C5EDb3A432268e5831,
             bridgeTokenOutDecimals: 6
         });
@@ -198,8 +117,8 @@ function getDAStargateUSDCBridgeRoutes(
 
     // Source chain 137
     if (sourceChainId == 137) {
-        chainIds = new uint256[](3);
-        bridgeRoutes = new DaimoPayLayerZeroBridger.LZBridgeRoute[](3);
+        chainIds = new uint256[](2);
+        bridgeRoutes = new DaimoPayLayerZeroBridger.LZBridgeRoute[](2);
 
         // 137 -> 56 USDC
         chainIds[0] = 56;
@@ -210,18 +129,9 @@ function getDAStargateUSDCBridgeRoutes(
             bridgeTokenOut: 0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d,
             bridgeTokenOutDecimals: 18
         });
-        // 137 -> 100 USDC
-        chainIds[1] = 100;
-        bridgeRoutes[1] = DaimoPayLayerZeroBridger.LZBridgeRoute({
-            dstEid: 30145,
-            app: 0x9Aa02D4Fae7F58b8E8f34c66E756cC734DAc7fe4,
-            bridgeTokenIn: 0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359,
-            bridgeTokenOut: 0x2a22f9c3b484c3629090FeED35F17Ff8F88f76F0,
-            bridgeTokenOutDecimals: 6
-        });
         // 137 -> 4217 USDC
-        chainIds[2] = 4217;
-        bridgeRoutes[2] = DaimoPayLayerZeroBridger.LZBridgeRoute({
+        chainIds[1] = 4217;
+        bridgeRoutes[1] = DaimoPayLayerZeroBridger.LZBridgeRoute({
             dstEid: 30410,
             app: 0x9Aa02D4Fae7F58b8E8f34c66E756cC734DAc7fe4,
             bridgeTokenIn: 0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359,
@@ -234,8 +144,8 @@ function getDAStargateUSDCBridgeRoutes(
 
     // Source chain 4217
     if (sourceChainId == 4217) {
-        chainIds = new uint256[](7);
-        bridgeRoutes = new DaimoPayLayerZeroBridger.LZBridgeRoute[](7);
+        chainIds = new uint256[](6);
+        bridgeRoutes = new DaimoPayLayerZeroBridger.LZBridgeRoute[](6);
 
         // 4217 -> 1 USDC
         chainIds[0] = 1;
@@ -264,18 +174,9 @@ function getDAStargateUSDCBridgeRoutes(
             bridgeTokenOut: 0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d,
             bridgeTokenOutDecimals: 18
         });
-        // 4217 -> 100 USDC
-        chainIds[3] = 100;
-        bridgeRoutes[3] = DaimoPayLayerZeroBridger.LZBridgeRoute({
-            dstEid: 30145,
-            app: 0x8c76e2F6C5ceDA9AA7772e7efF30280226c44392,
-            bridgeTokenIn: 0x20C000000000000000000000b9537d11c60E8b50,
-            bridgeTokenOut: 0x2a22f9c3b484c3629090FeED35F17Ff8F88f76F0,
-            bridgeTokenOutDecimals: 6
-        });
         // 4217 -> 137 USDC
-        chainIds[4] = 137;
-        bridgeRoutes[4] = DaimoPayLayerZeroBridger.LZBridgeRoute({
+        chainIds[3] = 137;
+        bridgeRoutes[3] = DaimoPayLayerZeroBridger.LZBridgeRoute({
             dstEid: 30109,
             app: 0x8c76e2F6C5ceDA9AA7772e7efF30280226c44392,
             bridgeTokenIn: 0x20C000000000000000000000b9537d11c60E8b50,
@@ -283,8 +184,8 @@ function getDAStargateUSDCBridgeRoutes(
             bridgeTokenOutDecimals: 6
         });
         // 4217 -> 8453 USDC
-        chainIds[5] = 8453;
-        bridgeRoutes[5] = DaimoPayLayerZeroBridger.LZBridgeRoute({
+        chainIds[4] = 8453;
+        bridgeRoutes[4] = DaimoPayLayerZeroBridger.LZBridgeRoute({
             dstEid: 30184,
             app: 0x8c76e2F6C5ceDA9AA7772e7efF30280226c44392,
             bridgeTokenIn: 0x20C000000000000000000000b9537d11c60E8b50,
@@ -292,8 +193,8 @@ function getDAStargateUSDCBridgeRoutes(
             bridgeTokenOutDecimals: 6
         });
         // 4217 -> 42161 USDC
-        chainIds[6] = 42161;
-        bridgeRoutes[6] = DaimoPayLayerZeroBridger.LZBridgeRoute({
+        chainIds[5] = 42161;
+        bridgeRoutes[5] = DaimoPayLayerZeroBridger.LZBridgeRoute({
             dstEid: 30110,
             app: 0x8c76e2F6C5ceDA9AA7772e7efF30280226c44392,
             bridgeTokenIn: 0x20C000000000000000000000b9537d11c60E8b50,
@@ -306,8 +207,8 @@ function getDAStargateUSDCBridgeRoutes(
 
     // Source chain 8453
     if (sourceChainId == 8453) {
-        chainIds = new uint256[](3);
-        bridgeRoutes = new DaimoPayLayerZeroBridger.LZBridgeRoute[](3);
+        chainIds = new uint256[](2);
+        bridgeRoutes = new DaimoPayLayerZeroBridger.LZBridgeRoute[](2);
 
         // 8453 -> 56 USDC
         chainIds[0] = 56;
@@ -318,18 +219,9 @@ function getDAStargateUSDCBridgeRoutes(
             bridgeTokenOut: 0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d,
             bridgeTokenOutDecimals: 18
         });
-        // 8453 -> 100 USDC
-        chainIds[1] = 100;
-        bridgeRoutes[1] = DaimoPayLayerZeroBridger.LZBridgeRoute({
-            dstEid: 30145,
-            app: 0x27a16dc786820B16E5c9028b75B99F6f604b5d26,
-            bridgeTokenIn: 0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913,
-            bridgeTokenOut: 0x2a22f9c3b484c3629090FeED35F17Ff8F88f76F0,
-            bridgeTokenOutDecimals: 6
-        });
         // 8453 -> 4217 USDC
-        chainIds[2] = 4217;
-        bridgeRoutes[2] = DaimoPayLayerZeroBridger.LZBridgeRoute({
+        chainIds[1] = 4217;
+        bridgeRoutes[1] = DaimoPayLayerZeroBridger.LZBridgeRoute({
             dstEid: 30410,
             app: 0x27a16dc786820B16E5c9028b75B99F6f604b5d26,
             bridgeTokenIn: 0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913,
@@ -342,8 +234,8 @@ function getDAStargateUSDCBridgeRoutes(
 
     // Source chain 42161
     if (sourceChainId == 42161) {
-        chainIds = new uint256[](3);
-        bridgeRoutes = new DaimoPayLayerZeroBridger.LZBridgeRoute[](3);
+        chainIds = new uint256[](2);
+        bridgeRoutes = new DaimoPayLayerZeroBridger.LZBridgeRoute[](2);
 
         // 42161 -> 56 USDC
         chainIds[0] = 56;
@@ -354,18 +246,9 @@ function getDAStargateUSDCBridgeRoutes(
             bridgeTokenOut: 0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d,
             bridgeTokenOutDecimals: 18
         });
-        // 42161 -> 100 USDC
-        chainIds[1] = 100;
-        bridgeRoutes[1] = DaimoPayLayerZeroBridger.LZBridgeRoute({
-            dstEid: 30145,
-            app: 0xe8CDF27AcD73a434D661C84887215F7598e7d0d3,
-            bridgeTokenIn: 0xaf88d065e77c8cC2239327C5EDb3A432268e5831,
-            bridgeTokenOut: 0x2a22f9c3b484c3629090FeED35F17Ff8F88f76F0,
-            bridgeTokenOutDecimals: 6
-        });
         // 42161 -> 4217 USDC
-        chainIds[2] = 4217;
-        bridgeRoutes[2] = DaimoPayLayerZeroBridger.LZBridgeRoute({
+        chainIds[1] = 4217;
+        bridgeRoutes[1] = DaimoPayLayerZeroBridger.LZBridgeRoute({
             dstEid: 30410,
             app: 0xe8CDF27AcD73a434D661C84887215F7598e7d0d3,
             bridgeTokenIn: 0xaf88d065e77c8cC2239327C5EDb3A432268e5831,
