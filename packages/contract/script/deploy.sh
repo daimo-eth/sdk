@@ -15,6 +15,7 @@ SCRIPTS=(
     # "script/da/DeployDaimoPayUSDT0Bridger.s.sol"
     # "script/da/DeployDaimoPayHopBridger.s.sol"
     # "script/da/DeployDAZeroXBridger.s.sol"
+    # "script/da/DeployDARelayBridger.s.sol"
     # "script/da/DeployDepositAddressBridger.s.sol"
 
     # === DA core ===
