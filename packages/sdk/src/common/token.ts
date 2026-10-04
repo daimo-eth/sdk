@@ -6,7 +6,6 @@ import {
   bsc,
   celo,
   ethereum,
-  gnosis,
   hyperEvm,
   linea,
   megaEth,
@@ -77,7 +76,6 @@ export enum TokenLogo {
   WBTC = "https://daimo.com/coin-logos/wbtc.png",
   WETH = "https://daimo.com/coin-logos/weth.png",
   WLD = "https://daimo.com/coin-logos/wld.jpeg",
-  XDAI = "https://daimo.com/coin-logos/xdai.png",
 }
 
 const NATIVE_TOKEN_ADDRESS = zeroAddress;
@@ -451,41 +449,6 @@ const ethereumTokens: Token[] = [
   ethereumDAI,
   ethereumUSDT,
 ];
-
-//
-// Gnosis
-//
-
-export const gnosisXDAI: Token = nativeToken({
-  chainId: gnosis.chainId,
-  name: "XDAI",
-  symbol: "XDAI",
-  logoURI: TokenLogo.XDAI,
-  token: NATIVE_TOKEN_ADDRESS,
-  decimals: 18,
-});
-
-export const gnosisUSDCe: Token = token({
-  chainId: gnosis.chainId,
-  token: getAddress("0x2a22f9c3b484c3629090FeED35F17Ff8F88f76F0"),
-  decimals: 6,
-  fiatISO: "USD",
-  name: "Bridged USD Coin",
-  symbol: "USDCe",
-  logoURI: TokenLogo.USDC,
-});
-
-export const gnosisEURe: Token = token({
-  chainId: gnosis.chainId,
-  token: getAddress("0x420CA0f9B9b604cE0fd9C18EF134C705e5Fa3430"),
-  decimals: 18,
-  fiatISO: "EUR",
-  name: "Monerium EURe",
-  symbol: "EURe",
-  logoURI: TokenLogo.EURe,
-});
-
-const gnosisTokens: Token[] = [gnosisXDAI, gnosisUSDCe, gnosisEURe];
 
 //
 // HyperEVM
@@ -986,7 +949,6 @@ const knownTokensByChain = new Map<number, Token[]>([
   [bsc.chainId, bscTokens],
   [celo.chainId, celoTokens],
   [ethereum.chainId, ethereumTokens],
-  [gnosis.chainId, gnosisTokens],
   [hyperEvm.chainId, hyperEvmTokens],
   [linea.chainId, lineaTokens],
   [megaEth.chainId, megaEthTokens],
@@ -1091,13 +1053,6 @@ const tokensByChainAndType: Map<
       [TokenType.USDT]: ethereumUSDT,
       [TokenType.USDT0]: ethereumUSDT, // USDT on Ethereum is compatible with USDT0 bridges
       [TokenType.DAI]: ethereumDAI,
-    },
-  ],
-  [
-    gnosis.chainId,
-    {
-      [TokenType.NATIVE]: gnosisXDAI,
-      [TokenType.NATIVE_USDC]: gnosisUSDCe,
     },
   ],
   [

@@ -32,7 +32,8 @@ export type SessionDisplay = DaimoSessionTheme & {
 
 export type SessionDestination =
   | SessionDestinationEvm
-  | SessionDestinationSolana;
+  | SessionDestinationSolana
+  | SessionDestinationTron;
 
 export type SessionDestinationEvm = {
   type: "evm";
@@ -86,6 +87,31 @@ export type SessionDestinationSolana = {
   delivery?: {
     /** Solana transaction signature of the delivery. */
     txHash: SolanaTxHash;
+    /** Amount received in destination token units, e.g. "1.23". */
+    receivedUnits: string;
+  };
+};
+
+export type SessionDestinationTron = {
+  type: "tron";
+  /** Destination address, base58 encoded. */
+  address: TronAddress;
+  /** Destination token address, base58 encoded. */
+  tokenAddress: TronAddress;
+  /** Destination token symbol, e.g. "USDT". */
+  tokenSymbol: string;
+  /**
+   * Requested amount in destination token units. e.g. "1.23" for $1.23 USDT.
+   * Omitted for open-amount sessions.
+   */
+  amountUnits?: string;
+  /**
+   * Present when status is "succeeded".
+   * The delivery tx is a Tron transaction ID.
+   */
+  delivery?: {
+    /** Tron transaction ID of the delivery. */
+    txHash: TronTxHash;
     /** Amount received in destination token units, e.g. "1.23". */
     receivedUnits: string;
   };

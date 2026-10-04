@@ -15,6 +15,7 @@ import "../../src/DaimoPayCCTPV2Bridger.sol";
 import "../../src/DaimoPayLayerZeroBridger.sol";
 import "../../src/DaimoPayHopBridger.sol";
 import "../../src/DAZeroXBridger.sol";
+import "../../src/DARelayBridger.sol";
 import "../Constants.s.sol";
 import {
     getDACCTPV2BridgeRoutes
@@ -38,6 +39,9 @@ import {
     getDAZeroXBridgeRoutes
 } from "./constants/DAZeroXBridgeRouteConstants.sol";
 import {
+    getDARelayBridgeRoutes
+} from "./constants/DARelayBridgeRouteConstants.sol";
+import {
     DEPLOY_SALT_CCTP_V2_BRIDGER,
     DEPLOY_SALT_HOP_BRIDGER,
     DEPLOY_SALT_LEGACY_MESH_BRIDGER,
@@ -45,6 +49,7 @@ import {
     DEPLOY_SALT_STARGATE_USDT_BRIDGER,
     DEPLOY_SALT_USDT0_BRIDGER,
     DEPLOY_SALT_ZEROX_BRIDGER,
+    DEPLOY_SALT_RELAY_BRIDGER,
     DEPLOY_SALT_DA_BRIDGER
 } from "../DeploySalts.sol";
 
@@ -125,7 +130,12 @@ contract DeployDepositAddressBridger is Script {
         console.log("legacyMeshBridger address:", legacyMeshBridger);
         console.log("hopBridger address:", hopBridger);
         console.log("usdt0Bridger address:", usdt0Bridger);
+        address relayBridger = CREATE3.getDeployed(
+            msg.sender,
+            DEPLOY_SALT_RELAY_BRIDGER
+        );
         console.log("zeroXBridger address:", zeroXBridger);
+        console.log("relayBridger address:", relayBridger);
 
         // Get all supported destination chains from the DA constants
         // CCTP V2
@@ -172,6 +182,14 @@ contract DeployDepositAddressBridger is Script {
 
         ) = getDAZeroXBridgeRoutes(block.chainid);
 
+        // Relay
+        (
+            DestinationType[] memory relayDestinationTypes,
+            uint256[] memory relayChainIds,
+            bytes[] memory relayBridgeTokenOuts,
+
+        ) = getDARelayBridgeRoutes(block.chainid);
+
         // Count total number of supported chains
         // An adapter is only whitelisted if it has routes on this chain; require
         // code for exactly those, so a wrong address fails the deploy instead of
@@ -182,6 +200,7 @@ contract DeployDepositAddressBridger is Script {
         _requireDeployed(legacyMeshChainIds.length, legacyMeshBridger, "legacyMesh");
         _requireDeployed(usdt0ChainIds.length, usdt0Bridger, "usdt0");
         _requireDeployed(zeroXChainIds.length, zeroXBridger, "zeroX");
+        _requireDeployed(relayChainIds.length, relayBridger, "relay");
         _requireDeployed(hopDestChainIds.length, hopBridger, "hop");
 
         uint256 totalChains = cctpV2ChainIds.length +
@@ -190,7 +209,8 @@ contract DeployDepositAddressBridger is Script {
             legacyMeshChainIds.length +
             hopDestChainIds.length +
             usdt0ChainIds.length +
-            zeroXChainIds.length;
+            zeroXChainIds.length +
+            relayChainIds.length;
 
         // Initialize arrays for the combined result
         destinationTypes = new DestinationType[](totalChains);
@@ -281,6 +301,16 @@ contract DeployDepositAddressBridger is Script {
                 DestinationType.EVM
                 ? BridgeRecipientMode.FULFILLMENT
                 : BridgeRecipientMode.DIRECT;
+            index++;
+        }
+
+        // Add Relay routes. DARelayBridger only accepts non-EVM routes.
+        for (uint256 i = 0; i < relayChainIds.length; ++i) {
+            destinationTypes[index] = relayDestinationTypes[i];
+            chainIds[index] = relayChainIds[i];
+            stableOuts[index] = relayBridgeTokenOuts[i];
+            bridgers[index] = relayBridger;
+            recipientModes[index] = BridgeRecipientMode.DIRECT;
             index++;
         }
 

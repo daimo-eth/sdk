@@ -58,14 +58,6 @@ export const ethereum: Chain = {
   lzEid: 30101,
 };
 
-export const gnosis: Chain = {
-  type: "evm",
-  chainId: 100,
-  name: "Gnosis",
-  cctpDomain: null,
-  lzEid: 30145,
-};
-
 export const hyperEvm: Chain = {
   type: "evm",
   chainId: 999,
@@ -157,7 +149,6 @@ export const supportedChains: Chain[] = [
   bsc,
   celo,
   ethereum,
-  gnosis,
   hyperEvm,
   linea,
   megaEth,
@@ -204,8 +195,6 @@ export function getChainExplorerByChainId(chainId: number): string | undefined {
       return "https://celoscan.io";
     case ethereum.chainId:
       return "https://etherscan.io";
-    case gnosis.chainId:
-      return "https://gnosisscan.io";
     case hyperEvm.chainId:
       return "https://hyperevmscan.io";
     case linea.chainId:

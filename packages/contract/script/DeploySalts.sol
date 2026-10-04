@@ -37,11 +37,12 @@ bytes32 constant DEPLOY_SALT_DAIMO_PAY_PRICER = keccak256(
 bytes32 constant DEPLOY_SALT_DAIMO_PAY_BRIDGER = keccak256(
     "DaimoPayBridger-deploy37"
 );
+// Bumped 2026-10-01: Relay routes to Tron USDT.
 bytes32 constant DEPLOY_SALT_DA_BRIDGER = keccak256(
-    "DepositAddressBridger-prod-2026-09-16"
+    "DepositAddressBridger-prod-2026-10-01"
 );
 // bytes32 constant DEPLOY_SALT_DA_BRIDGER = keccak256(
-//     "DepositAddressBridger-dev-sol1"
+//     "DepositAddressBridger-dev-2026-10-01"
 // );
 
 bytes32 constant DEPLOY_SALT_ACROSS_BRIDGER = keccak256(
@@ -84,6 +85,13 @@ bytes32 constant DEPLOY_SALT_ZEROX_BRIDGER = keccak256(
 );
 // bytes32 constant DEPLOY_SALT_ZEROX_BRIDGER = keccak256(
 //     "DAZeroXBridger-dev-sol1"
+// );
+// Per environment, like the 0x adapter: each signs with its own trusted signer.
+bytes32 constant DEPLOY_SALT_RELAY_BRIDGER = keccak256(
+    "DARelayBridger-prod-2026-10-01"
+);
+// bytes32 constant DEPLOY_SALT_RELAY_BRIDGER = keccak256(
+//     "DARelayBridger-dev-2026-10-01"
 // );
 
 // Relayer contract
