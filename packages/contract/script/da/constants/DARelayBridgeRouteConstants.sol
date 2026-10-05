@@ -309,6 +309,35 @@ function getDARelayBridgeRoutes(
         return (destinationTypes, toChainIds, bridgeTokenOuts, bridgeRoutes);
     }
 
+    // Source chain 42220
+    if (sourceChainId == 42220) {
+        destinationTypes = new DestinationType[](2);
+        toChainIds = new uint256[](2);
+        bridgeTokenOuts = new bytes[](2);
+        bridgeRoutes = new DARelayBridger.RelayRoute[](2);
+
+        // 42220 -> 501 USDC
+        destinationTypes[0] = DestinationType.SOLANA;
+        toChainIds[0] = 501;
+        bridgeTokenOuts[0] = hex"c6fa7af3bedbad3a3d65f36aabc97431b1bbe4c2d2f6e0e47ca60203452f5d61";
+        bridgeRoutes[0] = DARelayBridger.RelayRoute({
+            bridgeTokenIn: 0xcebA9300f2b948710d2653dD7B07f33A8B32118C,
+            bridgeTokenInDecimals: 6,
+            bridgeTokenOutDecimals: 6
+        });
+        // 42220 -> 728126428 USDT
+        destinationTypes[1] = DestinationType.TRON;
+        toChainIds[1] = 728126428;
+        bridgeTokenOuts[1] = hex"41a614f803b6fd780986a42c78ec9c7f77e6ded13c";
+        bridgeRoutes[1] = DARelayBridger.RelayRoute({
+            bridgeTokenIn: 0xcebA9300f2b948710d2653dD7B07f33A8B32118C,
+            bridgeTokenInDecimals: 6,
+            bridgeTokenOutDecimals: 6
+        });
+
+        return (destinationTypes, toChainIds, bridgeTokenOuts, bridgeRoutes);
+    }
+
     // Source chain 59144
     if (sourceChainId == 59144) {
         destinationTypes = new DestinationType[](2);

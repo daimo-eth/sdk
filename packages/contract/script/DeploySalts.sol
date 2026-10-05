@@ -37,12 +37,12 @@ bytes32 constant DEPLOY_SALT_DAIMO_PAY_PRICER = keccak256(
 bytes32 constant DEPLOY_SALT_DAIMO_PAY_BRIDGER = keccak256(
     "DaimoPayBridger-deploy37"
 );
-// Bumped 2026-10-01: Relay routes to Tron USDT.
+// Bumped 2026-10-05: Celo to Solana and Tron via Relay.
 bytes32 constant DEPLOY_SALT_DA_BRIDGER = keccak256(
-    "DepositAddressBridger-prod-2026-10-01"
+    "DepositAddressBridger-prod-2026-10-05"
 );
 // bytes32 constant DEPLOY_SALT_DA_BRIDGER = keccak256(
-//     "DepositAddressBridger-dev-2026-10-01"
+//     "DepositAddressBridger-stage-2026-10-05"
 // );
 
 bytes32 constant DEPLOY_SALT_ACROSS_BRIDGER = keccak256(
