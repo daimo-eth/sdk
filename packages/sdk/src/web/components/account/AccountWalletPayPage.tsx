@@ -122,7 +122,8 @@ export function AccountWalletPayPage({
   const normalizedAmount = amount.toFixed(2);
   const matchesAmount =
     depositState != null && depositState.depositAmount === normalizedAmount;
-  const hasStartedDeposit = depositState?.kind === "started";
+  const hasStartedDeposit =
+    depositState?.rail === rail && depositState.kind === "started";
   const {
     payment: draftPayment,
     enrollmentUpdate: draftEnrollmentUpdate,

@@ -22,7 +22,7 @@ type CoinbaseEvent = {
   data?: { errorCode?: string; errorMessage?: string };
 };
 
-type UseCoinbaseApplePayWidgetArgs = {
+type UseCoinbaseWalletPayWidgetArgs = {
   allowExpandedView: boolean;
   onRefreshDeposit: () => Promise<void>;
   paymentLinkUrl: string | null;
@@ -30,7 +30,7 @@ type UseCoinbaseApplePayWidgetArgs = {
   onWidgetError?: (event: CoinbaseWidgetErrorData) => void;
 };
 
-type UseCoinbaseApplePayWidgetResult = {
+type UseCoinbaseWalletPayWidgetResult = {
   iframeExpanded: boolean;
   onIframeLoad: () => void;
   iframeReady: boolean;
@@ -49,7 +49,7 @@ export function useCoinbaseWalletPayWidget({
   paymentLinkUrl,
   providerOrderId,
   onWidgetError,
-}: UseCoinbaseApplePayWidgetArgs): UseCoinbaseApplePayWidgetResult {
+}: UseCoinbaseWalletPayWidgetArgs): UseCoinbaseWalletPayWidgetResult {
   const [widgetError, setWidgetError] = useState<string | null>(null);
   const [iframeReady, setIframeReady] = useState(false);
   const [iframeExpanded, setIframeExpanded] = useState(false);
@@ -139,6 +139,9 @@ export function useCoinbaseWalletPayWidget({
           setIframeReady(true);
           return;
         case "onramp_api.load_error":
+          // Coinbase documents a QR fallback only for unsupported Apple Pay.
+          // Google Pay's unsupported-device error must stay visible.
+          // https://docs.cdp.coinbase.com/onramp/headless-onramp/overview#post-message-events
           if (
             parsed.data?.errorCode ===
             "ERROR_CODE_GUEST_APPLE_PAY_NOT_SUPPORTED"

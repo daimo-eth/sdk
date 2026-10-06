@@ -1,9 +1,6 @@
 import { useEffect, useState } from "react";
 
-import type {
-  AccountDeposit,
-  AccountRail,
-} from "../../common/account.js";
+import type { AccountDeposit, AccountRail } from "../../common/account.js";
 import { getRequestToPayContract } from "../components/account/accountPaymentCompatibility.js";
 import { useDaimoClient } from "./DaimoClientContext.js";
 import { useDepositPoller } from "./useDepositPoller.js";
@@ -51,9 +48,7 @@ export function useRequestToPayDeposit({
     startedPayment ??
     (draftedPayment ? getRequestToPayContract(draftedPayment) : null);
   const candidatePayment =
-    depositState?.kind === "started"
-      ? depositState.payment
-      : draftedPayment;
+    depositState?.kind === "started" ? depositState.payment : draftedPayment;
   const contractMismatch = candidatePayment != null && payment == null;
   const currentDepositId =
     depositState?.kind === "drafted" || depositState?.kind === "started"
@@ -64,6 +59,7 @@ export function useRequestToPayDeposit({
     if (!payment || !depositAmount || !currentDepositId) return;
     if (depositState?.kind === "started") return;
     setDepositState({
+      rail,
       depositAmount,
       kind: "started",
       depositId: currentDepositId,
@@ -74,6 +70,7 @@ export function useRequestToPayDeposit({
     depositAmount,
     depositState?.kind,
     payment,
+    rail,
     setDepositState,
   ]);
 

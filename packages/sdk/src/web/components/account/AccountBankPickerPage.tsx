@@ -113,6 +113,7 @@ export function AccountInstitutionPickerPage({
     async (institution: DepositInstitutionCatalogEntry) => {
       if (
         depositState?.kind === "started" &&
+        depositState.rail === rail &&
         depositState.depositAmount === depositAmount &&
         depositState.payment.flow === "bank-picker"
       ) {
@@ -149,6 +150,7 @@ export function AccountInstitutionPickerPage({
           return;
         }
         setDepositState({
+          rail,
           depositAmount,
           kind: "started",
           depositId,

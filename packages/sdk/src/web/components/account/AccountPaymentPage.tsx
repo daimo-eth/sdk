@@ -90,7 +90,7 @@ export function AccountAmountPage({
       if (!accountFlow || !constraints || isStarting) return;
       const depositAmount = nativeAmount.toFixed(2);
       if (!startDepositOnAdvance) {
-        setDepositState({ depositAmount, kind: "idle" });
+        setDepositState({ depositAmount, rail, kind: "idle" });
         onAdvance();
         return;
       }
@@ -98,6 +98,7 @@ export function AccountAmountPage({
       // if the amount is unchanged, otherwise sign + upsert before advancing.
       if (
         depositState?.kind === "started" &&
+        depositState.rail === rail &&
         depositState.depositAmount === depositAmount
       ) {
         onAdvance();
@@ -125,6 +126,7 @@ export function AccountAmountPage({
             return;
           }
           setDepositState({
+            rail,
             depositAmount,
             kind: "started",
             depositId,

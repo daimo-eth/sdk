@@ -587,6 +587,7 @@ export function useSessionNav(
             )
           ) {
             accountFlow.setDepositState(session.sessionId, {
+              rail,
               depositAmount: existingDeposit.fiatAmount,
               kind: "idle",
             });
@@ -610,6 +611,7 @@ export function useSessionNav(
               paymentInteraction === "external-app-approval")
           ) {
             accountFlow.setDepositState(session.sessionId, {
+              rail,
               depositAmount: existingDeposit.fiatAmount,
               kind: "idle",
             });

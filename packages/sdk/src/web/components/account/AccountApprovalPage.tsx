@@ -85,6 +85,7 @@ export function AccountApprovalPage({
       return;
     }
     setDepositState({
+      rail,
       depositAmount,
       kind: "started",
       depositId: currentDepositId,
@@ -95,6 +96,7 @@ export function AccountApprovalPage({
     depositAmount,
     depositState?.kind,
     payment,
+    rail,
     setDepositState,
   ]);
 
