@@ -10,7 +10,6 @@ import { useForm } from "react-hook-form";
 
 import type {
   AccountEnrollmentUpdate,
-  AccountEnrollmentUpdateApplePayEnhancedVerification,
   ApplePayEnhancedVerificationStatus,
 } from "../../../common/account.js";
 import { DAIMO_SUPPORT_EMAIL } from "../../../common/constants.js";
@@ -34,7 +33,7 @@ import {
 } from "./formSchemas.js";
 
 type AccountEnrollmentUpdatePageProps = {
-  update: AccountEnrollmentUpdateApplePayEnhancedVerification;
+  update: AccountEnrollmentUpdate;
   sessionId: string;
   onBack?: (() => void) | null;
   onReady: () => void;
@@ -63,12 +62,15 @@ export function AccountEnrollmentUpdatePage({
     if (!account) throw new Error("account flow missing");
     const token = await account.getAccessToken();
     if (!token) throw new Error("not authenticated");
-    const result = await client.account.getEnrollmentUpdate({
-      bearerToken: token,
-    });
-    setUpdate(requireApplePayEnhancedVerification(result));
+    const result = await client.account.getEnrollmentUpdate(
+      {
+        bearerToken: token,
+      },
+      initialUpdate.rail,
+    );
+    setUpdate(result);
     if (result.status === "complete") onReady();
-  }, [account, client, onReady]);
+  }, [account, client, onReady, initialUpdate.rail]);
 
   useEffect(() => {
     void refresh().catch((err) => {
@@ -96,13 +98,20 @@ export function AccountEnrollmentUpdatePage({
         if (!token) throw new Error("not authenticated");
         const result = await client.account.submitEnrollmentUpdate(
           {
-            type: "apple_pay_enhanced_verification",
-            rail: "apple_pay",
+            ...(initialUpdate.rail === "google_pay"
+              ? ({
+                  type: "google_pay_enhanced_verification",
+                  rail: "google_pay",
+                } as const)
+              : ({
+                  type: "apple_pay_enhanced_verification",
+                  rail: "apple_pay",
+                } as const)),
             ...input,
           },
           { bearerToken: token },
         );
-        setUpdate(requireApplePayEnhancedVerification(result));
+        setUpdate(result);
         if (result.status === "complete") onReady();
       } catch (err) {
         setError(
@@ -115,12 +124,15 @@ export function AccountEnrollmentUpdatePage({
         setIsSubmitting(false);
       }
     },
-    [account, client, onReady],
+    [account, client, onReady, initialUpdate.rail],
   );
 
   return (
     <div className="daimo-flex daimo-flex-col daimo-flex-1 daimo-min-h-0">
-      <PageHeader title="Increase Apple Pay limits" onBack={onBack} />
+      <PageHeader
+        title={`Increase ${initialUpdate.rail === "google_pay" ? "Google Pay" : "Apple Pay"} limits`}
+        onBack={onBack}
+      />
 
       <EnrollmentUpdateContent
         update={update}
@@ -142,7 +154,7 @@ function EnrollmentUpdateContent({
   isSubmitting,
   onSubmit,
 }: {
-  update: AccountEnrollmentUpdateApplePayEnhancedVerification;
+  update: AccountEnrollmentUpdate;
   sessionId: string;
   email?: string;
   error: string | null;
@@ -163,7 +175,7 @@ function EnrollmentUpdateContent({
       return (
         <EnrollmentUpdateMessage
           title="Limits increased"
-          description="Your Apple Pay limits are updated."
+          description="Your payment limits are updated."
         />
       );
     case "unavailable":
@@ -234,14 +246,13 @@ function EnrollmentUpdateForm({
   const monthField = register("dateOfBirth.month");
   const dayField = register("dateOfBirth.day");
   const yearField = register("dateOfBirth.year");
-  const monthInvalid =
-    month.length === 2 && !isDatePartInRange(month, 1, 12);
+  const monthInvalid = month.length === 2 && !isDatePartInRange(month, 1, 12);
   const dayInvalid = day.length === 2 && !isDatePartInRange(day, 1, 31);
   const dateError = errors.dateOfBirth?.month?.message;
   const description =
     status === "retry"
       ? "We couldn't verify those details. Check them and try again."
-      : "We need a few more details before Apple Pay can continue.";
+      : "We need a few more details before your payment can continue.";
 
   const submit = handleSubmit(
     useCallback(
@@ -282,10 +293,7 @@ function EnrollmentUpdateForm({
           </p>
 
           <div className="daimo-flex daimo-flex-col daimo-gap-3">
-            <DaimoFormField
-              label="SSN last 4"
-              error={errors.ssnLast4?.message}
-            >
+            <DaimoFormField label="SSN last 4" error={errors.ssnLast4?.message}>
               {({ id, describedBy, invalid }) => (
                 <DaimoTextField
                   ref={ssnField.ref}
@@ -397,7 +405,7 @@ function EnrollmentUpdateUnavailable({
   email?: string;
   error: string | null;
 }) {
-  const subject = "Apple Pay limit increase";
+  const subject = "Payment limit increase";
   const href = buildSupportHref({
     subject,
     info: {
@@ -408,7 +416,7 @@ function EnrollmentUpdateUnavailable({
 
   return (
     <EnrollmentUpdateMessage
-      description="This Apple Pay account is not eligible for a limit increase right now."
+      description="This account is not eligible for a limit increase right now."
       error={error}
       action={
         <SecondaryLinkButton href={href}>
@@ -471,12 +479,6 @@ function EnrollmentUpdateMessage({
       {action}
     </CenteredContent>
   );
-}
-
-function requireApplePayEnhancedVerification(
-  update: AccountEnrollmentUpdate,
-): AccountEnrollmentUpdateApplePayEnhancedVerification {
-  return update;
 }
 
 function assertUnreachable(value: never): never {

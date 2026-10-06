@@ -19,6 +19,10 @@ export function getWalletPayName(
     case "google_pay":
       return "Google Pay";
     case null:
-      return rail === "apple_pay" ? "Apple Pay" : "Wallet Pay";
+      return rail === "apple_pay"
+        ? "Apple Pay"
+        : rail === "google_pay"
+          ? "Google Pay"
+          : "Wallet Pay";
   }
 }

@@ -7,6 +7,10 @@ describe("getWalletPayName", () => {
     expect(getWalletPayName("apple_pay", null)).toBe("Apple Pay");
   });
 
+  it("shows Google Pay before its payment details load", () => {
+    expect(getWalletPayName("google_pay", null)).toBe("Google Pay");
+  });
+
   it("uses the loaded wallet-pay kind when available", () => {
     expect(getWalletPayName("apple_pay", "apple_pay")).toBe("Apple Pay");
     expect(getWalletPayName("apple_pay", "google_pay")).toBe("Google Pay");

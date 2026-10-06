@@ -43,6 +43,7 @@ export function getNodePaymentInteraction(
     case "interac":
       return "bank-picker";
     case "apple_pay":
+    case "google_pay":
       return "wallet-pay-widget";
     case "ach":
     case "sepa":

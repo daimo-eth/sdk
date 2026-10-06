@@ -1,6 +1,6 @@
 import type {
   AccountDepositStatus,
-  AccountEnrollmentUpdateApplePayEnhancedVerification,
+  AccountEnrollmentUpdate,
   AccountRail,
   DepositPaymentInteraction,
 } from "../../common/account.js";
@@ -119,7 +119,7 @@ export type NavEntry =
   | ({ type: "account-enrollment" } & AccountNavBase)
   | ({
       type: "account-enrollment-update";
-      update: AccountEnrollmentUpdateApplePayEnhancedVerification;
+      update: AccountEnrollmentUpdate;
     } & AccountNavBase)
   | ({ type: "account-amount" } & AccountNavBase)
   | ({ type: "account-approval"; resumePayment?: boolean } & AccountNavBase)

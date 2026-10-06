@@ -14,6 +14,7 @@ export const zAccountRail = z.enum([
   "ach",
   "sepa",
   "apple_pay",
+  "google_pay",
   "jpyc",
   "ars",
   "breb",
@@ -170,7 +171,14 @@ export type ApplePayEnhancedVerificationStatus =
 export type ApplePayEnhancedVerificationField = "ssn_last4" | "date_of_birth";
 
 export type EnrollmentUpdateRequest =
-  EnrollmentUpdateRequestApplePayEnhancedVerification;
+  | EnrollmentUpdateRequestApplePayEnhancedVerification
+  | (Omit<
+      EnrollmentUpdateRequestApplePayEnhancedVerification,
+      "type" | "rail"
+    > & {
+      type: "google_pay_enhanced_verification";
+      rail: "google_pay";
+    });
 
 export type EnrollmentUpdateRequestApplePayEnhancedVerification = {
   type: "apple_pay_enhanced_verification";
@@ -180,7 +188,14 @@ export type EnrollmentUpdateRequestApplePayEnhancedVerification = {
 };
 
 export type AccountEnrollmentUpdate =
-  AccountEnrollmentUpdateApplePayEnhancedVerification;
+  | AccountEnrollmentUpdateApplePayEnhancedVerification
+  | (Omit<
+      AccountEnrollmentUpdateApplePayEnhancedVerification,
+      "type" | "rail"
+    > & {
+      type: "google_pay_enhanced_verification";
+      rail: "google_pay";
+    });
 
 export type AccountEnrollmentUpdateApplePayEnhancedVerification = {
   type: "apple_pay_enhanced_verification";

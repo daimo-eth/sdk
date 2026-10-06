@@ -43,7 +43,7 @@ type UseCoinbaseApplePayWidgetResult = {
  * Coinbase iframe lifecycle and postMessage handling. Keeps the account page
  * focused on amount entry / layout while this hook owns hosted-widget state.
  */
-export function useCoinbaseApplePayWidget({
+export function useCoinbaseWalletPayWidget({
   allowExpandedView,
   onRefreshDeposit,
   paymentLinkUrl,
@@ -61,7 +61,7 @@ export function useCoinbaseApplePayWidget({
   });
 
   const resetWidget = useCallback(() => {
-    debugApplePay("reset widget", { hasPaymentLink: paymentLinkUrl != null });
+    debugWalletPay("reset widget", { hasPaymentLink: paymentLinkUrl != null });
     setWidgetError(null);
     setIframeReady(false);
     setIframeExpanded(false);
@@ -76,7 +76,7 @@ export function useCoinbaseApplePayWidget({
   }, [allowExpandedView]);
 
   useBrowserLayoutEffect(() => {
-    debugApplePay("payment link updated", {
+    debugWalletPay("payment link updated", {
       hasPaymentLink: paymentLinkUrl != null,
     });
     resetWidget();
@@ -110,7 +110,7 @@ export function useCoinbaseApplePayWidget({
         errorCode: parsed.data?.errorCode ?? null,
       });
       if (diagnostic.success)
-        debugApplePay("coinbase widget error", diagnostic.data);
+        debugWalletPay("coinbase widget error", diagnostic.data);
       if (diagnostic.success && onWidgetError) {
         if (reportedRef.current.orderId !== providerOrderId) {
           reportedRef.current = { orderId: providerOrderId, errors: new Set() };
@@ -123,7 +123,9 @@ export function useCoinbaseApplePayWidget({
           try {
             onWidgetError(diagnostic.data);
           } catch {
-            console.warn("[apple-pay] widget diagnostic could not be reported");
+            console.warn(
+              "[wallet-pay] widget diagnostic could not be reported",
+            );
           }
         }
       }
@@ -164,7 +166,7 @@ export function useCoinbaseApplePayWidget({
           setWidgetError(parsed.data?.errorMessage ?? "payment failed");
           return;
         case "onramp_api.cancel":
-          debugApplePay("collapsing widget after cancel event");
+          debugWalletPay("collapsing widget after cancel event");
           updateExpandedView(false);
           return;
         case "onramp_api.apple_pay_session_cancelled":
@@ -193,7 +195,7 @@ export function useCoinbaseApplePayWidget({
   }, [updateExpandedView, providerOrderId, onWidgetError]);
 
   const onIframeLoad = useCallback(() => {
-    debugApplePay("iframe load", { hasPaymentLink: paymentLinkUrl != null });
+    debugWalletPay("iframe load", { hasPaymentLink: paymentLinkUrl != null });
   }, [paymentLinkUrl]);
 
   return {
@@ -247,9 +249,9 @@ function isCoinbaseOrigin(origin: string): boolean {
   }
 }
 
-function debugApplePay(
+function debugWalletPay(
   message: string,
   fields?: Record<string, unknown>,
 ): void {
-  console.info("[apple-pay]", message, fields ?? {});
+  console.info("[wallet-pay]", message, fields ?? {});
 }

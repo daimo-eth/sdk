@@ -25,7 +25,7 @@ import { AmountInput, PageHeader, useAmountInput } from "../shared.js";
 import { AccountEnrollmentUpdatePage } from "./AccountEnrollmentUpdatePage.js";
 import type { CoinbaseWidgetErrorData } from "../../../common/api.js";
 import { createNavLogger } from "../../hooks/navEvent.js";
-import { useCoinbaseApplePayWidget } from "./useCoinbaseApplePayWidget.js";
+import { useCoinbaseWalletPayWidget } from "./useCoinbaseWalletPayWidget.js";
 import { isPaymentInteractionCompatible } from "./accountNav.js";
 import { getWalletPayName } from "./walletPayName.js";
 import { getWalletPayLimitDetails } from "./walletPayDetails.js";
@@ -151,14 +151,12 @@ export function AccountWalletPayPage({
     payment?.flow === "wallet-pay-widget" ? payment.paymentLinkKind : null,
   );
   const enrollmentUpdate =
-    !hasStartedDeposit &&
-    draftEnrollmentUpdate?.type === "apple_pay_enhanced_verification"
-      ? draftEnrollmentUpdate
-      : null;
+    !hasStartedDeposit && draftEnrollmentUpdate ? draftEnrollmentUpdate : null;
   const isCreating = isCreatingDraft;
   const rawPaymentLinkUrl =
     payment?.flow === "wallet-pay-widget" ? payment.paymentLinkUrl : null;
-  const allowExpandedView = !isSafariBrowser();
+  const isGooglePay = walletPayName === "Google Pay";
+  const allowExpandedView = !isGooglePay && !isSafariBrowser();
   const buttonShellRef = useRef<HTMLDivElement | null>(null);
   const [mounted, setMounted] = useState(false);
   const [buttonShellRect, setButtonShellRect] = useState<ShellRect | null>(
@@ -216,7 +214,7 @@ export function AccountWalletPayPage({
     iframeRef,
     resetWidget,
     widgetError,
-  } = useCoinbaseApplePayWidget({
+  } = useCoinbaseWalletPayWidget({
     allowExpandedView,
     onRefreshDeposit: refreshFromServer,
     paymentLinkUrl: rawPaymentLinkUrl,
@@ -340,11 +338,11 @@ export function AccountWalletPayPage({
   const collapsedShellRadius = Math.round(collapsedShellHeight / 2);
   const collapsedViewportWidth = Math.max(
     0,
-    collapsedShellWidth - APPLE_PAY_COLLAPSED_CROP_X * 2,
+    collapsedShellWidth - (isGooglePay ? 0 : APPLE_PAY_COLLAPSED_CROP_X * 2),
   );
   const collapsedViewportHeight = Math.max(
     0,
-    collapsedShellHeight - APPLE_PAY_COLLAPSED_CROP_Y * 2,
+    collapsedShellHeight - (isGooglePay ? 0 : APPLE_PAY_COLLAPSED_CROP_Y * 2),
   );
   const iframeShellHeight = `${collapsedShellHeight}px`;
   const iframeViewportStyle = isExpanded
@@ -363,7 +361,7 @@ export function AccountWalletPayPage({
         height: collapsedViewportHeight,
         borderRadius: Math.max(
           0,
-          collapsedShellRadius - APPLE_PAY_COLLAPSED_CROP_Y,
+          isGooglePay ? 0 : collapsedShellRadius - APPLE_PAY_COLLAPSED_CROP_Y,
         ),
         transform: "translate(-50%, -50%)",
       };
@@ -381,9 +379,9 @@ export function AccountWalletPayPage({
     : {
         left: "50%",
         top: "50%",
-        width: APPLE_PAY_BUTTON_WIDTH,
-        height: APPLE_PAY_BUTTON_HEIGHT,
-        transform: `translate(-50%, -50%) scale(${buttonScale})`,
+        width: isGooglePay ? collapsedShellWidth : APPLE_PAY_BUTTON_WIDTH,
+        height: isGooglePay ? collapsedShellHeight : APPLE_PAY_BUTTON_HEIGHT,
+        transform: `translate(-50%, -50%) scale(${isGooglePay ? 1 : buttonScale})`,
         transformOrigin: "center center",
       };
 
@@ -426,7 +424,11 @@ export function AccountWalletPayPage({
                 src={paymentLinkUrl}
                 title={`${walletPayName} Checkout`}
                 allow="payment"
-                sandbox="allow-scripts allow-same-origin"
+                sandbox={
+                  isGooglePay
+                    ? "allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox"
+                    : "allow-scripts allow-same-origin"
+                }
                 referrerPolicy="no-referrer"
                 onLoad={onIframeLoad}
                 className="daimo-absolute daimo-border-0 daimo-overflow-hidden"

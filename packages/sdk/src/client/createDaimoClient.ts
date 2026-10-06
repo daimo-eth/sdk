@@ -145,7 +145,10 @@ export type DaimoClient = {
       auth: BearerAuth,
     ): Promise<AccountPhoneOtpResponse>;
     /** Poll the provider enrollment update status. */
-    getEnrollmentUpdate(auth: BearerAuth): Promise<AccountEnrollmentUpdate>;
+    getEnrollmentUpdate(
+      auth: BearerAuth,
+      rail?: "apple_pay" | "google_pay",
+    ): Promise<AccountEnrollmentUpdate>;
     /** Submit transient provider enrollment update fields. */
     submitEnrollmentUpdate(
       input: EnrollmentUpdateRequest,
@@ -329,10 +332,11 @@ export function createDaimoClient(config: TransportConfig): DaimoClient {
           headers: authHeaders(auth),
         });
       },
-      getEnrollmentUpdate(auth) {
+      getEnrollmentUpdate(auth, rail) {
         return transport.request<AccountEnrollmentUpdate>({
           method: "GET",
           path: "/v1/internal/account/enrollment-update",
+          ...(rail ? { query: { rail } } : {}),
           headers: authHeaders(auth),
         });
       },

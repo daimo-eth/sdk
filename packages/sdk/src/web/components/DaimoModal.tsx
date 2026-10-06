@@ -79,7 +79,7 @@ import { AccountEnrollmentUpdatePage } from "./account/AccountEnrollmentUpdatePa
 import { AccountCreatingWalletPage } from "./account/AccountCreatingWalletPage.js";
 import { AccountDeeplinkPage } from "./account/AccountDeeplinkPage.js";
 import { AccountInstitutionReviewPage } from "./account/AccountInteracConfirmPage.js";
-import { AccountWalletPayPage } from "./account/AccountApplePayPage.js";
+import { AccountWalletPayPage } from "./account/AccountWalletPayPage.js";
 import { FiatUnavailablePage } from "./account/FiatUnavailablePage.js";
 import { FiatPopupPage } from "./account/FiatPopupPage.js";
 import { AccountEmailPage } from "./account/AccountEmailPage.js";
