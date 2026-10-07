@@ -197,6 +197,7 @@ export function AccountPaymentInstructionsPage({
     }
     if (depositState?.kind === "started") return;
     setDepositState({
+      rail,
       depositAmount,
       kind: "started",
       depositId: currentDepositId,
@@ -207,6 +208,7 @@ export function AccountPaymentInstructionsPage({
     depositAmount,
     depositState?.kind,
     payment,
+    rail,
     setDepositState,
   ]);
 

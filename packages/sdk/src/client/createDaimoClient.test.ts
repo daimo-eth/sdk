@@ -228,3 +228,23 @@ describe("prepareDeposit authorization compatibility", () => {
     ).resolves.toEqual(response);
   });
 });
+
+describe("wallet pay limit updates", () => {
+  test.each([undefined, "apple_pay", "google_pay"] as const)(
+    "polls the requested rail %s and preserves the legacy URL",
+    async (rail) => {
+      let requestUrl = "";
+      const client = createDaimoClient({
+        baseUrl: "https://api.example.test",
+        fetchImpl: async (url) => {
+          requestUrl = String(url);
+          return Response.json({});
+        },
+      });
+      await client.account.getEnrollmentUpdate({ bearerToken: "token" }, rail);
+      expect(requestUrl).toBe(
+        `https://api.example.test/v1/internal/account/enrollment-update${rail ? `?rail=${rail}` : ""}`,
+      );
+    },
+  );
+});

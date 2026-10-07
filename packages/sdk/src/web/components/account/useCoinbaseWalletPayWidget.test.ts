@@ -4,7 +4,7 @@ import { act, createElement, useLayoutEffect } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, expect, it, vi } from "vitest";
 import type { CoinbaseWidgetErrorData } from "../../../common/api.js";
-import { useCoinbaseApplePayWidget } from "./useCoinbaseApplePayWidget.js";
+import { useCoinbaseWalletPayWidget } from "./useCoinbaseWalletPayWidget.js";
 
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
 let root: Root | undefined;
@@ -27,7 +27,7 @@ function Harness({
   orderId?: string;
   earlyError?: boolean;
 }) {
-  const state = useCoinbaseApplePayWidget({
+  const state = useCoinbaseWalletPayWidget({
     allowExpandedView: true,
     paymentLinkUrl: `https://pay.coinbase.com/${orderId ?? "legacy"}`,
     providerOrderId: orderId,

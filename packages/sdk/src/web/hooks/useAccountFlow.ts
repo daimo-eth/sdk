@@ -47,13 +47,14 @@ export type PrivyHooks = {
 
 /**
  * Per-session deposit state. Identity is `sessionId`, current user intent is
- * `depositAmount`. `kind` tracks preview vs started provider flow.
+ * `rail` and `depositAmount`. `kind` tracks preview vs started provider flow.
  */
 export type DepositStateInput =
-  | { depositAmount: string; kind: "idle" }
-  | { depositAmount: string; kind: "drafting" }
+  | { depositAmount: string; rail?: AccountRail; kind: "idle" }
+  | { depositAmount: string; rail: AccountRail; kind: "drafting" }
   | {
       depositAmount: string;
+      rail: AccountRail;
       kind: "drafted";
       depositId: string;
       payment: DepositPaymentInfo;
@@ -61,6 +62,7 @@ export type DepositStateInput =
     }
   | {
       depositAmount: string;
+      rail: AccountRail;
       kind: "drafted";
       depositId: string;
       payment: null;
@@ -68,6 +70,7 @@ export type DepositStateInput =
     }
   | {
       depositAmount: string;
+      rail: AccountRail;
       kind: "started";
       depositId: string;
       payment: DepositPaymentInfo;

@@ -54,37 +54,55 @@ export function useDraftDeposit({
   const { depositState, setDepositState } = useSessionDepositState(sessionId);
   const [error, setError] = useState<string | null>(null);
   const requestSeqRef = useRef(0);
+  const requestActiveRef = useRef(false);
 
-  const matchesAmount =
-    depositState != null && depositState.depositAmount === depositAmount;
-  const hasStartedCurrentAmount =
-    matchesAmount && depositState?.kind === "started";
-  const isCreating = matchesAmount && depositState?.kind === "drafting";
+  // Ignore a response after the user changes intent or leaves this page.
+  useEffect(() => {
+    setError(null);
+    return () => {
+      requestSeqRef.current++;
+      requestActiveRef.current = false;
+    };
+  }, [sessionId, rail, depositAmount, enabled]);
+
+  const matchesIntent =
+    depositState != null &&
+    depositState.rail === rail &&
+    depositState.depositAmount === depositAmount;
+  const hasStartedCurrentIntent =
+    matchesIntent && depositState?.kind === "started";
+  const isCreating = matchesIntent && depositState?.kind === "drafting";
   const payment =
-    matchesAmount && depositState?.kind === "drafted"
+    matchesIntent && depositState?.kind === "drafted"
       ? depositState.payment
       : null;
   const enrollmentUpdate =
-    matchesAmount && depositState?.kind === "drafted"
+    matchesIntent && depositState?.kind === "drafted"
       ? (depositState.enrollmentUpdate ?? null)
       : null;
 
   useEffect(() => {
-    if (!enabled || hasStartedCurrentAmount) {
+    if (!enabled || hasStartedCurrentIntent) {
       setError(null);
       return;
     }
-    if (matchesAmount && depositState?.kind !== "idle") return;
+    if (
+      matchesIntent &&
+      (depositState?.kind === "drafted" ||
+        (depositState?.kind === "drafting" && requestActiveRef.current))
+    )
+      return;
     // Hold the failed amount in-place until the user edits it or explicitly
     // retries. Otherwise the hook re-enters drafting immediately and the UI
     // flashes between loading and error states.
-    if (matchesAmount && error != null) return;
+    if (matchesIntent && error != null) return;
     if (!accountFlow || !depositAmount) return;
 
     setError(null);
     const timeout = window.setTimeout(() => {
       const seq = ++requestSeqRef.current;
-      setDepositState({ depositAmount, kind: "drafting" });
+      requestActiveRef.current = true;
+      setDepositState({ depositAmount, rail, kind: "drafting" });
 
       void (async () => {
         try {
@@ -105,8 +123,10 @@ export function useDraftDeposit({
                   depositAmount,
                 });
           if (seq !== requestSeqRef.current) return;
+          requestActiveRef.current = false;
           if (result.payment === null) {
             setDepositState({
+              rail,
               depositAmount,
               kind: "drafted",
               depositId: result.deposit.id,
@@ -116,6 +136,7 @@ export function useDraftDeposit({
             return;
           }
           setDepositState({
+            rail,
             depositAmount,
             kind: "drafted",
             depositId: result.deposit.id,
@@ -123,6 +144,7 @@ export function useDraftDeposit({
           });
         } catch (err) {
           if (seq !== requestSeqRef.current) return;
+          requestActiveRef.current = false;
           console.error("[account-deposit] failed to draft deposit", {
             sessionId,
             rail,
@@ -130,7 +152,7 @@ export function useDraftDeposit({
             draftMode,
             error: err instanceof Error ? err.message : String(err),
           });
-          setDepositState({ depositAmount, kind: "idle" });
+          setDepositState({ depositAmount, rail, kind: "idle" });
           setError(formatUserError(err, t.errorDepositFailed));
         }
       })();
@@ -144,8 +166,8 @@ export function useDraftDeposit({
     depositState,
     enabled,
     error,
-    hasStartedCurrentAmount,
-    matchesAmount,
+    hasStartedCurrentIntent,
+    matchesIntent,
     rail,
     sessionId,
     setDepositState,
@@ -159,7 +181,7 @@ export function useDraftDeposit({
     error,
     retry: () => {
       setError(null);
-      setDepositState({ depositAmount, kind: "idle" });
+      setDepositState({ depositAmount, rail, kind: "idle" });
     },
   };
 }

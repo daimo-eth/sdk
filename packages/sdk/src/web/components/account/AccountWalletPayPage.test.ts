@@ -7,7 +7,7 @@ import { afterEach, expect, it, vi } from "vitest";
 import type { DepositPaymentInfo } from "../../../common/account.js";
 import type { DaimoClient } from "../../../client/createDaimoClient.js";
 import { createDaimoClient } from "../../../client/createDaimoClient.js";
-import { AccountWalletPayPage } from "./AccountApplePayPage.js";
+import { AccountWalletPayPage } from "./AccountWalletPayPage.js";
 
 const { context, draft } = vi.hoisted(() => ({
   context: { client: undefined as DaimoClient | undefined },
@@ -16,7 +16,7 @@ const { context, draft } = vi.hoisted(() => ({
       flow: "wallet-pay-widget",
       paymentLinkUrl: "https://pay.coinbase.com/test",
       providerOrderId: "order-page",
-      paymentLinkKind: "apple_pay",
+      paymentLinkKind: "apple_pay" as "apple_pay" | "google_pay",
       paymentTotal: "5",
       totalFeeUnits: "0",
       purchaseAmount: "5",
@@ -63,6 +63,7 @@ afterEach(() => {
   root = undefined;
   document.body.replaceChildren();
   vi.restoreAllMocks();
+  draft.payment.paymentLinkKind = "apple_pay";
 });
 
 it("sends the active widget error through the real SDK transport and survives a rejected log request", async () => {
@@ -126,4 +127,55 @@ it("sends the active widget error through the real SDK transport and survives a 
     },
   });
   expect(container.textContent).toContain("Apple Pay unavailable");
+});
+
+it("renders Google Pay without Apple cropping and permits its payment popup", async () => {
+  draft.payment.paymentLinkKind = "google_pay";
+  context.client = createDaimoClient({
+    baseUrl: "https://api.test",
+    fetchImpl: vi.fn<typeof fetch>(async () => Response.json({})),
+  });
+  vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockReturnValue(
+    new DOMRect(0, 0, 344, 56),
+  );
+  const container = document.createElement("div");
+  document.body.append(container);
+  root = createRoot(container);
+  await act(async () =>
+    root?.render(
+      createElement(AccountWalletPayPage, {
+        rail: "google_pay",
+        paymentInteraction: "wallet-pay-widget",
+        sessionId: "session-google",
+        clientSecret: "test-secret",
+        actionVerb: "Deposit",
+        initialAmount: "5",
+        onAdvance: vi.fn(),
+      }),
+    ),
+  );
+  const iframe = document.querySelector("iframe");
+  expect(iframe?.title).toBe("Google Pay Checkout");
+  expect(iframe?.getAttribute("allow")).toBe("payment");
+  expect(iframe?.getAttribute("sandbox")).toContain(
+    "allow-popups-to-escape-sandbox",
+  );
+  expect(iframe?.style.width).toBe("344px");
+  expect(iframe?.style.height).toBe("56px");
+  await act(async () =>
+    window.dispatchEvent(
+      new MessageEvent("message", {
+        origin: "https://pay.coinbase.com",
+        source: iframe?.contentWindow,
+        data: JSON.stringify({
+          eventName: "onramp_api.load_error",
+          data: {
+            errorCode: "ERROR_CODE_GUEST_GOOGLE_PAY_NOT_SUPPORTED",
+            errorMessage: "Google Pay is not supported on this device",
+          },
+        }),
+      }),
+    ),
+  );
+  expect(container.textContent).toContain("Google Pay unavailable");
 });

@@ -44,13 +44,14 @@ export function AccountPaymentResumePage({
   useEffect(() => {
     if (!payment || !depositId) return;
     setDepositState({
+      rail,
       depositAmount,
       kind: "started",
       depositId,
       payment,
     });
     onReady(payment);
-  }, [depositAmount, depositId, onReady, payment, setDepositState]);
+  }, [depositAmount, depositId, onReady, payment, rail, setDepositState]);
 
   if (error) {
     return <ErrorPage message={error} retryText={t.tryAgain} onRetry={retry} />;
