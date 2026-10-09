@@ -161,9 +161,29 @@ export const supportedChains: Chain[] = [
   worldchain,
 ];
 
-/** Given a chainId, return the chain. */
+/** Chains we no longer support. Kept so past sessions still resolve. */
+export const retiredChains: Chain[] = [
+  {
+    type: "evm",
+    chainId: 100,
+    name: "Gnosis",
+    cctpDomain: null,
+    lzEid: 30145,
+  },
+  {
+    type: "evm",
+    chainId: 534352,
+    name: "Scroll",
+    cctpDomain: null,
+    lzEid: 30214,
+  },
+];
+
+/** Given a chainId, return the chain. Includes retired chains. */
 export function getChainById(chainId: number): Chain {
-  const ret = supportedChains.find((c) => c.chainId === chainId);
+  const ret = [...supportedChains, ...retiredChains].find(
+    (c) => c.chainId === chainId,
+  );
   if (ret == null) throw new Error(`unknown chainId ${chainId}`);
   return ret;
 }
@@ -215,6 +235,10 @@ export function getChainExplorerByChainId(chainId: number): string | undefined {
       return "https://tronscan.org";
     case worldchain.chainId:
       return "https://worldscan.org";
+    case 100:
+      return "https://gnosisscan.io";
+    case 534352:
+      return "https://scrollscan.com";
     default:
       return undefined;
   }
