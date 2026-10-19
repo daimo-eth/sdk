@@ -195,6 +195,8 @@ export type TokenOption = {
   tokenSymbol: string;
   /** Amount required in token units, e.g. "1.23" for $1.23 USDC. */
   requiredUnits: string;
+  /** Minimum payment in source-token units, using the session's pricing policy. */
+  minimumUnits: string;
   /** User's balance in token units, e.g. "5.00" for $5.00 USDC. */
   balanceUnits?: string;
 };
