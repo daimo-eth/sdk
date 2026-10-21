@@ -142,9 +142,9 @@ export function AccountInstitutionPickerPage({
           authorizedAmount: preCreatePayment?.expectedSettlementAmount,
           paymentInput,
         });
-        const validResult = preCreatePayment
-          ? getApprovalContract(payment) != null
-          : isPaymentInteractionCompatible(paymentInteraction, payment);
+        const validResult =
+          isPaymentInteractionCompatible(paymentInteraction, payment) ||
+          (preCreatePayment != null && getApprovalContract(payment) != null);
         if (!validResult) {
           setStartError(t.errorDepositFailed);
           return;
