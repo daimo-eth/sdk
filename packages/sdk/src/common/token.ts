@@ -206,11 +206,11 @@ export const baseUSDC: Token = token({
 
 export const baseCADC: Token = token({
   chainId: base.chainId,
-  token: getAddress("0x043eB4B75d0805c43D7C834902E335621983Cf03"),
+  token: getAddress("0x5e63E9C06c3F2c779EF29a8071F94F5a724eB5e4"),
   name: "CAD Coin",
   symbol: "CADC",
   fiatISO: "CAD",
-  decimals: 18,
+  decimals: 6,
   logoURI: TokenLogo.CADC,
 });
 
