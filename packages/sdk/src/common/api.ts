@@ -197,6 +197,8 @@ export type TokenOption = {
   requiredUnits: string;
   /** Minimum payment in source-token units, using the session's pricing policy. */
   minimumUnits: string;
+  /** Maximum payment in source-token units, independent of balance. Absent on older servers. */
+  maximumUnits?: string;
   /** User's balance in token units, e.g. "5.00" for $5.00 USDC. */
   balanceUnits?: string;
 };
