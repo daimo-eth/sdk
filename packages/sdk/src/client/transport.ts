@@ -70,6 +70,7 @@ export function createTransport(config: TransportConfig) {
       }, timeoutMs);
 
       let response: Response;
+      let rawText: string;
       try {
         response = await fetchImpl(url, {
           method: options.method,
@@ -77,18 +78,18 @@ export function createTransport(config: TransportConfig) {
           body,
           signal: timeoutController.signal,
         });
+        rawText = await response.text();
       } catch (error) {
-        clearTimeout(timeoutId);
         const message =
           error instanceof Error && error.message
             ? error.message.toLowerCase()
             : "request failed";
         throw new DaimoRequestError({ status: 0, message, raw: error });
+      } finally {
+        clearTimeout(timeoutId);
       }
-      clearTimeout(timeoutId);
 
       const requestId = getRequestId(response.headers);
-      const rawText = await response.text();
 
       let parsedBody: unknown = undefined;
       if (rawText.length > 0) {
